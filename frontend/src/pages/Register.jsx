@@ -7,6 +7,7 @@ import Button from "../components/Button";
 import QuestionText from "../components/QuestionText";
 import Separator from "../components/Separator";
 import GoogleButton from "../components/GoogleButton";
+import BackButton from "../components/BackButton";
 import userIcon from "../assets/user.png";
 import phoneIcon from "../assets/phone.png";
 import emailIcon from "../assets/emailIcon.png";
@@ -20,6 +21,9 @@ const Register = () => {
 
     return (
         <PageContainer>
+
+            <BackButton />
+
             <Form>
                 <Title>Regístrate</Title>
 

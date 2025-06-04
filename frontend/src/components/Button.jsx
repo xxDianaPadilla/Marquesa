@@ -31,7 +31,7 @@ const Button = ({ text, onClick, variant = "primary", icon }) => {
         <button
             onClick={onClick}
             className={`
-                w-full rounded-lg py-3 px-6 font-bold italic text-center
+                w-full rounded-lg py-3 px-6 italic text-center
                 transition-colors duration-200 flex items-center justify-center
                 hover:opacity-90
                 ${getButtonStyles()}

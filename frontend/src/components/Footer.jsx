@@ -59,9 +59,9 @@ const Footer = () => {
           </h2>
           <p className="text-sm text-gray-600 tracking-wide">TIENDA DE REGALOS</p>
           <div className="flex justify-center mt-4">
-            <div className="h-px bg-gray-300" style={{width: "400px"}}></div>
+            <div className="mt-2 h-px bg-gray-300" style={{width: "400px"}}></div>
             <div className="mx-4 text-gray-400"><img src={footerFlowerIcon} alt="Flores" className="w-4 h-4" /></div>
-            <div className="h-px bg-gray-300"style={{width: "400px"}}></div>
+            <div className="mt-2 h-px bg-gray-300"style={{width: "400px"}}></div>
           </div>
         </div>
 

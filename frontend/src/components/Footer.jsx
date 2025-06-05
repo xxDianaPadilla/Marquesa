@@ -50,7 +50,7 @@ const Footer = () => {
   // };
 
   return (
-    <footer className="bg-white border-t border-gray-200 py-16 px-8">
+    <footer className="bg-white border-t border-gray-200 py-16 px-8 font-poppins">
       {/* Logo y decoración superior */}
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12">
@@ -194,14 +194,18 @@ const Footer = () => {
               <h4 className="text-lg font-semibold text-gray-800 mb-4 italic">Síguenos</h4>
               <div className="flex space-x-3">
                 <a 
-                  href="#" 
+                  href="https://www.facebook.com/share/1C5F39CLta/?mibextid=wwXIfr" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
                   aria-label="Facebook"
                   className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors"
                 >
                   <img src={facebook} alt="Facebook" className="w-5 h-5" />
                 </a>
                 <a 
-                  href="#" 
+                  href="https://www.instagram.com/marquesasv?igsh=MW9oNmxldWFxZXpnMw==" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
                   aria-label="Instagram"
                   className="w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-500 rounded-full flex items-center justify-center hover:from-purple-700 hover:to-pink-600 transition-colors"
                 >

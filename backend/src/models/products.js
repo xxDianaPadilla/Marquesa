@@ -1,4 +1,5 @@
 import{ Schema, model }from 'mongoose';
+import "./Categories.js"
 
 const productsSchema = new Schema({
 name: {
@@ -29,7 +30,7 @@ name: {
       ref: "categories",
       required: true,
     },
-   images: {
+    images: {
   type: [String],
   required: false,
 },

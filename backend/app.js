@@ -1,7 +1,7 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import cors from "cors";
-import productsRoutes from './src/routes/products';
+import productsRoutes from './src/routes/products.js';
 
 const app = express();
 app.use(express.json());

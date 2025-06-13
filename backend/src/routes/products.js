@@ -1,8 +1,10 @@
 import express from "express";
 import productsController from '../controllers/productsController.js';
-import multer from "multer";
+import multer from 'multer';
 
 const router = express.Router();
+const upload = multer({dest: "public/"})
+
 
 router.route("/")
   .get(productsController.getProducts)

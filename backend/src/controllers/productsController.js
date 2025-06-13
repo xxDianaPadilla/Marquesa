@@ -1,5 +1,6 @@
-import productsModel from "../models/products";
+import productsModel from "../models/products.js";
 import { v2 as cloudinary } from "cloudinary";
+
 
 import { config } from "../config.js";
 
@@ -13,7 +14,7 @@ const productsController = {};
 
 productsController.getProducts = async (req, res) => {
     try {
-    const products = await productsModel.find().populate('idCategory');
+    const products = await productsModel.find().populate('categoryId');
   res.status(200).json(products);
     } catch (error) {
     console.error("Error al obtener los productos:", error);
@@ -23,7 +24,7 @@ productsController.getProducts = async (req, res) => {
 
 productsController.getProduct = async (req, res) => {
 try {
-const product = await productsModel.findById(req.params.id).populate('idCategory');
+const product = await productsModel.findById(req.params.id).populate('categoryId');
   if (!product) {
     return res.status(404).json({ message: "Producto no encontrado" });
   }
@@ -97,7 +98,6 @@ productsController.createProducts = async (req, res) => {
     return res.status(500).json({ message: "Error al crear el producto" });
   }
 };
-const mongoose = require('mongoose');
 
 productsController.updateProducts = async (req, res) => {
   try {
@@ -156,7 +156,7 @@ productsController.updateProducts = async (req, res) => {
         price,
         stock: stock || 0,
         categoryId,
-        image: imageURL,
+        images: imageURL,
         isPersonalizable,
         details,
       },

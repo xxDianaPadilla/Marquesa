@@ -8,11 +8,11 @@ const upload = multer({dest: "public/"})
 
 router.route("/")
   .get(productsController.getProducts)
-  .post(upload.single("image"), productsController.createProducts);
+  .post(upload.array("images"), productsController.createProducts);
 
 router.route("/:id")
   .get(productsController.getProduct)
-  .put(upload.single("image"), productsController.updateProducts)
+  .put(upload.array("image"), productsController.updateProducts)
   .delete(productsController.deleteProducts);
 
 export default router;

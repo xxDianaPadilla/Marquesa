@@ -71,12 +71,12 @@ productsController.createProducts = async (req, res) => {
     }
 
     if (req.file) {
-    const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: "public",
-      allowed_formats: ["jpg", "png", "jpeg"],
-    });
-    imageURL = result.secure_url;
-  }
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "public",
+        allowed_formats: ["jpg", "png", "jpeg"],
+      });
+      imageURL = result.secure_url;
+    }
 
     // Crear el producto
     const newProduct = new productsModel({

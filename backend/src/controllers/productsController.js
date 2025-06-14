@@ -38,44 +38,16 @@ const product = await productsModel.findById(req.params.id).populate('categoryId
 productsController.createProducts = async (req, res) => {
   try {
     const { name, description, price, stock, categoryId, isPersonalizable, details } = req.body;
-    let imageURL = "";
+    let imageURL = [];
 
-    if (!name || typeof name !== 'string') {
-      return res.status(400).json({ message: "El nombre del producto es requerido y debe ser un texto" });
-    }
 
-    if (!description || typeof description !== 'string') {
-      return res.status(400).json({ message: "La descripción es requerida y debe ser un texto" });
-    }
-
-    if (price === undefined || typeof price !== 'number' || price < 0) {
-      return res.status(400).json({ message: "El precio es requerido, debe ser numérico y mayor o igual a 0" });
-    }
-
-    if (stock !== undefined && (typeof stock !== 'number' || stock < 0)) {
-      return res.status(400).json({ message: "El stock debe ser un número mayor o igual a 0" });
-    }
-
-    if (!categoryId || typeof categoryId !== 'string') {
-      return res.status(400).json({ message: "El ID de categoría es requerido y debe ser un texto" });
-    }
-
-    
-
-    if (isPersonalizable !== undefined && typeof isPersonalizable !== 'boolean') {
-      return res.status(400).json({ message: "El campo 'isPersonalizable' debe ser booleano (true/false)" });
-    }
-
-    if (details && typeof details !== 'string') {
-      return res.status(400).json({ message: "El campo 'details' debe ser una cadena de texto" });
-    }
 
     if (req.file) {
       const result = await cloudinary.uploader.upload(req.file.path, {
         folder: "public",
         allowed_formats: ["jpg", "png", "jpeg"],
       });
-      imageURL = result.secure_url;
+  imageURL.push(result.secure_url);
     }
 
     // Crear el producto
@@ -110,7 +82,7 @@ productsController.updateProducts = async (req, res) => {
       isPersonalizable,
       details,
     } = req.body;
-    let imageURL = "";
+    let imageURL = [];
 
     //subir la imagen a Cloudinary
     if (req.file) {
@@ -127,10 +99,6 @@ productsController.updateProducts = async (req, res) => {
 
     if (description !== undefined && (typeof description !== 'string' || description.trim() === '')) {
       return res.status(400).json({ message: "La descripción debe ser una cadena no vacía" });
-    }
-
-    if (price !== undefined && (typeof price !== 'number' || price < 0)) {
-      return res.status(400).json({ message: "El precio debe ser un número mayor o igual a 0" });
     }
 
     if (stock !== undefined && (typeof stock !== 'number' || stock < 0)) {

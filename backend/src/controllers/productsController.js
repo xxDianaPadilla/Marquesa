@@ -34,32 +34,30 @@ const product = await productsModel.findById(req.params.id).populate('categoryId
     res.status(500).json({ message: "Error al obtener el producto" });
 }
 };
-
 productsController.createProducts = async (req, res) => {
   try {
     const { name, description, price, stock, categoryId, isPersonalizable, details } = req.body;
     let imageURL = [];
 
-
-
-    if (req.file) {
-      const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: "public",
-        allowed_formats: ["jpg", "png", "jpeg"],
-      });
-  imageURL.push(result.secure_url);
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: "public",
+          allowed_formats: ["jpg", "png", "jpeg"],
+        });
+        imageURL.push(result.secure_url);
+      }
     }
 
-    // Crear el producto
     const newProduct = new productsModel({
-      name,
-      description,
+      name: JSON.parse(name),
+      description: JSON.parse(description),
       price,
       stock: stock || 0,
       categoryId,
-      images: imageURL ,
+      images: imageURL,
       isPersonalizable,
-      details,
+      details: JSON.parse(details),
     });
 
     await newProduct.save();
@@ -67,7 +65,7 @@ productsController.createProducts = async (req, res) => {
 
   } catch (error) {
     console.error("Error al crear el producto:", error);
-    return res.status(500).json({ message: "Error al crear el producto" });
+    res.status(500).json({ message: "Error al crear el producto" });
   }
 };
 
@@ -82,52 +80,36 @@ productsController.updateProducts = async (req, res) => {
       isPersonalizable,
       details,
     } = req.body;
+
     let imageURL = [];
 
-    //subir la imagen a Cloudinary
-    if (req.file) {
-      const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: "public",
-        allowed_formats: ["jpg", "png", "jpeg"],
-      });
-      imageURL = result.secure_url;
-    }
-    // Validaciones de campos si existen
-    if (name !== undefined && (typeof name !== 'string' || name.trim() === '')) {
-      return res.status(400).json({ message: "El nombre debe ser una cadena no vacía" });
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: "public",
+          allowed_formats: ["jpg", "png", "jpeg"],
+        });
+        imageURL.push(result.secure_url);
+      }
     }
 
-    if (description !== undefined && (typeof description !== 'string' || description.trim() === '')) {
-      return res.status(400).json({ message: "La descripción debe ser una cadena no vacía" });
-    }
+    const updatedFields = {
+      name: JSON.parse(name),
+      description: JSON.parse(description),
+      price,
+      stock: stock || 0,
+      categoryId,
+      isPersonalizable,
+      details: JSON.parse(details),
+    };
 
-    if (stock !== undefined && (typeof stock !== 'number' || stock < 0)) {
-      return res.status(400).json({ message: "El stock debe ser un número mayor o igual a 0" });
-    }
-
-    if (categoryId !== undefined && typeof categoryId !== 'string') {
-      return res.status(400).json({ message: "El ID de categoría debe ser una cadena" });
-    }
-
-    if (isPersonalizable !== undefined && typeof isPersonalizable !== 'boolean') {
-      return res.status(400).json({ message: "El campo isPersonalizable debe ser booleano" });
-    }
-    if (details && typeof details !== 'string') {
-      return res.status(400).json({ message: "El campo 'details' debe ser una cadena de texto" });
+    if (imageURL.length > 0) {
+      updatedFields.images = imageURL;
     }
 
     const updatedProduct = await productsModel.findByIdAndUpdate(
       req.params.id,
-      {
-        name,
-        description,
-        price,
-        stock: stock || 0,
-        categoryId,
-        images: imageURL,
-        isPersonalizable,
-        details,
-      },
+      updatedFields,
       { new: true }
     );
 

@@ -20,7 +20,12 @@ const DashboardLayout = ({ children }) => {
 
 const Dashboard = () => {
     return (
-        <DashboardLayout></DashboardLayout>
+        <DashboardLayout>
+            <div className="bg-white rounded-lg shadow-sm p-6">
+                <h1 className="text-2xl font-bold mb-4" style={{fontFamily: 'Poppins, sans-serif'}}>¡Bienvenido de nuevo, Miguel!</h1>
+                <p className="text-gray-600" style={{fontFamily: 'Poppins, sans-serif'}}>¡Han pasado muchas cosas mientras no has estado!</p>
+            </div>
+        </DashboardLayout>
     );
 };
 

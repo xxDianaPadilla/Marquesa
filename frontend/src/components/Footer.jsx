@@ -55,7 +55,7 @@ const Footer = () => {
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-2xl font-bold tracking-widest text-gray-800 mb-2">
-            • MARQUESA •
+            ● M A R Q U E S A ●
           </h2>
           <p className="text-sm text-gray-600 tracking-wide">TIENDA DE REGALOS</p>
           <div className="flex justify-center mt-4">

@@ -31,6 +31,7 @@ const CategoryNavigation = ({ categories, activeCategory, onCategoryChange }) =>
                                 className={`
                                     category-button flex-shrink-0 px-6 py-3 rounded-full text-sm
                                     transition-all duration-200 whitespace-nowrap border
+                                    cursor-pointer hover:scale-105
                                     ${activeCategory === category.id
                                         ? 'border-transparent shadow-sm'
                                         : 'bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50'

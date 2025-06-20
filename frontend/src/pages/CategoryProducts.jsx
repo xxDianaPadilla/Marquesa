@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header/Header";
 import Footer from "../components/Footer";
 import CategoryNavigation from "../components/CategoryNavigation";
 import CategorySection from "../components/CategorySection";
-import { useNavigate } from "react-router-dom";
 
 // Importar imágenes de productos
 import Flower1 from "../assets/savesFlower1.png";
@@ -11,12 +11,13 @@ import Flower2 from "../assets/savesFlower2.png";
 import Flower3 from "../assets/savesFlower3.png";
 
 /**
- * Componente Home
+ * Componente CategoryProducts (Home)
  * Página principal que muestra todas las categorías y productos
  * Incluye navegación por categorías y secciones de productos
  */
-const Home = () => {
-    // const navigate = useNavigate();
+const CategoryProducts = () => {
+    const navigate = useNavigate();
+    const location = useLocation();
     // Estado para la categoría activa en la navegación
     const [activeCategory, setActiveCategory] = useState('todos');
     // Estado para controlar la carga de datos
@@ -35,7 +36,7 @@ const Home = () => {
     ];
 
     /**
-     * Datos expandidos de productos por categoría (5-10 productos cada una)
+     * Datos expandidos de productos por categoría (exactamente los mismos datos)
      * En una aplicación real, estos datos vendrían de una API
      */
     const productsByCategory = {
@@ -107,19 +108,12 @@ const Home = () => {
     const handleCategoryChange = (categoryId) => {
         setActiveCategory(categoryId);
         
-        // Scroll suave a la sección correspondiente si no es "todos"
-        if (categoryId !== 'todos') {
-            const element = document.getElementById(`section-${categoryId}`);
-            if (element) {
-                element.scrollIntoView({ 
-                    behavior: 'smooth', 
-                    block: 'start',
-                    inline: 'nearest'
-                });
-            }
-        } else {
-            // Si selecciona "todos", scroll al inicio
+        if (categoryId === 'todos') {
+            // Si selecciona "todos", mostrar todas las categorías en scroll horizontal
             window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+            // Si selecciona una categoría específica, navegar a la página individual
+            navigate(`/categoria/${categoryId}`);
         }
     };
 
@@ -131,6 +125,7 @@ const Home = () => {
     const handleProductClick = (product, categoryId) => {
         console.log('Producto clickeado:', product, 'Categoría:', categoryId);
         // Aquí se podría navegar a la página de detalle del producto
+        // navigate(`/producto/${product.id}`);
     };
 
     /**
@@ -220,4 +215,4 @@ const Home = () => {
     );
 };
 
-export default Home;
+export default CategoryProducts;

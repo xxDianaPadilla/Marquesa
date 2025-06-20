@@ -60,7 +60,8 @@ const CategorySection = ({
                 <button
                     onClick={handleViewAllClick}
                     className="text-[#CD5277] hover:text-[#B8476A] font-medium text-sm
-                             transition-colors duration-200 flex items-center space-x-1"
+                             transition-colors duration-200 flex items-center space-x-1
+                             cursor-pointer hover:scale-105"
                     style={{ fontFamily: 'Poppins, sans-serif' }}
                 >
                     <span>Ver todos</span>
@@ -118,7 +119,7 @@ const CategorySection = ({
                                     }}
                                     className="absolute top-3 left-3 bg-white bg-opacity-80 hover:bg-opacity-100 
                                              rounded-full p-2 transition-all duration-200 shadow-md
-                                             hover:shadow-lg transform hover:scale-105"
+                                             hover:shadow-lg transform hover:scale-105 cursor-pointer"
                                     aria-label="Añadir a favoritos"
                                 >
                                     <svg 
@@ -160,7 +161,8 @@ const CategorySection = ({
                                         console.log('Añadir al carrito:', product.id);
                                     }}
                                     className="w-full bg-[#E8ACD2] hover:bg-[#E096C8] text-white py-2 px-4 
-                                             rounded-lg transition-colors duration-200 text-sm font-medium"
+                                             rounded-lg transition-colors duration-200 text-sm font-medium
+                                             cursor-pointer hover:scale-105"
                                     style={{ fontFamily: 'Poppins, sans-serif' }}
                                 >
                                     Añadir al carrito

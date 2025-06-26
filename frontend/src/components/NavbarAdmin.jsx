@@ -10,7 +10,7 @@ import logoutIcon from '../assets/logout.png';
 
 const NavbarAdmin = () => {
     return (
-        <div className="fixed left-0 top-5 bottom-5 w-16 bg-gradient-to-b from-[#FF7260] via-[#FF9A8B] to-[#FF7260] shadow-lg z-50 rounded-r-2xl">
+        <div className="fixed left-0 top-5 bottom-5 w-16 bg-gradient-to-b from-[#FF7260] via-[#FF9A8B] to-[#FF7260] shadow-lg z-30 rounded-r-2xl">
             <div className="flex flex-col items-center py-4 h-full">
                 {/* Logo */}
                 <div className="mb-6">

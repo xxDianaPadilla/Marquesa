@@ -4,10 +4,6 @@ import MediaUploadModal from "../components/MediaUploadModal";
 import MediaEditModal from "../components/MediaEditModal";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
 
-/**
- * Componente MediaManager
- * Interfaz principal para la administración de multimedia con datos reales
- */
 const MediaManager = () => {
     // Estados para el manejo de datos
     const [mediaItems, setMediaItems] = useState([]);
@@ -22,6 +18,9 @@ const MediaManager = () => {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
 
+    // Estado para mostrar notificaciones
+    const [notification, setNotification] = useState(null);
+
     // Cargar datos desde la API
     const fetchMediaItems = async () => {
         try {
@@ -35,9 +34,16 @@ const MediaManager = () => {
             setFilteredItems(data);
         } catch (error) {
             console.error("Error al cargar multimedia:", error);
+            showNotification("Error al cargar multimedia. Verifique la conexión con el servidor.", "error");
         } finally {
             setIsLoading(false);
         }
+    };
+
+    // Función para mostrar notificaciones
+    const showNotification = (message, type = "success") => {
+        setNotification({ message, type });
+        setTimeout(() => setNotification(null), 5000);
     };
 
     // Cargar datos iniciales
@@ -80,22 +86,28 @@ const MediaManager = () => {
         setShowDeleteModal(true);
     };
 
-    const handleCopy = (url) => {
-        navigator.clipboard.writeText(url);
-        // Aquí podrías agregar una notificación
-        console.log("URL copiada:", url);
+    const handleCopy = async (url) => {
+        try {
+            await navigator.clipboard.writeText(url);
+            showNotification("URL copiada al portapapeles", "success");
+        } catch (error) {
+            console.error("Error al copiar URL:", error);
+            showNotification("Error al copiar URL", "error");
+        }
     };
 
     // Funciones para confirmar acciones
     const confirmUpload = async (newItem) => {
-        await fetchMediaItems(); // Recargar datos
+        await fetchMediaItems();
         setShowUploadModal(false);
+        showNotification("Multimedia agregada exitosamente", "success");
     };
 
     const confirmEdit = async (editedItem) => {
-        await fetchMediaItems(); // Recargar datos
+        await fetchMediaItems();
         setShowEditModal(false);
         setSelectedItem(null);
+        showNotification("Multimedia editada exitosamente", "success");
     };
 
     const confirmDelete = async () => {
@@ -108,17 +120,18 @@ const MediaManager = () => {
                 throw new Error('Error al eliminar multimedia');
             }
 
-            await fetchMediaItems(); // Recargar datos
+            await fetchMediaItems();
             setShowDeleteModal(false);
             setSelectedItem(null);
+            showNotification("Multimedia eliminada exitosamente", "success");
         } catch (error) {
             console.error("Error al eliminar multimedia:", error);
+            showNotification("Error al eliminar multimedia", "error");
         }
     };
 
     // Obtener icono según el tipo de archivo
     const getFileIcon = (item) => {
-        // Determinar si tiene imagen o video
         const hasImage = item.imageURL && item.imageURL.trim() !== "";
         const hasVideo = item.videoURL && item.videoURL.trim() !== "";
 
@@ -156,40 +169,88 @@ const MediaManager = () => {
 
     const LoadingState = () => (
         <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FF7260]"></div>
+            <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FF7260] mx-auto mb-4"></div>
+                <p className="text-gray-600" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                    Cargando multimedia...
+                </p>
+            </div>
         </div>
     );
 
+    const NotificationComponent = () => {
+        if (!notification) return null;
+
+        return (
+            <div className={`fixed top-4 right-4 z-[60] p-4 rounded-lg shadow-lg transition-all duration-300 max-w-sm ${
+                notification.type === 'success' 
+                    ? 'bg-green-500 text-white' 
+                    : 'bg-red-500 text-white'
+            }`} style={{ fontFamily: 'Poppins, sans-serif' }}>
+                <div className="flex items-center gap-2">
+                    {notification.type === 'success' ? (
+                        <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                    ) : (
+                        <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    )}
+                    <span className="flex-1">{notification.message}</span>
+                    <button
+                        onClick={() => setNotification(null)}
+                        className="ml-2 hover:opacity-70 flex-shrink-0"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        );
+    };
+
+    // Determinar si hay modales abiertos para aplicar el overlay
+    const hasModalOpen = showUploadModal || showEditModal || showDeleteModal;
+
     return (
         <div className="min-h-screen bg-gray-50">
+            {/* Navbar Admin - debe estar debajo del overlay */}
             <NavbarAdmin />
+            
+            {/* Componente de notificaciones - por encima del overlay */}
+            <NotificationComponent />
 
-            <div className="ml-16 p-6">
+            {/* Contenido principal */}
+            <div className="ml-16 p-3 sm:p-6">
                 {/* Header */}
-                <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-                    <div className="flex justify-between items-center mb-4">
+                <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-800" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                            <h1 className="text-xl sm:text-2xl font-bold text-gray-800" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                 Multimedia de Marquesa
                             </h1>
-                            <p className="text-gray-600 mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                            <p className="text-gray-600 mt-1 text-sm sm:text-base" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                 Gestiona tus imágenes, videos y contenido multimedia
                             </p>
                         </div>
                         <button
                             onClick={handleUpload}
-                            className="bg-[#FF7260] hover:bg-[#FF6A54] text-white px-6 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2"
+                            disabled={hasModalOpen}
+                            className="w-full sm:w-auto bg-[#FF7260] hover:bg-[#FF6A54] text-white px-4 sm:px-6 py-2 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
                             style={{ fontFamily: 'Poppins, sans-serif' }}
                         >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                             </svg>
-                            Añadir Multimedia
+                            <span className="hidden sm:inline">Añadir Multimedia</span>
+                            <span className="sm:hidden">Añadir</span>
                         </button>
                     </div>
 
                     {/* Filtros y búsqueda */}
-                    <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex flex-col sm:flex-row gap-4">
                         {/* Buscador */}
                         <div className="flex-1 relative">
                             <input
@@ -197,7 +258,8 @@ const MediaManager = () => {
                                 placeholder="Buscar..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent"
+                                disabled={hasModalOpen}
+                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
                                 style={{ fontFamily: 'Poppins, sans-serif' }}
                             />
                             <svg className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -209,7 +271,8 @@ const MediaManager = () => {
                         <select
                             value={selectedType}
                             onChange={(e) => setSelectedType(e.target.value)}
-                            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent"
+                            disabled={hasModalOpen}
+                            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
                             style={{ fontFamily: 'Poppins, sans-serif' }}
                         >
                             <option value="todos">Todos los tipos</option>
@@ -221,129 +284,255 @@ const MediaManager = () => {
                 </div>
 
                 {/* Contenido principal */}
-                <div className="bg-white rounded-lg shadow-sm">
-                    {/* Header de la tabla */}
-                    <div className="px-6 py-4 border-b border-gray-200">
-                        <div className="grid grid-cols-12 gap-4 text-sm font-medium text-gray-700" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                            <div className="col-span-1">Archivos</div>
-                            <div className="col-span-2">Tipo</div>
-                            <div className="col-span-3">Título</div>
-                            <div className="col-span-3">URLs</div>
-                            <div className="col-span-2">Fecha</div>
-                            <div className="col-span-1">Acciones</div>
+                <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                    {/* Vista Desktop - Tabla */}
+                    <div className="hidden lg:block">
+                        {/* Header de la tabla */}
+                        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                            <div className="grid grid-cols-12 gap-4 text-sm font-medium text-gray-700" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                <div className="col-span-1">Archivos</div>
+                                <div className="col-span-2">Tipo</div>
+                                <div className="col-span-3">Título</div>
+                                <div className="col-span-3">URLs</div>
+                                <div className="col-span-2">Fecha</div>
+                                <div className="col-span-1">Acciones</div>
+                            </div>
+                        </div>
+
+                        {/* Lista de elementos - Desktop */}
+                        <div className="divide-y divide-gray-200">
+                            {isLoading ? (
+                                <LoadingState />
+                            ) : filteredItems.length === 0 ? (
+                                <div className="p-12 text-center">
+                                    <div className="text-gray-400 mb-4">
+                                        <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                    </div>
+                                    <p className="text-gray-500" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                        No se encontraron elementos multimedia
+                                    </p>
+                                </div>
+                            ) : (
+                                filteredItems.map((item) => (
+                                    <div key={item._id} className="p-4 hover:bg-gray-50 transition-colors duration-200">
+                                        <div className="grid grid-cols-12 gap-4 items-center">
+                                            {/* Archivos con icono */}
+                                            <div className="col-span-1 flex items-center justify-center">
+                                                {getFileIcon(item)}
+                                            </div>
+
+                                            {/* Tipo */}
+                                            <div className="col-span-2">
+                                                <span className="inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                                    {item.type}
+                                                </span>
+                                            </div>
+
+                                            {/* Título */}
+                                            <div className="col-span-3">
+                                                <p className="font-medium text-gray-900 truncate" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                                    {item.title || 'Sin título'}
+                                                </p>
+                                                <p className="text-sm text-gray-500 truncate" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                                    {item.description || 'Sin descripción'}
+                                                </p>
+                                            </div>
+
+                                            {/* URLs */}
+                                            <div className="col-span-3 space-y-1">
+                                                {item.imageURL && (
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs text-blue-600 font-medium">IMG:</span>
+                                                        <code className="text-xs bg-gray-100 px-2 py-1 rounded flex-1 truncate" style={{ fontFamily: 'monospace' }}>
+                                                            {item.imageURL}
+                                                        </code>
+                                                        <button
+                                                            onClick={() => handleCopy(item.imageURL)}
+                                                            disabled={hasModalOpen}
+                                                            className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            title="Copiar URL imagen"
+                                                        >
+                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                {item.videoURL && (
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs text-red-600 font-medium">VID:</span>
+                                                        <code className="text-xs bg-gray-100 px-2 py-1 rounded flex-1 truncate" style={{ fontFamily: 'monospace' }}>
+                                                            {item.videoURL}
+                                                        </code>
+                                                        <button
+                                                            onClick={() => handleCopy(item.videoURL)}
+                                                            disabled={hasModalOpen}
+                                                            className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            title="Copiar URL video"
+                                                        >
+                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Fecha */}
+                                            <div className="col-span-2">
+                                                <p className="text-sm text-gray-600" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                                    {new Date(item.createdAt).toLocaleDateString('es-ES')}
+                                                </p>
+                                            </div>
+
+                                            {/* Acciones */}
+                                            <div className="col-span-1 flex items-center gap-2">
+                                                <button
+                                                    onClick={() => handleEdit(item)}
+                                                    disabled={hasModalOpen}
+                                                    className="text-blue-600 hover:text-blue-800 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    title="Editar"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(item)}
+                                                    disabled={hasModalOpen}
+                                                    className="text-red-600 hover:text-red-800 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    title="Eliminar"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </div>
 
-                    {/* Lista de elementos */}
-                    <div className="divide-y divide-gray-200">
+                    {/* Vista Mobile y Tablet - Tarjetas */}
+                    <div className="lg:hidden">
                         {isLoading ? (
                             <LoadingState />
                         ) : filteredItems.length === 0 ? (
-                            <div className="p-12 text-center">
+                            <div className="p-8 text-center">
                                 <div className="text-gray-400 mb-4">
-                                    <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
                                 </div>
-                                <p className="text-gray-500" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                <p className="text-gray-500 text-sm" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                     No se encontraron elementos multimedia
                                 </p>
                             </div>
                         ) : (
-                            filteredItems.map((item) => (
-                                <div key={item._id} className="p-4 hover:bg-gray-50 transition-colors duration-200">
-                                    <div className="grid grid-cols-12 gap-4 items-center">
-                                        {/* Archivos con icono */}
-                                        <div className="col-span-1 flex items-center justify-center">
-                                            {getFileIcon(item)}
+                            <div className="p-4 space-y-4">
+                                {filteredItems.map((item) => (
+                                    <div key={item._id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                        {/* Header de la tarjeta */}
+                                        <div className="flex items-start justify-between mb-3">
+                                            <div className="flex items-center gap-3">
+                                                {getFileIcon(item)}
+                                                <div>
+                                                    <h3 className="font-medium text-gray-900 text-sm" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                                        {item.title || 'Sin título'}
+                                                    </h3>
+                                                    <span className="inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                                        {item.type}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => handleEdit(item)}
+                                                    disabled={hasModalOpen}
+                                                    className="text-blue-600 hover:text-blue-800 transition-colors p-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    title="Editar"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(item)}
+                                                    disabled={hasModalOpen}
+                                                    className="text-red-600 hover:text-red-800 transition-colors p-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    title="Eliminar"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </button>
+                                            </div>
                                         </div>
 
-                                        {/* Tipo */}
-                                        <div className="col-span-2">
-                                            <span className="inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                                {item.type}
-                                            </span>
-                                        </div>
-
-                                        {/* Título */}
-                                        <div className="col-span-3">
-                                            <p className="font-medium text-gray-900" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                                {item.title || 'Sin título'}
+                                        {/* Descripción */}
+                                        {item.description && (
+                                            <p className="text-sm text-gray-600 mb-3" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                                {item.description}
                                             </p>
-                                            <p className="text-sm text-gray-500 truncate" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                                {item.description || 'Sin descripción'}
-                                            </p>
-                                        </div>
+                                        )}
 
                                         {/* URLs */}
-                                        <div className="col-span-3 space-y-1">
+                                        <div className="space-y-2 mb-3">
                                             {item.imageURL && (
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs text-blue-600 font-medium">IMG:</span>
-                                                    <code className="text-xs bg-gray-100 px-2 py-1 rounded flex-1 truncate" style={{ fontFamily: 'monospace' }}>
+                                                <div className="bg-white rounded p-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs text-blue-600 font-medium">Imagen:</span>
+                                                        <button
+                                                            onClick={() => handleCopy(item.imageURL)}
+                                                            disabled={hasModalOpen}
+                                                            className="text-gray-400 hover:text-gray-600 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            title="Copiar URL imagen"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                    <code className="text-xs text-gray-700 break-all" style={{ fontFamily: 'monospace' }}>
                                                         {item.imageURL}
                                                     </code>
-                                                    <button
-                                                        onClick={() => handleCopy(item.imageURL)}
-                                                        className="text-gray-400 hover:text-gray-600 transition-colors"
-                                                        title="Copiar URL imagen"
-                                                    >
-                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                        </svg>
-                                                    </button>
                                                 </div>
                                             )}
                                             {item.videoURL && (
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs text-red-600 font-medium">VID:</span>
-                                                    <code className="text-xs bg-gray-100 px-2 py-1 rounded flex-1 truncate" style={{ fontFamily: 'monospace' }}>
+                                                <div className="bg-white rounded p-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs text-red-600 font-medium">Video:</span>
+                                                        <button
+                                                            onClick={() => handleCopy(item.videoURL)}
+                                                            disabled={hasModalOpen}
+                                                            className="text-gray-400 hover:text-gray-600 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            title="Copiar URL video"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                    <code className="text-xs text-gray-700 break-all" style={{ fontFamily: 'monospace' }}>
                                                         {item.videoURL}
                                                     </code>
-                                                    <button
-                                                        onClick={() => handleCopy(item.videoURL)}
-                                                        className="text-gray-400 hover:text-gray-600 transition-colors"
-                                                        title="Copiar URL video"
-                                                    >
-                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                        </svg>
-                                                    </button>
                                                 </div>
                                             )}
                                         </div>
 
                                         {/* Fecha */}
-                                        <div className="col-span-2">
-                                            <p className="text-sm text-gray-600" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                        <div className="text-right">
+                                            <p className="text-xs text-gray-500" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                                 {new Date(item.createdAt).toLocaleDateString('es-ES')}
                                             </p>
                                         </div>
-
-                                        {/* Acciones */}
-                                        <div className="col-span-1 flex items-center gap-2">
-                                            <button
-                                                onClick={() => handleEdit(item)}
-                                                className="text-blue-600 hover:text-blue-800 transition-colors p-1"
-                                                title="Editar"
-                                            >
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                </svg>
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(item)}
-                                                className="text-red-600 hover:text-red-800 transition-colors p-1"
-                                                title="Eliminar"
-                                            >
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </button>
-                                        </div>
                                     </div>
-                                </div>
-                            ))
+                                ))}
+                            </div>
                         )}
                     </div>
                 </div>
@@ -354,7 +543,7 @@ const MediaManager = () => {
                 </div>
             </div>
 
-            {/* Modales */}
+            {/* Modales con overlay mejorado */}
             {showUploadModal && (
                 <MediaUploadModal
                     onClose={() => setShowUploadModal(false)}

@@ -8,7 +8,7 @@ import RecoverPassword from './pages/RecoverPassword';
 import VerificationCode from './pages/VerificationCode';
 import UpdatePassword from './pages/UpdatePassword';
 import Dashboard from './pages/Dashboard';
-import Saves from './pages/Saves';
+import Saves from './pages/MediaManager';
 import CategoryProducts from './pages/CategoryProducts';
 import CategoryProductsPage from './pages/CategoryProductsPage';
 

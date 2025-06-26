@@ -6,8 +6,7 @@ import DeleteConfirmModal from "../components/DeleteConfirmModal";
 
 /**
  * Componente MediaManager
- * Ruta: frontend/src/pages/MediaManager.jsx
- * Interfaz principal para la administración de multimedia (imágenes, videos, blogs)
+ * Interfaz principal para la administración de multimedia con datos reales
  */
 const MediaManager = () => {
     // Estados para el manejo de datos
@@ -23,49 +22,27 @@ const MediaManager = () => {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
 
-    // Datos de ejemplo (en producción vendrían de una API)
-    const mockMediaData = [
-        {
-            id: 1,
-            type: "imagen",
-            title: "Ramo de rosas",
-            url: "https://example.com/video/fjrj.jpg",
-            description: "Hermoso ramo de rosas rojas frescas",
-            category: "flores-naturales",
-            createdAt: "2025-01-15",
-            size: "2.5 MB"
-        },
-        {
-            id: 2,
-            type: "blog",
-            title: "Cuidado de flores",
-            url: "https://example.com/video/hjy.jpg",
-            description: "Consejos para mantener flores frescas por más tiempo",
-            category: "consejos",
-            createdAt: "2025-01-14",
-            size: "1.8 MB"
-        },
-        {
-            id: 3,
-            type: "imagen",
-            title: "Arreglo floral",
-            url: "https://example.com/video/abc.jpg",
-            description: "Arreglo floral para eventos especiales",
-            category: "eventos",
-            createdAt: "2025-01-13",
-            size: "3.1 MB"
+    // Cargar datos desde la API
+    const fetchMediaItems = async () => {
+        try {
+            setIsLoading(true);
+            const response = await fetch(`http://localhost:4000/api/media?type=${selectedType}&search=${searchTerm}`);
+            if (!response.ok) {
+                throw new Error('Error al cargar multimedia');
+            }
+            const data = await response.json();
+            setMediaItems(data);
+            setFilteredItems(data);
+        } catch (error) {
+            console.error("Error al cargar multimedia:", error);
+        } finally {
+            setIsLoading(false);
         }
-    ];
+    };
 
     // Cargar datos iniciales
     useEffect(() => {
-        const timer = setTimeout(() => {
-            setMediaItems(mockMediaData);
-            setFilteredItems(mockMediaData);
-            setIsLoading(false);
-        }, 1000);
-
-        return () => clearTimeout(timer);
+        fetchMediaItems();
     }, []);
 
     // Filtrar elementos según búsqueda y tipo
@@ -80,8 +57,8 @@ const MediaManager = () => {
         // Filtrar por término de búsqueda
         if (searchTerm) {
             filtered = filtered.filter(item =>
-                item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                item.description.toLowerCase().includes(searchTerm.toLowerCase())
+                (item.title && item.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()))
             );
         }
 
@@ -110,55 +87,70 @@ const MediaManager = () => {
     };
 
     // Funciones para confirmar acciones
-    const confirmUpload = (newItem) => {
-        const itemWithId = { ...newItem, id: Date.now() };
-        setMediaItems(prev => [itemWithId, ...prev]);
+    const confirmUpload = async (newItem) => {
+        await fetchMediaItems(); // Recargar datos
         setShowUploadModal(false);
     };
 
-    const confirmEdit = (editedItem) => {
-        setMediaItems(prev =>
-            prev.map(item => item.id === editedItem.id ? editedItem : item)
-        );
+    const confirmEdit = async (editedItem) => {
+        await fetchMediaItems(); // Recargar datos
         setShowEditModal(false);
         setSelectedItem(null);
     };
 
-    const confirmDelete = () => {
-        setMediaItems(prev =>
-            prev.filter(item => item.id !== selectedItem.id)
-        );
-        setShowDeleteModal(false);
-        setSelectedItem(null);
+    const confirmDelete = async () => {
+        try {
+            const response = await fetch(`http://localhost:4000/api/media/${selectedItem._id}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                throw new Error('Error al eliminar multimedia');
+            }
+
+            await fetchMediaItems(); // Recargar datos
+            setShowDeleteModal(false);
+            setSelectedItem(null);
+        } catch (error) {
+            console.error("Error al eliminar multimedia:", error);
+        }
     };
 
     // Obtener icono según el tipo de archivo
-    const getFileIcon = (type) => {
-        switch (type) {
-            case "imagen":
-                return (
-                    <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+    const getFileIcon = (item) => {
+        // Determinar si tiene imagen o video
+        const hasImage = item.imageURL && item.imageURL.trim() !== "";
+        const hasVideo = item.videoURL && item.videoURL.trim() !== "";
+
+        if (hasImage && hasVideo) {
+            return (
+                <div className="flex items-center gap-1">
+                    <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
                     </svg>
-                );
-            case "video":
-                return (
-                    <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
                     </svg>
-                );
-            case "blog":
-                return (
-                    <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-                    </svg>
-                );
-            default:
-                return (
-                    <svg className="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-                    </svg>
-                );
+                </div>
+            );
+        } else if (hasImage) {
+            return (
+                <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                </svg>
+            );
+        } else if (hasVideo) {
+            return (
+                <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
+                </svg>
+            );
+        } else {
+            return (
+                <svg className="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+                </svg>
+            );
         }
     };
 
@@ -181,7 +173,7 @@ const MediaManager = () => {
                                 Multimedia de Marquesa
                             </h1>
                             <p className="text-gray-600 mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                Gestiona tus imágenes, videos y contenido de blog
+                                Gestiona tus imágenes, videos y contenido multimedia
                             </p>
                         </div>
                         <button
@@ -221,9 +213,9 @@ const MediaManager = () => {
                             style={{ fontFamily: 'Poppins, sans-serif' }}
                         >
                             <option value="todos">Todos los tipos</option>
-                            <option value="imagen">Imágenes</option>
-                            <option value="video">Videos</option>
-                            <option value="blog">Blog</option>
+                            <option value="Dato Curioso">Dato Curioso</option>
+                            <option value="Tip">Tip</option>
+                            <option value="Blog">Blog</option>
                         </select>
                     </div>
                 </div>
@@ -233,11 +225,12 @@ const MediaManager = () => {
                     {/* Header de la tabla */}
                     <div className="px-6 py-4 border-b border-gray-200">
                         <div className="grid grid-cols-12 gap-4 text-sm font-medium text-gray-700" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                            <div className="col-span-1">Tipo</div>
+                            <div className="col-span-1">Archivos</div>
+                            <div className="col-span-2">Tipo</div>
                             <div className="col-span-3">Título</div>
-                            <div className="col-span-4">URL</div>
+                            <div className="col-span-3">URLs</div>
                             <div className="col-span-2">Fecha</div>
-                            <div className="col-span-2">Acciones</div>
+                            <div className="col-span-1">Acciones</div>
                         </div>
                     </div>
 
@@ -258,12 +251,16 @@ const MediaManager = () => {
                             </div>
                         ) : (
                             filteredItems.map((item) => (
-                                <div key={item.id} className="p-4 hover:bg-gray-50 transition-colors duration-200">
+                                <div key={item._id} className="p-4 hover:bg-gray-50 transition-colors duration-200">
                                     <div className="grid grid-cols-12 gap-4 items-center">
-                                        {/* Tipo con icono */}
-                                        <div className="col-span-1 flex items-center gap-2">
-                                            {getFileIcon(item.type)}
-                                            <span className="text-sm font-medium text-gray-700 capitalize" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                        {/* Archivos con icono */}
+                                        <div className="col-span-1 flex items-center justify-center">
+                                            {getFileIcon(item)}
+                                        </div>
+
+                                        {/* Tipo */}
+                                        <div className="col-span-2">
+                                            <span className="inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                                 {item.type}
                                             </span>
                                         </div>
@@ -271,29 +268,49 @@ const MediaManager = () => {
                                         {/* Título */}
                                         <div className="col-span-3">
                                             <p className="font-medium text-gray-900" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                                {item.title}
+                                                {item.title || 'Sin título'}
                                             </p>
                                             <p className="text-sm text-gray-500 truncate" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                                {item.description}
+                                                {item.description || 'Sin descripción'}
                                             </p>
                                         </div>
 
-                                        {/* URL */}
-                                        <div className="col-span-4">
-                                            <div className="flex items-center gap-2">
-                                                <code className="text-sm bg-gray-100 px-2 py-1 rounded flex-1 truncate" style={{ fontFamily: 'monospace' }}>
-                                                    {item.url}
-                                                </code>
-                                                <button
-                                                    onClick={() => handleCopy(item.url)}
-                                                    className="text-gray-400 hover:text-gray-600 transition-colors"
-                                                    title="Copiar URL"
-                                                >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                    </svg>
-                                                </button>
-                                            </div>
+                                        {/* URLs */}
+                                        <div className="col-span-3 space-y-1">
+                                            {item.imageURL && (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs text-blue-600 font-medium">IMG:</span>
+                                                    <code className="text-xs bg-gray-100 px-2 py-1 rounded flex-1 truncate" style={{ fontFamily: 'monospace' }}>
+                                                        {item.imageURL}
+                                                    </code>
+                                                    <button
+                                                        onClick={() => handleCopy(item.imageURL)}
+                                                        className="text-gray-400 hover:text-gray-600 transition-colors"
+                                                        title="Copiar URL imagen"
+                                                    >
+                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            )}
+                                            {item.videoURL && (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs text-red-600 font-medium">VID:</span>
+                                                    <code className="text-xs bg-gray-100 px-2 py-1 rounded flex-1 truncate" style={{ fontFamily: 'monospace' }}>
+                                                        {item.videoURL}
+                                                    </code>
+                                                    <button
+                                                        onClick={() => handleCopy(item.videoURL)}
+                                                        className="text-gray-400 hover:text-gray-600 transition-colors"
+                                                        title="Copiar URL video"
+                                                    >
+                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* Fecha */}
@@ -304,7 +321,7 @@ const MediaManager = () => {
                                         </div>
 
                                         {/* Acciones */}
-                                        <div className="col-span-2 flex items-center gap-2">
+                                        <div className="col-span-1 flex items-center gap-2">
                                             <button
                                                 onClick={() => handleEdit(item)}
                                                 className="text-blue-600 hover:text-blue-800 transition-colors p-1"

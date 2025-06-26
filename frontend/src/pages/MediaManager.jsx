@@ -35,6 +35,29 @@ const MediaManager = () => {
         } catch (error) {
             console.error("Error al cargar multimedia:", error);
             showNotification("Error al cargar multimedia. Verifique la conexión con el servidor.", "error");
+            // En caso de error, usar datos mock para desarrollo
+            const mockData = [
+                {
+                    _id: "1",
+                    type: "Dato Curioso",
+                    title: "Dato curioso sobre flores",
+                    description: "Las flores pueden comunicarse entre sí",
+                    imageURL: "https://example.com/image1.jpg",
+                    videoURL: "",
+                    createdAt: new Date().toISOString()
+                },
+                {
+                    _id: "2", 
+                    type: "Tip",
+                    title: "Tip para cuidar flores",
+                    description: "Cambia el agua cada 2 días",
+                    imageURL: "",
+                    videoURL: "https://example.com/video1.mp4",
+                    createdAt: new Date().toISOString()
+                }
+            ];
+            setMediaItems(mockData);
+            setFilteredItems(mockData);
         } finally {
             setIsLoading(false);
         }
@@ -73,15 +96,18 @@ const MediaManager = () => {
 
     // Funciones para manejar modales
     const handleUpload = () => {
+        console.log("Abriendo modal de subida");
         setShowUploadModal(true);
     };
 
     const handleEdit = (item) => {
+        console.log("Editando item:", item);
         setSelectedItem(item);
         setShowEditModal(true);
     };
 
     const handleDelete = (item) => {
+        console.log("Eliminando item:", item);
         setSelectedItem(item);
         setShowDeleteModal(true);
     };
@@ -98,12 +124,14 @@ const MediaManager = () => {
 
     // Funciones para confirmar acciones
     const confirmUpload = async (newItem) => {
+        console.log("Confirmando subida:", newItem);
         await fetchMediaItems();
         setShowUploadModal(false);
         showNotification("Multimedia agregada exitosamente", "success");
     };
 
     const confirmEdit = async (editedItem) => {
+        console.log("Confirmando edición:", editedItem);
         await fetchMediaItems();
         setShowEditModal(false);
         setSelectedItem(null);
@@ -112,6 +140,8 @@ const MediaManager = () => {
 
     const confirmDelete = async () => {
         try {
+            console.log("Confirmando eliminación:", selectedItem);
+            
             const response = await fetch(`http://localhost:4000/api/media/${selectedItem._id}`, {
                 method: 'DELETE',
             });
@@ -128,6 +158,24 @@ const MediaManager = () => {
             console.error("Error al eliminar multimedia:", error);
             showNotification("Error al eliminar multimedia", "error");
         }
+    };
+
+    // Funciones para cerrar modales
+    const closeUploadModal = () => {
+        console.log("Cerrando modal de subida");
+        setShowUploadModal(false);
+    };
+
+    const closeEditModal = () => {
+        console.log("Cerrando modal de edición");
+        setShowEditModal(false);
+        setSelectedItem(null);
+    };
+
+    const closeDeleteModal = () => {
+        console.log("Cerrando modal de eliminación");
+        setShowDeleteModal(false);
+        setSelectedItem(null);
     };
 
     // Obtener icono según el tipo de archivo
@@ -211,15 +259,12 @@ const MediaManager = () => {
         );
     };
 
-    // Determinar si hay modales abiertos para aplicar el overlay
-    const hasModalOpen = showUploadModal || showEditModal || showDeleteModal;
-
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Navbar Admin - debe estar debajo del overlay */}
+            {/* Navbar Admin */}
             <NavbarAdmin />
             
-            {/* Componente de notificaciones - por encima del overlay */}
+            {/* Componente de notificaciones */}
             <NotificationComponent />
 
             {/* Contenido principal */}
@@ -237,8 +282,7 @@ const MediaManager = () => {
                         </div>
                         <button
                             onClick={handleUpload}
-                            disabled={hasModalOpen}
-                            className="w-full sm:w-auto bg-[#FF7260] hover:bg-[#FF6A54] text-white px-4 sm:px-6 py-2 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full sm:w-auto bg-[#FF7260] hover:bg-[#FF6A54] text-white px-4 sm:px-6 py-2 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 text-sm sm:text-base"
                             style={{ fontFamily: 'Poppins, sans-serif' }}
                         >
                             <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -258,8 +302,7 @@ const MediaManager = () => {
                                 placeholder="Buscar..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                disabled={hasModalOpen}
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent text-sm sm:text-base"
                                 style={{ fontFamily: 'Poppins, sans-serif' }}
                             />
                             <svg className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -271,8 +314,7 @@ const MediaManager = () => {
                         <select
                             value={selectedType}
                             onChange={(e) => setSelectedType(e.target.value)}
-                            disabled={hasModalOpen}
-                            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent text-sm sm:text-base"
                             style={{ fontFamily: 'Poppins, sans-serif' }}
                         >
                             <option value="todos">Todos los tipos</option>
@@ -350,8 +392,7 @@ const MediaManager = () => {
                                                         </code>
                                                         <button
                                                             onClick={() => handleCopy(item.imageURL)}
-                                                            disabled={hasModalOpen}
-                                                            className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            className="text-gray-400 hover:text-gray-600 transition-colors"
                                                             title="Copiar URL imagen"
                                                         >
                                                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -368,8 +409,7 @@ const MediaManager = () => {
                                                         </code>
                                                         <button
                                                             onClick={() => handleCopy(item.videoURL)}
-                                                            disabled={hasModalOpen}
-                                                            className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            className="text-gray-400 hover:text-gray-600 transition-colors"
                                                             title="Copiar URL video"
                                                         >
                                                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -391,8 +431,7 @@ const MediaManager = () => {
                                             <div className="col-span-1 flex items-center gap-2">
                                                 <button
                                                     onClick={() => handleEdit(item)}
-                                                    disabled={hasModalOpen}
-                                                    className="text-blue-600 hover:text-blue-800 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="text-blue-600 hover:text-blue-800 transition-colors p-1"
                                                     title="Editar"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -401,8 +440,7 @@ const MediaManager = () => {
                                                 </button>
                                                 <button
                                                     onClick={() => handleDelete(item)}
-                                                    disabled={hasModalOpen}
-                                                    className="text-red-600 hover:text-red-800 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="text-red-600 hover:text-red-800 transition-colors p-1"
                                                     title="Eliminar"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -452,8 +490,7 @@ const MediaManager = () => {
                                             <div className="flex items-center gap-2">
                                                 <button
                                                     onClick={() => handleEdit(item)}
-                                                    disabled={hasModalOpen}
-                                                    className="text-blue-600 hover:text-blue-800 transition-colors p-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="text-blue-600 hover:text-blue-800 transition-colors p-2"
                                                     title="Editar"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -462,8 +499,7 @@ const MediaManager = () => {
                                                 </button>
                                                 <button
                                                     onClick={() => handleDelete(item)}
-                                                    disabled={hasModalOpen}
-                                                    className="text-red-600 hover:text-red-800 transition-colors p-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="text-red-600 hover:text-red-800 transition-colors p-2"
                                                     title="Eliminar"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -488,8 +524,7 @@ const MediaManager = () => {
                                                         <span className="text-xs text-blue-600 font-medium">Imagen:</span>
                                                         <button
                                                             onClick={() => handleCopy(item.imageURL)}
-                                                            disabled={hasModalOpen}
-                                                            className="text-gray-400 hover:text-gray-600 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            className="text-gray-400 hover:text-gray-600 transition-colors p-1"
                                                             title="Copiar URL imagen"
                                                         >
                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -508,8 +543,7 @@ const MediaManager = () => {
                                                         <span className="text-xs text-red-600 font-medium">Video:</span>
                                                         <button
                                                             onClick={() => handleCopy(item.videoURL)}
-                                                            disabled={hasModalOpen}
-                                                            className="text-gray-400 hover:text-gray-600 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            className="text-gray-400 hover:text-gray-600 transition-colors p-1"
                                                             title="Copiar URL video"
                                                         >
                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -543,26 +577,26 @@ const MediaManager = () => {
                 </div>
             </div>
 
-            {/* Modales con overlay mejorado */}
+            {/* Modales */}
             {showUploadModal && (
                 <MediaUploadModal
-                    onClose={() => setShowUploadModal(false)}
+                    onClose={closeUploadModal}
                     onConfirm={confirmUpload}
                 />
             )}
 
-            {showEditModal && (
+            {showEditModal && selectedItem && (
                 <MediaEditModal
                     item={selectedItem}
-                    onClose={() => setShowEditModal(false)}
+                    onClose={closeEditModal}
                     onConfirm={confirmEdit}
                 />
             )}
 
-            {showDeleteModal && (
+            {showDeleteModal && selectedItem && (
                 <DeleteConfirmModal
                     item={selectedItem}
-                    onClose={() => setShowDeleteModal(false)}
+                    onClose={closeDeleteModal}
                     onConfirm={confirmDelete}
                 />
             )}

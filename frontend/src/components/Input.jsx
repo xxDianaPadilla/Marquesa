@@ -1,16 +1,19 @@
 import React from "react";
-import {Eye, EyeOff} from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 
 const Input = ({
+    name, 
     type = "text",
     placeholder,
-    value,
-    onChange,
     icon,
     showPassword,
-    onTogglePassword
+    onTogglePassword,
+    register,
+    validationRules,
+    error,
+    disabled
 }) => {
-    return(
+    return (
         <div className="relative mb-4">
             <div className="flex items-center bg-white bg-opacity-50 border border-[#FDB4B7] rounded-lg px-4 py-3 focus-within:border-pink-500 transition-colors">
                 {/* Ícono izquierdo */}
@@ -22,16 +25,21 @@ const Input = ({
                     />
                 )}
                 
-                {/* Input */}
                 <input
+                    {...register(name, validationRules)}
                     type={type === "password" && showPassword ? "text" : type}
                     placeholder={placeholder}
-                    value={value}
-                    onChange={onChange}
-                    className="flex-1 bg-transparent outline-none placeholder-gray-400 text-sm"  style={{ color: '#999999', fontWeight: '500', fontFamily: 'Poppins, sans-serif', fontStyle: 'italic' }}
+                    className="flex-1 bg-transparent outline-none placeholder-gray-400 text-sm"
+                    style={{ 
+                        color: '#999999', 
+                        fontWeight: '500', 
+                        fontFamily: 'Poppins, sans-serif', 
+                        fontStyle: 'italic' 
+                    }}
+                    disabled={disabled}
                 />
                 
-                {/* Ícono de mostrar/ocultar contraseña (solo para tipo password) */}
+                {/* Ícono de mostrar/ocultar contraseña */}
                 {type === "password" && onTogglePassword && (
                     <button
                         type="button"
@@ -46,6 +54,12 @@ const Input = ({
                     </button>
                 )}
             </div>
+            
+            {error && (
+                <div className="text-red-500 text-sm mt-1 italic">
+                    {error}
+                </div>
+            )}
         </div>
     );
 };

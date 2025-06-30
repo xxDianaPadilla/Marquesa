@@ -1,28 +1,21 @@
-import jsonWebToken from "jsonwebtoken"
-import {config }from "../config.js"
+import express from 'express';
+import jwt from 'jsonwebtoken';
+import {config} from '../config.js';
 
-export const validateAuthToken = (aLLowedUserTypes = []) =>{
-
-    return (req, res, next) =>{
-
-        try {
-
-            const {authToken} = req.cookies;
-            if (!authToken) {
-                return res.json({message:"no auth token, you must login firts"});
-
-               
-            }
-            const decoded = jsonWebToken.verify(authToken, config.JWT.secret);
-            if (!aLLowedUserTypes.includes(decoded.userType)) {
-                return res.json({message: "Access denied"})
-                
-            }
-            next();
-
-            
-        } catch (error) {
-            console.log("error", error)
-        }
+const verifyToken = (req, res, next) => {
+    const token = req.cookies.authToken;
+    
+    if (!token) {
+        return res.status(401).json({ message: 'No token provided' });
     }
-}
+    
+    try {
+        const decoded = jwt.verify(token, config.JWT.secret);
+        req.user = decoded;
+        next();
+    } catch (error) {
+        return res.status(401).json({ message: 'Invalid token' });
+    }
+};
+
+export default verifyToken;

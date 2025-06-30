@@ -11,8 +11,10 @@ import VerificationCode from './pages/VerificationCode';
 import UpdatePassword from './pages/UpdatePassword';
 import Dashboard from './pages/Dashboard';
 import Saves from './pages/Saves';
-import CategoryProducts from './pages/CategoryProducts';
 import CategoryProductsPage from './pages/CategoryProductsPage';
+import CategoryProducts from './pages/CategoryProducts';
+import Profile from './pages/Profile';
+import MediaManager from './pages/MediaManager';
 
 function App() {
   return (
@@ -63,10 +65,26 @@ function App() {
             }
           />
 
+          <Route path="/media"
+            element={
+              <ProtectedRoutes requiredUserType="admin">
+                <MediaManager />
+              </ProtectedRoutes>
+            }
+          />
+
           <Route path="/saves"
             element={
               <ProtectedRoutes requiredUserType="Customer">
                 <Saves />
+              </ProtectedRoutes>
+            }
+          />
+
+          <Route path="/categoryProducts"
+            element={
+              <ProtectedRoutes requiredUserType="Customer">
+                <CategoryProducts />
               </ProtectedRoutes>
             }
           />
@@ -76,6 +94,14 @@ function App() {
             element={
               <ProtectedRoutes requiredUserType="Customer">
                 <CategoryProductsPage />
+              </ProtectedRoutes>
+            }
+          />
+
+          <Route path="/profile"
+            element={
+              <ProtectedRoutes requiredUserType="Customer">
+                <Profile />
               </ProtectedRoutes>
             }
           />

@@ -18,9 +18,9 @@ export const TabsTrigger = ({ value, children }) => {
   const isActive = active === value;
   return (
     <button
-      className={`text-sm pb-2 border-b-2 transition font-medium ${
-        isActive ? 'border-pink-400 text-pink-500' : 'border-transparent text-gray-500 hover:text-gray-700'
-      }`}
+      style={{ cursor: 'pointer' }}
+      className={`text-sm pb-2 border-b-2 transition font-medium ${isActive ? 'border-pink-400 text-pink-500' : 'border-transparent text-gray-500 hover:text-gray-700'
+        }`}
       onClick={() => setValue(value)}
     >
       {children}

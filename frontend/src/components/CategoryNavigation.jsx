@@ -13,7 +13,7 @@ const CategoryNavigation = ({ categories, activeCategory, onCategoryChange }) =>
     };
 
     return (
-        <div className="w-full bg-gray-50 py-4">
+        <div className="w-full bg-white-50 py-4">
             {/* Container responsive para las categorías */}
             <div className="max-w-7xl mx-auto px-4">
                 

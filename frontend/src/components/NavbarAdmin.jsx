@@ -12,6 +12,17 @@ import logoutIcon from '../assets/logout.png';
 
 const NavbarAdmin = () => {
     const navigate = useNavigate();
+
+    const handleMediaClick = (e) => {
+        e.preventDefault();
+        navigate('/media');
+    };
+
+    const handleDashboardClick = (e) => {
+        e.preventDefault();
+        navigate('/dashboard');
+    };
+
     const { logout, loading: authLoading } = useAuth();
 
     const handleLogout = async () => {
@@ -41,7 +52,7 @@ const NavbarAdmin = () => {
                 {/* Navigation Icons */}
                 <nav className="flex flex-col space-y-4 flex-1">
                     {/* Statistics Icon */}
-                    <button className="w-10 h-10 flex items-center justify-center hover:bg-white/20 rounded-lg transition-colors duration-200 group">
+                    <button className="w-10 h-10 flex items-center justify-center hover:bg-white/20 rounded-lg transition-colors duration-200 group" onClick={handleDashboardClick}>
                         <img
                             src={statisticsIcon}
                             alt="Estadísticas"
@@ -68,7 +79,7 @@ const NavbarAdmin = () => {
                     </button>
 
                     {/* Media Icon */}
-                    <button className="w-10 h-10 flex items-center justify-center hover:bg-white/20 rounded-lg transition-colors duration-200 group">
+                    <button className="w-10 h-10 flex items-center justify-center hover:bg-white/20 rounded-lg transition-colors duration-200 group" onClick={handleMediaClick}>
                         <img
                             src={mediaIcon}
                             alt="Media"

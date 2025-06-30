@@ -375,7 +375,7 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
                                     onClick={onClose}
                                     disabled={isSubmitting}
                                     className="w-full sm:w-auto px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    style={{ fontFamily: 'Poppins, sans-serif' }}
+                                    style={{ fontFamily: 'Poppins, sans-serif', cursor: 'pointer' }}
                                 >
                                     Cancelar
                                 </button>
@@ -383,7 +383,7 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
                                     type="submit"
                                     disabled={isSubmitting}
                                     className="w-full sm:w-auto px-4 py-2 bg-[#FF7260] text-white rounded-lg hover:bg-[#FF6A54] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                    style={{ fontFamily: 'Poppins, sans-serif' }}
+                                    style={{ fontFamily: 'Poppins, sans-serif', cursor: 'pointer' }}
                                 >
                                     {isSubmitting ? (
                                         <>

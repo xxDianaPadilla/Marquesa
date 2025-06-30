@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from 'react-router-dom';
-// Iconos desde lucide-react para la hamburguesa y cerrar
+// Iconos desde lucide-react 
 import { Menu, X } from "lucide-react";
 // Iconos de favoritos desde la carpeta "assets"
 import iconFavorites from './../../assets/favoritesIcon.png';
@@ -15,23 +15,28 @@ import './../../components/Header/Header.css';
 
 const Header = () => {
   const navigate = useNavigate();
+    // Estado para controlar si el menú móvil está abierto o cerrado
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  //Navegación para configuración
   const handleProfileClick = (e) => {
     e.preventDefault();
     navigate('/profile');
   };
 
+  //Navegación para favoritos
   const handleSavesClick = (e) => {
     e.preventDefault();
     navigate('/saves');
   };
 
+  //Navegación para inicio
   const handleCategoryProductsClick = (e) => {
     e.preventDefault();
     navigate('/categoryProducts');
   };
 
+    // Función para abrir/cerrar el menú hamburguesa en móvil
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
@@ -45,15 +50,13 @@ const Header = () => {
       <header className="w-full border-b border-gray-300 py-4 px-6">
         <div className="w-full max-w-screen-xl mx-auto">
           
-          {/* Desktop Layout */}
+          {/* Diseño para pantallas grandes (Desktop) */}
           <div className="hidden md:grid grid-cols-12 items-center gap-4">
-            {/* Logo - ocupa 3 columnas */}
             <div className="col-span-3 flex flex-col items-start cursor-pointer" onClick={handleCategoryProductsClick}>
               <h1 className="header-title">● MARQUESA ●</h1>
               <p className="slogan">TIENDA DE REGALOS</p>
             </div>
 
-            {/* Buscador - ocupa 6 columnas (centro) */}
             <div className="col-span-6 flex justify-center">
               <div className="search-container max-w-lg">
                 <input
@@ -67,7 +70,6 @@ const Header = () => {
               </div>
             </div>
 
-            {/* Iconos - ocupa 3 columnas */}
             <div className="col-span-3 flex items-center justify-end gap-8">
               <img 
                 src={iconFavorites} 
@@ -89,9 +91,8 @@ const Header = () => {
             </div>
           </div>
 
-          {/* Mobile Layout */}
+          {/* Diseño para móvil */}
           <div className="md:hidden flex items-center justify-between">
-            {/* Logo en móvil */}
             <div className="flex flex-col items-start cursor-pointer flex-1" onClick={handleCategoryProductsClick}>
               <h1 className="header-title">● MARQUESA ●</h1>
               <p className="slogan">TIENDA DE REGALOS</p>

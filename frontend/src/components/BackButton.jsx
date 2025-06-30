@@ -10,7 +10,7 @@ const BackButton = ({ onClick }) => {
             <img
                 src={backIcon}
                 alt="Regresar"
-                className="w-5 h-5"
+                style={{width: '25px', height: '25px'}}
             />
             <span
                 className="text-lg font-medium"

@@ -1,19 +1,5 @@
 import React from "react";
 
-/**
- * Componente ProductCard
- * Renderiza una tarjeta individual de producto con imagen, información y botón de eliminar
- * 
- * @param {Object} props - Propiedades del componente
- * @param {Object} props.product - Objeto del producto a mostrar
- * @param {string} props.product.id - ID único del producto
- * @param {string} props.product.name - Nombre del producto
- * @param {string} props.product.description - Descripción del producto
- * @param {number} props.product.price - Precio del producto
- * @param {string} props.product.image - URL de la imagen del producto
- * @param {string} props.product.category - Categoría del producto
- * @param {Function} props.onRemove - Función callback para eliminar el producto de guardados
- */
 const ProductCard = ({ product, onRemove }) => {
     /**
      * Maneja el click del botón eliminar

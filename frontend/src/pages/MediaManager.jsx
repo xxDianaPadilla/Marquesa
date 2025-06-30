@@ -47,7 +47,7 @@ const MediaManager = () => {
                     createdAt: new Date().toISOString()
                 },
                 {
-                    _id: "2", 
+                    _id: "2",
                     type: "Tip",
                     title: "Tip para cuidar flores",
                     description: "Cambia el agua cada 2 días",
@@ -141,7 +141,7 @@ const MediaManager = () => {
     const confirmDelete = async () => {
         try {
             console.log("Confirmando eliminación:", selectedItem);
-            
+
             const response = await fetch(`http://localhost:4000/api/media/${selectedItem._id}`, {
                 method: 'DELETE',
             });
@@ -230,11 +230,10 @@ const MediaManager = () => {
         if (!notification) return null;
 
         return (
-            <div className={`fixed top-4 right-4 z-[60] p-4 rounded-lg shadow-lg transition-all duration-300 max-w-sm ${
-                notification.type === 'success' 
-                    ? 'bg-green-500 text-white' 
-                    : 'bg-red-500 text-white'
-            }`} style={{ fontFamily: 'Poppins, sans-serif' }}>
+            <div className={`fixed top-4 right-4 z-[60] p-4 rounded-lg shadow-lg transition-all duration-300 max-w-sm ${notification.type === 'success'
+                ? 'bg-green-500 text-white'
+                : 'bg-red-500 text-white'
+                }`} style={{ fontFamily: 'Poppins, sans-serif' }}>
                 <div className="flex items-center gap-2">
                     {notification.type === 'success' ? (
                         <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -263,7 +262,7 @@ const MediaManager = () => {
         <div className="min-h-screen bg-gray-50">
             {/* Navbar Admin */}
             <NavbarAdmin />
-            
+
             {/* Componente de notificaciones */}
             <NotificationComponent />
 
@@ -315,7 +314,7 @@ const MediaManager = () => {
                             value={selectedType}
                             onChange={(e) => setSelectedType(e.target.value)}
                             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent text-sm sm:text-base"
-                            style={{ fontFamily: 'Poppins, sans-serif' }}
+                            style={{ fontFamily: 'Poppins, sans-serif', cursor: 'pointer' }}
                         >
                             <option value="todos">Todos los tipos</option>
                             <option value="Dato Curioso">Dato Curioso</option>
@@ -430,6 +429,7 @@ const MediaManager = () => {
                                             {/* Acciones */}
                                             <div className="col-span-1 flex items-center gap-2">
                                                 <button
+                                                    style={{ cursor: 'pointer' }}
                                                     onClick={() => handleEdit(item)}
                                                     className="text-blue-600 hover:text-blue-800 transition-colors p-1"
                                                     title="Editar"
@@ -439,6 +439,7 @@ const MediaManager = () => {
                                                     </svg>
                                                 </button>
                                                 <button
+                                                    style={{ cursor: 'pointer' }}
                                                     onClick={() => handleDelete(item)}
                                                     className="text-red-600 hover:text-red-800 transition-colors p-1"
                                                     title="Eliminar"

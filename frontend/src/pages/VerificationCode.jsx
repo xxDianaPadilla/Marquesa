@@ -1,4 +1,6 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { useForm } from 'react-hook-form';
+import { useNavigate, useLocation } from 'react-router-dom';
 import PageContainer from "../components/PageContainer";
 import BackButton from "../components/BackButton";
 import Form from "../components/Form";
@@ -9,36 +11,201 @@ import Button from "../components/Button";
 import QuestionText from "../components/QuestionText";
 
 const VerificationCode = () => {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const [isResending, setIsResending] = useState(false);
+    const [resendTimer, setResendTimer] = useState(0);
+
+    // Obtener el email de la navegación anterior si está disponible
+    const email = location.state?.email || "tu correo";
+
+    const {
+        register,
+        handleSubmit,
+        formState: { errors, isSubmitting },
+        setError,
+        clearErrors,
+        setValue
+    } = useForm({
+        mode: 'onChange',
+        defaultValues: {
+            verificationCode: ''
+        }
+    });
+
+    // Timer para reenvío de código
+    useEffect(() => {
+        if (resendTimer > 0) {
+            const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [resendTimer]);
+
+    const validationRules = {
+        verificationCode: {
+            required: 'El código de verificación es requerido',
+            pattern: {
+                value: /^[0-9]{4,6}$/,
+                message: 'El código debe tener entre 4 y 6 dígitos'
+            },
+            minLength: {
+                value: 4,
+                message: 'El código debe tener al menos 4 dígitos'
+            },
+            maxLength: {
+                value: 6,
+                message: 'El código no puede tener más de 6 dígitos'
+            }
+        }
+    };
+
+    const onSubmit = async (data) => {
+        try {
+            clearErrors();
+            console.log('Verificando código:', data.verificationCode);
+            
+            // Simular verificación
+            if (data.verificationCode === '123456') {
+                // Código correcto - navegar a restablecer contraseña
+                navigate('/reset-password', { 
+                    state: { 
+                        email: email,
+                        verificationCode: data.verificationCode 
+                    } 
+                });
+            } else {
+                // Código incorrecto
+                setError('verificationCode', {
+                    type: 'server',
+                    message: 'Código de verificación incorrecto'
+                });
+            }
+            
+        } catch (error) {
+            console.error('Error durante la verificación:', error);
+            
+            // Manejar diferentes tipos de errores
+            if (error.message?.toLowerCase().includes('expired') || 
+                error.message?.toLowerCase().includes('expirado')) {
+                setError('verificationCode', {
+                    type: 'server',
+                    message: 'El código ha expirado. Solicita uno nuevo.'
+                });
+            } else if (error.message?.toLowerCase().includes('invalid') || 
+                       error.message?.toLowerCase().includes('incorrecto')) {
+                setError('verificationCode', {
+                    type: 'server',
+                    message: 'Código de verificación incorrecto'
+                });
+            } else {
+                setError('root.serverError', {
+                    type: 'server',
+                    message: 'Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo.'
+                });
+            }
+        }
+    };
+
+    const handleResendCode = async () => {
+        if (resendTimer > 0) return;
+        
+        try {
+            setIsResending(true);
+            console.log('Reenviando código a:', email);
+            
+            alert(`Se ha reenviado el código a: ${email}`);
+            setResendTimer(60); 
+            
+        } catch (error) {
+            console.error('Error al reenviar código:', error);
+            setError('root.serverError', {
+                type: 'server',
+                message: 'No se pudo reenviar el código. Inténtalo de nuevo.'
+            });
+        } finally {
+            setIsResending(false);
+        }
+    };
+
+    const handleLoginClick = (e) => {
+        e.preventDefault();
+        navigate('/login');
+    };
+
+    // Función para limpiar el input y permitir solo números
+    const handleCodeChange = (e) => {
+        const value = e.target.value.replace(/\D/g, ''); 
+        setValue('verificationCode', value);
+    };
+
     return (
         <PageContainer>
             <BackButton />
 
-            <Form>
-                <Title>Recuperar contraseña</Title>
+            <Form onSubmit={handleSubmit(onSubmit)}>
+                {/* Error general del servidor */}
+                {errors.root?.serverError && (
+                    <div className="auth-error-message">
+                        <span>{errors.root.serverError.message}</span>
+                    </div>
+                )}
+
+                <Title>Verificar código</Title>
 
                 <InfoText>
-                    Te hemos enviado un código de verificación a tu
-                    correo, escribe correctamente el código para
-                    poder actualizar su contraseña correctamente
+                    Te hemos enviado un código de verificación a{" "}
+                    <span className="font-semibold text-pink-600">{email}</span>.
+                    Escribe correctamente el código para poder actualizar tu contraseña.
                 </InfoText>
 
                 <Input
-                    type="number"
+                    name="verificationCode"
+                    type="text"
                     placeholder="Código de verificación"
+                    register={register}
+                    validationRules={validationRules.verificationCode}
+                    error={errors.verificationCode?.message}
+                    disabled={isSubmitting}
+                    maxLength={6}
+                    onChange={handleCodeChange}
+                    style={{ 
+                        textAlign: 'center', 
+                        fontSize: '18px', 
+                        letterSpacing: '2px',
+                        fontWeight: 'bold'
+                    }}
                 />
 
                 <Button
-                    text="Verificar código"
+                    text={isSubmitting ? "Verificando..." : "Verificar código"}
                     variant="primary"
+                    type="submit"
+                    disabled={isSubmitting}
                 />
 
-                <button className="w-full mt-4 py-3 px-4 text-sm font-medium bg-transparent border border-pink-300 rounded-lg hover:bg-pink-50 transition-colors duration-200" style={{fontFamily: 'Poppins, sans-serfi', color: '#CD5277'}}>
-                    ¿No has recibido el código aún?
+                <button 
+                    type="button"
+                    onClick={handleResendCode}
+                    disabled={resendTimer > 0 || isResending}
+                    className="w-full mt-4 py-3 px-4 text-sm font-medium bg-transparent border border-pink-300 rounded-lg hover:bg-pink-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed" 
+                    style={{
+                        fontFamily: 'Poppins, sans-serif', 
+                        color: '#CD5277'
+                    }}
+                >
+                    {isResending 
+                        ? "Reenviando..." 
+                        : resendTimer > 0 
+                            ? `Reenviar código en ${resendTimer}s`
+                            : "¿No has recibido el código aún? Reenviar"
+                    }
                 </button>
 
                 <QuestionText
                     question="¿Recuerdas tu contraseña?"
-                    linkText="Inicia sesión" />
+                    linkText="Inicia sesión"
+                    onLinkClick={handleLoginClick}
+                />
             </Form>
         </PageContainer>
     );

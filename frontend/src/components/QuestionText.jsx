@@ -18,7 +18,8 @@ const QuestionText = ({
                 className="text-sm font-semibold italic ml-1 hover:underline transition-all duration-200"
                 style={{
                     color: '#FF6A5F',
-                    fontFamily: 'Poppins, sans-serif'
+                    fontFamily: 'Poppins, sans-serif',
+                    cursor: 'pointer'
                 }}
             >
                 {linkText}

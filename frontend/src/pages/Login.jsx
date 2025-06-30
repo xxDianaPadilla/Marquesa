@@ -153,7 +153,8 @@ const Login = () => {
                             color: '#FF6A5F', 
                             fontWeight: '600', 
                             fontFamily: 'Poppins, sans-serif', 
-                            fontStyle: 'italic' 
+                            fontStyle: 'italic', 
+                            cursor: 'pointer'
                         }} 
                         onClick={handleRecuperarContrasenaClick}
                     >

@@ -11,12 +11,13 @@ const PageContainer = ({ children }) => {
                     <img
                         src={marquesaLogo}
                         alt="Marquesa Logo"
-                        className="max-w-38 max-h-32 object-contain"
+                        className="object-contain"
+                        style={{width:"200px", height: "200px"}}
                     />
                 </div>
             </div>
 
-            {/* Sección derecha - Fondo floral */}
+            {/* Sección derecha - Fondo floral con scroll */}
             <div className="w-3/4 relative overflow-hidden">
                 {/* Imagen de fondo floral */}
                 <div className="absolute inset-0">
@@ -27,9 +28,13 @@ const PageContainer = ({ children }) => {
                     />
                 </div>
 
-                {/* Contenedor para el contenido que se pasará como children */}
-                <div className="relative z-10 w-full h-full flex justify-center items-center">
-                    {children}
+                {/* Contenedor scrolleable para el contenido */}
+                <div className="relative z-10 w-full h-screen overflow-y-auto">
+                    <div className="min-h-full flex justify-center items-center py-8 px-4">
+                        <div className="w-full max-w-2xl">
+                            {children}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

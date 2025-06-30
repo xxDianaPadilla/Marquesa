@@ -12,6 +12,7 @@ import logoutIcon from '../assets/logout.png';
 
 const NavbarAdmin = () => {
     const navigate = useNavigate();
+    const location = useLocation(); 
 
     const handleMediaClick = (e) => {
         e.preventDefault();
@@ -21,6 +22,26 @@ const NavbarAdmin = () => {
     const handleDashboardClick = (e) => {
         e.preventDefault();
         navigate('/dashboard');
+    };
+
+    const handleFlowersClick = (e) => {
+        e.preventDefault();
+        navigate('/flowers');
+    };
+
+    const handleCartClick = (e) => {
+        e.preventDefault();
+        navigate('/cart');
+    };
+
+    const handleReviewsClick = (e) => {
+        e.preventDefault();
+        navigate('/reviews');
+    };
+
+    const handleCategoriesClick = (e) => {
+        e.preventDefault();
+        navigate('/categories');
     };
 
     const { logout, loading: authLoading } = useAuth();
@@ -33,6 +54,33 @@ const NavbarAdmin = () => {
         } else {
             console.error('Error al cerrar sesión:', result.error);
         }
+    };
+
+    // Función para determinar si un botón está activo
+    const isActive = (path) => {
+        return location.pathname === path;
+    };
+
+    // Función para obtener las clases del botón
+    const getButtonClasses = (path) => {
+        const baseClasses = "w-10 h-10 flex items-center justify-center rounded-lg transition-all duration-200 group";
+        const activeClasses = "bg-white/30 shadow-inner";
+        const hoverClasses = "hover:bg-white/20";
+        
+        return isActive(path) 
+            ? `${baseClasses} ${activeClasses}` 
+            : `${baseClasses} ${hoverClasses}`;
+    };
+
+    // Función para obtener las clases del icono
+    const getIconClasses = (path) => {
+        const baseClasses = "w-5 h-5 object-contain filter brightness-0 invert transition-transform duration-200";
+        const activeClasses = "scale-110";
+        const hoverClasses = "group-hover:scale-110";
+        
+        return isActive(path) 
+            ? `${baseClasses} ${activeClasses}` 
+            : `${baseClasses} ${hoverClasses}`;
     };
 
     return (
@@ -52,56 +100,74 @@ const NavbarAdmin = () => {
                 {/* Navigation Icons */}
                 <nav className="flex flex-col space-y-4 flex-1">
                     {/* Statistics Icon */}
-                    <button className="w-10 h-10 flex items-center justify-center hover:bg-white/20 rounded-lg transition-colors duration-200 group" onClick={handleDashboardClick}>
+                    <button 
+                        className={getButtonClasses('/dashboard')}
+                        onClick={handleDashboardClick}
+                    >
                         <img
                             src={statisticsIcon}
                             alt="Estadísticas"
-                            className="w-5 h-5 object-contain filter brightness-0 invert group-hover:scale-110 transition-transform duration-200"
+                            className={getIconClasses('/dashboard')}
                         />
                     </button>
 
                     {/* Flower Icon */}
-                    <button className="w-10 h-10 flex items-center justify-center hover:bg-white/20 rounded-lg transition-colors duration-200 group">
+                    <button 
+                        className={getButtonClasses('/flowers')}
+                        onClick={handleFlowersClick}
+                    >
                         <img
                             src={flowerIcon}
                             alt="Flores"
-                            className="w-5 h-5 object-contain filter brightness-0 invert group-hover:scale-110 transition-transform duration-200"
+                            className={getIconClasses('/flowers')}
                         />
                     </button>
 
                     {/* Shopping Cart Icon */}
-                    <button className="w-10 h-10 flex items-center justify-center hover:bg-white/20 rounded-lg transition-colors duration-200 group">
+                    <button 
+                        className={getButtonClasses('/cart')}
+                        onClick={handleCartClick}
+                    >
                         <img
                             src={shoppingCartIcon}
                             alt="Carrito"
-                            className="w-5 h-5 object-contain filter brightness-0 invert group-hover:scale-110 transition-transform duration-200"
+                            className={getIconClasses('/cart')}
                         />
                     </button>
 
                     {/* Media Icon */}
-                    <button className="w-10 h-10 flex items-center justify-center hover:bg-white/20 rounded-lg transition-colors duration-200 group" onClick={handleMediaClick}>
+                    <button 
+                        className={getButtonClasses('/media')}
+                        onClick={handleMediaClick}
+                    >
                         <img
                             src={mediaIcon}
                             alt="Media"
-                            className="w-5 h-5 object-contain filter brightness-0 invert group-hover:scale-110 transition-transform duration-200"
+                            className={getIconClasses('/media')}
                         />
                     </button>
 
                     {/* Reviews Icon */}
-                    <button className="w-10 h-10 flex items-center justify-center hover:bg-white/20 rounded-lg transition-colors duration-200 group">
+                    <button 
+                        className={getButtonClasses('/reviews')}
+                        onClick={handleReviewsClick}
+                    >
                         <img
                             src={reviewsIcon}
                             alt="Reseñas"
-                            className="w-5 h-5 object-contain filter brightness-0 invert group-hover:scale-110 transition-transform duration-200"
+                            className={getIconClasses('/reviews')}
                         />
                     </button>
 
                     {/* Categories Icon */}
-                    <button className="w-10 h-10 flex items-center justify-center hover:bg-white/20 rounded-lg transition-colors duration-200 group">
+                    <button 
+                        className={getButtonClasses('/categories')}
+                        onClick={handleCategoriesClick}
+                    >
                         <img
                             src={categoriesIcon}
                             alt="Categorías"
-                            className="w-5 h-5 object-contain filter brightness-0 invert group-hover:scale-110 transition-transform duration-200"
+                            className={getIconClasses('/categories')}
                         />
                     </button>
                 </nav>

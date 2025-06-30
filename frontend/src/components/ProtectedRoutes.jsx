@@ -26,7 +26,7 @@ const ProtectedRoute = ({ children, requiredUserType = null }) => {
         if(user.userType === 'admin'){
             return <Navigate to="/dashboard" replace />;
         }else{
-            return <Navigate to="/saves" replace />;
+            return <Navigate to="/categoryProducts" replace />;
         }
     }
 

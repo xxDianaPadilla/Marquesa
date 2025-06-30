@@ -38,7 +38,7 @@ const Login = () => {
             if (user.userType === 'admin') {
                 navigate('/dashboard');
             } else {
-                navigate('/saves');
+                navigate('/categoryProducts');
             }
         }
     }, [isAuthenticated, user, navigate]);

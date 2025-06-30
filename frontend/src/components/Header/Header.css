@@ -15,9 +15,10 @@
   font-size: 12px;
   color: #000000;
   letter-spacing: 2px;
-  margin-top: 6px; /* este valor crea un espacio suave como en tu imagen */
+  margin-top: 6px;
   line-height: 1;
   text-align: center;
+  margin-left: 32px;
 }
 
 /* Search bar */
@@ -52,12 +53,12 @@
   width: 40px;
   background-color: #F2C6C2;
   border: none;
-  border-top-right-radius: 9999px;
-  border-bottom-right-radius: 9999px;
+border-radius: 0 100% 120% 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 
 .icon-style {
@@ -65,13 +66,63 @@
   height: 25px;
   opacity: 0.7;
   transition: opacity 0.2s;
+  cursor: pointer;
 }
 
 .icon-style:hover {
   opacity: 1;
 }
 
+/* Mobile menu styles */
+.mobile-menu {
+  width: 100%;
+  background-color: white;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, padding 0.3s ease;
+}
+
+.mobile-menu.open {
+  max-height: 200px;
+  padding: 16px 0;
+}
+
+.hamburger-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.hamburger-button:hover {
+  background-color: #f3f4f6;
+}
+
+.mobile-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.25);
+  z-index: 40;
+}
+
+/* Responsive styles */
 @media (max-width: 768px) {
+  .header-title {
+    font-size: 14px;
+    letter-spacing: 4px;
+  }
+  
+  .slogan {
+    font-size: 9px;
+    letter-spacing: 1px;
+    margin-left: 24px;
+  }
+
   .search-container {
     margin-top: 12px;
     margin-bottom: 12px;
@@ -80,5 +131,29 @@
   .icon-style {
     width: 18px;
     height: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-title {
+    font-size: 12px;
+    letter-spacing: 3px;
+  }
+  
+  .slogan {
+    font-size: 8px;
+    letter-spacing: 0.5px;
+    margin-left: 20px;
+  }
+}
+
+/* Media query para móvil - texto más grande */
+@media (max-width: 768px) {
+  .header-title {
+    font-size: 17px; /* era 18px, ahora 20px */
+  }
+  
+  .slogan {
+    font-size: 12px; /* era 12px, ahora 14px */
   }
 }

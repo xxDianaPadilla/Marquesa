@@ -1,5 +1,8 @@
-import React from "react";
-// Icono de favoritos desde la carpeta "assets"
+import React, { useState } from "react";
+import { useNavigate } from 'react-router-dom';
+// Iconos desde lucide-react para la hamburguesa y cerrar
+import { Menu, X } from "lucide-react";
+// Iconos de favoritos desde la carpeta "assets"
 import iconFavorites from './../../assets/favoritesIcon.png';
 // Icono del carrito desde la carpeta "assets"
 import iconCart from './../../assets/cartIcon.png';
@@ -9,10 +12,10 @@ import iconSettings from './../../assets/settingsIcon.png';
 import iconSearch from './../../assets/searchIcon.png';
 // Importe el css del header
 import './../../components/Header/Header.css';
-import { useNavigate } from 'react-router-dom';
 
 const Header = () => {
   const navigate = useNavigate();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleProfileClick = (e) => {
     e.preventDefault();
@@ -29,42 +32,140 @@ const Header = () => {
     navigate('/categoryProducts');
   };
 
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
+
+  const closeMenu = () => {
+    setIsMenuOpen(false);
+  };
+
   return (
-    <header className="w-full border-b border-gray-300 py-4 px-6">
-      <div className="w-full max-w-screen-xl mx-auto">
-        {/* Grid layout para mejor control del espacio */}
-        <div className="grid grid-cols-12 items-center gap-4">
+    <>
+      <header className="w-full border-b border-gray-300 py-4 px-6">
+        <div className="w-full max-w-screen-xl mx-auto">
+          
+          {/* Desktop Layout */}
+          <div className="hidden md:grid grid-cols-12 items-center gap-4">
+            {/* Logo - ocupa 3 columnas */}
+            <div className="col-span-3 flex flex-col items-start cursor-pointer" onClick={handleCategoryProductsClick}>
+              <h1 className="header-title">● MARQUESA ●</h1>
+              <p className="slogan">TIENDA DE REGALOS</p>
+            </div>
 
-          {/* Logo - ocupa 3 columnas */}
-          <div className="col-span-3 flex flex-col items-start" style={{ cursor: 'pointer' }} onClick={handleCategoryProductsClick}>
-            <h1 className="header-title text-lg">● MARQUESA ●</h1>
-            <p className="slogan text-xs ml-8">TIENDA DE REGALOS</p>
-          </div>
+            {/* Buscador - ocupa 6 columnas (centro) */}
+            <div className="col-span-6 flex justify-center">
+              <div className="search-container max-w-lg">
+                <input
+                  type="text"
+                  placeholder="¿Qué estás buscando?"
+                  className="search-input"
+                />
+                <button className="search-button">
+                  <img src={iconSearch} alt="Buscar" className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
 
-          {/* Buscador - ocupa 6 columnas (centro) */}
-          <div className="col-span-6 flex justify-center">
-            <div className="search-container w-full max-w-lg">
-              <input
-                type="text"
-                placeholder="¿Qué estás buscando?"
-                className="search-input"
+            {/* Iconos - ocupa 3 columnas */}
+            <div className="col-span-3 flex items-center justify-end gap-8">
+              <img 
+                src={iconFavorites} 
+                alt="Favoritos" 
+                className="icon-style" 
+                onClick={handleSavesClick}
               />
-              <button className="search-button">
-                <img src={iconSearch} alt="Buscar" className="w-5 h-5" />
-              </button>
+              <img 
+                src={iconCart} 
+                alt="Carrito" 
+                className="icon-style" 
+              />
+              <img 
+                src={iconSettings} 
+                alt="Configuración" 
+                className="icon-style" 
+                onClick={handleProfileClick}
+              />
             </div>
           </div>
 
-          {/* Iconos - ocupa 3 columnas */}
-          <div className="col-span-3 flex items-center justify-end gap-8">
-            <img src={iconFavorites} alt="Favoritos" className="icon-style" onClick={handleSavesClick} style={{ cursor: 'pointer' }} />
-            <img src={iconCart} alt="Carrito" className="icon-style" />
-            <img src={iconSettings} alt="Configuración" className="icon-style" onClick={handleProfileClick} style={{ cursor: 'pointer' }} />
+          {/* Mobile Layout */}
+          <div className="md:hidden flex items-center justify-between">
+            {/* Logo en móvil */}
+            <div className="flex flex-col items-start cursor-pointer flex-1" onClick={handleCategoryProductsClick}>
+              <h1 className="header-title">● MARQUESA ●</h1>
+              <p className="slogan">TIENDA DE REGALOS</p>
+            </div>
+
+            {/* Botón hamburguesa */}
+            <button 
+              className="hamburger-button"
+              onClick={toggleMenu}
+              aria-label="Menú"
+            >
+              {isMenuOpen ? (
+                <X className="w-6 h-6 text-gray-800" />
+              ) : (
+                <Menu className="w-6 h-6 text-gray-800" />
+              )}
+            </button>
           </div>
 
+          {/* Menú móvil desplegable */}
+          <div className={`mobile-menu md:hidden ${isMenuOpen ? 'open' : ''}`}>
+            <div className="px-6 space-y-4">
+              {/* Buscador en menú móvil */}
+              <div className="search-container">
+                <input
+                  type="text"
+                  placeholder="¿Qué estás buscando?"
+                  className="search-input"
+                />
+                <button className="search-button">
+                  <img src={iconSearch} alt="Buscar" className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Iconos en menú móvil */}
+              <div className="flex items-center justify-center gap-8 pt-2">
+                <div className="flex flex-col items-center">
+                  <img 
+                    src={iconFavorites} 
+                    alt="Favoritos" 
+                    className="icon-style mb-1" 
+                    onClick={(e) => {
+                      handleSavesClick(e);
+                      closeMenu();
+                    }}
+                  />
+                </div>
+                
+                <div className="flex flex-col items-center">
+                  <img 
+                    src={iconCart} 
+                    alt="Carrito" 
+                    className="icon-style mb-1" 
+                    onClick={closeMenu}
+                  />
+                </div>
+                
+                <div className="flex flex-col items-center">
+                  <img 
+                    src={iconSettings} 
+                    alt="Configuración" 
+                    className="icon-style mb-1" 
+                    onClick={(e) => {
+                      handleProfileClick(e);
+                      closeMenu();
+                    }}
+                  /> 
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+    </>
   );
 };
 

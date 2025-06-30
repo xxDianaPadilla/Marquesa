@@ -1,6 +1,6 @@
 import React from "react";
 
-const Button = ({ text, onClick, variant = "primary", icon }) => {
+const Button = ({ text, onClick, variant = "primary", icon, type, disabled }) => {
     const getButtonStyles = () => {
         switch (variant) {
             case "primary":
@@ -29,6 +29,8 @@ const Button = ({ text, onClick, variant = "primary", icon }) => {
 
     return (
         <button
+            type={type}
+            disabled={disabled}
             onClick={onClick}
             className={`
                 w-full rounded-lg py-3 px-6 italic text-center
@@ -40,6 +42,7 @@ const Button = ({ text, onClick, variant = "primary", icon }) => {
                 fontFamily: 'Poppins, sans-serif',
                 fontSize: '16px',
                 backgroundColor: getBackgroundColor(),
+                cursor: 'pointer'
             }}
         >
             {icon && (

@@ -1,4 +1,6 @@
-import React from "react";
+import React, { useContext, useState, useRef, useEffect } from "react";
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import marquesaMiniLogo from '../assets/marquesaMiniLogo.png';
 import statisticsIcon from '../assets/statisticsIcon.png';
 import flowerIcon from '../assets/flowerIcon.png';
@@ -9,6 +11,19 @@ import categoriesIcon from '../assets/categoriesIcon.png';
 import logoutIcon from '../assets/logout.png';
 
 const NavbarAdmin = () => {
+    const navigate = useNavigate();
+    const { logout, loading: authLoading } = useAuth();
+
+    const handleLogout = async () => {
+        const result = await logout();
+        if (result.success) {
+            console.log('Sesión cerrada correctamente');
+            navigate('/login');
+        } else {
+            console.error('Error al cerrar sesión:', result.error);
+        }
+    };
+
     return (
         <div className="fixed left-0 top-5 bottom-5 w-16 bg-gradient-to-b from-[#FF7260] via-[#FF9A8B] to-[#FF7260] shadow-lg z-30 rounded-r-2xl">
             <div className="flex flex-col items-center py-4 h-full">
@@ -84,6 +99,7 @@ const NavbarAdmin = () => {
                 <div className="mt-auto">
                     <button className="w-10 h-10 flex items-center justify-center hover:bg-white/20 rounded-lg transition-colors duration-200 group">
                         <img
+                            onClick={handleLogout}
                             src={logoutIcon}
                             alt="Cerrar sesión"
                             className="w-5 h-5 object-contain filter brightness-0 invert group-hover:scale-110 transition-transform duration-200"

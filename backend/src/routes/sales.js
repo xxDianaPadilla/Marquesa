@@ -20,7 +20,7 @@ if (!fs.existsSync(uploadsDir)) {
 // Configuración de multer para subida de archivos
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, uploadsDir); 
+        cb(null, uploadsDir);
     },
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -32,7 +32,7 @@ const storage = multer.diskStorage({
 const upload = multer({
     storage: storage,
     limits: {
-        fileSize: 5 * 1024 * 1024, 
+        fileSize: 5 * 1024 * 1024,
     },
     fileFilter: function (req, file, cb) {
         // Aceptamos solo imágenes
@@ -44,17 +44,23 @@ const upload = multer({
     }
 });
 
-router.route("/")
-    .get(salesController.getSales)
-    .post(upload.single('paymentProofImage'), salesController.createSale);
+router.route("/sold-products-stats")
+    .get(salesController.getSoldProductsStats);
 
-router.route("/:id")
-    .get(salesController.getSaleById)
-    .put(upload.single('paymentProofImage'), salesController.updateSale)
-    .delete(salesController.deleteSale);
+router.route("/total")
+    .get(salesController.getTotalSales);
+
+router.route("/dashboard-stats")
+    .get(salesController.getDashboardStats);
+
+router.route("/payment-status/:status")
+    .get(salesController.getSalesByPaymentStatus);
+
+router.route("/tracking-status/:trackingStatus")
+    .get(salesController.getSalesByTrackingStatus);
 
 router.route("/:id/payment-status")
-    .patch(salesController.updatePaymentStatus)
+    .patch(salesController.updatePaymentStatus);
 
 router.route("/:id/tracking-status")
     .patch(salesController.updateTrackingStatus);
@@ -62,10 +68,13 @@ router.route("/:id/tracking-status")
 router.route("/:id/payment-proof")
     .patch(upload.single('paymentProofImage'), salesController.updatePaymentProof);
 
-router.route("/payment-status/:status")
-    .get(salesController.getSalesByPaymentStatus);
+router.route("/:id")
+    .get(salesController.getSaleById)
+    .put(upload.single('paymentProofImage'), salesController.updateSale)
+    .delete(salesController.deleteSale);
 
-router.route("/tracking-status/:trackingStatus")
-    .get(salesController.getSalesByTrackingStatus);
+router.route("/")
+    .get(salesController.getSales)
+    .post(upload.single('paymentProofImage'), salesController.createSale);
 
 export default router;

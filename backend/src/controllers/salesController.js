@@ -1,5 +1,5 @@
 import salesModel from "../models/Sales.js";
-import {v2 as cloudinary} from "cloudinary";
+import { v2 as cloudinary } from "cloudinary";
 import { config } from "../config.js";
 
 const salesController = {};
@@ -49,8 +49,8 @@ salesController.createSale = async (req, res) => {
 
         // Validamos campos requeridos
         if (!paymentType || !deliveryAddress || !receiverName || !receiverPhone || !deliveryPoint || !ShoppingCartId) {
-            return res.status(400).json({ 
-                message: 'Faltan campos requeridos: paymentType, deliveryAddress, receiverName, receiverPhone, deliveryPoint, ShoppingCartId' 
+            return res.status(400).json({
+                message: 'Faltan campos requeridos: paymentType, deliveryAddress, receiverName, receiverPhone, deliveryPoint, ShoppingCartId'
             });
         }
 
@@ -67,8 +67,8 @@ salesController.createSale = async (req, res) => {
             );
             paymentProofImage = result.secure_url;
         } else {
-            return res.status(400).json({ 
-                message: 'La imagen del comprobante de pago es requerida' 
+            return res.status(400).json({
+                message: 'La imagen del comprobante de pago es requerida'
             });
         }
 
@@ -169,7 +169,7 @@ salesController.updateSale = async (req, res) => {
 salesController.deleteSale = async (req, res) => {
     try {
         const deletedSale = await salesModel.findByIdAndDelete(req.params.id);
-        
+
         if (!deletedSale) {
             return res.status(404).json({ message: "Venta no encontrada" });
         }
@@ -190,7 +190,7 @@ salesController.deleteSale = async (req, res) => {
 salesController.updatePaymentStatus = async (req, res) => {
     try {
         const { status } = req.body;
-        
+
         const updatedSale = await salesModel.findByIdAndUpdate(
             req.params.id,
             { status },
@@ -211,7 +211,7 @@ salesController.updatePaymentStatus = async (req, res) => {
 salesController.updateTrackingStatus = async (req, res) => {
     try {
         const { trackingStatus } = req.body;
-        
+
         const updatedSale = await salesModel.findByIdAndUpdate(
             req.params.id,
             { trackingStatus },
@@ -287,6 +287,113 @@ salesController.getSalesByTrackingStatus = async (req, res) => {
         res.json(sales);
     } catch (error) {
         res.status(500).json({ message: "Error al obtener las ventas por estado de seguimiento", error: error.message });
+    }
+};
+
+salesController.getSoldProductsStats = async (req, res) => {
+    try {
+        const { period = 'current' } = req.query;
+
+        const now = new Date();
+        let startDate, endDate;
+
+        if (period === 'current') {
+            const currentMonth = now.getMonth();
+            const quarterStart = Math.floor(currentMonth / 3) * 3;
+            startDate = new Date(now.getFullYear(), quarterStart, 1);
+            endDate = new Date(now.getFullYear(), quarterStart + 3, 0);
+        } else {
+            const currentMonth = now.getMonth();
+            const prevQuarterStart = Math.floor(currentMonth / 3) * 3 - 3;
+            const year = now.getFullYear() - (prevQuarterStart < 0 ? 1 : 0);
+            const adjustedQuarterStart = prevQuarterStart < 0 ? 9 : prevQuarterStart;
+
+            startDate = new Date(year, adjustedQuarterStart, 1);
+            endDate = new Date(year, adjustedQuarterStart + 3, 0);
+        }
+
+        const soldProducts = await salesModel.countDocuments({
+            status: 'Pagado',
+            createdAt: {
+                $gte: startDate,
+                $lte: endDate
+            }
+        });
+
+        res.json({
+            count: soldProducts,
+            period,
+            startDate,
+            endDate
+        });
+
+    } catch (error) {
+        console.error("Error en getSoldProductsStats:", error);
+        res.status(500).json({
+            message: "Error al obtener estadísticas de productos vendidos",
+            error: error.message
+        });
+    }
+};
+
+salesController.getTotalSales = async (req, res) => {
+    try {
+        const totalSales = await salesModel.countDocuments();
+        res.json({ total: totalSales });
+    } catch (error) {
+        res.status(500).json({
+            message: "Error al obtener total de ventas",
+            error: error.message
+        });
+    }
+};
+
+salesController.getDashboardStats = async (req, res) => {
+    try {
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const quarterStart = Math.floor(currentMonth / 3) * 3;
+
+        const currentQuarterStart = new Date(now.getFullYear(), quarterStart, 1);
+        const currentQuarterEnd = new Date(now.getFullYear(), quarterStart + 3, 0);
+
+        const prevQuarterStart = Math.floor(currentMonth / 3) * 3 - 3;
+        const prevYear = now.getFullYear() - (prevQuarterStart < 0 ? 1 : 0);
+        const adjustedPrevQuarterStart = prevQuarterStart < 0 ? 9 : prevQuarterStart;
+        const previousQuarterStart = new Date(prevYear, adjustedPrevQuarterStart, 1);
+        const previousQuarterEnd = new Date(prevYear, adjustedPrevQuarterStart + 3, 0);
+
+        const currentSales = await salesModel.countDocuments({
+            createdAt: {
+                $gte: currentQuarterStart,
+                $lte: currentQuarterEnd
+            }
+        });
+
+        const previousSales = await salesModel.countDocuments({
+            createdAt: {
+                $gte: previousQuarterStart,
+                $lte: previousQuarterEnd
+            }
+        });
+
+        const salesPercentageChange = previousSales === 0 ? 100 :
+            ((currentSales - previousSales) / previousSales) * 100;
+
+        res.json({
+            currentPeriodSales: currentSales,
+            previousPeriodSales: previousSales,
+            salesPercentageChange: Math.round(salesPercentageChange * 10) / 10,
+            period: {
+                current: { start: currentQuarterStart, end: currentQuarterEnd },
+                previous: { start: previousQuarterStart, end: previousQuarterEnd }
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: "Error al obtener estadísticas del dashboard",
+            error: error.message
+        });
     }
 };
 

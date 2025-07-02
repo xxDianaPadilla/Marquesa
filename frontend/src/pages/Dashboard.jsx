@@ -5,6 +5,7 @@ import AdminTools from "../components/AdminTools";
 import DashboardCards from "../components/DashboardCards";
 import StatisticsCharts from "../components/StatisticsCharts";
 import BestSelledProductsCards from "../components/BestSelledProductsCards";
+import BestRankedProductsCards from "../components/BestRankedProductsCards";
 
 const DashboardLayout = ({ children }) => {
     return (
@@ -85,11 +86,7 @@ const Dashboard = () => {
                     </div>
 
                     {/* Tus mejores productos */}
-                    <div className="bg-white rounded-lg shadow-sm p-6">
-                        <h3 className="text-lg font-semibold mb-4" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                            Tus mejores productos
-                        </h3>
-                    </div>
+                    <BestRankedProductsCards />
                 </div>
             </div>
         </DashboardLayout>

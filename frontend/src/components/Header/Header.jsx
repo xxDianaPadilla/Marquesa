@@ -33,7 +33,7 @@ const Header = () => {
   //Navegación para inicio
   const handleCategoryProductsClick = (e) => {
     e.preventDefault();
-    navigate('/categoryProducts');
+    navigate('/');
   };
 
     // Función para abrir/cerrar el menú hamburguesa en móvil

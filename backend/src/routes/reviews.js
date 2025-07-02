@@ -10,12 +10,15 @@ router.route("/")
 router.route("/stats")
     .get(reviewsController.getReviewStats);
 
+router.route("/best-ranked")
+    .get(reviewsController.getBestRankedProducts);
+
+router.route("/client/:clientId")
+    .get(reviewsController.getReviewByClient);
+
 router.route("/:id")
     .get(reviewsController.getReviewById)
     .put(reviewsController.updateReview)
     .delete(reviewsController.deleteReview);
-
-router.route("/client/:clientId")
-    .get(reviewsController.getReviewByClient);
 
 export default router;

@@ -15,6 +15,7 @@ import CategoryProductsPage from './pages/CategoryProductsPage';
 import CategoryProducts from './pages/CategoryProducts';
 import Profile from './pages/Profile';
 import MediaManager from './pages/MediaManager';
+import Home from './pages/HomePage';
 
 function App() {
   return (
@@ -47,7 +48,7 @@ function App() {
 
         <Routes>
           {/* Ruta principal - Home/Catálogo */}
-          <Route path="/" element={<Login />} />
+          <Route path="/" element={<Home />} />
 
           {/* Rutas de autenticación */}
           <Route path="/login" element={<Login />} />
@@ -83,18 +84,14 @@ function App() {
 
           <Route path="/categoryProducts"
             element={
-              <ProtectedRoutes requiredUserType="Customer">
                 <CategoryProducts />
-              </ProtectedRoutes>
             }
           />
 
           {/* Ruta dinámica para páginas de categorías individuales */}
           <Route path="/categoria/:categoryId"
             element={
-              <ProtectedRoutes requiredUserType="Customer">
                 <CategoryProductsPage />
-              </ProtectedRoutes>
             }
           />
 

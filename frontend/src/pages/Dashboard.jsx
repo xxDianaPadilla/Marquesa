@@ -2,6 +2,7 @@ import React from "react";
 import NavbarAdmin from "../components/NavbarAdmin";
 import AdminTools from "../components/AdminTools";
 import DashboardCards from "../components/DashboardCards";
+import StatisticsCharts from "../components/StatisticsCharts";
 
 const DashboardLayout = ({ children }) => {
     return (
@@ -46,10 +47,10 @@ const Dashboard = () => {
                 {/* Placeholder para futuros componentes */}
                 <div className="lg:col-span-2 bg-white rounded-lg shadow-sm p-6">
                     <h3 className="text-lg font-semibold mb-4" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                        Gráfico de ingresos (próximamente)
+                        Gráfico de ingresos
                     </h3>
-                    <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center">
-                        <p className="text-gray-400">Contenido del gráfico</p>
+                    <div className="lg:col-span-2">
+                        <StatisticsCharts />
                     </div>
                 </div>
 

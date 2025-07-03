@@ -161,7 +161,7 @@ const perfil = () => {
                             <span>Cancelable hasta: {pedido.cancelable}</span>
                           </div>
                         </div>
-                        <Button className="w-full hover:bg-pink-400 text-white" onClick={handleSavesClick}style={{ backgroundColor: '#E8ACD2' }}>
+                        <Button className="w-full hover:bg-pink-400 text-white" onClick={handleSavesClick}style={{ backgroundColor: '#E8ACD2', cursor: 'pointer'}}>
                           Detalles pedidos
                         </Button>
                       </div>

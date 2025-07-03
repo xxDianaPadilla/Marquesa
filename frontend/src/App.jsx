@@ -17,6 +17,10 @@ import Profile from './pages/Profile';
 import MediaManager from './pages/MediaManager';
 import Home from './pages/HomePage';
 import OrderDetail from './pages/OrderDetailPage';
+import ProductsManager from './pages/ProductsManager';
+import SalesManager from './pages/SalesManager';
+import CategoriesManager from './pages/CategoriesManager';
+import ReviewsManager from './pages/ReviewsManager';
 
 function App() {
   return (
@@ -57,8 +61,11 @@ function App() {
           <Route path="/recover-password" element={<RecoverPassword />} />
           <Route path="/verification-code" element={<VerificationCode />} />
           <Route path="/update-password" element={<UpdatePassword />} />
+          <Route path="/home" element={<Home />} />
+          <Route path="/categoryProducts" element={<CategoryProducts />} />
+          <Route path="/categoria/:categoryId" element={<CategoryProductsPage />} />
 
-          {/* Rutas del dashboard y funcionalidades */}
+          {/* Rutas del admin */}
           <Route path="/dashboard"
             element={
               <ProtectedRoutes requiredUserType="admin">
@@ -75,24 +82,44 @@ function App() {
             }
           />
 
+          <Route path="/products"
+            element={
+              <ProtectedRoutes requiredUserType="admin">
+                <ProductsManager />
+              </ProtectedRoutes>
+            }
+          />
+
+          <Route path="/sales"
+            element={
+              <ProtectedRoutes requiredUserType="admin">
+                <SalesManager />
+              </ProtectedRoutes>
+            }
+          />
+
+          <Route path="/categories"
+            element={
+              <ProtectedRoutes requiredUserType="admin">
+                <CategoriesManager />
+              </ProtectedRoutes>
+            }
+          />
+
+          <Route path="/reviews"
+            element={
+              <ProtectedRoutes requiredUserType="admin">
+                <ReviewsManager />
+              </ProtectedRoutes>
+            }
+          />
+
+          {/* Rutas del cliente */}
           <Route path="/saves"
             element={
               <ProtectedRoutes requiredUserType="Customer">
                 <Saves />
               </ProtectedRoutes>
-            }
-          />
-
-          <Route path="/categoryProducts"
-            element={
-                <CategoryProducts />
-            }
-          />
-
-          {/* Ruta dinámica para páginas de categorías individuales */}
-          <Route path="/categoria/:categoryId"
-            element={
-                <CategoryProductsPage />
             }
           />
 
@@ -106,12 +133,14 @@ function App() {
 
           <Route path="/orderdetails"
             element={
+              <ProtectedRoutes requiredUserType="Customer">
                 <OrderDetail />
+              </ProtectedRoutes>
             }
           />
 
           {/* Ruta de fallback - redirige al home si no encuentra la ruta */}
-          <Route path='*' element={<Navigate to="/login" replace />} />
+          <Route path='*' element={<Navigate to="/home" replace />} />
         </Routes>
       </Router>
     </AuthProvider>

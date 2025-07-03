@@ -204,12 +204,15 @@ const CategoryProductsPage = () => {
             <Header />
 
             {/* Navegación de categorías */}
+        <section className="bg-white pt-4 pb-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <CategoryNavigation
                 categories={categories}
                 activeCategory={categoryId}
                 onCategoryChange={handleCategoryChange}
             />
-
+        </div>
+        </section>
             {/* Contenido principal */}
             <main className="max-w-7xl mx-auto px-4 py-8">
                 {/* Header de la sección */}

@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 // Importación de componentes 
 import Header from "../components/Header/Header";
@@ -19,6 +20,14 @@ import flower3 from "../assets/savesFlower3.png";
 import iconFavorites from '../assets/favoritesIcon.png';
 
 const HomePage = () => {
+  const navigate = useNavigate();
+
+  // Estados para funcionalidades
+  const [favorites, setFavorites] = useState(new Set());
+  const [cart, setCart] = useState([]);
+  const [showCartMessage, setShowCartMessage] = useState(false);
+  const [showFavoriteMessage, setShowFavoriteMessage] = useState(false);
+
   const featuredProducts = [
     {
       id: "p1",
@@ -26,6 +35,7 @@ const HomePage = () => {
       description: "Arreglos con flores secas",
       price: 10.0,
       image: flower1,
+      category: "flores-secas"
     },
     {
       id: "p2",
@@ -33,6 +43,7 @@ const HomePage = () => {
       description: "Cuadros decorativos",
       price: 34.0,
       image: flower2,
+      category: "cuadros-decorativos"
     },
     {
       id: "p3",
@@ -40,6 +51,7 @@ const HomePage = () => {
       description: "Arreglos con flores naturales",
       price: 23.0,
       image: flower3,
+      category: "flores-naturales"
     },
   ];
 
@@ -52,12 +64,119 @@ const HomePage = () => {
     { id: "tarjetas", name: "Tarjetas" },
   ];
 
+  // Mapeo de categorías con imágenes
+  const categoryData = [
+    { id: "flores-naturales", name: "Arreglos con flores naturales", image: cat1 },
+    { id: "flores-secas", name: "Arreglos con flores secas", image: cat2 },
+    { id: "cuadros-decorativos", name: "Cuadros decorativos", image: cat3 },
+    { id: "giftboxes", name: "Giftboxes", image: cat4 },
+    { id: "tarjetas", name: "Tarjetas", image: cat5 },
+  ];
+
+  // Función para mostrar mensajes temporales
+  const showTemporaryMessage = (setter) => {
+    setter(true);
+    setTimeout(() => setter(false), 2000);
+  };
+
+  // Manejo de navegación de categorías
+  const handleCategoryChange = (categoryId) => {
+    if (categoryId === 'todos') {
+      // Si quieres mostrar todos los productos, podrías navegar a una página especial
+      // o scroll hacia la sección de productos destacados
+      const productsSection = document.getElementById('productos-destacados');
+      if (productsSection) {
+        productsSection.scrollIntoView({ behavior: 'smooth' });
+      }
+    } else {
+      navigate(`/categoria/${categoryId}`);
+    }
+  };
+
+  // Manejo de click en categoría visual
+  const handleCategoryClick = (categoryId) => {
+    navigate(`/categoria/${categoryId}`);
+  };
+
+  // Manejo de favoritos
+  const handleToggleFavorite = (productId) => {
+    const newFavorites = new Set(favorites);
+    if (newFavorites.has(productId)) {
+      newFavorites.delete(productId);
+    } else {
+      newFavorites.add(productId);
+      showTemporaryMessage(setShowFavoriteMessage);
+    }
+    setFavorites(newFavorites);
+  };
+
+  // Manejo del carrito
+  const handleAddToCart = (product) => {
+    const existingItem = cart.find(item => item.id === product.id);
+    if (existingItem) {
+      setCart(cart.map(item => 
+        item.id === product.id 
+          ? { ...item, quantity: item.quantity + 1 }
+          : item
+      ));
+    } else {
+      setCart([...cart, { ...product, quantity: 1 }]);
+    }
+    showTemporaryMessage(setShowCartMessage);
+  };
+
+  // Navegación a ver todos los productos
   const handleViewAll = () => {
-    console.log("Ver todos los productos");
+    // Podrías navegar a una página de todos los productos o a la primera categoría
+    navigate('/categoria/flores-naturales');
+  };
+
+  // Navegación desde el botón "Comprar ahora"
+  const handleShopNow = () => {
+    const productsSection = document.getElementById('productos-destacados');
+    if (productsSection) {
+      productsSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  // Componente de notificación
+  const Notification = ({ show, message, type = 'success' }) => {
+    if (!show) return null;
+    
+    return (
+      <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transition-all duration-300 ${
+        type === 'success' ? 'bg-green-500 text-white' : 'bg-pink-500 text-white'
+      }`}>
+        <div className="flex items-center">
+          {type === 'success' ? (
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          )}
+          {message}
+        </div>
+      </div>
+    );
   };
 
   return (
     <div className="bg-pink-50">
+      {/* Notificaciones */}
+      <Notification 
+        show={showCartMessage} 
+        message="¡Producto añadido al carrito!" 
+        type="success" 
+      />
+      <Notification 
+        show={showFavoriteMessage} 
+        message="¡Añadido a favoritos!" 
+        type="favorite" 
+      />
+
       <div className="bg-white">
         <Header />
       </div>
@@ -65,7 +184,11 @@ const HomePage = () => {
       {/* Navegación de categorías arriba del todo */}
       <section className="bg-white pt-4 pb-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <CategoryNavigation categories={categories} />
+          <CategoryNavigation 
+            categories={categories}
+            activeCategory="todos"
+            onCategoryChange={handleCategoryChange}
+          />
         </div>
       </section>
 
@@ -81,10 +204,13 @@ const HomePage = () => {
               Dedicados a Realizar <br className="hidden sm:block" /> Detalles Únicos
             </h1>
             <p className="text-gray-600 mb-8 sm:mb-10 text-base sm:text-lg max-w-md mx-auto md:mx-0" style={{ fontFamily: "Poppins" }}>
-              Descubre nuestros productos más populares y mejor valorados.
+              Descubre nuestra colección de diseños que combinan forma y función a la perfección
             </p>
-            <button className="bg-[#E8ACD2] hover:bg-[#E096C8] text-white py-3 px-6 sm:py-2 sm:px-6 rounded-lg font-medium text-sm shadow-md transition-all w-full sm:w-auto">
-              Comprar ahora    🡢
+            <button 
+              onClick={handleShopNow}
+              className="bg-[#E8ACD2] hover:bg-[#E096C8] text-white py-3 px-6 sm:py-2 sm:px-6 rounded-lg font-medium text-sm shadow-md transition-all w-full sm:w-auto hover:scale-105 cursor-pointer"
+            >
+              Comprar ahora 🡢
             </button>
           </div>
           {/* Imagen con overlay de texto */}
@@ -98,7 +224,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Categorías visuales */}
+{/* Categorías visuales */}
       <section className="bg-white py-8 sm:py-14">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2
@@ -107,9 +233,9 @@ const HomePage = () => {
           >
             Nuestras categorías
           </h2>
-          <p className="text-center text-gray-600 mb-8 sm:mb-10 text-base sm:text-lg max-w-2xl mx-auto" style={{ fontFamily: "Poppins" }}>
-            Explora nuestra selección de productos cuidadosamente curados para cada ocasión.
-          </p>
+          <p className="text-center text-gray-600 mb-8 sm:mb-10 text-sm sm:text-base lg:text-lg max-w-xs sm:max-w-2xl lg:max-w-4xl mx-auto" style={{ fontFamily: "Poppins" }}>
+          Explora nuestra selección de productos cuidadosamente curados para cada ocasión.
+         </p>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
             {[cat1, cat2, cat3, cat4, cat5].map((categoryImg, index) => (
@@ -124,9 +250,10 @@ const HomePage = () => {
           </div>
         </div>
       </section>
-
+      {/* Categorías visuales */}
+      
       {/* Productos destacados */}
-      <section className="bg-pink-50 py-8 sm:py-14">
+      <section id="productos-destacados" className="bg-pink-50 py-8 sm:py-14">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2
             className="text-2xl sm:text-3xl lg:text-4xl font-medium text-gray-900 text-center mb-2"
@@ -143,13 +270,23 @@ const HomePage = () => {
             {featuredProducts.map((product) => (
               <div
                 key={product.id}
-                className="bg-white rounded-lg shadow-md hover:shadow-lg transition-transform transform hover:scale-105"
+                className="bg-white rounded-lg shadow-md hover:shadow-lg transition-transform transform hover:scale-105 cursor-pointer"
+                onClick={() => navigate(`/categoria/${product.category}`)}
               >
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-full h-48 sm:h-64 lg:h-85 object-cover rounded-t-lg"
-                />
+                <div className="relative">
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="w-full h-48 sm:h-64 lg:h-85 object-cover rounded-t-lg"
+                  />
+                  {/* Badge de precio */}
+                  <div className="absolute top-3 right-3 bg-white bg-opacity-90 rounded-full px-3 py-1 shadow-md">
+                    <span className="text-sm font-bold text-gray-800">
+                      {product.price.toFixed(2)}$
+                    </span>
+                  </div>
+                </div>
+                
                 <div className="p-4">
                   <h3 className="text-lg font-semibold mb-1" style={{ fontFamily: "Poppins" }}>
                     {product.name}
@@ -161,15 +298,34 @@ const HomePage = () => {
                     <span className="font-bold text-gray-800">
                       {product.price.toFixed(2)}$              
                     </span>
-                    <button className="p-1 hover:bg-gray-100 rounded-full transition-colors">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleFavorite(product.id);
+                      }}
+                      className={`p-1 rounded-full transition-all duration-200 transform hover:scale-110 ${
+                        favorites.has(product.id) 
+                          ? 'bg-red-100 hover:bg-red-200' 
+                          : 'hover:bg-gray-100'
+                      }`}
+                    >
                       <img 
                         src={iconFavorites} 
                         alt="Agregar a favoritos" 
-                        className="w-5 h-6"
+                        className={`w-5 h-6 transition-all duration-200 ${
+                          favorites.has(product.id) ? 'filter-red' : ''
+                        }`}
+                        style={favorites.has(product.id) ? {filter: 'hue-rotate(320deg) saturate(2)'} : {}}
                       />
                     </button>
                   </div>
-                  <button className="bg-[#E8ACD2] hover:bg-[#E096C8] text-white py-2 px-4 rounded-lg text-sm font-medium w-full">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAddToCart(product);
+                    }}
+                    className="bg-[#E8ACD2] hover:bg-[#E096C8] text-white py-2 px-4 rounded-lg text-sm font-medium w-full transition-all duration-200 hover:scale-105"
+                  >
                     Añadir al carrito
                   </button>
                 </div>
@@ -180,9 +336,9 @@ const HomePage = () => {
           <div className="flex justify-center mt-8 sm:mt-10">
             <button
               onClick={handleViewAll}
-              className="text-[#E8ACD2] border border-[#E8ACD2] hover:bg-[#E8ACD2] hover:text-white py-3 px-6 sm:py-2 sm:px-6 rounded-lg text-sm font-medium transition-all w-full sm:w-auto"
+              className="text-[#E8ACD2] border border-[#E8ACD2] hover:bg-[#E8ACD2] hover:text-white py-3 px-6 sm:py-2 sm:px-6 rounded-lg text-sm font-medium transition-all w-full sm:w-auto hover:scale-105"
             >
-              Ver todos los productos  🡢
+              Ver todos los productos 🡢
             </button>
           </div>
         </div>
@@ -200,11 +356,11 @@ const HomePage = () => {
               ¿Por qué elegirnos?
             </h2>
             <p 
-              className="text-gray-600 mx-auto text-base sm:text-lg max-w-2xl"
-              style={{ fontFamily: "Poppins" }}
-            >
-              Nos distinguimos por nuestra calidad, atención al detalle y servicio personalizado.
-            </p>
+           className="text-gray-600 mx-auto text-sm sm:text-base lg:text-lg max-w-xs sm:max-w-2xl lg:max-w-4xl"
+           style={{ fontFamily: "Poppins" }}
+           >
+           Nos distinguimos por nuestra calidad, atención al detalle y servicio personalizado.
+           </p>
           </div>
 
           {/* Tarjetas de características */}
@@ -294,11 +450,11 @@ const HomePage = () => {
               Lo que dicen nuestros clientes
             </h2>
             <p 
-              className="text-gray-600 mx-auto text-base sm:text-lg max-w-2xl"
-              style={{ fontFamily: "Poppins" }}
-            >
-              Descubre por qué nuestros clientes confían en nosotros para sus momentos especiales.
-            </p>
+           className="text-gray-600 mx-auto text-sm sm:text-base lg:text-lg max-w-xs sm:max-w-2xl lg:max-w-4xl"
+           style={{ fontFamily: "Poppins" }}
+           >
+           Descubre por qué nuestros clientes confían en nosotros para sus momentos especiales.
+          </p>
           </div>
 
           {/* Grid de testimonios */}
@@ -373,7 +529,7 @@ const HomePage = () => {
                   className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover mr-3 sm:mr-4"
                 />
                 <div>
-                  <h4 
+                  <h4
                     className="font-semibold text-gray-900 text-sm sm:text-base"
                     style={{ fontFamily: "Poppins" }}
                   >

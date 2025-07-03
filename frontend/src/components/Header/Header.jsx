@@ -15,7 +15,7 @@ import './../../components/Header/Header.css';
 
 const Header = () => {
   const navigate = useNavigate();
-    // Estado para controlar si el menú móvil está abierto o cerrado
+  // Estado para controlar si el menú móvil está abierto o cerrado
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   //Navegación para configuración
@@ -36,7 +36,12 @@ const Header = () => {
     navigate('/');
   };
 
-    // Función para abrir/cerrar el menú hamburguesa en móvil
+  const handleShoppingCartClick = (e) => {
+    e.preventDefault();
+    navigate('/shoppingCart');
+  };
+
+  // Función para abrir/cerrar el menú hamburguesa en móvil
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
@@ -49,7 +54,7 @@ const Header = () => {
     <>
       <header className="w-full border-b border-gray-300 py-4 px-6">
         <div className="w-full max-w-screen-xl mx-auto">
-          
+
           {/* Diseño para pantallas grandes (Desktop) */}
           <div className="hidden md:grid grid-cols-12 items-center gap-4">
             <div className="col-span-3 flex flex-col items-start cursor-pointer" onClick={handleCategoryProductsClick}>
@@ -71,21 +76,22 @@ const Header = () => {
             </div>
 
             <div className="col-span-3 flex items-center justify-end gap-8">
-              <img 
-                src={iconFavorites} 
-                alt="Favoritos" 
-                className="icon-style" 
+              <img
+                src={iconFavorites}
+                alt="Favoritos"
+                className="icon-style"
                 onClick={handleSavesClick}
               />
-              <img 
-                src={iconCart} 
-                alt="Carrito" 
-                className="icon-style" 
+              <img
+                src={iconCart}
+                alt="Carrito"
+                className="icon-style"
+                onClick={handleShoppingCartClick}
               />
-              <img 
-                src={iconSettings} 
-                alt="Configuración" 
-                className="icon-style" 
+              <img
+                src={iconSettings}
+                alt="Configuración"
+                className="icon-style"
                 onClick={handleProfileClick}
               />
             </div>
@@ -99,7 +105,7 @@ const Header = () => {
             </div>
 
             {/* Botón hamburguesa */}
-            <button 
+            <button
               className="hamburger-button"
               onClick={toggleMenu}
               aria-label="Menú"
@@ -130,36 +136,39 @@ const Header = () => {
               {/* Iconos en menú móvil */}
               <div className="flex items-center justify-center gap-8 pt-2">
                 <div className="flex flex-col items-center">
-                  <img 
-                    src={iconFavorites} 
-                    alt="Favoritos" 
-                    className="icon-style mb-1" 
+                  <img
+                    src={iconFavorites}
+                    alt="Favoritos"
+                    className="icon-style mb-1"
                     onClick={(e) => {
                       handleSavesClick(e);
                       closeMenu();
                     }}
                   />
                 </div>
-                
+
                 <div className="flex flex-col items-center">
-                  <img 
-                    src={iconCart} 
-                    alt="Carrito" 
-                    className="icon-style mb-1" 
-                    onClick={closeMenu}
+                  <img
+                    src={iconCart}
+                    alt="Carrito"
+                    className="icon-style mb-1"
+                    onClick={(e) => {
+                      handleShoppingCartClick(e);
+                      closeMenu();
+                    }}
                   />
                 </div>
-                
+
                 <div className="flex flex-col items-center">
-                  <img 
-                    src={iconSettings} 
-                    alt="Configuración" 
-                    className="icon-style mb-1" 
+                  <img
+                    src={iconSettings}
+                    alt="Configuración"
+                    className="icon-style mb-1"
                     onClick={(e) => {
                       handleProfileClick(e);
                       closeMenu();
                     }}
-                  /> 
+                  />
                 </div>
               </div>
             </div>

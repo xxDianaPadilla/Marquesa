@@ -21,6 +21,7 @@ import ProductsManager from './pages/ProductsManager';
 import SalesManager from './pages/SalesManager';
 import CategoriesManager from './pages/CategoriesManager';
 import ReviewsManager from './pages/ReviewsManager';
+import ShoppingCart from './pages/ShoppingCart';
 
 function App() {
   return (
@@ -135,6 +136,14 @@ function App() {
             element={
               <ProtectedRoutes requiredUserType="Customer">
                 <OrderDetail />
+              </ProtectedRoutes>
+            }
+          />
+
+          <Route path="/shoppingCart"
+            element={
+              <ProtectedRoutes requiredUserType="Customer">
+                <ShoppingCart />
               </ProtectedRoutes>
             }
           />

@@ -15,7 +15,7 @@ const reviewsSchema = new Schema({
             itemId: {
                 type: Schema.Types.ObjectId,
                 required: true,
-                refPath: "items.itemTypeRef"
+                refPath: "products.itemTypeRef"  
             },
             itemTypeRef: {
                 type: String,

@@ -45,6 +45,10 @@ const salesSchema = new Schema({
         type: String,
         required: true
     },
+    deliveryDate: {
+        type: Date,
+        required: true
+    },
     ShoppingCartId: {
         type: Schema.Types.ObjectId,
         ref: "ShoppingCart",

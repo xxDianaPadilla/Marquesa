@@ -1,4 +1,8 @@
 import salesModel from "../models/Sales.js";
+import productsModel from "../models/products.js";
+import customProductModel from "../models/CustomProducts.js";
+import Clients from '../models/Clients.js';
+import ShoppingCart from '../models/ShoppingCart.js'
 import { v2 as cloudinary } from "cloudinary";
 import { config } from "../config.js";
 
@@ -44,13 +48,14 @@ salesController.createSale = async (req, res) => {
             receiverName,
             receiverPhone,
             deliveryPoint,
+            deliveryDate,
             ShoppingCartId
         } = req.body;
 
         // Validamos campos requeridos
-        if (!paymentType || !deliveryAddress || !receiverName || !receiverPhone || !deliveryPoint || !ShoppingCartId) {
+        if (!paymentType || !deliveryAddress || !receiverName || !receiverPhone || !deliveryPoint || !deliveryDate || !ShoppingCartId) {
             return res.status(400).json({
-                message: 'Faltan campos requeridos: paymentType, deliveryAddress, receiverName, receiverPhone, deliveryPoint, ShoppingCartId'
+                message: 'Faltan campos requeridos: paymentType, deliveryAddress, receiverName, receiverPhone, deliveryPoint, deliveryDate, ShoppingCartId'
             });
         }
 
@@ -81,6 +86,7 @@ salesController.createSale = async (req, res) => {
             receiverName,
             receiverPhone,
             deliveryPoint,
+            deliveryDate,
             ShoppingCartId
         });
 
@@ -105,6 +111,7 @@ salesController.updateSale = async (req, res) => {
             receiverName,
             receiverPhone,
             deliveryPoint,
+            deliveryDate,
             ShoppingCartId
         } = req.body;
 
@@ -116,6 +123,7 @@ salesController.updateSale = async (req, res) => {
             receiverName,
             receiverPhone,
             deliveryPoint,
+            deliveryDate,
             ShoppingCartId
         };
 
@@ -210,21 +218,37 @@ salesController.updatePaymentStatus = async (req, res) => {
 // Actualizamos solo el estado de seguimiento
 salesController.updateTrackingStatus = async (req, res) => {
     try {
+        const { id } = req.params;
         const { trackingStatus } = req.body;
 
-        const updatedSale = await salesModel.findByIdAndUpdate(
-            req.params.id,
-            { trackingStatus },
-            { new: true, runValidators: true }
-        ).populate('ShoppingCartId');
-
-        if (!updatedSale) {
-            return res.status(404).json({ message: "Venta no encontrada" });
+        const validStatuses = ['Agendado', 'En proceso', 'Entregado'];
+        if (!validStatuses.includes(trackingStatus)) {
+            return res.status(400).json({
+                message: 'Estado de seguimiento no válido'
+            });
         }
 
-        res.json({ message: "Estado de seguimiento actualizado", sale: updatedSale });
+        const updatedSale = await salesModel.findByIdAndUpdate(
+            id,
+            { trackingStatus },
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedSale) {
+            return res.status(404).json({
+                message: 'Venta no encontrada'
+            });
+        }
+
+        res.json({
+            message: 'Estado actualizado correctamente',
+            sale: updatedSale
+        });
     } catch (error) {
-        res.status(400).json({ message: "Error al actualizar el estado de seguimiento", error: error.message });
+        res.status(500).json({
+            message: 'Error al actualizar el estado',
+            error: error.message
+        });
     }
 };
 
@@ -392,6 +416,285 @@ salesController.getDashboardStats = async (req, res) => {
     } catch (error) {
         res.status(500).json({
             message: "Error al obtener estadísticas del dashboard",
+            error: error.message
+        });
+    }
+};
+
+salesController.getSalesDetailed = async (req, res) => {
+    try {
+        // Obtenemos ventas con populate completo
+        const sales = await salesModel.find()
+            .populate({
+                path: 'ShoppingCartId',
+                populate: {
+                    path: 'clientId',
+                    model: 'Clients',
+                    select: 'fullName phone email address'
+                }
+            })
+            .sort({ deliveryDate: 1 });
+
+        if (!sales || sales.length === 0) {
+            return res.json([]);
+        }
+
+        const salesWithDetails = await Promise.all(
+            sales.map(async (sale) => {
+                try {
+                    const saleObj = sale.toObject();
+
+                    // Verificamos que existe el ShoppingCart
+                    if (!saleObj.ShoppingCartId) {
+                        console.warn(`Venta ${saleObj._id} sin ShoppingCart`);
+                        return {
+                            _id: saleObj._id,
+                            clientName: 'Cliente no encontrado',
+                            clientPhone: '',
+                            clientEmail: '',
+                            clientAddress: '',
+                            paymentType: saleObj.paymentType,
+                            paymentProofImage: saleObj.paymentProofImage,
+                            status: saleObj.status,
+                            trackingStatus: saleObj.trackingStatus,
+                            deliveryAddress: saleObj.deliveryAddress,
+                            receiverName: saleObj.receiverName,
+                            receiverPhone: saleObj.receiverPhone,
+                            deliveryPoint: saleObj.deliveryPoint,
+                            deliveryDate: saleObj.deliveryDate,
+                            total: 0,
+                            items: [],
+                            createdAt: saleObj.createdAt,
+                            updatedAt: saleObj.updatedAt
+                        };
+                    }
+
+                    // Obtenemos información del cliente
+                    const client = saleObj.ShoppingCartId.clientId;
+                    
+                    // Si no hay cliente poblado, intentamos obtenerlo manualmente
+                    let clientInfo = null;
+                    if (!client && saleObj.ShoppingCartId.clientId) {
+                        clientInfo = await Clients.findById(saleObj.ShoppingCartId.clientId)
+                            .select('fullName phone email address');
+                    } else {
+                        clientInfo = client;
+                    }
+
+                    // Obtenemos detalles de los productos
+                    const cartItems = saleObj.ShoppingCartId.items || [];
+                    const itemsDetails = [];
+
+                    for (const item of cartItems) {
+                        try {
+                            if (item.itemType === 'product') {
+                                const product = await productsModel.findById(item.itemId)
+                                    .select('name price images description');
+                                if (product) {
+                                    itemsDetails.push({
+                                        type: 'product',
+                                        name: product.name,
+                                        price: product.price,
+                                        quantity: item.quantity || 1,
+                                        subtotal: item.subtotal,
+                                        image: product.images && product.images.length > 0 ? product.images[0].image : null
+                                    });
+                                }
+                            } else if (item.itemType === 'custom') {
+                                const customProduct = await customProductModel.findById(item.itemId)
+                                    .populate('selectedItems.productId', 'name price images');
+                                if (customProduct) {
+                                    itemsDetails.push({
+                                        type: 'custom',
+                                        name: 'Producto Personalizado',
+                                        price: customProduct.totalPrice,
+                                        quantity: item.quantity || 1,
+                                        subtotal: item.subtotal,
+                                        image: customProduct.referenceImage || null,
+                                        selectedItems: customProduct.selectedItems
+                                    });
+                                }
+                            }
+                        } catch (itemError) {
+                            console.error(`Error procesando item ${item.itemId}:`, itemError);
+                        }
+                    }
+
+                    // Formateamos la fecha correctamente
+                    let formattedDate = saleObj.deliveryDate;
+                    if (saleObj.deliveryDate) {
+                        // Creamos fecha en zona horaria local
+                        const date = new Date(saleObj.deliveryDate);
+                        // Ajustamos para evitar cambios de timezone
+                        formattedDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
+                    }
+
+                    return {
+                        _id: saleObj._id,
+                        clientName: clientInfo?.fullName || 'Cliente no encontrado',
+                        clientPhone: clientInfo?.phone || '',
+                        clientEmail: clientInfo?.email || '',
+                        clientAddress: clientInfo?.address || '',
+                        paymentType: saleObj.paymentType,
+                        paymentProofImage: saleObj.paymentProofImage,
+                        status: saleObj.status,
+                        trackingStatus: saleObj.trackingStatus,
+                        deliveryAddress: saleObj.deliveryAddress,
+                        receiverName: saleObj.receiverName,
+                        receiverPhone: saleObj.receiverPhone,
+                        deliveryPoint: saleObj.deliveryPoint,
+                        deliveryDate: formattedDate,
+                        total: saleObj.ShoppingCartId?.total || 0,
+                        items: itemsDetails,
+                        createdAt: saleObj.createdAt,
+                        updatedAt: saleObj.updatedAt
+                    };
+
+                } catch (saleError) {
+                    console.error(`Error procesando venta ${sale._id}:`, saleError);
+                    return null;
+                }
+            })
+        );
+
+        // Filtramos ventas nulas
+        const validSales = salesWithDetails.filter(sale => sale !== null);
+
+        res.json(validSales);
+    } catch (error) {
+        console.error('Error en getSalesDetailed:', error);
+        res.status(500).json({
+            message: 'Error al obtener las ventas',
+            error: error.message
+        });
+    }
+};
+
+salesController.getSalesByStatus = async (req, res) => {
+    try {
+        const { status } = req.params;
+        const validStatuses = ['Agendado', 'En proceso', 'Entregado'];
+
+        if (!validStatuses.includes(status)) {
+            return res.status(400).json({
+                message: 'Estado no válido'
+            });
+        }
+
+        const sales = await salesModel.find({ trackingStatus: status })
+            .populate({
+                path: 'ShoppingCartId',
+                populate: {
+                    path: 'clientId',
+                    model: 'Clients',
+                    select: 'fullName phone email'
+                }
+            })
+            .sort({ deliveryDate: 1 });
+
+        res.json(sales);
+    } catch (error) {
+        res.status(500).json({
+            message: 'Error al obtener las ventas por estado',
+            error: error.message
+        });
+    }
+};
+
+salesController.getSalesByDateRange = async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+
+        if (!startDate || !endDate) {
+            return res.status(400).json({
+                message: 'Debe proporcionar fechas de inicio y fin'
+            });
+        }
+
+        const sales = await salesModel.find({
+            deliveryDate: {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate)
+            }
+        })
+            .populate({
+                path: 'ShoppingCartId',
+                populate: {
+                    path: 'clientId',
+                    model: 'Clients',
+                    select: 'fullName phone email'
+                }
+            })
+            .sort({ deliveryDate: 1 });
+
+        res.json(sales);
+    } catch (error) {
+        res.status(500).json({
+            message: 'Error al obtener las ventas por fecha',
+            error: error.message
+        });
+    }
+};
+
+salesController.searchSales = async (req, res) => {
+    try {
+        const { q } = req.query;
+
+        if (!q) {
+            return res.status(400).json({
+                message: 'Debe proporcionar un término de búsqueda'
+            });
+        }
+
+        const sales = await salesModel.find({
+            $or: [
+                { receiverName: { $regex: q, $options: 'i' } },
+                { deliveryPoint: { $regex: q, $options: 'i' } },
+                { deliveryAddress: { $regex: q, $options: 'i' } }
+            ]
+        })
+            .populate({
+                path: 'ShoppingCartId',
+                populate: {
+                    path: 'clientId',
+                    model: 'Clients',
+                    select: 'fullName phone email'
+                }
+            })
+            .sort({ deliveryDate: 1 });
+
+        res.json(sales);
+    } catch (error) {
+        res.status(500).json({
+            message: 'Error al buscar ventas',
+            error: error.message
+        });
+    }
+};
+
+salesController.getSalesStats = async (req, res) => {
+    try {
+        const totalSales = await salesModel.countDocuments();
+        const agendadas = await salesModel.countDocuments({ trackingStatus: 'Agendado' });
+        const enProceso = await salesModel.countDocuments({ trackingStatus: 'En proceso' });
+        const entregadas = await salesModel.countDocuments({ trackingStatus: 'Entregado' });
+
+        const stats = {
+            total: totalSales,
+            agendadas,
+            enProceso,
+            entregadas,
+            porcentajes: {
+                agendadas: totalSales ? ((agendadas / totalSales) * 100).toFixed(1) : 0,
+                enProceso: totalSales ? ((enProceso / totalSales) * 100).toFixed(1) : 0,
+                entregadas: totalSales ? ((entregadas / totalSales) * 100).toFixed(1) : 0
+            }
+        };
+
+        res.json(stats);
+    } catch (error) {
+        res.status(500).json({
+            message: 'Error al obtener estadísticas',
             error: error.message
         });
     }

@@ -31,6 +31,12 @@ const perfil = () => {
     }
   };
 
+  //Navegación para detalles pedidos
+  const handleSavesClick = (e) => {
+    e.preventDefault();
+    navigate('/orderdetails');
+  };
+
   return (
     <>
       <Header />
@@ -155,7 +161,7 @@ const perfil = () => {
                             <span>Cancelable hasta: {pedido.cancelable}</span>
                           </div>
                         </div>
-                        <Button className="w-full hover:bg-pink-400 text-white" style={{ backgroundColor: '#E8ACD2' }}>
+                        <Button className="w-full hover:bg-pink-400 text-white" onClick={handleSavesClick}style={{ backgroundColor: '#E8ACD2' }}>
                           Detalles pedidos
                         </Button>
                       </div>

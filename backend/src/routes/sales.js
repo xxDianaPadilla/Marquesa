@@ -59,6 +59,24 @@ router.route("/payment-status/:status")
 router.route("/tracking-status/:trackingStatus")
     .get(salesController.getSalesByTrackingStatus);
 
+router.route("/detailed")
+    .get(salesController.getSalesDetailed);
+
+router.route("/:id/tracking")
+    .put(salesController.updateTrackingStatus);
+
+router.route("/status/:status")
+    .get(salesController.getSalesByStatus);
+
+router.route("/date-range")
+    .get(salesController.getSalesByDateRange);
+
+router.route("/search")
+    .get(salesController.searchSales);
+
+router.route("/stats")
+    .get(salesController.getSalesStats);
+
 router.route("/:id/payment-status")
     .patch(salesController.updatePaymentStatus);
 

@@ -16,6 +16,7 @@ import cat5 from "../assets/cardscat.png";
 import flower1 from "../assets/savesFlower1.png";
 import flower2 from "../assets/savesFlower2.png";
 import flower3 from "../assets/savesFlower3.png";
+import iconchat from "../assets/iconchat.png"
 // Iconos de favoritos desde la carpeta "assets"
 import iconFavorites from '../assets/favoritesIcon.png';
 

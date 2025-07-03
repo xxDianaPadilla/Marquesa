@@ -16,6 +16,7 @@ import CategoryProducts from './pages/CategoryProducts';
 import Profile from './pages/Profile';
 import MediaManager from './pages/MediaManager';
 import Home from './pages/HomePage';
+import OrderDetail from './pages/OrderDetailPage';
 
 function App() {
   return (
@@ -100,6 +101,12 @@ function App() {
               <ProtectedRoutes requiredUserType="Customer">
                 <Profile />
               </ProtectedRoutes>
+            }
+          />
+
+          <Route path="/orderdetails"
+            element={
+                <OrderDetail />
             }
           />
 

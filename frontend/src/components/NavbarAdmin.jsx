@@ -24,14 +24,14 @@ const NavbarAdmin = () => {
         navigate('/dashboard');
     };
 
-    const handleFlowersClick = (e) => {
+    const handleProductsClick = (e) => {
         e.preventDefault();
-        navigate('/flowers');
+        navigate('/products');
     };
 
-    const handleCartClick = (e) => {
+    const handleSalesClick = (e) => {
         e.preventDefault();
-        navigate('/cart');
+        navigate('/sales');
     };
 
     const handleReviewsClick = (e) => {
@@ -113,25 +113,25 @@ const NavbarAdmin = () => {
 
                     {/* Flower Icon */}
                     <button 
-                        className={getButtonClasses('/flowers')}
-                        onClick={handleFlowersClick}
+                        className={getButtonClasses('/products')}
+                        onClick={handleProductsClick}
                     >
                         <img
                             src={flowerIcon}
                             alt="Flores"
-                            className={getIconClasses('/flowers')}
+                            className={getIconClasses('/products')}
                         />
                     </button>
 
                     {/* Shopping Cart Icon */}
                     <button 
-                        className={getButtonClasses('/cart')}
-                        onClick={handleCartClick}
+                        className={getButtonClasses('/sales')}
+                        onClick={handleSalesClick}
                     >
                         <img
                             src={shoppingCartIcon}
                             alt="Carrito"
-                            className={getIconClasses('/cart')}
+                            className={getIconClasses('/sales')}
                         />
                     </button>
 

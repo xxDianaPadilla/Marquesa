@@ -126,7 +126,7 @@ const CategoryProductsPage = () => {
     const handleCategoryChange = (newCategoryId) => {
         if (newCategoryId === 'todos') {
             // Si selecciona "todos", regresar al home
-            navigate('/');
+            navigate('/categoryProducts');
         } else {
             // Si selecciona otra categoría, navegar a esa página
             navigate(`/categoria/${newCategoryId}`);
@@ -160,7 +160,7 @@ const CategoryProductsPage = () => {
             <div className="text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FDB4B7] mx-auto mb-4"></div>
                 <p 
-                    className="text-gray-600"
+                    className="text-white-600"
                     style={{ fontFamily: 'Poppins, sans-serif' }}
                 >
                     Cargando productos...
@@ -174,7 +174,7 @@ const CategoryProductsPage = () => {
      */
     const EmptyState = () => (
         <div className="text-center py-12">
-            <div className="text-gray-400 mb-4">
+            <div className="text-white-400 mb-4">
                 <svg 
                     className="w-16 h-16 mx-auto" 
                     fill="none" 
@@ -199,7 +199,7 @@ const CategoryProductsPage = () => {
     );
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-white-50">
             {/* Header de la página */}
             <Header />
 

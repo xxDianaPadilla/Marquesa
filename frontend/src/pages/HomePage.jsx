@@ -81,23 +81,15 @@ const HomePage = () => {
   };
 
   // Manejo de navegación de categorías
-  const handleCategoryChange = (categoryId) => {
-    if (categoryId === 'todos') {
-      // Si quieres mostrar todos los productos, podrías navegar a una página especial
-      // o scroll hacia la sección de productos destacados
-      const productsSection = document.getElementById('productos-destacados');
-      if (productsSection) {
-        productsSection.scrollIntoView({ behavior: 'smooth' });
-      }
-    } else {
-      navigate(`/categoria/${categoryId}`);
-    }
-  };
-
-  // Manejo de click en categoría visual
-  const handleCategoryClick = (categoryId) => {
-    navigate(`/categoria/${categoryId}`);
-  };
+  const handleCategoryChange = (newCategoryId) => {
+        if (newCategoryId === 'todos') {
+            // Si selecciona "todos", regresar al home
+            navigate('/categoryProducts');
+        } else {
+            // Si selecciona otra categoría, navegar a esa página
+            navigate(`/categoria/${newCategoryId}`);
+        }
+    };
 
   // Manejo de favoritos
   const handleToggleFavorite = (productId) => {

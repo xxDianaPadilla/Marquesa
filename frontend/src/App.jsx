@@ -22,6 +22,7 @@ import SalesManager from './pages/SalesManager';
 import CategoriesManager from './pages/CategoriesManager';
 import ReviewsManager from './pages/ReviewsManager';
 import ShoppingCart from './pages/ShoppingCart';
+import ProductDetail from './pages/ProductDetail';
 
 function App() {
   return (
@@ -65,6 +66,7 @@ function App() {
           <Route path="/home" element={<Home />} />
           <Route path="/categoryProducts" element={<CategoryProducts />} />
           <Route path="/categoria/:categoryId" element={<CategoryProductsPage />} />
+          <Route path="/ProductDetail" element={<ProductDetail />} />
 
           {/* Rutas del admin */}
           <Route path="/dashboard"

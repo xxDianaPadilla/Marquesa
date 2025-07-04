@@ -23,6 +23,10 @@ const CategoryProducts = () => {
     // Estado para controlar la carga de datos
     const [isLoading, setIsLoading] = useState(true);
 
+    const handleProductDetailClick = () => {
+        navigate('/ProductDetail');
+    };
+
     /**
      * Configuración de categorías disponibles
      */
@@ -122,11 +126,7 @@ const CategoryProducts = () => {
      * @param {Object} product - Producto clickeado
      * @param {string} categoryId - ID de la categoría del producto
      */
-    const handleProductClick = (product, categoryId) => {
-        console.log('Producto clickeado:', product, 'Categoría:', categoryId);
-        // Aquí se podría navegar a la página de detalle del producto
-        // navigate(`/producto/${product.id}`);
-    };
+    
 
     /**
      * Maneja el click en "Ver todos" de una categoría
@@ -200,8 +200,9 @@ const CategoryProducts = () => {
                                     title={getCategoryName(categoryId)}
                                     products={productsByCategory[categoryId] || []}
                                     categoryId={categoryId}
-                                    onProductClick={handleProductClick}
+                                    onProductClick={handleProductDetailClick}
                                     onViewAll={handleViewAll}
+                                    
                                 />
                             </div>
                         ))}

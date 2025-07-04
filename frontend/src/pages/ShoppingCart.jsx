@@ -14,7 +14,7 @@ import Flower3 from "../assets/savesFlower3.png";
 
 const ShoppingCart = () => {
     const navigate = useNavigate();
-    
+
     // Estado del carrito
     const [cartItems, setCartItems] = useState([
         {
@@ -82,17 +82,17 @@ const ShoppingCart = () => {
     const EmptyCart = () => (
         <div className="empty-cart">
             <div className="mb-6">
-                <svg 
-                    className="w-20 h-20 text-gray-300 mx-auto mb-4" 
-                    fill="none" 
-                    stroke="currentColor" 
+                <svg
+                    className="w-20 h-20 text-gray-300 mx-auto mb-4"
+                    fill="none"
+                    stroke="currentColor"
                     viewBox="0 0 24 24"
                 >
-                    <path 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth={1} 
-                        d="M3 3h2l.4 2M7 13h10l4-8H5.4m2.6 8L5 3H3m4 10v6a1 1 0 001 1h10a1 1 0 001-1v-6m-2 0V9a3 3 0 00-3-3H9a3 3 0 00-3 3v4" 
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1}
+                        d="M3 3h2l.4 2M7 13h10l4-8H5.4m2.6 8L5 3H3m4 10v6a1 1 0 001 1h10a1 1 0 001-1v-6m-2 0V9a3 3 0 00-3-3H9a3 3 0 00-3 3v4"
                     />
                 </svg>
             </div>
@@ -109,17 +109,26 @@ const ShoppingCart = () => {
     );
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-white-50">
             <Header />
-            
-            <em className="cart-title">Mi carrito</em>
-            
+            <br />
+            <br />
+
+            <div className="text-center mb-8">
+                <h1
+                    className="text-3xl font-bold text-gray-800 mb-2"
+                    style={{ fontFamily: 'Poppins, sans-serif' }}
+                >
+                    Mi carrito
+                </h1>
+            </div>
+
             <div className="shopping-cart-container">
                 {cartItems.length === 0 ? (
                     <EmptyCart />
                 ) : (
                     <>
-                        <section 
+                        <section
                             className="cart-items-section"
                             aria-label="Lista de productos en el carrito"
                         >

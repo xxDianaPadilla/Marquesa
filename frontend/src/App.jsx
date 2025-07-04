@@ -24,6 +24,7 @@ import ReviewsManager from './pages/ReviewsManager';
 import ShoppingCart from './pages/ShoppingCart';
 import ProductDetail from './pages/ProductDetail';
 import CustomProducts from './pages/CustomProducts';
+import PaymentProcessPage from './pages/PaymentProcessPage';
 
 function App() {
   return (
@@ -155,6 +156,14 @@ function App() {
             element={
               <ProtectedRoutes requiredUserType="Customer">
                 <CustomProducts />
+              </ProtectedRoutes>
+            }
+          />
+
+          <Route path="/paymentProcess"
+            element={
+              <ProtectedRoutes requiredUserType="Customer">
+                <PaymentProcessPage />
               </ProtectedRoutes>
             }
           />

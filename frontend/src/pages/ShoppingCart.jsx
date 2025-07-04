@@ -1,6 +1,6 @@
 // frontend/src/pages/ShoppingCart.jsx
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Header from '../components/Header/Header';
 import Footer from '../components/Footer';
 import CartItem from "../components/CartItem";
@@ -14,6 +14,11 @@ import Flower3 from "../assets/savesFlower3.png";
 
 const ShoppingCart = () => {
     const navigate = useNavigate();
+
+    const handlePaymentProcessClick = (e) => {
+        e.preventDefault();
+        navigate('/paymentProcess');
+    };
 
     // Estado del carrito
     const [cartItems, setCartItems] = useState([
@@ -63,14 +68,6 @@ const ShoppingCart = () => {
     // Función para aplicar descuento
     const handleApplyDiscount = (code, amount) => {
         console.log(`Descuento aplicado: ${code} - Monto: ${amount}$`);
-    };
-
-    // Función para proceder al pago
-    const handleProceedToPay = (orderSummary) => {
-        console.log('Procediendo al pago con:', orderSummary);
-        // Aquí podrías redirigir a la página de pago
-        // navigate('/checkout', { state: { orderSummary, cartItems } });
-        alert('Funcionalidad de pago en desarrollo');
     };
 
     // Función para continuar comprando
@@ -146,7 +143,7 @@ const ShoppingCart = () => {
                             subtotal={subtotal}
                             shipping={10.00}
                             onApplyDiscount={handleApplyDiscount}
-                            onProceedToPay={handleProceedToPay}
+                            onProceedToPay={handlePaymentProcessClick}
                             onContinueShopping={handleContinueShopping}
                         />
                     </>

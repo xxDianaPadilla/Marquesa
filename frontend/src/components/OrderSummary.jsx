@@ -1,15 +1,23 @@
 // frontend/src/components/OrderSummary.jsx
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const OrderSummary = ({ 
     subtotal, 
     shipping = 10.00, 
     onApplyDiscount, 
     onProceedToPay, 
-    onContinueShopping 
+    onContinueShopping,
+    onClick 
 }) => {
     const [discountCode, setDiscountCode] = useState("");
     const [discount, setDiscount] = useState(0);
+    const navigate = useNavigate();
+
+    const handlePaymentProcessClick = (e) => {
+        e.preventDefault();
+        navigate('/paymentProcess');
+    };
 
     const total = subtotal + shipping - discount;
 
@@ -104,7 +112,7 @@ const OrderSummary = ({
             <button 
                 className="pay-btn"
                 type="button"
-                onClick={handleProceedToPay}
+                onClick={handlePaymentProcessClick}
             >
                 Proceder al pago
             </button>

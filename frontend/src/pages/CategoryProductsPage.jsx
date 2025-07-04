@@ -22,6 +22,10 @@ const CategoryProductsPage = () => {
     const [products, setProducts] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [categoryName, setCategoryName] = useState('');
+    const handleProductDetailClick = (e) => {
+        e.preventDefault();
+        navigate('/ProductDetail');
+    };
 
     /**
      * Configuración de categorías disponibles
@@ -137,11 +141,6 @@ const CategoryProductsPage = () => {
      * Maneja el click en un producto individual
      * @param {Object} product - Producto clickeado
      */
-    const handleProductClick = (product) => {
-        console.log('Producto clickeado:', product);
-        // Aquí podrías navegar a la página de detalle del producto
-        // navigate(`/producto/${product.id}`);
-    };
 
     /**
      * Formatea el precio del producto
@@ -244,7 +243,7 @@ const CategoryProductsPage = () => {
                         {products.map((product) => (
                             <div
                                 key={product.id}
-                                onClick={() => handleProductClick(product)}
+                                onClick={handleProductDetailClick}
                                 className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg 
                                          transition-all duration-300 cursor-pointer transform hover:scale-105"
                             >

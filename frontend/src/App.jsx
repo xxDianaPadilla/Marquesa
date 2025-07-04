@@ -23,6 +23,7 @@ import CategoriesManager from './pages/CategoriesManager';
 import ReviewsManager from './pages/ReviewsManager';
 import ShoppingCart from './pages/ShoppingCart';
 import ProductDetail from './pages/ProductDetail';
+import CustomProducts from './pages/CustomProducts';
 
 function App() {
   return (
@@ -146,6 +147,14 @@ function App() {
             element={
               <ProtectedRoutes requiredUserType="Customer">
                 <ShoppingCart />
+              </ProtectedRoutes>
+            }
+          />
+
+          <Route path="/customProducts"
+            element={
+              <ProtectedRoutes requiredUserType="Customer">
+                <CustomProducts />
               </ProtectedRoutes>
             }
           />

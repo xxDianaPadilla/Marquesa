@@ -5,7 +5,7 @@ const CategorySection = ({
     products = [], 
     categoryId, 
     onProductClick, 
-    onViewAll 
+    onViewAll
 }) => {
 
     /**

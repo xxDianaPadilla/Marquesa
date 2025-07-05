@@ -1,3 +1,4 @@
+// Importación de librerías, imágenes, iconos y componentes
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, MapPin, Package, User, Phone, Mail, Truck, Clock } from "lucide-react";
@@ -9,8 +10,6 @@ import checkedicon from "../assets/checkedicon.png";
 import usericon from "../assets/usericon.png";
 import telephoneicon from "../assets/telephoneIcon.png";
 import locationicon from "../assets/locaicon.png";
-
-// Importación de componentes 
 import Header from "../components/Header/Header";
 
 const OrderDetail = () => {
@@ -49,9 +48,9 @@ const OrderDetail = () => {
                 <p className="text-sm text-gray-500">Realizado el 05/05/2025</p>
               </div>
             </div>
-            <button className="px-4 py-2 text-white rounded-lg text-sm font-medium hover:opacity-90" style={{ backgroundColor: '#E8ACD2', cursor: 'pointer' }}>
-              Cancelar pedido
-            </button>
+            <button className="px-2 sm:px-4 py-2 text-white rounded-lg text-xs sm:text-sm font-medium hover:opacity-90" style={{ backgroundColor: '#E8ACD2', cursor: 'pointer' }}>
+           Cancelar pedido
+          </button>
           </div>
         </div>
       </div>

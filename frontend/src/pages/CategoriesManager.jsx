@@ -1,8 +1,12 @@
+// Importación de librerías y componentes utilizados
 import React, { useState } from "react";
 import NavbarAdmin from "../components/NavbarAdmin";
 import useDataCategories from "../components/Categories/hooks/useDataCategories";
+import CategoryTable from "../components/Categories/CategoryTable";
+import CategoryForm from "../components/Categories/CategoryForm";
 
 const CategoriesManager = () => {
+    // Estados y funciones necesarias para usarlas en el componente
     const {
         activeTab,
         setActiveTab,
@@ -20,11 +24,47 @@ const CategoriesManager = () => {
         handleEdit,
     } = useDataCategories();
 
-
     const [searchTerm, setSearchTerm] = useState('');
+    const [showForm, setShowForm] = useState(false);
 
-    const handleUpload = () => {
-        console.log('Abrir modal de subida');
+    // Filtrar categorías por búsqueda
+    const filteredCategories = categories.filter(category =>
+        category.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const handleOpenForm = () => {
+        setShowForm(true);
+        setActiveTab("form");
+    };
+
+    const handleCloseForm = () => {
+        setShowForm(false);
+        setActiveTab("list");
+    };
+
+    const handleEditCategory = (category) => {
+        updateCategorie(category);
+        setShowForm(true);
+    };
+
+    // Función mejorada para crear categoría que cierra el modal
+    const handleCreateCategory = async (categoryData) => {
+        try {
+            await createCategorie(categoryData);
+            handleCloseForm(); // Cerrar modal después de crear
+        } catch (error) {
+            console.error('Error al crear categoría:', error);
+        }
+    };
+
+    // Función mejorada para editar categoría que cierra el modal
+    const handleUpdateCategory = async (categoryData) => {
+        try {
+            await handleEdit(categoryData);
+            handleCloseForm(); // Cerrar modal después de editar
+        } catch (error) {
+            console.error('Error al editar categoría:', error);
+        }
     };
 
     return (
@@ -45,7 +85,7 @@ const CategoriesManager = () => {
                             </p>
                         </div>
                         <button
-                            onClick={handleUpload}
+                            onClick={handleOpenForm}
                             className="w-full sm:w-auto bg-[#FDB4B7] hover:bg-[#F2C6C2] text-white px-4 sm:px-6 py-2 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 text-sm sm:text-base"
                             style={{ fontFamily: 'Poppins, sans-serif', cursor: 'pointer' }}
                         >
@@ -73,9 +113,35 @@ const CategoriesManager = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
                         </div>
+
                     </div>
                 </div>
+
+                {/* Tabla de categorías */}
+                <CategoryTable
+                    categories={filteredCategories}
+                    loading={loading}
+                    onEdit={handleEditCategory}
+                    onDelete={deleteCategorie}
+                />
             </div>
+
+            {/* Modal del formulario con overlay */}
+            {showForm && (
+                <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-white/10 backdrop-blur-[2px]">
+
+                    <CategoryForm
+                        isOpen={showForm}
+                        onClose={handleCloseForm}
+                        onSubmit={id ? handleUpdateCategory : handleCreateCategory}
+                        name={name}
+                        setName={setName}
+                        image={image}
+                        setImage={setImage}
+                        isEditing={!!id}
+                    />
+                </div>
+            )}
         </div>
     );
 };

@@ -1,3 +1,10 @@
+/*
+    Campos:
+        idCategory
+        name
+        image
+*/
+
 import { Schema, model } from 'mongoose';
 
 const categorySchema = new Schema({
@@ -6,6 +13,10 @@ const categorySchema = new Schema({
     required: true,
     trim: true
   },
+  image:{
+    type: String,
+    required: true
+  }
 }, {
   timestamps: true,
   strict: false,

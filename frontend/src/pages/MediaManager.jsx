@@ -281,7 +281,7 @@ const MediaManager = () => {
                         </div>
                         <button
                             onClick={handleUpload}
-                            className="w-full sm:w-auto bg-[#FF7260] hover:bg-[#FF6A54] text-white px-4 sm:px-6 py-2 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 text-sm sm:text-base"
+                            className="w-full sm:w-auto bg-[#FDB4B7] hover:bg-[#F2C6C2] text-white px-4 sm:px-6 py-2 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 text-sm sm:text-base"
                             style={{ fontFamily: 'Poppins, sans-serif', cursor: 'pointer' }}
                         >
                             <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

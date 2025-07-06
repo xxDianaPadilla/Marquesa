@@ -8,7 +8,7 @@ import ProductInfo from '../components/ProductDetail/ProductInfo';
 import ProductTabs from '../components/ProductDetail/ProductTabs';
 import ProductReviews from '../components/ProductDetail/ProductReviews';
 import { useNavigate } from 'react-router-dom';
-
+import RecommendedProducts from '../components/RecommendedProducts ';
 const ProductDetail = () => {
   const [selectedImage, setSelectedImage] = useState(ramoFlores);
   const [quantity, setQuantity] = useState(1);
@@ -72,6 +72,7 @@ const categories = [
         </div>
         <ProductReviews reviews={reviews} />
       </div>
+      <RecommendedProducts />
 
       <Footer />
     </>

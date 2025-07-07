@@ -1,31 +1,44 @@
-import React, { useState } from 'react';
+// src/components/Tabs.jsx
+import React, { useState, createContext, useContext } from 'react';
 
-const TabsContext = React.createContext();
+const TabsContext = createContext();
 
-const Tabs = ({ defaultValue, children }) => {
-  const [value, setValue] = useState(defaultValue);
+export const Tabs = ({ children, defaultValue }) => {
+  const [activeTab, setActiveTab] = useState(defaultValue || '');
+
   return (
-    <TabsContext.Provider value={{ value, setValue }}>{children}</TabsContext.Provider>
+    <TabsContext.Provider value={{ activeTab, setActiveTab }}>
+      {children}
+    </TabsContext.Provider>
   );
 };
 
-export const TabsList = ({ children }) => (
-  <div className="flex space-x-4 border-b border-gray-200 pb-2">{children}</div>
+export const TabsList = ({ children, className }) => (
+  <div className={className}>{children}</div>
 );
 
 export const TabsTrigger = ({ value, children }) => {
-  const { value: active, setValue } = React.useContext(TabsContext);
-  const isActive = active === value;
+  const { activeTab, setActiveTab } = useContext(TabsContext);
+  const isActive = activeTab === value;
+
   return (
     <button
-      style={{ cursor: 'pointer' }}
-      className={`text-sm pb-2 border-b-2 transition font-medium ${isActive ? 'border-pink-400 text-pink-500' : 'border-transparent text-gray-500 hover:text-gray-700'
-        }`}
-      onClick={() => setValue(value)}
+      onClick={() => setActiveTab(value)}
+      className={`flex-1 px-4 py-2 text-center transition-all duration-200 rounded-md ${
+        isActive
+          ? 'bg-white text-black font-semibold shadow-sm'
+          : 'text-gray-500 hover:text-[#CD5277]'
+      }`}
     >
       {children}
     </button>
   );
 };
 
-export default Tabs;
+
+export const TabsContent = ({ value, children }) => {
+  const { activeTab } = useContext(TabsContext);
+  if (activeTab !== value) return null;
+
+  return <div className="mt-4">{children}</div>;
+};

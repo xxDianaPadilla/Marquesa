@@ -122,13 +122,6 @@ const CategoryProducts = () => {
     };
 
     /**
-     * Maneja el click en un producto individual
-     * @param {Object} product - Producto clickeado
-     * @param {string} categoryId - ID de la categoría del producto
-     */
-    
-
-    /**
      * Maneja el click en "Ver todos" de una categoría
      * @param {string} categoryId - ID de la categoría
      */
@@ -162,11 +155,11 @@ const CategoryProducts = () => {
      * Componente de estado de carga
      */
     const LoadingState = () => (
-        <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center justify-center min-h-[300px] sm:min-h-[400px]">
             <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FDB4B7] mx-auto mb-4"></div>
+                <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-[#FDB4B7] mx-auto mb-4"></div>
                 <p 
-                    className="text-gray-600"
+                    className="text-gray-600 text-sm sm:text-base"
                     style={{ fontFamily: 'Poppins, sans-serif' }}
                 >
                     Cargando productos...
@@ -188,11 +181,11 @@ const CategoryProducts = () => {
             />
 
             {/* Contenido principal */}
-            <main className="max-w-7xl mx-auto px-4 py-8">
+            <main className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
                 {isLoading ? (
                     <LoadingState />
                 ) : (
-                    <div>
+                    <div className="space-y-6 sm:space-y-8">
                         {/* Renderizar secciones según la categoría activa */}
                         {getCategoriesToShow().map((categoryId) => (
                             <div key={categoryId} id={`section-${categoryId}`}>
@@ -202,7 +195,6 @@ const CategoryProducts = () => {
                                     categoryId={categoryId}
                                     onProductClick={handleProductDetailClick}
                                     onViewAll={handleViewAll}
-                                    
                                 />
                             </div>
                         ))}

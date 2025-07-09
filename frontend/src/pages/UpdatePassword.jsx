@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from 'react-hook-form';
 import { useNavigate, useLocation } from 'react-router-dom';
 import PageContainer from "../components/PageContainer";
@@ -10,12 +10,17 @@ import Input from "../components/Input";
 import Button from "../components/Button";
 import QuestionText from "../components/QuestionText";
 import lockIcon from "../assets/lockIcon.png";
+// NUEVA IMPORTACIÓN - Hook para recuperación de contraseña
+import { usePasswordReset } from "../components/PasswordReset/Hooks/usePasswordReset";
 
 const UpdatePassword = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
+
+    // NUEVO - Hook para manejar actualización de contraseña
+    const { updatePassword, isLoading } = usePasswordReset();
 
     // Obtener datos de la navegación anterior
     const email = location.state?.email;
@@ -62,11 +67,10 @@ const UpdatePassword = () => {
         }
     };
 
+    // NUEVA FUNCIÓN - Manejar actualización con backend
     const onSubmit = async (data) => {
         try {
             clearErrors();
-            console.log('Actualizando contraseña para:', email);
-            console.log('Código de verificación:', verificationCode);
             
             // Verificar que tenemos los datos necesarios
             if (!email || !verificationCode) {
@@ -77,43 +81,38 @@ const UpdatePassword = () => {
                 return;
             }
             
-            alert('¡Contraseña actualizada exitosamente!');
+            // Actualizar contraseña usando el hook
+            const result = await updatePassword(email, verificationCode, data.newPassword);
             
-            // Navegar al login con mensaje de éxito
-            navigate('/login', { 
-                state: { 
-                    message: 'Contraseña actualizada correctamente. Inicia sesión con tu nueva contraseña.' 
-                } 
-            });
-            
+            if (result.success) {
+                // Si es exitoso, navegar al login
+                setTimeout(() => {
+                    navigate('/login', { 
+                        state: { 
+                            message: 'Contraseña actualizada correctamente. Inicia sesión con tu nueva contraseña.' 
+                        } 
+                    });
+                }, 1500); // Delay para mostrar el toast
+            } else {
+                // Si hay error, mostrar en el formulario
+                if (result.message.includes('expirado') || result.message.includes('incorrecto')) {
+                    setError('root.serverError', {
+                        type: 'server',
+                        message: 'El código de verificación ha expirado o es incorrecto. Inicia el proceso nuevamente.'
+                    });
+                } else {
+                    setError('root.serverError', {
+                        type: 'server',
+                        message: result.message
+                    });
+                }
+            }
         } catch (error) {
             console.error('Error al actualizar contraseña:', error);
-            
-            // Manejar diferentes tipos de errores
-            if (error.message?.toLowerCase().includes('expired') || 
-                error.message?.toLowerCase().includes('expirado')) {
-                setError('root.serverError', {
-                    type: 'server',
-                    message: 'El código de verificación ha expirado. Inicia el proceso nuevamente.'
-                });
-            } else if (error.message?.toLowerCase().includes('invalid') || 
-                       error.message?.toLowerCase().includes('inválido')) {
-                setError('root.serverError', {
-                    type: 'server',
-                    message: 'Código de verificación inválido. Inicia el proceso nuevamente.'
-                });
-            } else if (error.message?.toLowerCase().includes('weak') || 
-                       error.message?.toLowerCase().includes('débil')) {
-                setError('newPassword', {
-                    type: 'server',
-                    message: 'La contraseña no cumple con los requisitos de seguridad'
-                });
-            } else {
-                setError('root.serverError', {
-                    type: 'server',
-                    message: 'Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo.'
-                });
-            }
+            setError('root.serverError', {
+                type: 'server',
+                message: 'Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo.'
+            });
         }
     };
 
@@ -123,7 +122,7 @@ const UpdatePassword = () => {
     };
 
     // Verificar que tenemos los datos necesarios al cargar el componente
-    React.useEffect(() => {
+    useEffect(() => {
         if (!email || !verificationCode) {
             // Si no tenemos los datos necesarios, redirigir al inicio del proceso
             navigate('/recover-password', {
@@ -159,7 +158,7 @@ const UpdatePassword = () => {
 
     return (
         <PageContainer>
-            <BackButton />
+            <BackButton onClick={handleLoginClick}/>
 
             <Form onSubmit={handleSubmit(onSubmit)}>
                 {/* Error general del servidor */}
@@ -186,7 +185,7 @@ const UpdatePassword = () => {
                     register={register}
                     validationRules={validationRules.newPassword}
                     error={errors.newPassword?.message}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || isLoading}
                 />
 
                 {/* Indicador de fortaleza de contraseña */}
@@ -226,7 +225,7 @@ const UpdatePassword = () => {
                     register={register}
                     validationRules={validationRules.confirmPassword}
                     error={errors.confirmPassword?.message}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || isLoading}
                 />
 
                 {/* Indicador visual de coincidencia */}
@@ -245,10 +244,10 @@ const UpdatePassword = () => {
                 )}
 
                 <Button
-                    text={isSubmitting ? "Actualizando..." : "Cambiar contraseña"}
+                    text={(isSubmitting || isLoading) ? "Actualizando..." : "Cambiar contraseña"}
                     variant="primary"
                     type="submit"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || isLoading}
                 />
 
                 <QuestionText

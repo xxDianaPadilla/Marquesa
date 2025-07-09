@@ -13,6 +13,8 @@ import salesRoutes from './src/routes/sales.js';
 import clientsRoutes from './src/routes/clients.js';
 import reviewsRoutes from './src/routes/reviews.js';
 import categoriesRoutes from './src/routes/categories.js';
+// NUEVA LÍNEA - Importar rutas de recuperación de contraseña
+import passwordResetRoutes from './src/routes/passwordReset.js';
 
 const app = express();
 app.use(express.json());
@@ -36,5 +38,8 @@ app.use("/api/sales", salesRoutes);
 app.use("/api/clients", clientsRoutes);
 app.use("/api/reviews", reviewsRoutes);
 app.use("/api/categories", categoriesRoutes);
+
+// NUEVA LÍNEA - Usar rutas de recuperación de contraseña
+app.use('/api/password-reset', passwordResetRoutes);
 
 export default app;

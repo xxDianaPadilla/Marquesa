@@ -10,9 +10,13 @@ import Input from "../components/Input";
 import Button from "../components/Button";
 import QuestionText from "../components/QuestionText";
 import emailIcon from "../assets/emailIcon.png";
+// NUEVA IMPORTACIÓN - Hook para recuperación de contraseña
+import { usePasswordReset } from "../components/PasswordReset/Hooks/usePasswordReset";
 
 const RecoverPassword = () => {
     const navigate = useNavigate();
+    // NUEVO - Hook para manejar recuperación de contraseña
+    const { requestPasswordReset, isLoading } = usePasswordReset();
 
     const {
         register,
@@ -37,28 +41,41 @@ const RecoverPassword = () => {
         }
     };
 
+    // NUEVA FUNCIÓN - Manejar envío con validación en backend
     const onSubmit = async (data) => {
         try {
             clearErrors();
-            console.log('Solicitud de recuperación para:', data.email);
-            alert(`Se ha enviado un correo de recuperación a: ${data.email}`);
             
-        } catch (error) {
-            console.error('Error durante la recuperación:', error);
+            // Solicitar código de recuperación usando el hook
+            const result = await requestPasswordReset(data.email);
             
-            // Manejar diferentes tipos de errores
-            if (error.message?.toLowerCase().includes('not found') || 
-                error.message?.toLowerCase().includes('no encontrado')) {
-                setError('email', {
-                    type: 'server',
-                    message: 'No se encontró una cuenta con este correo electrónico'
+            if (result.success) {
+                // Si es exitoso, navegar a verificación con el email
+                navigate('/verification-code', { 
+                    state: { 
+                        email: data.email 
+                    } 
                 });
             } else {
-                setError('root.serverError', {
-                    type: 'server',
-                    message: 'Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo.'
-                });
+                // Si hay error, mostrar en el formulario
+                if (result.message === 'Usuario no existe') {
+                    setError('email', {
+                        type: 'server',
+                        message: 'No se encontró una cuenta con este correo electrónico'
+                    });
+                } else {
+                    setError('root.serverError', {
+                        type: 'server',
+                        message: result.message
+                    });
+                }
             }
+        } catch (error) {
+            console.error('Error durante la recuperación:', error);
+            setError('root.serverError', {
+                type: 'server',
+                message: 'Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo.'
+            });
         }
     };
 
@@ -95,14 +112,14 @@ const RecoverPassword = () => {
                     register={register}
                     validationRules={validationRules.email}
                     error={errors.email?.message}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || isLoading}
                 />
 
                 <Button
-                    text={isSubmitting ? "Enviando..." : "Enviar correo"}
+                    text={(isSubmitting || isLoading) ? "Enviando..." : "Enviar correo"}
                     variant="primary"
                     type="submit"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || isLoading}
                 />
 
                 <QuestionText

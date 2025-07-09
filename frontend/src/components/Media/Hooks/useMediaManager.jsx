@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 
 export const useMediaManager = () => {
     const [mediaItems, setMediaItems] = useState([]);
-    const [filteredItems, setFilteredItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -20,17 +19,42 @@ export const useMediaManager = () => {
 
     const API_BASE_URL = 'http://localhost:4000/api/media';
 
+    // Filtros computados
+    const filteredItems = useCallback(() => {
+        let filtered = mediaItems;
+
+        // Filtrar por tipo
+        if (selectedType !== 'todos') {
+            filtered = filtered.filter(item => item.type === selectedType);
+        }
+
+        // Filtrar por término de búsqueda
+        if (searchTerm.trim()) {
+            const searchLower = searchTerm.toLowerCase();
+            filtered = filtered.filter(item =>
+                (item.title && item.title.toLowerCase().includes(searchLower)) ||
+                (item.description && item.description.toLowerCase().includes(searchLower))
+            );
+        }
+
+        return filtered;
+    }, [mediaItems, selectedType, searchTerm]);
+
+    // Estadísticas computadas
+    const stats = useCallback(() => ({
+        total: mediaItems.length,
+        datoCurioso: mediaItems.filter(item => item.type === 'Dato Curioso').length,
+        tip: mediaItems.filter(item => item.type === 'Tip').length,
+        blog: mediaItems.filter(item => item.type === 'Blog').length,
+    }), [mediaItems]);
+
     // Fetch de elementos multimedia
     const fetchMediaItems = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
             
-            const params = new URLSearchParams();
-            if (selectedType !== 'todos') params.append('type', selectedType);
-            if (searchTerm.trim()) params.append('search', searchTerm);
-
-            const response = await fetch(`${API_BASE_URL}?${params}`);
+            const response = await fetch(API_BASE_URL);
             
             if (!response.ok) {
                 throw new Error(`Error ${response.status}: ${response.statusText}`);
@@ -69,9 +93,9 @@ export const useMediaManager = () => {
         } finally {
             setLoading(false);
         }
-    }, [selectedType, searchTerm]);
+    }, []);
 
-    // Crear nuevo elemento multimedia
+    // CRUD Operations
     const createMediaItem = async (formData) => {
         try {
             const response = await fetch(API_BASE_URL, {
@@ -94,7 +118,6 @@ export const useMediaManager = () => {
         }
     };
 
-    // Actualizar elemento multimedia
     const updateMediaItem = async (itemId, formData) => {
         try {
             const response = await fetch(`${API_BASE_URL}/${itemId}`, {
@@ -117,7 +140,6 @@ export const useMediaManager = () => {
         }
     };
 
-    // Eliminar elemento multimedia
     const deleteMediaItem = async (itemId) => {
         try {
             const response = await fetch(`${API_BASE_URL}/${itemId}`, {
@@ -138,32 +160,6 @@ export const useMediaManager = () => {
         }
     };
 
-    // Filtrar elementos
-    useEffect(() => {
-        let filtered = mediaItems;
-
-        // Filtrar por tipo
-        if (selectedType !== 'todos') {
-            filtered = filtered.filter(item => item.type === selectedType);
-        }
-
-        // Filtrar por término de búsqueda
-        if (searchTerm.trim()) {
-            const searchLower = searchTerm.toLowerCase();
-            filtered = filtered.filter(item =>
-                (item.title && item.title.toLowerCase().includes(searchLower)) ||
-                (item.description && item.description.toLowerCase().includes(searchLower))
-            );
-        }
-
-        setFilteredItems(filtered);
-    }, [mediaItems, selectedType, searchTerm]);
-
-    // Cargar datos iniciales
-    useEffect(() => {
-        fetchMediaItems();
-    }, [fetchMediaItems]);
-
     // Funciones para manejar modales
     const openModal = (modalType, item = null) => {
         setModals(prev => ({ ...prev, [modalType]: true }));
@@ -180,9 +176,15 @@ export const useMediaManager = () => {
         setSelectedItem(null);
     };
 
+    // Cargar datos iniciales
+    useEffect(() => {
+        fetchMediaItems();
+    }, [fetchMediaItems]);
+
     return {
         // Estados
-        mediaItems: filteredItems,
+        mediaItems: filteredItems(),
+        allItems: mediaItems,
         loading,
         error,
         searchTerm,
@@ -206,11 +208,6 @@ export const useMediaManager = () => {
         closeAllModals,
         
         // Estadísticas
-        stats: {
-            total: mediaItems.length,
-            datoCurioso: mediaItems.filter(item => item.type === 'Dato Curioso').length,
-            tip: mediaItems.filter(item => item.type === 'Tip').length,
-            blog: mediaItems.filter(item => item.type === 'Blog').length,
-        }
+        stats: stats()
     };
 };

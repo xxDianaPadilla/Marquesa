@@ -88,6 +88,7 @@ export const useMediaForm = (initialData = null) => {
         }
 
         // Para creación, requiere al menos un archivo
+        // Para edición, si no hay archivos nuevos, podemos asumir que mantendrá los existentes
         if (!isEdit && !files.image && !files.video) {
             newErrors.files = "Se requiere al menos una imagen o un video";
         }
@@ -114,10 +115,13 @@ export const useMediaForm = (initialData = null) => {
     // Preparar datos para envío
     const prepareFormData = useCallback(() => {
         const submitData = new FormData();
+        
+        // Agregar datos del formulario
         submitData.append('type', formData.type);
         submitData.append('title', formData.title);
         submitData.append('description', formData.description);
         
+        // Agregar archivos solo si existen
         if (files.image) {
             submitData.append('image', files.image);
         }
@@ -125,6 +129,17 @@ export const useMediaForm = (initialData = null) => {
         if (files.video) {
             submitData.append('video', files.video);
         }
+
+        // Debug: Verificar que se está enviando al menos un archivo
+        console.log('Preparando FormData:', {
+            type: formData.type,
+            title: formData.title,
+            description: formData.description,
+            hasImage: !!files.image,
+            hasVideo: !!files.video,
+            imageFile: files.image ? files.image.name : 'none',
+            videoFile: files.video ? files.video.name : 'none'
+        });
 
         return submitData;
     }, [formData, files]);
@@ -177,6 +192,11 @@ export const useMediaForm = (initialData = null) => {
         return hasTextChanges || hasFileChanges;
     }, [formData, files]);
 
+    // Función para verificar si hay archivos antes de enviar
+    const hasFiles = useCallback(() => {
+        return files.image || files.video;
+    }, [files]);
+
     return {
         // Estado
         formData,
@@ -196,6 +216,7 @@ export const useMediaForm = (initialData = null) => {
         
         // Utilidades
         getFilesInfo,
-        hasChanges
+        hasChanges,
+        hasFiles
     };
 };

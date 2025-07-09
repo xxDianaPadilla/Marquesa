@@ -17,8 +17,18 @@ import categoriesRoutes from './src/routes/categories.js';
 import passwordResetRoutes from './src/routes/passwordReset.js';
 
 const app = express();
-app.use(express.json());
+
+app.use(express.json({ limit: '50mb' }));
+
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+app.use(express.text({ limit: '50mb' }));
+
+app.use(express.raw({ limit: '50mb' }));
+
 app.use(cookieParser());
+
+// CORS (ya lo tenías)
 app.use(
     cors({
         origin: "http://localhost:5173",
@@ -26,6 +36,7 @@ app.use(
     })
 );
 
+// RUTAS 
 app.use('/api/products', productsRoutes);
 app.use('/api/media', mediaRoutes);
 app.use("/api/registerCustomers", registerClientsRoutes);

@@ -28,7 +28,8 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
             ...prev,
             [name]: value
         }));
-        
+
+        // Limpiar error del campo editado
         if (errors[name]) {
             setErrors(prev => ({
                 ...prev,
@@ -46,6 +47,7 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
                 [name]: selectedFiles[0]
             }));
 
+            // Limpiar error del campo editado
             if (errors[name]) {
                 setErrors(prev => ({
                     ...prev,
@@ -86,56 +88,35 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
     // Manejar envío del formulario
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
-        console.log("Enviando formulario...");
-        console.log("Datos del formulario:", formData);
-        console.log("Archivos:", files);
-        
+
         if (!validateForm()) {
-            console.log("Validación fallida:", errors);
             return;
         }
 
         setIsSubmitting(true);
 
         try {
+            // Crear FormData para enviar al hook
             const submitData = new FormData();
             submitData.append('type', formData.type);
             submitData.append('title', formData.title);
             submitData.append('description', formData.description);
-            
+
             if (files.image) {
                 submitData.append('image', files.image);
             }
-            
+
             if (files.video) {
                 submitData.append('video', files.video);
             }
 
-            console.log("Enviando datos al servidor...");
+            // Llamar al hook a través del callback onConfirm
+            // El hook se encargará de hacer el fetch y manejar errores
+            await onConfirm(submitData);
 
-            const response = await fetch('http://localhost:4000/api/media', {
-                method: 'POST',
-                body: submitData,
-            });
-
-            console.log("Respuesta del servidor:", response.status);
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                console.error("Error del servidor:", errorData);
-                throw new Error(errorData.message || 'Error al subir multimedia');
-            }
-
-            const result = await response.json();
-            console.log("Resultado exitoso:", result);
-            
-            // Llamar a la función de confirmación pasada como prop
-            onConfirm(result.media);
-            
         } catch (error) {
-            console.error("Error al subir multimedia:", error);
-            setErrors({ submit: error.message });
+            console.error("Error en el formulario:", error);
+            setErrors({ submit: error.message || "Error inesperado" });
         } finally {
             setIsSubmitting(false);
         }
@@ -151,8 +132,7 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
     return (
         <OverlayBackdrop isVisible={true} onClose={onClose}>
             <div className="flex items-center justify-center min-h-screen p-2 sm:p-4">
-                {/* Modal con altura fija y estructura flexbox */}
-                <div 
+                <div
                     className="bg-white rounded-lg sm:rounded-xl shadow-2xl w-full max-w-xl h-[90vh] sm:h-[85vh] flex flex-col overflow-hidden transform transition-all duration-300 ease-out border border-gray-200 mx-2 sm:mx-0"
                     onClick={(e) => e.stopPropagation()}
                 >
@@ -162,6 +142,7 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
                             Añadir Multimedia
                         </h2>
                         <button
+                            style={{ cursor: 'pointer' }}
                             onClick={onClose}
                             disabled={isSubmitting}
                             className="text-gray-400 hover:text-gray-600 transition-colors rounded-full p-1 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
@@ -208,9 +189,8 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
                                         value={formData.title}
                                         onChange={handleInputChange}
                                         disabled={isSubmitting}
-                                        className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                                            errors.title ? 'border-red-500' : 'border-gray-300'
-                                        }`}
+                                        className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${errors.title ? 'border-red-500' : 'border-gray-300'
+                                            }`}
                                         placeholder="Ingresa el título"
                                         style={{ fontFamily: 'Poppins, sans-serif' }}
                                     />
@@ -235,9 +215,8 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
                                         onChange={handleInputChange}
                                         disabled={isSubmitting}
                                         rows={3}
-                                        className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent resize-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                                            errors.description ? 'border-red-500' : 'border-gray-300'
-                                        }`}
+                                        className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent resize-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${errors.description ? 'border-red-500' : 'border-gray-300'
+                                            }`}
                                         placeholder="Describe el contenido multimedia"
                                         style={{ fontFamily: 'Poppins, sans-serif' }}
                                     />
@@ -268,9 +247,8 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
                                             accept="image/*"
                                             onChange={handleFileChange}
                                             disabled={isSubmitting}
-                                            className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                                                errors.image ? 'border-red-500' : 'border-gray-300'
-                                            }`}
+                                            className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${errors.image ? 'border-red-500' : 'border-gray-300'
+                                                }`}
                                         />
                                         {files.image && (
                                             <p className="text-sm text-gray-600 mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
@@ -300,9 +278,8 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
                                             accept="video/*"
                                             onChange={handleFileChange}
                                             disabled={isSubmitting}
-                                            className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                                                errors.video ? 'border-red-500' : 'border-gray-300'
-                                            }`}
+                                            className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${errors.video ? 'border-red-500' : 'border-gray-300'
+                                                }`}
                                         />
                                         {files.video && (
                                             <p className="text-sm text-gray-600 mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
@@ -407,7 +384,6 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
 
                 {/* Estilos CSS inline para scrollbar */}
                 <style jsx>{`
-                    /* Scrollbar personalizado para webkit */
                     .overflow-y-auto::-webkit-scrollbar {
                         width: 8px;
                     }

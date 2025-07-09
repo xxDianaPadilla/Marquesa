@@ -1,18 +1,21 @@
-import React, { useState } from "react";
+import React from "react";
 import OverlayBackdrop from "./OverlayBackdrop";
+import { useMediaForm } from "./Media/Hooks/useMediaForm";
 
 const MediaUploadModal = ({ onClose, onConfirm }) => {
-    const [formData, setFormData] = useState({
-        type: "Dato Curioso",
-        title: "",
-        description: ""
-    });
-    const [files, setFiles] = useState({
-        image: null,
-        video: null
-    });
-    const [errors, setErrors] = useState({});
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const {
+        formData,
+        files,
+        errors,
+        isSubmitting,
+        handleInputChange,
+        handleFileChange,
+        validateForm,
+        prepareFormData,
+        setIsSubmitting,
+        setErrors,
+        getFilesInfo
+    } = useMediaForm();
 
     // Tipos disponibles según el modelo
     const typeOptions = [
@@ -20,70 +23,6 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
         { value: "Tip", label: "Tip" },
         { value: "Blog", label: "Blog" }
     ];
-
-    // Manejar cambios en los inputs de texto
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
-
-        // Limpiar error del campo editado
-        if (errors[name]) {
-            setErrors(prev => ({
-                ...prev,
-                [name]: ""
-            }));
-        }
-    };
-
-    // Manejar cambios en los archivos
-    const handleFileChange = (e) => {
-        const { name, files: selectedFiles } = e.target;
-        if (selectedFiles && selectedFiles[0]) {
-            setFiles(prev => ({
-                ...prev,
-                [name]: selectedFiles[0]
-            }));
-
-            // Limpiar error del campo editado
-            if (errors[name]) {
-                setErrors(prev => ({
-                    ...prev,
-                    [name]: ""
-                }));
-            }
-        }
-    };
-
-    // Validar formulario
-    const validateForm = () => {
-        const newErrors = {};
-
-        if (!formData.title.trim()) {
-            newErrors.title = "El título es requerido";
-        }
-
-        if (!formData.description.trim()) {
-            newErrors.description = "La descripción es requerida";
-        }
-
-        if (!files.image && !files.video) {
-            newErrors.files = "Se requiere al menos una imagen o un video";
-        }
-
-        if (files.image && files.image.size > 5 * 1024 * 1024) {
-            newErrors.image = "La imagen no debe superar los 5MB";
-        }
-
-        if (files.video && files.video.size > 50 * 1024 * 1024) {
-            newErrors.video = "El video no debe superar los 50MB";
-        }
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
 
     // Manejar envío del formulario
     const handleSubmit = async (e) => {
@@ -96,24 +35,10 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
         setIsSubmitting(true);
 
         try {
-            // Crear FormData para enviar al hook
-            const submitData = new FormData();
-            submitData.append('type', formData.type);
-            submitData.append('title', formData.title);
-            submitData.append('description', formData.description);
-
-            if (files.image) {
-                submitData.append('image', files.image);
-            }
-
-            if (files.video) {
-                submitData.append('video', files.video);
-            }
-
-            // Llamar al hook a través del callback onConfirm
-            // El hook se encargará de hacer el fetch y manejar errores
+            const submitData = prepareFormData();
+            
+            // Llamar al callback del componente padre (MediaManager)
             await onConfirm(submitData);
-
         } catch (error) {
             console.error("Error en el formulario:", error);
             setErrors({ submit: error.message || "Error inesperado" });
@@ -122,12 +47,7 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
         }
     };
 
-    // Obtener información del archivo
-    const getFileInfo = (file) => {
-        if (!file) return "";
-        const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
-        return `${file.name} (${sizeInMB} MB)`;
-    };
+    const filesInfo = getFilesInfo();
 
     return (
         <OverlayBackdrop isVisible={true} onClose={onClose}>
@@ -250,12 +170,12 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
                                             className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${errors.image ? 'border-red-500' : 'border-gray-300'
                                                 }`}
                                         />
-                                        {files.image && (
+                                        {filesInfo.image && (
                                             <p className="text-sm text-gray-600 mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                                {getFileInfo(files.image)}
+                                                {filesInfo.image}
                                             </p>
                                         )}
-                                        {!files.image && (
+                                        {!filesInfo.image && (
                                             <p className="text-xs text-gray-500 mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                                 Máximo 5MB
                                             </p>
@@ -281,12 +201,12 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
                                             className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${errors.video ? 'border-red-500' : 'border-gray-300'
                                                 }`}
                                         />
-                                        {files.video && (
+                                        {filesInfo.video && (
                                             <p className="text-sm text-gray-600 mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                                {getFileInfo(files.video)}
+                                                {filesInfo.video}
                                             </p>
                                         )}
-                                        {!files.video && (
+                                        {!filesInfo.video && (
                                             <p className="text-xs text-gray-500 mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                                 Máximo 50MB
                                             </p>

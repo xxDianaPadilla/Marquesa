@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useMediaUtils } from './useMediaUtils';
 
 export const useMediaForm = (initialData = null) => {
@@ -22,6 +22,24 @@ export const useMediaForm = (initialData = null) => {
 
     // Estado de carga
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Efecto para cargar datos iniciales cuando cambien
+    useEffect(() => {
+        if (initialData) {
+            setFormData({
+                type: initialData.type || "Dato Curioso",
+                title: initialData.title || "",
+                description: initialData.description || ""
+            });
+            // Limpiar archivos al cambiar el item
+            setFiles({
+                image: null,
+                video: null
+            });
+            // Limpiar errores
+            setErrors({});
+        }
+    }, [initialData]);
 
     // Manejar cambios en inputs de texto
     const handleInputChange = useCallback((e) => {
@@ -70,6 +88,15 @@ export const useMediaForm = (initialData = null) => {
                     return newErrors;
                 });
             }
+
+            // Limpiar error general de archivos si existe
+            if (errors.files) {
+                setErrors(prev => {
+                    const newErrors = { ...prev };
+                    delete newErrors.files;
+                    return newErrors;
+                });
+            }
         }
     }, [validateFile, errors]);
 
@@ -88,7 +115,7 @@ export const useMediaForm = (initialData = null) => {
         }
 
         // Para creación, requiere al menos un archivo
-        // Para edición, si no hay archivos nuevos, podemos asumir que mantendrá los existentes
+        // Para edición, si no hay archivos nuevos, asumimos que mantendrá los existentes
         if (!isEdit && !files.image && !files.video) {
             newErrors.files = "Se requiere al menos una imagen o un video";
         }
@@ -130,17 +157,6 @@ export const useMediaForm = (initialData = null) => {
             submitData.append('video', files.video);
         }
 
-        // Debug: Verificar que se está enviando al menos un archivo
-        console.log('Preparando FormData:', {
-            type: formData.type,
-            title: formData.title,
-            description: formData.description,
-            hasImage: !!files.image,
-            hasVideo: !!files.video,
-            imageFile: files.image ? files.image.name : 'none',
-            videoFile: files.video ? files.video.name : 'none'
-        });
-
         return submitData;
     }, [formData, files]);
 
@@ -167,6 +183,12 @@ export const useMediaForm = (initialData = null) => {
                 title: data.title || "",
                 description: data.description || ""
             });
+            // Resetear archivos al cargar nuevos datos
+            setFiles({
+                image: null,
+                video: null
+            });
+            setErrors({});
         }
     }, []);
 
@@ -197,6 +219,28 @@ export const useMediaForm = (initialData = null) => {
         return files.image || files.video;
     }, [files]);
 
+    // Función para limpiar errores específicos
+    const clearErrors = useCallback((fieldNames = null) => {
+        if (fieldNames) {
+            const fields = Array.isArray(fieldNames) ? fieldNames : [fieldNames];
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                fields.forEach(field => delete newErrors[field]);
+                return newErrors;
+            });
+        } else {
+            setErrors({});
+        }
+    }, []);
+
+    // Función para establecer errores específicos
+    const setFieldError = useCallback((fieldName, message) => {
+        setErrors(prev => ({
+            ...prev,
+            [fieldName]: message
+        }));
+    }, []);
+
     return {
         // Estado
         formData,
@@ -213,6 +257,8 @@ export const useMediaForm = (initialData = null) => {
         loadInitialData,
         setIsSubmitting,
         setErrors,
+        clearErrors,
+        setFieldError,
         
         // Utilidades
         getFilesInfo,

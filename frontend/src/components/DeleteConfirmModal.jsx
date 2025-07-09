@@ -62,7 +62,7 @@ const DeleteConfirmModal = ({ item, onClose, onConfirm }) => {
         <OverlayBackdrop isVisible={true} onClose={onClose}>
             <div className="flex items-center justify-center min-h-screen p-2 sm:p-4">
                 {/* Modal con altura ajustada y estructura flexbox */}
-                <div 
+                <div
                     className="bg-white rounded-lg sm:rounded-xl shadow-2xl w-full max-w-lg h-auto max-h-[85vh] flex flex-col overflow-hidden transform transition-all duration-300 ease-out border border-gray-200 mx-2 sm:mx-0"
                     onClick={(e) => e.stopPropagation()}
                 >
@@ -82,6 +82,7 @@ const DeleteConfirmModal = ({ item, onClose, onConfirm }) => {
                             </p>
                         </div>
                         <button
+                            style={{ cursor: 'pointer' }}
                             onClick={onClose}
                             disabled={isDeleting}
                             className="text-gray-400 hover:text-gray-600 transition-colors rounded-full p-1 hover:bg-gray-100 disabled:opacity-50 flex-shrink-0"
@@ -119,7 +120,7 @@ const DeleteConfirmModal = ({ item, onClose, onConfirm }) => {
                                             {item.description}
                                         </p>
                                     )}
-                                    
+
                                     {/* Metadatos */}
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600 mb-3" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                         <div>
@@ -199,8 +200,8 @@ const DeleteConfirmModal = ({ item, onClose, onConfirm }) => {
                                 type="button"
                                 onClick={handleConfirm}
                                 disabled={isDeleting}
-                                className="w-full sm:w-auto px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                style={{ fontFamily: 'Poppins, sans-serif' }}
+                                className="w-full sm:w-auto px-4 py-2 text-white rounded-lg hover:bg-pink-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                style={{ fontFamily: 'Poppins, sans-serif', backgroundColor: '#FDB4B7', cursor: 'pointer' }}
                             >
                                 {isDeleting ? (
                                     <>

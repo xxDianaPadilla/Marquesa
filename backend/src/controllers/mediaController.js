@@ -77,42 +77,40 @@ mediaController.insertMedia = async (req, res) => {
       videoURL = videoResult.secure_url;
     }
 
-    // El modelo requiere ambos campos, así que usamos URLs vacías si no se proporcionan
-    // pero al menos uno debe tener contenido real
+    // Verificar que al menos uno tenga contenido
     if (!imageURL && !videoURL) {
-      return res.status(400).json({ 
-        message: "Se requiere al menos una imagen o un video" 
+      return res.status(400).json({
+        message: "Se requiere al menos una imagen o un video"
       });
     }
 
-    // Si no hay imagen, usar URL vacía
-    if (!imageURL) {
-      imageURL = "";
-    }
-
-    // Si no hay video, usar URL vacía  
-    if (!videoURL) {
-      videoURL = "";
-    }
-
-    // Crear nuevo elemento de media según el modelo exacto
+    // Si el modelo requiere que ambos campos tengan valor, usar un placeholder
+    // o cambiar el modelo para que no sean required
     const newMedia = new mediaModel({
       type,
-      imageURL,
-      videoURL,
-      // Campos adicionales (strict: false permite estos campos)
+      imageURL: imageURL || "N/A", // Usar placeholder si está vacío
+      videoURL: videoURL || "N/A", // Usar placeholder si está vacío
       title,
       description
     });
 
     await newMedia.save();
-    res.status(201).json({ 
+    res.status(201).json({
       message: "Elemento de media creado con éxito",
-      media: newMedia 
+      media: newMedia
     });
 
   } catch (error) {
     console.error("Error al crear el elemento de media:", error);
+    
+    // Manejar errores de validación de Mongoose
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ 
+        message: "Error de validación", 
+        details: error.message 
+      });
+    }
+    
     res.status(500).json({ message: "Error al crear el elemento de media" });
   }
 };

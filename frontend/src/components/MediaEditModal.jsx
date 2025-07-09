@@ -1,18 +1,22 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import OverlayBackdrop from "./OverlayBackdrop";
+import { useMediaForm } from "./Media/Hooks/useMediaForm";
 
 const MediaEditModal = ({ item, onClose, onConfirm }) => {
-    const [formData, setFormData] = useState({
-        type: "",
-        title: "",
-        description: ""
-    });
-    const [files, setFiles] = useState({
-        image: null,
-        video: null
-    });
-    const [errors, setErrors] = useState({});
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const {
+        formData,
+        files,
+        errors,
+        isSubmitting,
+        handleInputChange,
+        handleFileChange,
+        validateForm,
+        prepareFormData,
+        loadInitialData,
+        setIsSubmitting,
+        setErrors,
+        getFilesInfo
+    } = useMediaForm(item);
 
     // Tipos disponibles según el modelo
     const typeOptions = [
@@ -25,82 +29,20 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
     useEffect(() => {
         if (item) {
             console.log("Cargando datos del item para editar:", item);
-            setFormData({
-                type: item.type || "Dato Curioso",
-                title: item.title || "",
-                description: item.description || ""
-            });
+            loadInitialData(item);
         }
-    }, [item]);
-
-    // Manejar cambios en los inputs de texto
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
-        
-        if (errors[name]) {
-            setErrors(prev => ({
-                ...prev,
-                [name]: ""
-            }));
-        }
-    };
-
-    // Manejar cambios en los archivos
-    const handleFileChange = (e) => {
-        const { name, files: selectedFiles } = e.target;
-        if (selectedFiles && selectedFiles[0]) {
-            setFiles(prev => ({
-                ...prev,
-                [name]: selectedFiles[0]
-            }));
-
-            if (errors[name]) {
-                setErrors(prev => ({
-                    ...prev,
-                    [name]: ""
-                }));
-            }
-        }
-    };
-
-    // Validar formulario
-    const validateForm = () => {
-        const newErrors = {};
-
-        if (!formData.title.trim()) {
-            newErrors.title = "El título es requerido";
-        }
-
-        if (!formData.description.trim()) {
-            newErrors.description = "La descripción es requerida";
-        }
-
-        if (files.image && files.image.size > 5 * 1024 * 1024) {
-            newErrors.image = "La imagen no debe superar los 5MB";
-        }
-
-        if (files.video && files.video.size > 50 * 1024 * 1024) {
-            newErrors.video = "El video no debe superar los 50MB";
-        }
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
+    }, [item, loadInitialData]);
 
     // Manejar envío del formulario
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         console.log("Enviando formulario de edición...");
         console.log("Datos del formulario:", formData);
         console.log("Archivos nuevos:", files);
         console.log("Item original:", item);
-        
-        if (!validateForm()) {
+
+        if (!validateForm(true)) { // true para indicar que es edición
             console.log("Validación fallida:", errors);
             return;
         }
@@ -108,21 +50,7 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
         setIsSubmitting(true);
 
         try {
-            const submitData = new FormData();
-            submitData.append('type', formData.type);
-            submitData.append('title', formData.title);
-            submitData.append('description', formData.description);
-            
-            if (files.image) {
-                submitData.append('image', files.image);
-                console.log("Agregando nueva imagen:", files.image.name);
-            }
-            
-            if (files.video) {
-                submitData.append('video', files.video);
-                console.log("Agregando nuevo video:", files.video.name);
-            }
-
+            const submitData = prepareFormData();
             console.log("Enviando datos al servidor para editar...");
 
             const response = await fetch(`http://localhost:4000/api/media/${item._id}`, {
@@ -140,10 +68,10 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
 
             const result = await response.json();
             console.log("Resultado exitoso de edición:", result);
-            
+
             // Llamar a la función de confirmación pasada como prop
             onConfirm(result.media);
-            
+
         } catch (error) {
             console.error("Error al actualizar multimedia:", error);
             setErrors({ submit: error.message });
@@ -152,20 +80,15 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
         }
     };
 
-    // Obtener información del archivo
-    const getFileInfo = (file) => {
-        if (!file) return "";
-        const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
-        return `${file.name} (${sizeInMB} MB)`;
-    };
-
     if (!item) return null;
+
+    const filesInfo = getFilesInfo();
 
     return (
         <OverlayBackdrop isVisible={true} onClose={onClose}>
             <div className="flex items-center justify-center min-h-screen p-2 sm:p-4">
                 {/* Modal con estructura idéntica al MediaUploadModal */}
-                <div 
+                <div
                     className="bg-white rounded-lg sm:rounded-xl shadow-2xl w-full max-w-xl h-[90vh] sm:h-[85vh] flex flex-col overflow-hidden transform transition-all duration-300 ease-out border border-gray-200 mx-2 sm:mx-0"
                     onClick={(e) => e.stopPropagation()}
                 >
@@ -175,6 +98,7 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
                             Editar Multimedia
                         </h2>
                         <button
+                            style={{ cursor: 'pointer' }}
                             onClick={onClose}
                             disabled={isSubmitting}
                             className="text-gray-400 hover:text-gray-600 transition-colors rounded-full p-1 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
@@ -221,9 +145,8 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
                                         value={formData.title}
                                         onChange={handleInputChange}
                                         disabled={isSubmitting}
-                                        className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                                            errors.title ? 'border-red-500' : 'border-gray-300'
-                                        }`}
+                                        className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${errors.title ? 'border-red-500' : 'border-gray-300'
+                                            }`}
                                         placeholder="Ingresa el título"
                                         style={{ fontFamily: 'Poppins, sans-serif' }}
                                     />
@@ -248,9 +171,8 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
                                         onChange={handleInputChange}
                                         disabled={isSubmitting}
                                         rows={3}
-                                        className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent resize-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                                            errors.description ? 'border-red-500' : 'border-gray-300'
-                                        }`}
+                                        className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent resize-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${errors.description ? 'border-red-500' : 'border-gray-300'
+                                            }`}
                                         placeholder="Describe el contenido multimedia"
                                         style={{ fontFamily: 'Poppins, sans-serif' }}
                                     />
@@ -281,9 +203,9 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
                                                 <span className="text-sm text-gray-600 flex-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                                     Imagen actual
                                                 </span>
-                                                <a 
-                                                    href={item.imageURL} 
-                                                    target="_blank" 
+                                                <a
+                                                    href={item.imageURL}
+                                                    target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="text-blue-600 hover:text-blue-800 text-xs"
                                                 >
@@ -299,9 +221,9 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
                                                 <span className="text-sm text-gray-600 flex-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                                     Video actual
                                                 </span>
-                                                <a 
-                                                    href={item.videoURL} 
-                                                    target="_blank" 
+                                                <a
+                                                    href={item.videoURL}
+                                                    target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="text-blue-600 hover:text-blue-800 text-xs"
                                                 >
@@ -336,16 +258,15 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
                                             accept="image/*"
                                             onChange={handleFileChange}
                                             disabled={isSubmitting}
-                                            className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                                                errors.image ? 'border-red-500' : 'border-gray-300'
-                                            }`}
+                                            className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${errors.image ? 'border-red-500' : 'border-gray-300'
+                                                }`}
                                         />
-                                        {files.image && (
+                                        {filesInfo.image && (
                                             <p className="text-sm text-gray-600 mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                                {getFileInfo(files.image)}
+                                                {filesInfo.image}
                                             </p>
                                         )}
-                                        {!files.image && (
+                                        {!filesInfo.image && (
                                             <p className="text-xs text-gray-500 mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                                 Reemplaza la imagen actual (máximo 5MB)
                                             </p>
@@ -368,16 +289,15 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
                                             accept="video/*"
                                             onChange={handleFileChange}
                                             disabled={isSubmitting}
-                                            className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                                                errors.video ? 'border-red-500' : 'border-gray-300'
-                                            }`}
+                                            className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${errors.video ? 'border-red-500' : 'border-gray-300'
+                                                }`}
                                         />
-                                        {files.video && (
+                                        {filesInfo.video && (
                                             <p className="text-sm text-gray-600 mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                                {getFileInfo(files.video)}
+                                                {filesInfo.video}
                                             </p>
                                         )}
-                                        {!files.video && (
+                                        {!filesInfo.video && (
                                             <p className="text-xs text-gray-500 mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                                 Reemplaza el video actual (máximo 50MB)
                                             </p>
@@ -432,15 +352,15 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
                                     onClick={onClose}
                                     disabled={isSubmitting}
                                     className="w-full sm:w-auto px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    style={{ fontFamily: 'Poppins, sans-serif' }}
+                                    style={{ fontFamily: 'Poppins, sans-serif', cursor: 'pointer' }}
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
-                                    className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                    style={{ fontFamily: 'Poppins, sans-serif' }}
+                                    className="w-full sm:w-auto px-4 py-2 text-white rounded-lg hover:bg-pink-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    style={{ fontFamily: 'Poppins, sans-serif', backgroundColor: '#FDB4B7', cursor: 'pointer' }}
                                 >
                                     {isSubmitting ? (
                                         <>

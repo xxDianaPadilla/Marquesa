@@ -31,8 +31,7 @@ const MediaManager = () => {
         setSearchTerm,
         setSelectedType,
         openModal,
-        closeModal,
-        closeAllModals
+        closeModal
     } = useMediaManager();
 
     // Hook de notificaciones
@@ -56,18 +55,10 @@ const MediaManager = () => {
         }
     }, [error, showError]);
 
-    // Handlers para modales
-    const handleOpenUploadModal = () => {
-        openModal('upload');
-    };
-
-    const handleEdit = (item) => {
-        openModal('edit', item);
-    };
-
-    const handleDelete = (item) => {
-        openModal('delete', item);
-    };
+    // Handlers simplificados para modales
+    const handleEdit = (item) => openModal('edit', item);
+    const handleDelete = (item) => openModal('delete', item);
+    const handleOpenUploadModal = () => openModal('upload');
 
     const handleCopyUrl = async (url) => {
         const result = await copyToClipboard(url);
@@ -78,7 +69,7 @@ const MediaManager = () => {
         }
     };
 
-    // Handlers para confirmaciones de modales
+    // Handlers para confirmaciones de modales con manejo de errores unificado
     const handleConfirmUpload = async (newItem) => {
         const result = await createMediaItem(newItem);
         if (result.success) {
@@ -109,26 +100,13 @@ const MediaManager = () => {
         }
     };
 
-    // Handlers para cerrar modales
-    const handleCloseUploadModal = () => {
-        closeModal('upload');
-    };
-
-    const handleCloseEditModal = () => {
-        closeModal('edit');
-    };
-
-    const handleCloseDeleteModal = () => {
-        closeModal('delete');
-    };
-
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Navbar Admin */}
             <NavbarAdmin />
 
             {/* Componente de notificaciones */}
-            <NotificationContainer 
+            <NotificationContainer
                 notifications={notifications}
                 onRemove={removeNotification}
             />
@@ -160,7 +138,7 @@ const MediaManager = () => {
             {/* Modales */}
             {modals.upload && (
                 <MediaUploadModal
-                    onClose={handleCloseUploadModal}
+                    onClose={() => closeModal('upload')}
                     onConfirm={handleConfirmUpload}
                 />
             )}
@@ -168,7 +146,7 @@ const MediaManager = () => {
             {modals.edit && selectedItem && (
                 <MediaEditModal
                     item={selectedItem}
-                    onClose={handleCloseEditModal}
+                    onClose={() => closeModal('edit')}
                     onConfirm={handleConfirmEdit}
                 />
             )}
@@ -176,7 +154,7 @@ const MediaManager = () => {
             {modals.delete && selectedItem && (
                 <DeleteConfirmModal
                     item={selectedItem}
-                    onClose={handleCloseDeleteModal}
+                    onClose={() => closeModal('delete')}
                     onConfirm={handleConfirmDelete}
                 />
             )}

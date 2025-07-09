@@ -1,15 +1,25 @@
-import React, { useState } from "react";
-import { useForm } from 'react-hook-form';
+import React, { useState, useEffect } from "react";
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+
+// Componentes generales
 import PageContainer from "../components/PageContainer";
 import Form from "../components/Form";
 import Title from "../components/Title";
-import Input from "../components/Input";
 import Button from "../components/Button";
 import QuestionText from "../components/QuestionText";
 import Separator from "../components/Separator";
 import GoogleButton from "../components/GoogleButton";
 import BackButton from "../components/BackButton";
+
+// Componentes específicos del registro
+import RegisterInput from "../components/Register/RegisterInput";
+import TermsCheckbox from "../components/Register/TermsCheckbox";
+
+// Hook personalizado
+import useRegisterForm from "../components/Clients/Hooks/useRegisterForm";
+
+// Iconos
 import userIcon from "../assets/user.png";
 import phoneIcon from "../assets/phone.png";
 import emailIcon from "../assets/emailIcon.png";
@@ -17,212 +27,172 @@ import calendarIcon from "../assets/calendar.png";
 import locationIcon from "../assets/location.png";
 import lockIcon from "../assets/lockIcon.png";
 
+/**
+ * Página de registro de usuarios
+ * Utiliza componentes modulares y hook personalizado para manejar la lógica
+ */
 const Register = () => {
+    // Estado para mostrar/ocultar contraseña
     const [showPassword, setShowPassword] = useState(false);
+    
+    // Navegación y autenticación
     const navigate = useNavigate();
+    const { isAuthenticated, user } = useAuth();
 
+    // Hook personalizado para el formulario de registro
     const {
-        register,
+        formData,
+        errors,
+        isLoading,
+        handleInputChange,
         handleSubmit,
-        formState: { errors, isSubmitting },
-        setError,
-        clearErrors,
-        watch
-    } = useForm({
-        mode: 'onChange',
-        defaultValues: {
-            name: '',
-            phone: '',
-            email: '',
-            birthDate: '',
-            address: '',
-            password: '',
-            acceptTerms: false
+        clearErrors
+    } = useRegisterForm();
+
+    /**
+     * Redirigir si ya está autenticado
+     */
+    useEffect(() => {
+        if (isAuthenticated && user) {
+            if (user.userType === 'admin') {
+                navigate('/dashboard');
+            } else {
+                navigate('/home');
+            }
         }
-    });
+    }, [isAuthenticated, user, navigate]);
 
-    const acceptTerms = watch('acceptTerms');
-
-    const validationRules = {
-        name: {
-            required: 'El nombre es requerido',
-            minLength: {
-                value: 2,
-                message: 'El nombre debe tener al menos 2 caracteres'
-            }
-        },
-        phone: {
-            required: 'El teléfono es requerido',
-            pattern: {
-                value: /^[0-9+\-\s()]+$/,
-                message: 'Ingresa un número de teléfono válido'
-            }
-        },
-        email: {
-            required: 'El correo electrónico es requerido',
-            pattern: {
-                value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                message: 'El correo electrónico no es válido'
-            }
-        },
-        birthDate: {
-            required: 'La fecha de nacimiento es requerida'
-        },
-        address: {
-            required: 'La dirección es requerida'
-        },
-        password: {
-            required: 'La contraseña es requerida',
-            minLength: {
-                value: 6,
-                message: 'La contraseña debe tener al menos 6 caracteres'
-            }
-        },
-        acceptTerms: {
-            required: 'Debes aceptar los términos y condiciones'
-        }
-    };
-
-    const onSubmit = async (data) => {
-        try {
-            clearErrors();
-            console.log('Datos del registro:', data);
-        
-            alert('Registro exitoso!');
-            navigate('/login');
-            
-        } catch (error) {
-            console.error('Error durante el registro:', error);
-            setError('root.serverError', {
-                type: 'server',
-                message: 'Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo.'
-            });
-        }
-    };
-
+    /**
+     * Maneja la navegación al login
+     */
     const handleLoginClick = (e) => {
         e.preventDefault();
         navigate('/login');
     };
 
+    /**
+     * Maneja el click en Google (placeholder)
+     */
+    const handleGoogleRegister = () => {
+        console.log('Registro con Google - Por implementar');
+        // TODO: Implementar registro con Google
+    };
+
     return (
         <PageContainer>
+            {/* Botón de regresar */}
             <BackButton onClick={handleLoginClick} />
             
-            <Form onSubmit={handleSubmit(onSubmit)}>
+            <Form onSubmit={handleSubmit}>
                 {/* Error general del servidor */}
-                {errors.root?.serverError && (
-                    <div className="auth-error-message">
-                        <span>{errors.root.serverError.message}</span>
+                {errors.general && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                        <div className="flex items-center">
+                            <svg className="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="text-red-700 text-sm" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                {errors.general}
+                            </span>
+                        </div>
                     </div>
                 )}
 
                 <Title>Regístrate</Title>
 
-                <Input
-                    name="name"
+                {/* Campo de nombre completo */}
+                <RegisterInput
+                    name="fullName"
                     type="text"
-                    placeholder="Nombre"
+                    placeholder="Nombre completo"
                     icon={userIcon}
-                    register={register}
-                    validationRules={validationRules.name}
-                    error={errors.name?.message}
-                    disabled={isSubmitting}
+                    value={formData.fullName}
+                    onChange={handleInputChange}
+                    error={errors.fullName}
+                    disabled={isLoading}
                 />
 
-                <Input
+                {/* Campo de teléfono */}
+                <RegisterInput
                     name="phone"
                     type="tel"
                     placeholder="Teléfono"
                     icon={phoneIcon}
-                    register={register}
-                    validationRules={validationRules.phone}
-                    error={errors.phone?.message}
-                    disabled={isSubmitting}
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    error={errors.phone}
+                    disabled={isLoading}
                 />
 
-                <Input
+                {/* Campo de email */}
+                <RegisterInput
                     name="email"
                     type="email"
-                    placeholder="Correo"
+                    placeholder="Correo electrónico"
                     icon={emailIcon}
-                    register={register}
-                    validationRules={validationRules.email}
-                    error={errors.email?.message}
-                    disabled={isSubmitting}
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    error={errors.email}
+                    disabled={isLoading}
                 />
 
-                <Input
+                {/* Campo de fecha de nacimiento */}
+                <RegisterInput
                     name="birthDate"
                     type="date"
                     placeholder="Fecha de nacimiento"
                     icon={calendarIcon}
-                    register={register}
-                    validationRules={validationRules.birthDate}
-                    error={errors.birthDate?.message}
-                    disabled={isSubmitting}
+                    value={formData.birthDate}
+                    onChange={handleInputChange}
+                    error={errors.birthDate}
+                    disabled={isLoading}
                 />
 
-                <Input
+                {/* Campo de dirección */}
+                <RegisterInput
                     name="address"
                     type="text"
-                    placeholder="Dirección"
+                    placeholder="Dirección completa"
                     icon={locationIcon}
-                    register={register}
-                    validationRules={validationRules.address}
-                    error={errors.address?.message}
-                    disabled={isSubmitting}
+                    value={formData.address}
+                    onChange={handleInputChange}
+                    error={errors.address}
+                    disabled={isLoading}
                 />
 
-                <Input
+                {/* Campo de contraseña */}
+                <RegisterInput
                     name="password"
                     type="password"
                     placeholder="Contraseña"
                     icon={lockIcon}
                     showPassword={showPassword}
                     onTogglePassword={() => setShowPassword(!showPassword)}
-                    register={register}
-                    validationRules={validationRules.password}
-                    error={errors.password?.message}
-                    disabled={isSubmitting}
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    error={errors.password}
+                    disabled={isLoading}
                 />
 
                 {/* Checkbox de términos y condiciones */}
-                <div className="flex items-start gap-3 mt-4">
-                    <input
-                        {...register('acceptTerms', validationRules.acceptTerms)}
-                        type="checkbox"
-                        id="terms"
-                        className="w-4 h-4 mt-1 rounded border border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2"
-                        disabled={isSubmitting}
-                    />
-                    <label htmlFor="terms" className="text-sm text-gray-700 leading-relaxed"
-                        style={{ fontFamily: 'Poppins, sans-serif' }}>
-                        Al registrarme, acepto los{" "}
-                        <span className="text-pink-500 underline cursor-pointer" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                            Términos y Condiciones
-                        </span>{" "}
-                        y la{" "}
-                        <span className="text-pink-500 underline cursor-pointer" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                            Política de Privacidad
-                        </span>{" "}
-                        de MARQUESA.
-                    </label>
-                </div>
-                {errors.acceptTerms && (
-                    <div className="text-red-500 text-sm mt-1 italic">
-                        {errors.acceptTerms.message}
-                    </div>
-                )}
-                <br />
-
-                <Button
-                    text={isSubmitting ? "Creando cuenta..." : "Crear cuenta"}
-                    variant="primary"
-                    type="submit"
-                    disabled={isSubmitting || !acceptTerms}
+                <TermsCheckbox
+                    checked={formData.acceptTerms}
+                    onChange={handleInputChange}
+                    error={errors.acceptTerms}
+                    disabled={isLoading}
                 />
 
+                <br />
+
+                {/* Botón de registro */}
+                <Button
+                    text={isLoading ? "Creando cuenta..." : "Crear cuenta"}
+                    variant="primary"
+                    type="submit"
+                    disabled={isLoading || !formData.acceptTerms}
+                />
+
+                {/* Link para ir al login */}
                 <QuestionText
                     question="¿Ya tienes una cuenta?"
                     linkText="Inicia sesión"
@@ -231,7 +201,8 @@ const Register = () => {
 
                 <Separator text="o" />
 
-                <GoogleButton />
+                {/* Botón de Google */}
+                <GoogleButton onClick={handleGoogleRegister} />
             </Form>
         </PageContainer>
     );

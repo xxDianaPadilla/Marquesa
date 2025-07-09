@@ -12,7 +12,7 @@ import logoutIcon from '../assets/logout.png';
 
 const NavbarAdmin = () => {
     const navigate = useNavigate();
-    const location = useLocation(); 
+    const location = useLocation();
 
     const handleMediaClick = (e) => {
         e.preventDefault();
@@ -66,9 +66,9 @@ const NavbarAdmin = () => {
         const baseClasses = "w-10 h-10 flex items-center justify-center rounded-lg transition-all duration-200 group";
         const activeClasses = "bg-white/30 shadow-inner";
         const hoverClasses = "hover:bg-white/20";
-        
-        return isActive(path) 
-            ? `${baseClasses} ${activeClasses}` 
+
+        return isActive(path)
+            ? `${baseClasses} ${activeClasses}`
             : `${baseClasses} ${hoverClasses}`;
     };
 
@@ -77,9 +77,9 @@ const NavbarAdmin = () => {
         const baseClasses = "w-5 h-5 object-contain filter brightness-0 invert transition-transform duration-200";
         const activeClasses = "scale-110";
         const hoverClasses = "group-hover:scale-110";
-        
-        return isActive(path) 
-            ? `${baseClasses} ${activeClasses}` 
+
+        return isActive(path)
+            ? `${baseClasses} ${activeClasses}`
             : `${baseClasses} ${hoverClasses}`;
     };
 
@@ -100,11 +100,12 @@ const NavbarAdmin = () => {
                 {/* Navigation Icons */}
                 <nav className="flex flex-col space-y-4 flex-1">
                     {/* Statistics Icon */}
-                    <button 
+                    <button
                         className={getButtonClasses('/dashboard')}
                         onClick={handleDashboardClick}
                     >
                         <img
+                            style={{ cursor: 'pointer' }}
                             src={statisticsIcon}
                             alt="Estadísticas"
                             className={getIconClasses('/dashboard')}
@@ -112,11 +113,12 @@ const NavbarAdmin = () => {
                     </button>
 
                     {/* Flower Icon */}
-                    <button 
+                    <button
                         className={getButtonClasses('/products')}
                         onClick={handleProductsClick}
                     >
                         <img
+                            style={{ cursor: 'pointer' }}
                             src={flowerIcon}
                             alt="Flores"
                             className={getIconClasses('/products')}
@@ -124,11 +126,12 @@ const NavbarAdmin = () => {
                     </button>
 
                     {/* Shopping Cart Icon */}
-                    <button 
+                    <button
                         className={getButtonClasses('/sales')}
                         onClick={handleSalesClick}
                     >
                         <img
+                            style={{ cursor: 'pointer' }}
                             src={shoppingCartIcon}
                             alt="Carrito"
                             className={getIconClasses('/sales')}
@@ -136,11 +139,12 @@ const NavbarAdmin = () => {
                     </button>
 
                     {/* Media Icon */}
-                    <button 
+                    <button
                         className={getButtonClasses('/media')}
                         onClick={handleMediaClick}
                     >
                         <img
+                            style={{ cursor: 'pointer' }}
                             src={mediaIcon}
                             alt="Media"
                             className={getIconClasses('/media')}
@@ -148,11 +152,12 @@ const NavbarAdmin = () => {
                     </button>
 
                     {/* Reviews Icon */}
-                    <button 
+                    <button
                         className={getButtonClasses('/reviews')}
                         onClick={handleReviewsClick}
                     >
                         <img
+                            style={{ cursor: 'pointer' }}
                             src={reviewsIcon}
                             alt="Reseñas"
                             className={getIconClasses('/reviews')}
@@ -160,11 +165,12 @@ const NavbarAdmin = () => {
                     </button>
 
                     {/* Categories Icon */}
-                    <button 
+                    <button
                         className={getButtonClasses('/categories')}
                         onClick={handleCategoriesClick}
                     >
                         <img
+                            style={{ cursor: 'pointer' }}
                             src={categoriesIcon}
                             alt="Categorías"
                             className={getIconClasses('/categories')}
@@ -176,6 +182,7 @@ const NavbarAdmin = () => {
                 <div className="mt-auto">
                     <button className="w-10 h-10 flex items-center justify-center hover:bg-white/20 rounded-lg transition-colors duration-200 group">
                         <img
+                            style={{ cursor: 'pointer' }}
                             onClick={handleLogout}
                             src={logoutIcon}
                             alt="Cerrar sesión"

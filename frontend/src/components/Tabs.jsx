@@ -23,12 +23,12 @@ export const TabsTrigger = ({ value, children }) => {
 
   return (
     <button
+      style={{ cursor: 'pointer' }}
       onClick={() => setActiveTab(value)}
-      className={`flex-1 px-4 py-2 text-center transition-all duration-200 rounded-md ${
-        isActive
+      className={`flex-1 px-4 py-2 text-center transition-all duration-200 rounded-md ${isActive
           ? 'bg-white text-black font-semibold shadow-sm'
           : 'text-gray-500 hover:text-[#CD5277]'
-      }`}
+        }`}
     >
       {children}
     </button>

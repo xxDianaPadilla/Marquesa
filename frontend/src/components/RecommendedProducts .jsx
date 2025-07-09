@@ -60,9 +60,9 @@ const RecommendedProducts = () => {
     <section id="productos-destacados" className="bg-pink-50 py-8 sm:py-14">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h2 className="text-2xl sm:text-3xl lg:text-4xl font-medium text-gray-900 text-center mb-2" style={{ fontFamily: "Poppins" }}>
-También te podrían gustar        </h2>
+          También te podrían gustar        </h2>
         <p className="text-center text-gray-600 mb-8 sm:mb-10 text-base sm:text-lg max-w-2xl mx-auto" style={{ fontFamily: "Poppins" }}>
-otros productos de nuestro catalogo que te puedan gustar        </p>
+          otros productos de nuestro catalogo que te puedan gustar        </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {recommended.map((product) => (
@@ -97,22 +97,21 @@ otros productos de nuestro catalogo que te puedan gustar        </p>
                     {product.price.toFixed(2)}$
                   </span>
                   <button
+                    style={{ cursor: 'pointer' }}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleToggleFavorite(product.id);
                     }}
-                    className={`p-1 rounded-full transition-all duration-200 transform hover:scale-110 ${
-                      favorites.has(product.id)
-                        ? 'bg-red-100 hover:bg-red-200'
-                        : 'hover:bg-gray-100'
-                    }`}
+                    className={`p-1 rounded-full transition-all duration-200 transform hover:scale-110 ${favorites.has(product.id)
+                      ? 'bg-red-100 hover:bg-red-200'
+                      : 'hover:bg-gray-100'
+                      }`}
                   >
                     <img
                       src={iconFavorites}
                       alt="Agregar a favoritos"
-                      className={`w-5 h-6 transition-all duration-200 ${
-                        favorites.has(product.id) ? 'filter-red' : ''
-                      }`}
+                      className={`w-5 h-6 transition-all duration-200 ${favorites.has(product.id) ? 'filter-red' : ''
+                        }`}
                       style={
                         favorites.has(product.id)
                           ? { filter: 'hue-rotate(320deg) saturate(2)' }
@@ -122,6 +121,7 @@ otros productos de nuestro catalogo que te puedan gustar        </p>
                   </button>
                 </div>
                 <button
+                  style={{ cursor: 'pointer' }}
                   onClick={(e) => {
                     e.stopPropagation();
                     handleAddToCart(product);
@@ -137,6 +137,7 @@ otros productos de nuestro catalogo que te puedan gustar        </p>
 
         <div className="flex justify-center mt-8 sm:mt-10">
           <button
+            style={{ cursor: 'pointer' }}
             onClick={handleViewAll}
             className="text-[#E8ACD2] border border-[#E8ACD2] hover:bg-[#E8ACD2] hover:text-white py-3 px-6 sm:py-2 sm:px-6 rounded-lg text-sm font-medium transition-all w-full sm:w-auto hover:scale-105"
           >

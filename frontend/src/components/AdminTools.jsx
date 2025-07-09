@@ -9,6 +9,7 @@ const AdminTools = () => {
             {/* Chat Icon */}
             <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
                 <img
+                    style={{ cursor: 'pointer' }}
                     src={chatIcon}
                     alt="Chat"
                     className="w-6 h-6"
@@ -18,6 +19,7 @@ const AdminTools = () => {
             {/* Bell/Notification Icon */}
             <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
                 <img
+                    style={{ cursor: 'pointer' }}
                     src={bellIcon}
                     alt="Notifications"
                     className="w-6 h-6"

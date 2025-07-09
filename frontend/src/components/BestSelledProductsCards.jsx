@@ -115,7 +115,7 @@ const BestSelledProductsCards = () => {
 
             {bestSelling.length > 0 && (
                 <div className="mt-6 pt-4 border-t border-gray-100">
-                    <button className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors duration-200" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                    <button className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors duration-200" style={{ fontFamily: 'Poppins, sans-serif', cursor: 'pointer' }}>
                         Ver todos los productos
                     </button>
                 </div>

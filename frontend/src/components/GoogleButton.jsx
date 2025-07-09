@@ -12,7 +12,8 @@ const GoogleButton = ({ onClick }) => {
             style={{
                 fontFamily: 'Poppins, sans-serif',
                 fontSize: '16px',
-                borderColor: '#FDB4B7'
+                borderColor: '#FDB4B7',
+                cursor: 'pointer'
             }}
         >
             <img

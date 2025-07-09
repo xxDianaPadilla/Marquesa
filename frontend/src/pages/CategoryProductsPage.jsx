@@ -22,6 +22,7 @@ const CategoryProductsPage = () => {
     const [products, setProducts] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [categoryName, setCategoryName] = useState('');
+    
     const handleProductDetailClick = (e) => {
         e.preventDefault();
         navigate('/ProductDetail');
@@ -138,11 +139,6 @@ const CategoryProductsPage = () => {
     };
 
     /**
-     * Maneja el click en un producto individual
-     * @param {Object} product - Producto clickeado
-     */
-
-    /**
      * Formatea el precio del producto
      * @param {number} price - Precio a formatear
      * @returns {string} Precio formateado
@@ -155,11 +151,11 @@ const CategoryProductsPage = () => {
      * Componente de estado de carga
      */
     const LoadingState = () => (
-        <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center justify-center min-h-[300px] sm:min-h-[400px]">
             <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FDB4B7] mx-auto mb-4"></div>
+                <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-[#FDB4B7] mx-auto mb-4"></div>
                 <p 
-                    className="text-white-600"
+                    className="text-gray-600 text-sm sm:text-base"
                     style={{ fontFamily: 'Poppins, sans-serif' }}
                 >
                     Cargando productos...
@@ -172,10 +168,10 @@ const CategoryProductsPage = () => {
      * Componente de estado vacío
      */
     const EmptyState = () => (
-        <div className="text-center py-12">
-            <div className="text-white-400 mb-4">
+        <div className="text-center py-8 sm:py-12">
+            <div className="text-gray-400 mb-4">
                 <svg 
-                    className="w-16 h-16 mx-auto" 
+                    className="w-12 h-12 sm:w-16 sm:h-16 mx-auto" 
                     fill="none" 
                     stroke="currentColor" 
                     viewBox="0 0 24 24"
@@ -189,7 +185,7 @@ const CategoryProductsPage = () => {
                 </svg>
             </div>
             <p 
-                className="text-gray-500"
+                className="text-gray-500 text-sm sm:text-base"
                 style={{ fontFamily: 'Poppins, sans-serif' }}
             >
                 No hay productos disponibles en esta categoría
@@ -198,34 +194,35 @@ const CategoryProductsPage = () => {
     );
 
     return (
-        <div className="min-h-screen bg-white-50">
+        <div className="min-h-screen bg-gray-50">
             {/* Header de la página */}
             <Header />
 
             {/* Navegación de categorías */}
-        <section className="bg-white pt-4 pb-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <CategoryNavigation
-                categories={categories}
-                activeCategory={categoryId}
-                onCategoryChange={handleCategoryChange}
-            />
-        </div>
-        </section>
+            <section className="bg-white pt-2 sm:pt-4 pb-4 sm:pb-6">
+                <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+                    <CategoryNavigation
+                        categories={categories}
+                        activeCategory={categoryId}
+                        onCategoryChange={handleCategoryChange}
+                    />
+                </div>
+            </section>
+
             {/* Contenido principal */}
-            <main className="max-w-7xl mx-auto px-4 py-8">
+            <main className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
                 {/* Header de la sección */}
-                <div className="flex justify-between items-center mb-6">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6">
                     {/* Título y contador de productos */}
-                    <div>
+                    <div className="mb-3 sm:mb-0">
                         <h2 
-                            className="text-2xl font-bold text-gray-800 mb-1"
+                            className="text-xl sm:text-2xl font-bold text-gray-800 mb-1"
                             style={{ fontFamily: 'Poppins, sans-serif' }}
                         >
                             {categoryName}
                         </h2>
                         <p 
-                            className="text-sm text-gray-500"
+                            className="text-xs sm:text-sm text-gray-500"
                             style={{ fontFamily: 'Poppins, sans-serif' }}
                         >
                             {products.length} productos
@@ -239,7 +236,7 @@ const CategoryProductsPage = () => {
                 ) : products.length === 0 ? (
                     <EmptyState />
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-6">
                         {products.map((product) => (
                             <div
                                 key={product.id}
@@ -252,14 +249,14 @@ const CategoryProductsPage = () => {
                                     <img
                                         src={product.image}
                                         alt={product.name}
-                                        className="w-full h-48 object-cover"
+                                        className="w-full h-32 sm:h-48 object-cover"
                                     />
                                     
                                     {/* Badge de precio */}
-                                    <div className="absolute top-3 right-3 bg-white bg-opacity-90 
-                                                  rounded-full px-3 py-1 shadow-md">
+                                    <div className="absolute top-2 sm:top-3 right-2 sm:right-3 bg-white bg-opacity-90 
+                                                  rounded-full px-2 sm:px-3 py-1 shadow-md">
                                         <span 
-                                            className="text-sm font-bold text-gray-800"
+                                            className="text-xs sm:text-sm font-bold text-gray-800"
                                             style={{ fontFamily: 'Poppins, sans-serif' }}
                                         >
                                             {formatPrice(product.price)}
@@ -272,13 +269,13 @@ const CategoryProductsPage = () => {
                                             e.stopPropagation();
                                             console.log('Añadir a favoritos:', product.id);
                                         }}
-                                        className="absolute top-3 left-3 bg-white bg-opacity-80 hover:bg-opacity-100 
-                                                 rounded-full p-2 transition-all duration-200 shadow-md
+                                        className="absolute top-2 sm:top-3 left-2 sm:left-3 bg-white bg-opacity-80 hover:bg-opacity-100 
+                                                 rounded-full p-1.5 sm:p-2 transition-all duration-200 shadow-md
                                                  hover:shadow-lg transform hover:scale-105 cursor-pointer"
                                         aria-label="Añadir a favoritos"
                                     >
                                         <svg 
-                                            className="w-4 h-4 text-gray-600 hover:text-red-500" 
+                                            className="w-3 h-3 sm:w-4 sm:h-4 text-gray-600 hover:text-red-500" 
                                             fill="none" 
                                             stroke="currentColor" 
                                             viewBox="0 0 24 24"
@@ -294,16 +291,16 @@ const CategoryProductsPage = () => {
                                 </div>
 
                                 {/* Información del producto */}
-                                <div className="p-4">
+                                <div className="p-2 sm:p-4">
                                     <h3 
-                                        className="text-lg font-semibold text-gray-800 mb-2 line-clamp-2"
+                                        className="text-sm sm:text-lg font-semibold text-gray-800 mb-1 sm:mb-2 line-clamp-2"
                                         style={{ fontFamily: 'Poppins, sans-serif' }}
                                     >
                                         {product.name}
                                     </h3>
                                     
                                     <p 
-                                        className="text-sm text-gray-600 line-clamp-2 mb-3"
+                                        className="text-xs sm:text-sm text-gray-600 line-clamp-2 mb-2 sm:mb-3 hidden sm:block"
                                         style={{ fontFamily: 'Poppins, sans-serif' }}
                                     >
                                         {product.description}
@@ -315,43 +312,17 @@ const CategoryProductsPage = () => {
                                             e.stopPropagation();
                                             console.log('Añadir al carrito:', product.id);
                                         }}
-                                        className="w-full bg-[#E8ACD2] hover:bg-[#E096C8] text-white py-2 px-4 
-                                                 rounded-lg transition-colors duration-200 text-sm font-medium
+                                        className="w-full bg-[#E8ACD2] hover:bg-[#E096C8] text-white py-1.5 sm:py-2 px-2 sm:px-4 
+                                                 rounded-lg transition-colors duration-200 text-xs sm:text-sm font-medium
                                                  cursor-pointer hover:scale-105"
                                         style={{ fontFamily: 'Poppins, sans-serif' }}
                                     >
-                                        Añadir al carrito
+                                        <span className="hidden sm:inline">Añadir al carrito</span>
+                                        <span className="sm:hidden">Añadir</span>
                                     </button>
                                 </div>
                             </div>
                         ))}
-                    </div>
-                )}
-
-                {/* Mensaje si no hay productos */}
-                {products.length === 0 && (
-                    <div className="text-center py-12">
-                        <div className="text-gray-400 mb-4">
-                            <svg 
-                                className="w-16 h-16 mx-auto" 
-                                fill="none" 
-                                stroke="currentColor" 
-                                viewBox="0 0 24 24"
-                            >
-                                <path 
-                                    strokeLinecap="round" 
-                                    strokeLinejoin="round" 
-                                    strokeWidth={1} 
-                                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" 
-                                />
-                            </svg>
-                        </div>
-                        <p 
-                            className="text-gray-500"
-                            style={{ fontFamily: 'Poppins, sans-serif' }}
-                        >
-                            No hay productos disponibles en esta categoría
-                        </p>
                     </div>
                 )}
             </main>

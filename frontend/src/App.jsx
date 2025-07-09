@@ -25,6 +25,7 @@ import ShoppingCart from './pages/ShoppingCart';
 import ProductDetail from './pages/ProductDetail';
 import CustomProducts from './pages/CustomProducts';
 import PaymentProcessPage from './pages/PaymentProcessPage';
+import MediaPage from './pages/MediaPage';
 
 function App() {
   return (
@@ -93,6 +94,7 @@ function App() {
           <Route path="/categoryProducts" element={<CategoryProducts />} />
           <Route path="/categoria/:categoryId" element={<CategoryProductsPage />} />
           <Route path="/ProductDetail" element={<ProductDetail />} />
+          <Route path="/mediaPage" element={<MediaPage />} />
 
           {/* Rutas del admin */}
           <Route path="/dashboard"

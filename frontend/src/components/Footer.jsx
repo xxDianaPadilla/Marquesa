@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 // import { useNavigate, useLocation } from 'react-router-dom';
 
 // Importar los iconos disponibles
@@ -11,7 +12,7 @@ import telephoneIcon from '../assets/telephoneIcon.png';
 
 const Footer = () => {
   // const location = useLocation();
-  // const navigate = useNavigate();
+  const navigate = useNavigate();
 
   // const handleAboutUsClick = () => {
   //   navigate('/aboutUs');
@@ -33,9 +34,9 @@ const Footer = () => {
   //   navigate('/history');
   // };
 
-  // const handleBlogsClick = () => {
-  //   navigate('/blogs');
-  // };
+  const handleMediaClick = () => {
+    navigate('/mediaPage');
+  };
 
   // const handleDeliveryInfoClick = () => {
   //   navigate('/delivery');
@@ -59,15 +60,15 @@ const Footer = () => {
           </h2>
           <p className="text-sm text-gray-600 tracking-wide">TIENDA DE REGALOS</p>
           <div className="flex justify-center mt-4">
-            <div className="mt-2 h-px bg-gray-300" style={{width: "400px"}}></div>
+            <div className="mt-2 h-px bg-gray-300" style={{ width: "400px" }}></div>
             <div className="mx-4 text-gray-400"><img src={footerFlowerIcon} alt="Flores" className="w-4 h-4" /></div>
-            <div className="mt-2 h-px bg-gray-300"style={{width: "400px"}}></div>
+            <div className="mt-2 h-px bg-gray-300" style={{ width: "400px" }}></div>
           </div>
         </div>
 
         {/* Contenido principal del footer */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
-          
+
           {/* Información de contacto */}
           <div>
             <h3 className="text-lg font-semibold text-gray-800 mb-6 italic">Información</h3>
@@ -132,33 +133,33 @@ const Footer = () => {
           <div>
             <h3 className="text-lg font-semibold text-gray-800 mb-6 italic">Avisos y políticas</h3>
             <div className="space-y-3">
-              <p 
+              <p
                 className="text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
-                // onClick={handleTermsConditionsClick}
+              // onClick={handleTermsConditionsClick}
               >
                 Términos y Condiciones
               </p>
-              <p 
+              <p
                 className="text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
-                // onClick={handleCondicionesOfertasClick}
+              // onClick={handleCondicionesOfertasClick}
               >
                 Condiciones Ofertas
               </p>
-              <p 
+              <p
                 className="text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
-                // onClick={handleConcursosClick}
+              // onClick={handleConcursosClick}
               >
                 Concursos y Rifas
               </p>
-              <p 
+              <p
                 className="text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
-                // onClick={handleDeliveryInfoClick}
+              // onClick={handleDeliveryInfoClick}
               >
                 Delivery info
               </p>
-              <p 
+              <p
                 className="text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
-                // onClick={handlePrivacyPoliciesClick}
+              // onClick={handlePrivacyPoliciesClick}
               >
                 Privacidad
               </p>
@@ -169,21 +170,21 @@ const Footer = () => {
           <div>
             <h3 className="text-lg font-semibold text-gray-800 mb-6 italic">Sobre nosotros</h3>
             <div className="space-y-3 mb-6">
-              <p 
+              <p
                 className="text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
-                // onClick={handleServicesClick}
+              // onClick={handleServicesClick}
               >
                 Servicios
               </p>
-              <p 
+              <p
                 className="text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
-                // onClick={handleHistoryClick}
+              // onClick={handleHistoryClick}
               >
                 Historia
               </p>
-              <p 
+              <p
                 className="text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
-                // onClick={handleBlogsClick}
+                onClick={handleMediaClick}
               >
                 Blogs
               </p>
@@ -193,19 +194,19 @@ const Footer = () => {
             <div>
               <h4 className="text-lg font-semibold text-gray-800 mb-4 italic">Síguenos</h4>
               <div className="flex space-x-3">
-                <a 
-                  href="https://www.facebook.com/share/1C5F39CLta/?mibextid=wwXIfr" 
-                  target="_blank" 
+                <a
+                  href="https://www.facebook.com/share/1C5F39CLta/?mibextid=wwXIfr"
+                  target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Facebook"
                   className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors"
                 >
                   <img src={facebook} alt="Facebook" className="w-5 h-5" />
                 </a>
-                <a 
-                  href="https://www.instagram.com/marquesasv?igsh=MW9oNmxldWFxZXpnMw==" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
+                <a
+                  href="https://www.instagram.com/marquesasv?igsh=MW9oNmxldWFxZXpnMw=="
+                  target="_blank"
+                  rel="noopener noreferrer"
                   aria-label="Instagram"
                   className="w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-500 rounded-full flex items-center justify-center hover:from-purple-700 hover:to-pink-600 transition-colors"
                 >

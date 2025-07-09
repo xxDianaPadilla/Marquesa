@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 
 export const useMediaManager = () => {
     const [mediaItems, setMediaItems] = useState([]);
@@ -19,8 +19,8 @@ export const useMediaManager = () => {
 
     const API_BASE_URL = 'http://localhost:4000/api/media';
 
-    // Filtros computados
-    const filteredItems = useCallback(() => {
+    // Filtros computados con useMemo para optimización
+    const filteredItems = useMemo(() => {
         let filtered = mediaItems;
 
         // Filtrar por tipo
@@ -40,8 +40,8 @@ export const useMediaManager = () => {
         return filtered;
     }, [mediaItems, selectedType, searchTerm]);
 
-    // Estadísticas computadas
-    const stats = useCallback(() => ({
+    // Estadísticas computadas con useMemo
+    const stats = useMemo(() => ({
         total: mediaItems.length,
         datoCurioso: mediaItems.filter(item => item.type === 'Dato Curioso').length,
         tip: mediaItems.filter(item => item.type === 'Tip').length,
@@ -95,9 +95,11 @@ export const useMediaManager = () => {
         }
     }, []);
 
-    // CRUD Operations
-    const createMediaItem = async (formData) => {
+    // Función optimizada para crear elemento multimedia
+    const createMediaItem = useCallback(async (formData) => {
         try {
+            setError(null);
+            
             const response = await fetch(API_BASE_URL, {
                 method: 'POST',
                 body: formData,
@@ -109,17 +111,23 @@ export const useMediaManager = () => {
             }
 
             const result = await response.json();
-            await fetchMediaItems(); // Refrescar lista
+            
+            // Actualizar estado local de forma optimizada
+            setMediaItems(prev => [result.media, ...prev]);
+            
             return { success: true, data: result.media };
             
         } catch (error) {
             console.error('Error al crear multimedia:', error);
             return { success: false, error: error.message };
         }
-    };
+    }, []);
 
-    const updateMediaItem = async (itemId, formData) => {
+    // Función optimizada para actualizar elemento multimedia
+    const updateMediaItem = useCallback(async (itemId, formData) => {
         try {
+            setError(null);
+            
             const response = await fetch(`${API_BASE_URL}/${itemId}`, {
                 method: 'PUT',
                 body: formData,
@@ -131,17 +139,27 @@ export const useMediaManager = () => {
             }
 
             const result = await response.json();
-            await fetchMediaItems(); // Refrescar lista
+            
+            // Actualizar estado local de forma optimizada
+            setMediaItems(prev => 
+                prev.map(item => 
+                    item._id === itemId ? result.media : item
+                )
+            );
+            
             return { success: true, data: result.media };
             
         } catch (error) {
             console.error('Error al actualizar multimedia:', error);
             return { success: false, error: error.message };
         }
-    };
+    }, []);
 
-    const deleteMediaItem = async (itemId) => {
+    // Función optimizada para eliminar elemento multimedia
+    const deleteMediaItem = useCallback(async (itemId) => {
         try {
+            setError(null);
+            
             const response = await fetch(`${API_BASE_URL}/${itemId}`, {
                 method: 'DELETE',
             });
@@ -151,63 +169,95 @@ export const useMediaManager = () => {
                 throw new Error(errorData.message || 'Error al eliminar multimedia');
             }
 
-            await fetchMediaItems(); // Refrescar lista
+            // Actualizar estado local de forma optimizada
+            setMediaItems(prev => prev.filter(item => item._id !== itemId));
+            
             return { success: true };
             
         } catch (error) {
             console.error('Error al eliminar multimedia:', error);
             return { success: false, error: error.message };
         }
-    };
+    }, []);
 
-    // Funciones para manejar modales
-    const openModal = (modalType, item = null) => {
+    // Funciones optimizadas para manejar modales
+    const openModal = useCallback((modalType, item = null) => {
         setModals(prev => ({ ...prev, [modalType]: true }));
         if (item) setSelectedItem(item);
-    };
+    }, []);
 
-    const closeModal = (modalType) => {
+    const closeModal = useCallback((modalType) => {
         setModals(prev => ({ ...prev, [modalType]: false }));
         if (modalType !== 'upload') setSelectedItem(null);
-    };
+    }, []);
 
-    const closeAllModals = () => {
+    const closeAllModals = useCallback(() => {
         setModals({ upload: false, edit: false, delete: false });
         setSelectedItem(null);
-    };
+    }, []);
+
+    // Función para refrescar datos
+    const refreshItems = useCallback(() => {
+        fetchMediaItems();
+    }, [fetchMediaItems]);
+
+    // Función optimizada para búsqueda
+    const handleSearch = useCallback((newSearchTerm) => {
+        setSearchTerm(newSearchTerm);
+    }, []);
+
+    // Función optimizada para filtro por tipo
+    const handleTypeFilter = useCallback((newType) => {
+        setSelectedType(newType);
+    }, []);
 
     // Cargar datos iniciales
     useEffect(() => {
         fetchMediaItems();
     }, [fetchMediaItems]);
 
+    // Limpiar selectedItem cuando se cierre el modal
+    useEffect(() => {
+        const hasOpenModal = Object.values(modals).some(isOpen => isOpen);
+        if (!hasOpenModal && selectedItem) {
+            setSelectedItem(null);
+        }
+    }, [modals, selectedItem]);
+
     return {
-        // Estados
-        mediaItems: filteredItems(),
+        // Estados principales
+        mediaItems: filteredItems,
         allItems: mediaItems,
         loading,
         error,
+        
+        // Estados de filtros
         searchTerm,
         selectedType,
+        
+        // Estados de modales
         modals,
         selectedItem,
+        
+        // Estadísticas
+        stats,
         
         // Acciones de API
         createMediaItem,
         updateMediaItem,
         deleteMediaItem,
-        refreshItems: fetchMediaItems,
+        refreshItems,
         
-        // Filtros
-        setSearchTerm,
-        setSelectedType,
+        // Filtros optimizados
+        setSearchTerm: handleSearch,
+        setSelectedType: handleTypeFilter,
         
-        // Modales
+        // Modales optimizados
         openModal,
         closeModal,
         closeAllModals,
         
-        // Estadísticas
-        stats: stats()
+        // Utilidades
+        setError
     };
 };

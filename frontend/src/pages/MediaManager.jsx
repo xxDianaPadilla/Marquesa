@@ -3,8 +3,6 @@ import NavbarAdmin from "../components/NavbarAdmin";
 import MediaUploadModal from "../components/MediaUploadModal";
 import MediaEditModal from "../components/MediaEditModal";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
-
-// Componentes optimizados
 import MediaHeader from "../components/MediaHeader";
 import MediaContent from "../components/MediaContent";
 import NotificationContainer from "../components/NotificationContainer";
@@ -56,49 +54,74 @@ const MediaManager = () => {
     }, [error, showError]);
 
     // Handlers simplificados para modales
-    const handleEdit = (item) => openModal('edit', item);
-    const handleDelete = (item) => openModal('delete', item);
-    const handleOpenUploadModal = () => openModal('upload');
+    const handleEdit = React.useCallback((item) => {
+        openModal('edit', item);
+    }, [openModal]);
 
-    const handleCopyUrl = async (url) => {
+    const handleDelete = React.useCallback((item) => {
+        openModal('delete', item);
+    }, [openModal]);
+
+    const handleOpenUploadModal = React.useCallback(() => {
+        openModal('upload');
+    }, [openModal]);
+
+    // Handler para copiar URLs
+    const handleCopyUrl = React.useCallback(async (url) => {
         const result = await copyToClipboard(url);
         if (result.success) {
             showSuccess("URL copiada al portapapeles");
         } else {
             showError(result.error || "Error al copiar URL");
         }
-    };
+    }, [copyToClipboard, showSuccess, showError]);
 
     // Handlers para confirmaciones de modales con manejo de errores unificado
-    const handleConfirmUpload = async (newItem) => {
-        const result = await createMediaItem(newItem);
-        if (result.success) {
-            closeModal('upload');
-            showSuccess("Multimedia agregada exitosamente");
-        } else {
-            showError(result.error);
+    const handleConfirmUpload = React.useCallback(async (formData) => {
+        try {
+            const result = await createMediaItem(formData);
+            if (result.success) {
+                closeModal('upload');
+                showSuccess("Multimedia agregada exitosamente");
+            } else {
+                showError(result.error);
+            }
+        } catch (error) {
+            showError("Error inesperado al crear multimedia");
         }
-    };
+    }, [createMediaItem, closeModal, showSuccess, showError]);
 
-    const handleConfirmEdit = async (editedItem) => {
-        const result = await updateMediaItem(selectedItem._id, editedItem);
-        if (result.success) {
-            closeModal('edit');
-            showSuccess("Multimedia editada exitosamente");
-        } else {
-            showError(result.error);
+    const handleConfirmEdit = React.useCallback(async (formData) => {
+        if (!selectedItem) return;
+        
+        try {
+            const result = await updateMediaItem(selectedItem._id, formData);
+            if (result.success) {
+                closeModal('edit');
+                showSuccess("Multimedia editada exitosamente");
+            } else {
+                showError(result.error);
+            }
+        } catch (error) {
+            showError("Error inesperado al editar multimedia");
         }
-    };
+    }, [selectedItem, updateMediaItem, closeModal, showSuccess, showError]);
 
-    const handleConfirmDelete = async () => {
-        const result = await deleteMediaItem(selectedItem._id);
-        if (result.success) {
-            closeModal('delete');
-            showSuccess("Multimedia eliminada exitosamente");
-        } else {
-            showError(result.error);
+    const handleConfirmDelete = React.useCallback(async () => {
+        if (!selectedItem) return;
+        
+        try {
+            const result = await deleteMediaItem(selectedItem._id);
+            if (result.success) {
+                closeModal('delete');
+                showSuccess("Multimedia eliminada exitosamente");
+            } else {
+                showError(result.error);
+            }
+        } catch (error) {
+            showError("Error inesperado al eliminar multimedia");
         }
-    };
+    }, [selectedItem, deleteMediaItem, closeModal, showSuccess, showError]);
 
     return (
         <div className="min-h-screen bg-gray-50">

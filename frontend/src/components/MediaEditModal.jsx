@@ -28,7 +28,6 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
     // Cargar datos del item al abrir el modal
     useEffect(() => {
         if (item) {
-            console.log("Cargando datos del item para editar:", item);
             loadInitialData(item);
         }
     }, [item, loadInitialData]);
@@ -37,13 +36,7 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        console.log("Enviando formulario de edición...");
-        console.log("Datos del formulario:", formData);
-        console.log("Archivos nuevos:", files);
-        console.log("Item original:", item);
-
         if (!validateForm(true)) { // true para indicar que es edición
-            console.log("Validación fallida:", errors);
             return;
         }
 
@@ -51,30 +44,12 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
 
         try {
             const submitData = prepareFormData();
-            console.log("Enviando datos al servidor para editar...");
-
-            const response = await fetch(`http://localhost:4000/api/media/${item._id}`, {
-                method: 'PUT',
-                body: submitData,
-            });
-
-            console.log("Respuesta del servidor:", response.status);
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                console.error("Error del servidor:", errorData);
-                throw new Error(errorData.message || 'Error al actualizar multimedia');
-            }
-
-            const result = await response.json();
-            console.log("Resultado exitoso de edición:", result);
-
-            // Llamar a la función de confirmación pasada como prop
-            onConfirm(result.media);
-
+            
+            // Llamar al callback del componente padre (MediaManager)
+            await onConfirm(submitData);
         } catch (error) {
             console.error("Error al actualizar multimedia:", error);
-            setErrors({ submit: error.message });
+            setErrors({ submit: error.message || "Error inesperado" });
         } finally {
             setIsSubmitting(false);
         }
@@ -87,7 +62,6 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
     return (
         <OverlayBackdrop isVisible={true} onClose={onClose}>
             <div className="flex items-center justify-center min-h-screen p-2 sm:p-4">
-                {/* Modal con estructura idéntica al MediaUploadModal */}
                 <div
                     className="bg-white rounded-lg sm:rounded-xl shadow-2xl w-full max-w-xl h-[90vh] sm:h-[85vh] flex flex-col overflow-hidden transform transition-all duration-300 ease-out border border-gray-200 mx-2 sm:mx-0"
                     onClick={(e) => e.stopPropagation()}
@@ -384,7 +358,6 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
 
                 {/* Estilos CSS inline para scrollbar */}
                 <style jsx>{`
-                    /* Scrollbar personalizado para webkit */
                     .overflow-y-auto::-webkit-scrollbar {
                         width: 8px;
                     }

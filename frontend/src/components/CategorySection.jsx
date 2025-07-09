@@ -37,19 +37,19 @@ const CategorySection = ({
     };
 
     return (
-        <section className="mb-12">
+        <section className="mb-8 sm:mb-12">
             {/* Header de la sección */}
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6">
                 {/* Título y contador de productos */}
-                <div>
+                <div className="mb-3 sm:mb-0">
                     <h2 
-                        className="text-2xl font-bold text-gray-800 mb-1"
+                        className="text-xl sm:text-2xl font-bold text-gray-800 mb-1"
                         style={{ fontFamily: 'Poppins, sans-serif' }}
                     >
                         {title}
                     </h2>
                     <p 
-                        className="text-sm text-gray-500"
+                        className="text-xs sm:text-sm text-gray-500"
                         style={{ fontFamily: 'Poppins, sans-serif' }}
                     >
                         {products.length} productos
@@ -60,13 +60,13 @@ const CategorySection = ({
                 <button
                     onClick={handleViewAllClick}
                     className="text-[#CD5277] hover:text-[#B8476A] font-medium text-sm
-                             transition-colors duration-200 flex items-center space-x-1
-                             cursor-pointer hover:scale-105"
+                             transition-colors duration-200 flex items-center justify-start sm:justify-center space-x-1
+                             cursor-pointer hover:scale-105 self-start sm:self-center"
                     style={{ fontFamily: 'Poppins, sans-serif' }}
                 >
                     <span>Ver todos</span>
                     <svg 
-                        className="w-4 h-4" 
+                        className="w-3 h-3 sm:w-4 sm:h-4" 
                         fill="none" 
                         stroke="currentColor" 
                         viewBox="0 0 24 24"
@@ -84,12 +84,12 @@ const CategorySection = ({
             {/* Scroll horizontal de productos */}
             <div className="relative">
                 {/* Contenedor con scroll horizontal */}
-                <div className="flex space-x-6 overflow-x-auto scrollbar-hide pb-4 px-1">
+                <div className="flex space-x-3 sm:space-x-6 overflow-x-auto scrollbar-hide pb-2 sm:pb-4 px-1">
                     {products.map((product) => (
                         <div
                             key={product.id}
                             onClick={() => handleProductClick(product)}
-                            className="flex-shrink-0 w-72 bg-white rounded-lg shadow-md overflow-hidden 
+                            className="flex-shrink-0 w-56 sm:w-72 bg-white rounded-lg shadow-md overflow-hidden 
                                      hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:scale-105"
                         >
                             {/* Imagen del producto */}
@@ -97,14 +97,14 @@ const CategorySection = ({
                                 <img
                                     src={product.image}
                                     alt={product.name}
-                                    className="w-full h-48 object-cover"
+                                    className="w-full h-36 sm:h-48 object-cover"
                                 />
                                 
                                 {/* Badge de precio */}
-                                <div className="absolute top-3 right-3 bg-white bg-opacity-90 
-                                              rounded-full px-3 py-1 shadow-md">
+                                <div className="absolute top-2 sm:top-3 right-2 sm:right-3 bg-white bg-opacity-90 
+                                              rounded-full px-2 sm:px-3 py-1 shadow-md">
                                     <span 
-                                        className="text-sm font-bold text-gray-800"
+                                        className="text-xs sm:text-sm font-bold text-gray-800"
                                         style={{ fontFamily: 'Poppins, sans-serif' }}
                                     >
                                         {formatPrice(product.price)}
@@ -117,13 +117,13 @@ const CategorySection = ({
                                         e.stopPropagation();
                                         console.log('Añadir a favoritos:', product.id);
                                     }}
-                                    className="absolute top-3 left-3 bg-white bg-opacity-80 hover:bg-opacity-100 
-                                             rounded-full p-2 transition-all duration-200 shadow-md
+                                    className="absolute top-2 sm:top-3 left-2 sm:left-3 bg-white bg-opacity-80 hover:bg-opacity-100 
+                                             rounded-full p-1.5 sm:p-2 transition-all duration-200 shadow-md
                                              hover:shadow-lg transform hover:scale-105 cursor-pointer"
                                     aria-label="Añadir a favoritos"
                                 >
                                     <svg 
-                                        className="w-4 h-4 text-gray-600 hover:text-red-500" 
+                                        className="w-3 h-3 sm:w-4 sm:h-4 text-gray-600 hover:text-red-500" 
                                         fill="none" 
                                         stroke="currentColor" 
                                         viewBox="0 0 24 24"
@@ -139,16 +139,16 @@ const CategorySection = ({
                             </div>
 
                             {/* Información del producto */}
-                            <div className="p-4">
+                            <div className="p-3 sm:p-4">
                                 <h3 
-                                    className="text-lg font-semibold text-gray-800 mb-2 line-clamp-2"
+                                    className="text-base sm:text-lg font-semibold text-gray-800 mb-1 sm:mb-2 line-clamp-2"
                                     style={{ fontFamily: 'Poppins, sans-serif' }}
                                 >
                                     {product.name}
                                 </h3>
                                 
                                 <p 
-                                    className="text-sm text-gray-600 line-clamp-2 mb-3"
+                                    className="text-xs sm:text-sm text-gray-600 line-clamp-2 mb-2 sm:mb-3"
                                     style={{ fontFamily: 'Poppins, sans-serif' }}
                                 >
                                     {product.description}
@@ -160,8 +160,8 @@ const CategorySection = ({
                                         e.stopPropagation();
                                         console.log('Añadir al carrito:', product.id);
                                     }}
-                                    className="w-full bg-[#E8ACD2] hover:bg-[#E096C8] text-white py-2 px-4 
-                                             rounded-lg transition-colors duration-200 text-sm font-medium
+                                    className="w-full bg-[#E8ACD2] hover:bg-[#E096C8] text-white py-1.5 sm:py-2 px-3 sm:px-4 
+                                             rounded-lg transition-colors duration-200 text-xs sm:text-sm font-medium
                                              cursor-pointer hover:scale-105"
                                     style={{ fontFamily: 'Poppins, sans-serif' }}
                                 >
@@ -172,17 +172,17 @@ const CategorySection = ({
                     ))}
                 </div>
 
-                {/* Indicadores de scroll (gradientes en los bordes) */}
-                <div className="absolute top-0 left-0 w-8 h-full bg-gradient-to-r from-gray-50 to-transparent pointer-events-none"></div>
-                <div className="absolute top-0 right-0 w-8 h-full bg-gradient-to-l from-gray-50 to-transparent pointer-events-none"></div>
+                {/* Indicadores de scroll (gradientes en los bordes) - solo en desktop */}
+                <div className="hidden sm:block absolute top-0 left-0 w-8 h-full bg-gradient-to-r from-gray-50 to-transparent pointer-events-none"></div>
+                <div className="hidden sm:block absolute top-0 right-0 w-8 h-full bg-gradient-to-l from-gray-50 to-transparent pointer-events-none"></div>
             </div>
 
             {/* Mensaje si no hay productos */}
             {products.length === 0 && (
-                <div className="text-center py-12">
+                <div className="text-center py-8 sm:py-12">
                     <div className="text-gray-400 mb-4">
                         <svg 
-                            className="w-16 h-16 mx-auto" 
+                            className="w-12 h-12 sm:w-16 sm:h-16 mx-auto" 
                             fill="none" 
                             stroke="currentColor" 
                             viewBox="0 0 24 24"
@@ -196,7 +196,7 @@ const CategorySection = ({
                         </svg>
                     </div>
                     <p 
-                        className="text-gray-500"
+                        className="text-gray-500 text-sm sm:text-base"
                         style={{ fontFamily: 'Poppins, sans-serif' }}
                     >
                         No hay productos disponibles en esta categoría

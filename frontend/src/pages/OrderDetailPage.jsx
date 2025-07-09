@@ -38,7 +38,7 @@ const OrderDetail = () => {
           <br />
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
-              <button className="p-2 hover:bg-gray-100 rounded-lg" onClick={handleSavesClick}>
+              <button className="p-2 hover:bg-gray-100 rounded-lg" onClick={handleSavesClick} style={{cursor: 'pointer'}}>
                 <ArrowLeft className="h-5 w-5 text-gray-600" />
               </button>
               <div>

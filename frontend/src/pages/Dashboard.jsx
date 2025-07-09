@@ -76,10 +76,10 @@ const Dashboard = () => {
                             ¿Deseas habilitar la ruleta de descuentos y promociones?
                         </p>
                         <div className="flex space-x-3">
-                            <button className="flex-1 px-4 py-2 text-sm rounded-lg hover:bg-orange-600 transition-colors duration-200" style={{ fontFamily: 'Poppins, sans-serif', backgroundColor: '#FFA88A', color: '#000000' }}>
+                            <button className="flex-1 px-4 py-2 text-sm rounded-lg hover:bg-orange-600 transition-colors duration-200" style={{ fontFamily: 'Poppins, sans-serif', backgroundColor: '#FFA88A', color: '#000000', cursor: 'pointer' }}>
                                 Habilitar
                             </button>
-                            <button className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors duration-200" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                            <button className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors duration-200" style={{ fontFamily: 'Poppins, sans-serif', cursor: 'pointer' }}>
                                 Deshabilitar
                             </button>
                         </div>

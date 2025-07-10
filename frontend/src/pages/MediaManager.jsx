@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import NavbarAdmin from "../components/NavbarAdmin";
+import AdminLayout from "../components/AdminLayout";
 import MediaUploadModal from "../components/MediaUploadModal";
 import MediaEditModal from "../components/MediaEditModal";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
@@ -12,8 +12,6 @@ import { useNotifications } from "../components/Media/Hooks/useNotifications";
 import { useMediaUtils } from "../components/Media/Hooks/useMediaUtils";
 
 const MediaManager = () => {
-    const [isExpanded, setIsExpanded] = useState(false);
-
     const {
         mediaItems,
         loading,
@@ -118,13 +116,8 @@ const MediaManager = () => {
     }, [selectedItem, deleteMediaItem, closeModal, showSuccess, showError]);
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <NavbarAdmin isExpanded={isExpanded} setIsExpanded={setIsExpanded} />
-
-            <div
-                style={{ paddingLeft: isExpanded ? '12rem' : '4rem' }}
-                className="p-3 sm:p-6 transition-padding duration-300"
-            >
+        <AdminLayout>
+            <div className="p-3 sm:p-6">
                 <NotificationContainer
                     notifications={notifications}
                     onRemove={removeNotification}
@@ -172,7 +165,7 @@ const MediaManager = () => {
                     onConfirm={handleConfirmDelete}
                 />
             )}
-        </div>
+        </AdminLayout>
     );
 };
 

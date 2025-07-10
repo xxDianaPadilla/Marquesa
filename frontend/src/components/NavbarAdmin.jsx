@@ -15,6 +15,13 @@ const NavbarAdmin = ({ isExpanded, setIsExpanded }) => {
     const location = useLocation();
     const { logout } = useAuth();
 
+    // Función para manejar el toggle del menú y guardarlo en localStorage
+    const handleToggleMenu = () => {
+        const newExpandedState = !isExpanded;
+        setIsExpanded(newExpandedState);
+        localStorage.setItem('adminMenuExpanded', JSON.stringify(newExpandedState));
+    };
+
     const handleLogout = async () => {
         const result = await logout();
         if (result.success) {
@@ -47,7 +54,7 @@ const NavbarAdmin = ({ isExpanded, setIsExpanded }) => {
             path: null,
             icon: marquesaMiniLogo,
             label: isExpanded ? '' : 'Expandir menú',
-            onClick: () => setIsExpanded(!isExpanded),
+            onClick: handleToggleMenu,
             isToggle: true
         },
         { path: '/dashboard', icon: statisticsIcon, label: 'Dashboard' },
@@ -89,18 +96,17 @@ const NavbarAdmin = ({ isExpanded, setIsExpanded }) => {
                 </nav>
 
                 {/* Logout */}
-                <div className="mt-auto px-2">
+                <div >
   <button
     onClick={handleLogout}
-    className={`flex items-center gap-2 hover:bg-white/20 rounded-lg transition
+    className={`flex items-center gap-2 hover:bg-white/20 rounded-lg transition-all duration-200 group
       ${isExpanded ? 'px-3 py-2' : 'p-3 justify-center w-full'}`}
     aria-label="Cerrar sesión"
   >
     <img
       src={logoutIcon}
       alt="Cerrar sesión"
-      className={`object-contain filter brightness-0 invert
-        ${isExpanded ? 'w-6 h-6' : 'w-8 h-8'}`}
+      className="w-5 h-5 object-contain filter brightness-0 invert transition-transform duration-200 group-hover:scale-110"
     />
     {isExpanded && <span className="text-white text-sm">Cerrar sesión</span>}
   </button>

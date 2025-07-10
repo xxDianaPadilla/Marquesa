@@ -49,7 +49,7 @@ const MediaDetailPage = () => {
         <>
             <Header />
 
-            <main className="min-h-screen bg-gray-50">
+            <main>
                 {/* Hero Section with Media */}
                 <section className="relative pt-8 sm:pt-12 pb-8 sm:pb-12">
                     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">

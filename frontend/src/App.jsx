@@ -27,6 +27,7 @@ import CustomProducts from './pages/CustomProducts';
 import PaymentProcessPage from './pages/PaymentProcessPage';
 import MediaPage from './pages/MediaPage';
 import RuletaPage from './pages/RuletaPage';
+import ConditionsPromotions from './pages/ConditionsPromotions';
 
 function App() {
   return (
@@ -97,6 +98,7 @@ function App() {
           <Route path="/ProductDetail" element={<ProductDetail />} />
           <Route path="/mediaPage" element={<MediaPage />} />
           <Route path="/ruleta" element={<RuletaPage />} />
+          <Route path="/conditionsPromotions" element={<ConditionsPromotions />} />
 
           {/* Rutas del admin */}
           <Route path="/dashboard"

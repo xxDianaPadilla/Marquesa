@@ -26,6 +26,7 @@ import ProductDetail from './pages/ProductDetail';
 import CustomProducts from './pages/CustomProducts';
 import PaymentProcessPage from './pages/PaymentProcessPage';
 import MediaPage from './pages/MediaPage';
+import RuletaPage from './pages/RuletaPage';
 
 function App() {
   return (
@@ -95,6 +96,7 @@ function App() {
           <Route path="/categoria/:categoryId" element={<CategoryProductsPage />} />
           <Route path="/ProductDetail" element={<ProductDetail />} />
           <Route path="/mediaPage" element={<MediaPage />} />
+          <Route path="/ruleta" element={<RuletaPage />} />
 
           {/* Rutas del admin */}
           <Route path="/dashboard"

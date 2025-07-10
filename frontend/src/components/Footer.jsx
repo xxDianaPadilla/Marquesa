@@ -33,6 +33,14 @@ const Footer = () => {
     navigate('/aboutUs');
   };
 
+  const handlePrivacyPoliciesClick = () => {
+    navigate('/privacyPolicies');
+  };
+
+  const handleTermsandConditionsClick = () => {
+    navigate('/termsandConditions');
+  };
+
   return (
     <footer className="bg-white border-t border-gray-200 py-16 px-8 font-poppins">
       {/* Logo y decoración superior */}
@@ -118,7 +126,7 @@ const Footer = () => {
             <div className="space-y-3">
               <p
                 className="text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
-              // onClick={handleTermsConditionsClick}
+                onClick={handleTermsandConditionsClick}
               >
                 Términos y Condiciones
               </p>
@@ -143,7 +151,7 @@ const Footer = () => {
               </p>
               <p
                 className="text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
-              // onClick={handlePrivacyPoliciesClick}
+                onClick={handlePrivacyPoliciesClick}
               >
                 Políticas de Privacidad
               </p>

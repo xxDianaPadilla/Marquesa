@@ -2,7 +2,7 @@ import React from "react";
 import Header from "../components/Header/Header";
 import Footer from "../components/Footer";
 
-const ConditionsPromotions = () => {
+const ShippingInformation = () => {
     return (
         <>
             <div className="min-h-screen bg-white-100">
@@ -17,22 +17,19 @@ const ConditionsPromotions = () => {
                             className="text-3xl font-bold text-gray-800 mb-2"
                             style={{ fontFamily: 'Poppins, sans-serif' }}
                         >
-                            Condiciones de ofertas y promociones
+                            Información de envíos
                         </h1>
                         <br />
                         <p
                             className="text-black-600"
                             style={{ fontFamily: 'Poppins, sans-serif' }}
                         >
-                            Las ofertas o promociones que se publiquen a través de nuestras redes sociales o sitio web están sujetas a los siguientes términos:
+                            En La MarquesaSV ofrecemos servicio de entrega a domicilio en determinadas zonas de El Salvador. A continuación, los detalles clave:
                         </p>
                         <br />
                         <div className="text-justify mb-8" style={{ marginLeft: '110px' }}>
                             <ul style={{ listStyle: 'inherit' }}>
-                                <li>Aplican únicamente dentro del período de vigencia especificado.</li>
-                                <li>No son acumulables con otras promociones.</li>
-                                <li>Están sujetas a disponibilidad de producto y zonas de cobertura.</li>
-                                <li>No aplican para entregas fuera de área o en días feriados, salvo que se indique lo contrario.</li>
+                                <li>Horarios de entrega</li>
                             </ul>
                         </div>
                     </div>
@@ -43,4 +40,4 @@ const ConditionsPromotions = () => {
     );
 };
 
-export default ConditionsPromotions;
+export default ShippingInformation;

@@ -52,7 +52,8 @@ const Register = () => {
         handleSubmit,
         handleEmailVerificationSuccess,
         closeEmailVerificationModal,
-        clearErrors
+        clearErrors,
+        getUserDataForRegistration
     } = useRegisterForm();
 
     /**
@@ -217,15 +218,7 @@ const Register = () => {
                 onClose={closeEmailVerificationModal}
                 email={formData.email}
                 fullName={formData.fullName}
-                userData={{
-                    fullName: formData.fullName,
-                    phone: formData.phone,
-                    birthDate: formData.birthDate,
-                    address: formData.address,
-                    password: formData.password,
-                    favorites: [],
-                    discount: null
-                }}
+                userData={getUserDataForRegistration()}
                 onSuccess={handleEmailVerificationSuccess}
             />
         </PageContainer>

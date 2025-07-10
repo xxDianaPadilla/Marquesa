@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import AdminLayout from "../components/AdminLayout";
 import ReviewsHeader from "../components/Reviews/ReviewsHeader";
 import ReviewsFilters from "../components/Reviews/ReviewsFilters";
 import ReviewsContent from "../components/Reviews/ReviewsContent";
@@ -213,7 +214,7 @@ const ReviewsManager = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 ml-16">
+    <AdminLayout>
       <div className="p-6">
         <ReviewsHeader
           searchTerm={searchTerm}
@@ -257,7 +258,7 @@ const ReviewsManager = () => {
           />
         )}
       </div>
-    </div>
+    </AdminLayout>
   );
 };
 

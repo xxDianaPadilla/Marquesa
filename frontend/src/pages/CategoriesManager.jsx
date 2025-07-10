@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import NavbarAdmin from "../components/NavbarAdmin";
+import AdminLayout from "../components/AdminLayout";
 import useDataCategories from "../components/Categories/hooks/useDataCategories";
 import CategoryTable from "../components/Categories/CategoryTable";
 import CategoryForm from "../components/Categories/CategoryForm";
@@ -24,9 +24,6 @@ const CategoriesManager = () => {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [showForm, setShowForm] = useState(false);
-
-  // Estado para controlar expansión del sidebar
-  const [isExpanded, setIsExpanded] = useState(false);
 
   const filteredCategories = categories.filter((category) =>
     category.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -66,15 +63,8 @@ const CategoriesManager = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Navbar con control de expansión */}
-      <NavbarAdmin isExpanded={isExpanded} setIsExpanded={setIsExpanded} />
-
-      {/* Contenido principal ajustado según el estado del sidebar */}
-      <div
-        style={{ marginLeft: isExpanded ? "12rem" : "4rem" }}
-        className="p-3 sm:p-6 transition-margin duration-300"
-      >
+    <AdminLayout>
+      <div className="p-3 sm:p-6">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
@@ -168,7 +158,7 @@ const CategoriesManager = () => {
           />
         </div>
       )}
-    </div>
+    </AdminLayout>
   );
 };
 

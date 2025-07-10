@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import NavbarAdmin from "../components/NavbarAdmin";
+import AdminLayout from "../components/AdminLayout";
 import SalesCard from "../components/SalesCard";
 import useSalesAdmin from "../components/Sales/Hooks/useSalesAdmin";
 
@@ -12,9 +12,6 @@ const SalesManager = () => {
     filterSalesByStatus,
     searchSales,
   } = useSalesAdmin();
-
-  // Estado para el navbar expandido
-  const [isExpanded, setIsExpanded] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredSales, setFilteredSales] = useState([]);
@@ -80,44 +77,29 @@ const SalesManager = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <NavbarAdmin isExpanded={isExpanded} setIsExpanded={setIsExpanded} />
-        <div
-          style={{ marginLeft: isExpanded ? "12rem" : "4rem" }}
-          className="p-6 flex justify-center items-center transition-margin duration-300"
-        >
+      <AdminLayout>
+        <div className="p-6 flex justify-center items-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
         </div>
-      </div>
+      </AdminLayout>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <NavbarAdmin isExpanded={isExpanded} setIsExpanded={setIsExpanded} />
-        <div
-          style={{ marginLeft: isExpanded ? "12rem" : "4rem" }}
-          className="p-6 transition-margin duration-300"
-        >
+      <AdminLayout>
+        <div className="p-6">
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
             Error: {error}
           </div>
         </div>
-      </div>
+      </AdminLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Navbar Admin */}
-      <NavbarAdmin isExpanded={isExpanded} setIsExpanded={setIsExpanded} />
-
-      {/* Contenido principal */}
-      <div
-        style={{ marginLeft: isExpanded ? "12rem" : "4rem" }}
-        className="p-3 sm:p-4 lg:p-6 transition-margin duration-300"
-      >
+    <AdminLayout>
+      <div className="p-3 sm:p-4 lg:p-6">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-4 lg:p-6 mb-4 lg:mb-6">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 lg:mb-6 gap-4">
@@ -309,7 +291,7 @@ const SalesManager = () => {
           </div>
         </div>
       </div>
-    </div>
+    </AdminLayout>
   );
 };
 

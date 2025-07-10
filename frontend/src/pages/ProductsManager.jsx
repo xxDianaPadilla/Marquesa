@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import NavbarAdmin from "../components/NavbarAdmin";
+import AdminLayout from "../components/AdminLayout";
 import useDataProducts from "../components/ProductsAdmin/hooks/useDataProducts";
 import ProductTable from "../components/ProductsAdmin/ProductTable";
 import ProductForm from "../components/ProductsAdmin/ProductForm";
@@ -29,9 +29,6 @@ const ProductsManager = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
-
-  // Estado para controlar expansión del sidebar
-  const [isExpanded, setIsExpanded] = useState(false);
 
   const filteredProducts = products.filter((product) =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -72,15 +69,8 @@ const ProductsManager = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Navbar con control de expansión */}
-      <NavbarAdmin isExpanded={isExpanded} setIsExpanded={setIsExpanded} />
-
-      {/* Contenido principal con margen dinámico */}
-      <div
-        style={{ marginLeft: isExpanded ? "12rem" : "4rem" }}
-        className="p-3 sm:p-6 transition-margin duration-300"
-      >
+    <AdminLayout>
+      <div className="p-3 sm:p-6">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
@@ -138,7 +128,7 @@ const ProductsManager = () => {
           />
         </div>
       )}
-    </div>
+    </AdminLayout>
   );
 };
 

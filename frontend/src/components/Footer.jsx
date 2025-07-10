@@ -25,6 +25,10 @@ const Footer = () => {
     navigate('/conditionsPromotions');
   };
 
+  const handleShippingInformationClick = () => {
+    navigate('/shippingInformation');
+  };
+
   return (
     <footer className="bg-white border-t border-gray-200 py-16 px-8 font-poppins">
       {/* Logo y decoración superior */}
@@ -129,7 +133,7 @@ const Footer = () => {
               </p>
               <p
                 className="text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
-              // onClick={handleDeliveryInfoClick}
+                onClick={handleShippingInformationClick}
               >
                 Delivery info
               </p>

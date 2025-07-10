@@ -30,7 +30,10 @@ import RuletaPage from './pages/RuletaPage';
 import ConditionsPromotions from './pages/ConditionsPromotions';
 import ShippingInformation from './pages/ShippingInformation';
 import AboutUs from './pages/AboutUs';
+import PrivacyPolicies from './pages/PrivacyPolicies.JSX';
+import TermsandConditions from './pages/TermsandConditions';
 import MediaDetailPage from './pages/MediaDetailPage';
+
 
 function App() {
   return (
@@ -105,6 +108,8 @@ function App() {
           <Route path="/conditionsPromotions" element={<ConditionsPromotions />} />
           <Route path="/shippingInformation" element={<ShippingInformation />} />
           <Route path="/aboutUs" element={<AboutUs />} />
+          <Route path="/privacyPolicies" element={<PrivacyPolicies />} />
+          <Route path="/termsandConditions" element={<TermsandConditions />} />
 
           {/* Rutas del admin */}
           <Route path="/dashboard"

@@ -3,7 +3,7 @@ import React from "react";
 import Header from "../components/Header/Header";
 import Footer from "../components/Footer";
 
-const AboutUs = () => {
+const TermsandConditions = () => {
     return (
         <>
             <div className="min-h-screen bg-white-100">
@@ -18,7 +18,7 @@ const AboutUs = () => {
                             className="text-3xl font-bold text-gray-800 mb-2"
                             style={{ fontFamily: 'Poppins, sans-serif' }}
                         >
-                            Sobre Nosotros
+                            Términos y condiciones
                         </h1>
                         <br />
                         <br />
@@ -79,4 +79,4 @@ const AboutUs = () => {
     );
 };
 
-export default AboutUs;
+export default TermsandConditions;

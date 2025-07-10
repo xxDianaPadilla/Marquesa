@@ -29,6 +29,7 @@ import MediaPage from './pages/MediaPage';
 import RuletaPage from './pages/RuletaPage';
 import ConditionsPromotions from './pages/ConditionsPromotions';
 import ShippingInformation from './pages/ShippingInformation';
+import AboutUs from './pages/AboutUs';
 
 function App() {
   return (
@@ -101,6 +102,7 @@ function App() {
           <Route path="/ruleta" element={<RuletaPage />} />
           <Route path="/conditionsPromotions" element={<ConditionsPromotions />} />
           <Route path="/shippingInformation" element={<ShippingInformation />} />
+          <Route path="/aboutUs" element={<AboutUs />} />
 
           {/* Rutas del admin */}
           <Route path="/dashboard"

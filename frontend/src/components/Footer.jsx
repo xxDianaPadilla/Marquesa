@@ -1,6 +1,5 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-// import { useNavigate, useLocation } from 'react-router-dom';
 
 // Importar los iconos disponibles
 import instagram from '../assets/instagramIcon.png';
@@ -11,7 +10,6 @@ import emailIcon from '../assets/emailIcon.png';
 import telephoneIcon from '../assets/telephoneIcon.png';
 
 const Footer = () => {
-  // const location = useLocation();
   const navigate = useNavigate();
 
   // const handleAboutUsClick = () => {
@@ -42,9 +40,10 @@ const Footer = () => {
   //   navigate('/delivery');
   // };
 
-  // const handleConcursosClick = () => {
-  //   navigate('/contests');
-  // };
+  // Función para navegar a la página de la ruleta
+  const handleConcursosClick = () => {
+    navigate('/ruleta');
+  };
 
   // const handleCondicionesOfertasClick = () => {
   //   navigate('/offers');
@@ -146,8 +145,9 @@ const Footer = () => {
                 Condiciones Ofertas
               </p>
               <p
-                className="text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
-              // onClick={handleConcursosClick}
+                className="text-sm text-gray-600 hover:text-gray-800 cursor-pointer transition-colors duration-200"
+                onClick={handleConcursosClick}
+                style={{ cursor: 'pointer' }}
               >
                 Concursos y Rifas
               </p>

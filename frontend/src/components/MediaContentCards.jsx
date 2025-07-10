@@ -9,7 +9,7 @@ const MediaContentCards = ({ item }) => {
     const navigate = useNavigate();
 
     const handleCardClick = () => {
-        navigate(`/blog/${item.id}`);
+        navigate(`/MediaDetailPage/${item.id}`);
     };
 
     const handleLikeClick = (e) => {

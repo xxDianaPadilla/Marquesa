@@ -1,10 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 
 /**
  * Componente para insertar código de verificación de 6 dígitos
  * Maneja la entrada automática entre campos y validación
  */
-const CodeInput = ({ onCodeChange, onComplete, disabled = false, error = '' }) => {
+const CodeInput = forwardRef(({ onCodeChange, onComplete, disabled = false, error = '' }, ref) => {
     const [code, setCode] = useState(['', '', '', '', '', '']);
     const inputRefs = useRef([]);
 
@@ -18,6 +18,19 @@ const CodeInput = ({ onCodeChange, onComplete, disabled = false, error = '' }) =
             onComplete(codeString);
         }
     }, [code, onCodeChange, onComplete]);
+
+    /**
+     * Resetea el código (función pública)
+     */
+    const resetCode = () => {
+        setCode(['', '', '', '', '', '']);
+        inputRefs.current[0]?.focus();
+    };
+
+    // Exponer función reset correctamente
+    useImperativeHandle(ref, () => ({
+        resetCode
+    }));
 
     /**
      * Maneja el cambio en un input específico
@@ -85,19 +98,6 @@ const CodeInput = ({ onCodeChange, onComplete, disabled = false, error = '' }) =
         }
     };
 
-    /**
-     * Resetea el código (función pública)
-     */
-    const resetCode = () => {
-        setCode(['', '', '', '', '', '']);
-        inputRefs.current[0]?.focus();
-    };
-
-    // Exponer función reset
-    React.useImperativeHandle(React.forwardRef(() => null), () => ({
-        resetCode
-    }));
-
     return (
         <div className="w-full">
             {/* Contenedor de inputs */}
@@ -149,6 +149,8 @@ const CodeInput = ({ onCodeChange, onComplete, disabled = false, error = '' }) =
             </div>
         </div>
     );
-};
+});
+
+CodeInput.displayName = 'CodeInput';
 
 export default CodeInput;

@@ -7,9 +7,13 @@ import { config } from "../config.js";
 
 const emailVerificationController = {};
 
+// Cache para prevenir múltiples envíos rápidos
+const requestCache = new Map();
+const CACHE_DURATION = 30000; // 30 segundos
+
 // Configuración del transportador de email usando nodemailer
 const createTransporter = () => {
-        return nodemailer.createTransport({
+    return nodemailer.createTransport({
         service: 'gmail',
         auth: {
             user: config.emailUser.user_email,
@@ -92,27 +96,74 @@ const getEmailTemplate = (verificationCode, fullName) => {
     `;
 };
 
+// Limpiar cache periódicamente
+setInterval(() => {
+    const now = Date.now();
+    for (const [key, timestamp] of requestCache.entries()) {
+        if (now - timestamp > CACHE_DURATION) {
+            requestCache.delete(key);
+        }
+    }
+}, CACHE_DURATION);
+
 // Solicitar código de verificación de email
 emailVerificationController.requestEmailVerification = async (req, res) => {
     try {
         const { email, fullName } = req.body;
 
+        console.log('=== INICIO requestEmailVerification ===');
+        console.log('Datos recibidos:', { email, fullName });
+        console.log('Timestamp:', new Date().toISOString());
+
         // Validar que el email esté presente
         if (!email) {
+            console.log('Email faltante');
             return res.status(400).json({
                 success: false,
                 message: "El correo electrónico es requerido"
             });
         }
 
+        const emailKey = email.toLowerCase().trim();
+        const now = Date.now();
+
+        // Verificar si hay una solicitud reciente para este email
+        if (requestCache.has(emailKey)) {
+            const lastRequest = requestCache.get(emailKey);
+            const timeDiff = now - lastRequest;
+            
+            console.log(`Solicitud duplicada detectada para ${emailKey}`);
+            console.log(`Tiempo desde última solicitud: ${timeDiff}ms`);
+            
+            if (timeDiff < CACHE_DURATION) {
+                console.log('Solicitud bloqueada por ser muy reciente');
+                return res.status(429).json({
+                    success: false,
+                    message: "Ya se envió un código recientemente. Espera 30 segundos antes de solicitar otro."
+                });
+            }
+        }
+
+        // Marcar esta solicitud en el cache
+        requestCache.set(emailKey, now);
+
         // Verificar que el cliente no exista ya en la base de datos
-        const existingClient = await clientsModel.findOne({ email: email.toLowerCase().trim() });
+        const existingClient = await clientsModel.findOne({ email: emailKey });
         if (existingClient) {
+            console.log('Email ya registrado:', emailKey);
             return res.status(400).json({
                 success: false,
                 message: "Este correo electrónico ya está registrado"
             });
         }
+
+        // Buscar códigos existentes para este email
+        const existingCodes = await emailVerificationModel.find({ email: emailKey });
+        console.log(`Códigos existentes para ${emailKey}:`, existingCodes.length);
+
+        // Eliminar códigos anteriores para este email
+        const deleteResult = await emailVerificationModel.deleteMany({ email: emailKey });
+        console.log('Códigos eliminados:', deleteResult.deletedCount);
 
         // Generar código de verificación
         const verificationCode = generateVerificationCode();
@@ -120,31 +171,40 @@ emailVerificationController.requestEmailVerification = async (req, res) => {
         // Calcular tiempo de expiración (10 minutos)
         const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-        // Eliminar códigos anteriores para este email
-        await emailVerificationModel.deleteMany({ email: email.toLowerCase().trim() });
+        console.log('Nuevo código generado:', verificationCode);
 
         // Crear nuevo registro de verificación
         const emailVerification = new emailVerificationModel({
-            email: email.toLowerCase().trim(),
+            email: emailKey,
             verificationCode,
             expiresAt
         });
 
         await emailVerification.save();
+        console.log('Código guardado en BD con ID:', emailVerification._id);
 
         // Configurar y enviar email
-        const transporter = createTransporter();
-        const mailOptions = {
-            from: {
-                name: 'Marquesa - Tienda de Regalos',
-                address: config.emailUser.user_email
-            },
-            to: email,
-            subject: '🌸 Verifica tu correo electrónico - Marquesa',
-            html: getEmailTemplate(verificationCode, fullName)
-        };
+        try {
+            console.log('Iniciando envío de email...');
+            const transporter = createTransporter();
+            const mailOptions = {
+                from: {
+                    name: 'Marquesa - Tienda de Regalos',
+                    address: config.emailUser.user_email
+                },
+                to: email,
+                subject: '🌸 Verifica tu correo electrónico - Marquesa',
+                html: getEmailTemplate(verificationCode, fullName)
+            };
 
-        await transporter.sendMail(mailOptions);
+            const emailResult = await transporter.sendMail(mailOptions);
+            console.log('Email enviado exitosamente. MessageId:', emailResult.messageId);
+        } catch (emailError) {
+            console.error('Error al enviar email:', emailError);
+            // Aún así devolver éxito porque el código se guardó en BD
+        }
+
+        console.log('=== FIN requestEmailVerification ===');
 
         res.json({
             success: true,
@@ -165,21 +225,61 @@ emailVerificationController.verifyEmailAndRegister = async (req, res) => {
     try {
         const { email, verificationCode, userData } = req.body;
 
+        console.log('=== INICIO verifyEmailAndRegister ===');
+        console.log('Datos recibidos:', {
+            email,
+            verificationCode,
+            userData: userData ? 'presente' : 'ausente'
+        });
+
         // Validar campos requeridos
         if (!email || !verificationCode || !userData) {
+            console.log('Campos faltantes:', { email: !!email, verificationCode: !!verificationCode, userData: !!userData });
             return res.status(400).json({
                 success: false,
                 message: "Email, código de verificación y datos de usuario son requeridos"
             });
         }
 
-        // Buscar código válido y no expirado
+        // Validar estructura de userData
+        const requiredFields = ['fullName', 'phone', 'birthDate', 'address', 'password'];
+        const missingFields = requiredFields.filter(field => !userData[field]);
+        
+        if (missingFields.length > 0) {
+            console.log('Campos faltantes en userData:', missingFields);
+            return res.status(400).json({
+                success: false,
+                message: `Campos requeridos faltantes: ${missingFields.join(', ')}`
+            });
+        }
+
+        const emailKey = email.toLowerCase().trim();
+        const codeToVerify = verificationCode.toString().trim();
+
+        // Buscar TODOS los códigos para este email (para debugging)
+        const allCodes = await emailVerificationModel.find({ email: emailKey });
+        console.log('Todos los códigos para este email:', allCodes.map(c => ({
+            id: c._id,
+            code: c.verificationCode,
+            expiresAt: c.expiresAt,
+            isUsed: c.isUsed,
+            createdAt: c.createdAt
+        })));
+
+        // Buscar código válido y no expirado (el más reciente)
         const verificationRecord = await emailVerificationModel.findOne({
-            email: email.toLowerCase().trim(),
-            verificationCode,
+            email: emailKey,
+            verificationCode: codeToVerify,
             expiresAt: { $gt: new Date() },
             isUsed: false
-        });
+        }).sort({ createdAt: -1 }); // Obtener el más reciente
+
+        console.log('Código encontrado para verificación:', verificationRecord ? {
+            id: verificationRecord._id,
+            code: verificationRecord.verificationCode,
+            expiresAt: verificationRecord.expiresAt,
+            isUsed: verificationRecord.isUsed
+        } : 'Ninguno');
 
         if (!verificationRecord) {
             return res.status(400).json({
@@ -189,7 +289,7 @@ emailVerificationController.verifyEmailAndRegister = async (req, res) => {
         }
 
         // Verificar nuevamente que el cliente no exista
-        const existingClient = await clientsModel.findOne({ email: email.toLowerCase().trim() });
+        const existingClient = await clientsModel.findOne({ email: emailKey });
         if (existingClient) {
             return res.status(400).json({
                 success: false,
@@ -205,7 +305,7 @@ emailVerificationController.verifyEmailAndRegister = async (req, res) => {
             fullName: userData.fullName.trim(),
             phone: userData.phone.trim(),
             birthDate: userData.birthDate,
-            email: email.toLowerCase().trim(),
+            email: emailKey,
             password: hashedPassword,
             address: userData.address.trim(),
             favorites: userData.favorites || [],
@@ -213,11 +313,16 @@ emailVerificationController.verifyEmailAndRegister = async (req, res) => {
         });
 
         await newClient.save();
+        console.log('Cliente creado exitosamente:', newClient._id);
 
-        // Marcar código como usado
-        await emailVerificationModel.findByIdAndUpdate(verificationRecord._id, {
-            isUsed: true
-        });
+        // Marcar código como usado Y eliminar todos los códigos para este email
+        await emailVerificationModel.deleteMany({ email: emailKey });
+        console.log('Todos los códigos eliminados para:', emailKey);
+
+        // Limpiar cache
+        requestCache.delete(emailKey);
+
+        console.log('=== FIN verifyEmailAndRegister ===');
 
         res.json({
             success: true,

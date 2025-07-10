@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from 'react-router-dom';
 
 /**
@@ -20,6 +20,10 @@ const useRegisterForm = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [showEmailVerificationModal, setShowEmailVerificationModal] = useState(false);
     const navigate = useNavigate();
+
+    // Ref para prevenir múltiples envíos
+    const isSubmittingRef = useRef(false);
+    const lastSubmitTimeRef = useRef(0);
 
     /**
      * Maneja los cambios en los inputs del formulario
@@ -73,11 +77,20 @@ const useRegisterForm = () => {
         // Validar fecha de nacimiento
         if (!formData.birthDate) {
             newErrors.birthDate = 'La fecha de nacimiento es requerida';
+        } else {
+            // Validar que la fecha no sea futura
+            const today = new Date();
+            const birthDate = new Date(formData.birthDate);
+            if (birthDate > today) {
+                newErrors.birthDate = 'La fecha de nacimiento no puede ser futura';
+            }
         }
 
         // Validar dirección
         if (!formData.address.trim()) {
             newErrors.address = 'La dirección es requerida';
+        } else if (formData.address.trim().length < 5) {
+            newErrors.address = 'La dirección debe tener al menos 5 caracteres';
         }
 
         // Validar contraseña
@@ -104,35 +117,69 @@ const useRegisterForm = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!validateForm()) {
+        const now = Date.now();
+        const timeSinceLastSubmit = now - lastSubmitTimeRef.current;
+
+        console.log('=== INICIO handleSubmit ===');
+        console.log('isSubmitting:', isSubmittingRef.current);
+        console.log('Tiempo desde último envío:', timeSinceLastSubmit);
+
+        // Prevenir múltiples envíos rápidos
+        if (isSubmittingRef.current) {
+            console.log('Envío bloqueado: ya está procesando');
             return;
         }
 
+        // Prevenir envíos muy seguidos (menos de 2 segundos)
+        if (timeSinceLastSubmit < 2000) {
+            console.log('Envío bloqueado: muy pronto desde el último');
+            return;
+        }
+
+        console.log('Datos del formulario antes de validar:', formData);
+
+        if (!validateForm()) {
+            console.log('Errores de validación:', errors);
+            return;
+        }
+
+        // Marcar como enviando
+        isSubmittingRef.current = true;
+        lastSubmitTimeRef.current = now;
         setIsLoading(true);
         setErrors({});
 
         try {
+            // Preparar datos para el request
+            const requestData = {
+                email: formData.email.trim().toLowerCase(),
+                fullName: formData.fullName.trim()
+            };
+
+            console.log('Enviando solicitud de verificación:', requestData);
+
             // Verificar que el email no exista previamente
             const checkEmailResponse = await fetch('http://localhost:4000/api/email-verification/request', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ 
-                    email: formData.email.trim().toLowerCase(),
-                    fullName: formData.fullName.trim()
-                }),
+                body: JSON.stringify(requestData),
             });
 
             const checkEmailData = await checkEmailResponse.json();
+            console.log('Respuesta del servidor:', checkEmailData);
 
             if (checkEmailData.success) {
                 // Email disponible, abrir modal de verificación
+                console.log('Abriendo modal de verificación');
                 setShowEmailVerificationModal(true);
             } else {
                 // Email ya existe o error
                 if (checkEmailData.message.includes('ya está registrado')) {
                     setErrors({ email: 'Este correo electrónico ya está registrado' });
+                } else if (checkEmailData.message.includes('recientemente')) {
+                    setErrors({ general: 'Ya se envió un código recientemente. Espera un momento e intenta nuevamente.' });
                 } else {
                     setErrors({ general: checkEmailData.message });
                 }
@@ -142,14 +189,24 @@ const useRegisterForm = () => {
             setErrors({ general: 'Error de conexión. Verifica tu internet e intenta nuevamente' });
         } finally {
             setIsLoading(false);
+            // Liberar después de un pequeño delay para evitar clics rápidos
+            setTimeout(() => {
+                isSubmittingRef.current = false;
+            }, 1000);
         }
+
+        console.log('=== FIN handleSubmit ===');
     };
 
     /**
      * Maneja el éxito de la verificación de email
      */
     const handleEmailVerificationSuccess = () => {
+        console.log('Verificación exitosa, cerrando modal y navegando al login');
         setShowEmailVerificationModal(false);
+        
+        // Limpiar formulario
+        resetForm();
         
         // Navegar al login después de un breve delay
         setTimeout(() => {
@@ -161,7 +218,10 @@ const useRegisterForm = () => {
      * Cierra el modal de verificación de email
      */
     const closeEmailVerificationModal = () => {
+        console.log('Cerrando modal de verificación');
         setShowEmailVerificationModal(false);
+        // Resetear estado de envío al cerrar modal
+        isSubmittingRef.current = false;
     };
 
     /**
@@ -186,6 +246,24 @@ const useRegisterForm = () => {
         });
         setErrors({});
         setShowEmailVerificationModal(false);
+        isSubmittingRef.current = false;
+        lastSubmitTimeRef.current = 0;
+    };
+
+    /**
+     * Prepara los datos del usuario para el registro
+     * @returns {Object} - Datos del usuario limpios y validados
+     */
+    const getUserDataForRegistration = () => {
+        return {
+            fullName: formData.fullName.trim(),
+            phone: formData.phone.trim(),
+            birthDate: formData.birthDate,
+            address: formData.address.trim(),
+            password: formData.password,
+            favorites: [],
+            discount: null
+        };
     };
 
     return {
@@ -199,7 +277,8 @@ const useRegisterForm = () => {
         closeEmailVerificationModal,
         clearErrors,
         resetForm,
-        setFormData
+        setFormData,
+        getUserDataForRegistration
     };
 };
 

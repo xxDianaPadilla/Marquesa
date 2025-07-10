@@ -18,15 +18,21 @@ export const useEmailVerification = () => {
         try {
             setIsLoading(true);
 
+            console.log('Enviando solicitud de verificación:', { email, fullName });
+
             const response = await fetch('http://localhost:4000/api/email-verification/request', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ email, fullName }),
+                body: JSON.stringify({ 
+                    email: email?.trim(), 
+                    fullName: fullName?.trim() 
+                }),
             });
 
             const data = await response.json();
+            console.log('Respuesta del servidor (request):', data);
 
             if (data.success) {
                 toast.success('Correo de verificación enviado', {
@@ -66,7 +72,8 @@ export const useEmailVerification = () => {
         } catch (error) {
             console.error('Error en requestEmailVerification:', error);
             
-            toast.error('Error de conexión. Verifica tu internet e intenta nuevamente', {
+            const errorMessage = 'Error de conexión. Verifica tu internet e intenta nuevamente';
+            toast.error(errorMessage, {
                 duration: 4000,
                 style: {
                     background: '#EF4444',
@@ -77,7 +84,7 @@ export const useEmailVerification = () => {
                 },
             });
 
-            return { success: false, message: 'Error de conexión' };
+            return { success: false, message: errorMessage };
         } finally {
             setIsLoading(false);
         }
@@ -94,15 +101,56 @@ export const useEmailVerification = () => {
         try {
             setIsLoading(true);
 
+            // Validar datos antes de enviar
+            if (!email || !verificationCode || !userData) {
+                const errorMessage = 'Faltan datos requeridos para la verificación';
+                console.error(errorMessage, { email: !!email, verificationCode: !!verificationCode, userData: !!userData });
+                return { success: false, message: errorMessage };
+            }
+
+            // Validar campos de userData
+            const requiredFields = ['fullName', 'phone', 'birthDate', 'address', 'password'];
+            const missingFields = requiredFields.filter(field => !userData[field] || !userData[field].toString().trim());
+            
+            if (missingFields.length > 0) {
+                const errorMessage = `Faltan campos requeridos: ${missingFields.join(', ')}`;
+                console.error(errorMessage);
+                return { success: false, message: errorMessage };
+            }
+
+            // Limpiar y preparar datos
+            const cleanUserData = {
+                fullName: userData.fullName.toString().trim(),
+                phone: userData.phone.toString().trim(),
+                birthDate: userData.birthDate,
+                address: userData.address.toString().trim(),
+                password: userData.password.toString().trim(),
+                favorites: userData.favorites || [],
+                discount: userData.discount || null
+            };
+
+            const requestData = {
+                email: email.trim(),
+                verificationCode: verificationCode.toString().trim(),
+                userData: cleanUserData
+            };
+
+            console.log('Enviando verificación:', {
+                email: requestData.email,
+                verificationCode: requestData.verificationCode,
+                userData: 'datos presentes'
+            });
+
             const response = await fetch('http://localhost:4000/api/email-verification/verify', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ email, verificationCode, userData }),
+                body: JSON.stringify(requestData),
             });
 
             const data = await response.json();
+            console.log('Respuesta del servidor (verify):', data);
 
             if (data.success) {
                 toast.success('¡Registro exitoso! Ya puedes iniciar sesión', {
@@ -142,7 +190,8 @@ export const useEmailVerification = () => {
         } catch (error) {
             console.error('Error en verifyEmailAndRegister:', error);
             
-            toast.error('Error de conexión. Verifica tu internet e intenta nuevamente', {
+            const errorMessage = 'Error de conexión. Verifica tu internet e intenta nuevamente';
+            toast.error(errorMessage, {
                 duration: 4000,
                 style: {
                     background: '#EF4444',
@@ -153,7 +202,7 @@ export const useEmailVerification = () => {
                 },
             });
 
-            return { success: false, message: 'Error de conexión' };
+            return { success: false, message: errorMessage };
         } finally {
             setIsLoading(false);
         }

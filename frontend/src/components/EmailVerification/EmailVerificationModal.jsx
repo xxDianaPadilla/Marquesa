@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import CodeInput from './CodeInput';
 import { useEmailVerification } from './Hooks/useEmailVerification';
@@ -19,6 +19,7 @@ const EmailVerificationModal = ({
     const [code, setCode] = useState('');
     const [error, setError] = useState('');
     const [resendTimer, setResendTimer] = useState(0);
+    const codeInputRef = useRef();
 
     const { requestEmailVerification, verifyEmailAndRegister, isLoading } = useEmailVerification();
 
@@ -49,6 +50,11 @@ const EmailVerificationModal = ({
         if (result.success) {
             setStep('code');
             setResendTimer(60); // 60 segundos para reenvío
+            setCode(''); // Limpiar código anterior
+            // Resetear el input de código si existe
+            if (codeInputRef.current) {
+                codeInputRef.current.resetCode();
+            }
         } else {
             setError(result.message);
             setStep('code'); // Mostrar el input aunque haya error
@@ -82,6 +88,10 @@ const EmailVerificationModal = ({
             setError(result.message);
             setStep('code');
             setCode(''); // Limpiar código
+            // Resetear el input de código
+            if (codeInputRef.current) {
+                codeInputRef.current.resetCode();
+            }
         }
     };
 
@@ -180,6 +190,7 @@ const EmailVerificationModal = ({
                            </p>
                            
                            <CodeInput
+                               ref={codeInputRef}
                                onCodeChange={handleCodeChange}
                                onComplete={handleCodeComplete}
                                disabled={isLoading}

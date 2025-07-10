@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from 'react-router-dom';
-import toast from 'react-hot-toast';
 
 /**
  * Hook personalizado para manejar el formulario de registro
- * Maneja la lógica de validación, envío de datos y navegación
+ * Ahora maneja la lógica de validación previa y activación del modal de verificación
  */
 const useRegisterForm = () => {
     const [formData, setFormData] = useState({
@@ -19,6 +18,7 @@ const useRegisterForm = () => {
 
     const [errors, setErrors] = useState({});
     const [isLoading, setIsLoading] = useState(false);
+    const [showEmailVerificationModal, setShowEmailVerificationModal] = useState(false);
     const navigate = useNavigate();
 
     /**
@@ -34,10 +34,11 @@ const useRegisterForm = () => {
 
         // Limpiar error específico cuando el usuario empiece a escribir
         if (errors[name]) {
-            setErrors(prev => ({
-                ...prev,
-                [name]: ''
-            }));
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors[name];
+                return newErrors;
+            });
         }
     };
 
@@ -97,6 +98,7 @@ const useRegisterForm = () => {
 
     /**
      * Maneja el envío del formulario de registro
+     * Ahora solo valida y abre el modal de verificación
      * @param {Event} e - Evento del formulario
      */
     const handleSubmit = async (e) => {
@@ -110,102 +112,56 @@ const useRegisterForm = () => {
         setErrors({});
 
         try {
-            // Preparar datos para enviar al backend
-            const registrationData = {
-                fullName: formData.fullName.trim(),
-                phone: formData.phone.trim(),
-                email: formData.email.trim().toLowerCase(),
-                birthDate: formData.birthDate,
-                address: formData.address.trim(),
-                password: formData.password,
-                favorites: [], // Array vacío como default
-                discount: null // Sin descuento inicial
-            };
-
-            // Enviar datos al backend
-            const response = await fetch('http://localhost:4000/api/registerCustomers', {
+            // Verificar que el email no exista previamente
+            const checkEmailResponse = await fetch('http://localhost:4000/api/email-verification/request', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(registrationData),
-                credentials: 'include'
+                body: JSON.stringify({ 
+                    email: formData.email.trim().toLowerCase(),
+                    fullName: formData.fullName.trim()
+                }),
             });
 
-            const data = await response.json();
+            const checkEmailData = await checkEmailResponse.json();
 
-            if (response.ok && data.success) {
-                // Registro exitoso
-                toast.success('¡Registro exitoso! Ya puedes iniciar sesión', {
-                    duration: 4000,
-                    style: {
-                        background: '#10B981',
-                        color: '#FFFFFF',
-                        fontFamily: 'Poppins, sans-serif',
-                        borderRadius: '8px',
-                        fontSize: '14px'
-                    },
-                    iconTheme: {
-                        primary: '#FFFFFF',
-                        secondary: '#10B981',
-                    },
-                });
-
-                // Navegar al login después de un breve delay
-                setTimeout(() => {
-                    navigate('/login');
-                }, 1000);
-
+            if (checkEmailData.success) {
+                // Email disponible, abrir modal de verificación
+                setShowEmailVerificationModal(true);
             } else {
-                // Error del servidor
-                if (data.message === 'El cliente ya existe') {
-                    // Usuario ya existe
-                    setErrors({ email: 'Este correo ya está registrado' });
-                    toast.error('Este correo electrónico ya está registrado', {
-                        duration: 4000,
-                        style: {
-                            background: '#EF4444',
-                            color: '#FFFFFF',
-                            fontFamily: 'Poppins, sans-serif',
-                            borderRadius: '8px',
-                            fontSize: '14px'
-                        },
-                        iconTheme: {
-                            primary: '#FFFFFF',
-                            secondary: '#EF4444',
-                        },
-                    });
+                // Email ya existe o error
+                if (checkEmailData.message.includes('ya está registrado')) {
+                    setErrors({ email: 'Este correo electrónico ya está registrado' });
                 } else {
-                    // Otros errores del servidor
-                    setErrors({ general: data.message || 'Error en el registro' });
-                    toast.error(data.message || 'Error en el registro', {
-                        duration: 4000,
-                        style: {
-                            background: '#EF4444',
-                            color: '#FFFFFF',
-                            fontFamily: 'Poppins, sans-serif',
-                            borderRadius: '8px',
-                            fontSize: '14px'
-                        },
-                    });
+                    setErrors({ general: checkEmailData.message });
                 }
             }
         } catch (error) {
-            console.error('Error en registro:', error);
-            setErrors({ general: 'Error de conexión. Intente nuevamente' });
-            toast.error('Error de conexión. Verifica tu internet e intenta nuevamente', {
-                duration: 4000,
-                style: {
-                    background: '#EF4444',
-                    color: '#FFFFFF',
-                    fontFamily: 'Poppins, sans-serif',
-                    borderRadius: '8px',
-                    fontSize: '14px'
-                },
-            });
+            console.error('Error en verificación previa:', error);
+            setErrors({ general: 'Error de conexión. Verifica tu internet e intenta nuevamente' });
         } finally {
             setIsLoading(false);
         }
+    };
+
+    /**
+     * Maneja el éxito de la verificación de email
+     */
+    const handleEmailVerificationSuccess = () => {
+        setShowEmailVerificationModal(false);
+        
+        // Navegar al login después de un breve delay
+        setTimeout(() => {
+            navigate('/login');
+        }, 1000);
+    };
+
+    /**
+     * Cierra el modal de verificación de email
+     */
+    const closeEmailVerificationModal = () => {
+        setShowEmailVerificationModal(false);
     };
 
     /**
@@ -229,14 +185,18 @@ const useRegisterForm = () => {
             acceptTerms: false
         });
         setErrors({});
+        setShowEmailVerificationModal(false);
     };
 
     return {
         formData,
         errors,
         isLoading,
+        showEmailVerificationModal,
         handleInputChange,
         handleSubmit,
+        handleEmailVerificationSuccess,
+        closeEmailVerificationModal,
         clearErrors,
         resetForm,
         setFormData

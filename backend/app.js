@@ -15,6 +15,8 @@ import reviewsRoutes from './src/routes/reviews.js';
 import categoriesRoutes from './src/routes/categories.js';
 // NUEVA LÍNEA - Importar rutas de recuperación de contraseña
 import passwordResetRoutes from './src/routes/passwordReset.js';
+// NUEVA LÍNEA - Importar rutas de verificación de email
+import emailVerificationRoutes from './src/routes/emailVerification.js';
 
 const app = express();
 
@@ -52,5 +54,8 @@ app.use("/api/categories", categoriesRoutes);
 
 // NUEVA LÍNEA - Usar rutas de recuperación de contraseña
 app.use('/api/password-reset', passwordResetRoutes);
+
+// NUEVA LÍNEA - Usar rutas de verificación de email (después de las otras rutas)
+app.use('/api/email-verification', emailVerificationRoutes);
 
 export default app;

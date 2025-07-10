@@ -16,6 +16,9 @@ import BackButton from "../components/BackButton";
 import RegisterInput from "../components/Register/RegisterInput";
 import TermsCheckbox from "../components/Register/TermsCheckbox";
 
+// NUEVO - Componente de verificación de email
+import EmailVerificationModal from "../components/EmailVerification/EmailVerificationModal";
+
 // Hook personalizado
 import useRegisterForm from "../components/Clients/Hooks/useRegisterForm";
 
@@ -29,7 +32,7 @@ import lockIcon from "../assets/lockIcon.png";
 
 /**
  * Página de registro de usuarios
- * Utiliza componentes modulares y hook personalizado para manejar la lógica
+ * Ahora incluye modal de verificación de email
  */
 const Register = () => {
     // Estado para mostrar/ocultar contraseña
@@ -39,13 +42,16 @@ const Register = () => {
     const navigate = useNavigate();
     const { isAuthenticated, user } = useAuth();
 
-    // Hook personalizado para el formulario de registro
+    // Hook personalizado para el formulario de registro (ACTUALIZADO)
     const {
         formData,
         errors,
         isLoading,
+        showEmailVerificationModal,
         handleInputChange,
         handleSubmit,
+        handleEmailVerificationSuccess,
+        closeEmailVerificationModal,
         clearErrors
     } = useRegisterForm();
 
@@ -186,7 +192,7 @@ const Register = () => {
 
                 {/* Botón de registro */}
                 <Button
-                    text={isLoading ? "Creando cuenta..." : "Crear cuenta"}
+                    text={isLoading ? "Verificando..." : "Crear cuenta"}
                     variant="primary"
                     type="submit"
                     disabled={isLoading || !formData.acceptTerms}
@@ -204,6 +210,24 @@ const Register = () => {
                 {/* Botón de Google */}
                 <GoogleButton onClick={handleGoogleRegister} />
             </Form>
+
+            {/* NUEVO - Modal de verificación de email */}
+            <EmailVerificationModal
+                isOpen={showEmailVerificationModal}
+                onClose={closeEmailVerificationModal}
+                email={formData.email}
+                fullName={formData.fullName}
+                userData={{
+                    fullName: formData.fullName,
+                    phone: formData.phone,
+                    birthDate: formData.birthDate,
+                    address: formData.address,
+                    password: formData.password,
+                    favorites: [],
+                    discount: null
+                }}
+                onSuccess={handleEmailVerificationSuccess}
+            />
         </PageContainer>
     );
 };

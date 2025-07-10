@@ -29,6 +29,10 @@ const Footer = () => {
     navigate('/shippingInformation');
   };
 
+  const handleAboutUsClick = () => {
+    navigate('/aboutUs');
+  };
+
   return (
     <footer className="bg-white border-t border-gray-200 py-16 px-8 font-poppins">
       {/* Logo y decoración superior */}
@@ -141,14 +145,14 @@ const Footer = () => {
                 className="text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
               // onClick={handlePrivacyPoliciesClick}
               >
-                Privacidad
+                Políticas de Privacidad
               </p>
             </div>
           </div>
 
           {/* Sobre nosotros */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-800 mb-6 italic">Sobre nosotros</h3>
+            <h3 className="text-lg font-semibold text-gray-800 mb-6 italic" >Sobre nosotros</h3>
             <div className="space-y-3 mb-6">
               <p
                 className="text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
@@ -158,7 +162,7 @@ const Footer = () => {
               </p>
               <p
                 className="text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
-              // onClick={handleHistoryClick}
+               onClick={handleAboutUsClick}
               >
                 Historia
               </p>

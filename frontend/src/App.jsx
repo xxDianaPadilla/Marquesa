@@ -29,7 +29,7 @@ import MediaPage from './pages/MediaPage';
 import RuletaPage from './pages/RuletaPage';
 import ConditionsPromotions from './pages/ConditionsPromotions';
 import ShippingInformation from './pages/ShippingInformation';
-import BlogDetailPage from './pages/MediaDetailPage';
+import AboutUs from './pages/AboutUs';
 import MediaDetailPage from './pages/MediaDetailPage';
 
 function App() {
@@ -100,10 +100,11 @@ function App() {
           <Route path="/categoria/:categoryId" element={<CategoryProductsPage />} />
           <Route path="/ProductDetail" element={<ProductDetail />} />
           <Route path="/mediaPage" element={<MediaPage />} />
-          <Route path="/blog/:id" element={<MediaDetailPage />} />
+          <Route path="/MediaDetailPage/:id" element={<MediaDetailPage />} />
           <Route path="/ruleta" element={<RuletaPage />} />
           <Route path="/conditionsPromotions" element={<ConditionsPromotions />} />
           <Route path="/shippingInformation" element={<ShippingInformation />} />
+          <Route path="/aboutUs" element={<AboutUs />} />
 
           {/* Rutas del admin */}
           <Route path="/dashboard"

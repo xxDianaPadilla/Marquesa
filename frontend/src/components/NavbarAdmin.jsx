@@ -1,4 +1,4 @@
-import React, { useContext, useState, useRef, useEffect } from "react";
+import React from "react";
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import marquesaMiniLogo from '../assets/marquesaMiniLogo.png';
@@ -10,41 +10,10 @@ import reviewsIcon from '../assets/reviewsIcon.png';
 import categoriesIcon from '../assets/categoriesIcon.png';
 import logoutIcon from '../assets/logout.png';
 
-const NavbarAdmin = () => {
+const NavbarAdmin = ({ isExpanded, setIsExpanded }) => {
     const navigate = useNavigate();
     const location = useLocation();
-
-    const handleMediaClick = (e) => {
-        e.preventDefault();
-        navigate('/media');
-    };
-
-    const handleDashboardClick = (e) => {
-        e.preventDefault();
-        navigate('/dashboard');
-    };
-
-    const handleProductsClick = (e) => {
-        e.preventDefault();
-        navigate('/products');
-    };
-
-    const handleSalesClick = (e) => {
-        e.preventDefault();
-        navigate('/sales');
-    };
-
-    const handleReviewsClick = (e) => {
-        e.preventDefault();
-        navigate('/reviews');
-    };
-
-    const handleCategoriesClick = (e) => {
-        e.preventDefault();
-        navigate('/categories');
-    };
-
-    const { logout, loading: authLoading } = useAuth();
+    const { logout } = useAuth();
 
     const handleLogout = async () => {
         const result = await logout();
@@ -56,140 +25,86 @@ const NavbarAdmin = () => {
         }
     };
 
-    // Función para determinar si un botón está activo
-    const isActive = (path) => {
-        return location.pathname === path;
-    };
+    const isActive = (path) => location.pathname === path;
 
-    // Función para obtener las clases del botón
     const getButtonClasses = (path) => {
-        const baseClasses = "w-10 h-10 flex items-center justify-center rounded-lg transition-all duration-200 group";
-        const activeClasses = "bg-white/30 shadow-inner";
-        const hoverClasses = "hover:bg-white/20";
-
-        return isActive(path)
-            ? `${baseClasses} ${activeClasses}`
-            : `${baseClasses} ${hoverClasses}`;
+        const base = "flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 group";
+        const active = "bg-white/30 shadow-inner";
+        const hover = "hover:bg-white/20";
+        return isActive(path) ? `${base} ${active}` : `${base} ${hover}`;
     };
 
-    // Función para obtener las clases del icono
     const getIconClasses = (path) => {
-        const baseClasses = "w-5 h-5 object-contain filter brightness-0 invert transition-transform duration-200";
-        const activeClasses = "scale-110";
-        const hoverClasses = "group-hover:scale-110";
-
-        return isActive(path)
-            ? `${baseClasses} ${activeClasses}`
-            : `${baseClasses} ${hoverClasses}`;
+        const base = "w-5 h-5 object-contain filter brightness-0 invert transition-transform duration-200";
+        const active = "scale-110";
+        const hover = "group-hover:scale-110";
+        return isActive(path) ? `${base} ${active}` : `${base} ${hover}`;
     };
+
+    const navItems = [
+        // Aquí agregamos el toggle/logo como primer botón:
+        {
+            path: null,
+            icon: marquesaMiniLogo,
+            label: isExpanded ? '' : 'Expandir menú',
+            onClick: () => setIsExpanded(!isExpanded),
+            isToggle: true
+        },
+        { path: '/dashboard', icon: statisticsIcon, label: 'Dashboard' },
+        { path: '/products', icon: flowerIcon, label: 'Productos' },
+        { path: '/sales', icon: shoppingCartIcon, label: 'Ventas' },
+        { path: '/media', icon: mediaIcon, label: 'Media' },
+        { path: '/reviews', icon: reviewsIcon, label: 'Reseñas' },
+        { path: '/categories', icon: categoriesIcon, label: 'Categorías' },
+    ];
 
     return (
-        <div className="fixed left-0 top-5 bottom-5 w-16 bg-gradient-to-b from-[#FF7260] via-[#FF9A8B] to-[#FF7260] shadow-lg z-30 rounded-r-2xl">
-            <div className="flex flex-col items-center py-4 h-full">
-                {/* Logo */}
-                <div className="mb-6">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center">
-                        <img
-                            src={marquesaMiniLogo}
-                            alt="Logo"
-                            className="w-10 h-10 object-contain"
-                        />
-                    </div>
-                </div>
-
-                {/* Navigation Icons */}
-                <nav className="flex flex-col space-y-4 flex-1">
-                    {/* Statistics Icon */}
-                    <button
-                        className={getButtonClasses('/dashboard')}
-                        onClick={handleDashboardClick}
-                    >
-                        <img
-                            style={{ cursor: 'pointer' }}
-                            src={statisticsIcon}
-                            alt="Estadísticas"
-                            className={getIconClasses('/dashboard')}
-                        />
-                    </button>
-
-                    {/* Flower Icon */}
-                    <button
-                        className={getButtonClasses('/products')}
-                        onClick={handleProductsClick}
-                    >
-                        <img
-                            style={{ cursor: 'pointer' }}
-                            src={flowerIcon}
-                            alt="Flores"
-                            className={getIconClasses('/products')}
-                        />
-                    </button>
-
-                    {/* Shopping Cart Icon */}
-                    <button
-                        className={getButtonClasses('/sales')}
-                        onClick={handleSalesClick}
-                    >
-                        <img
-                            style={{ cursor: 'pointer' }}
-                            src={shoppingCartIcon}
-                            alt="Carrito"
-                            className={getIconClasses('/sales')}
-                        />
-                    </button>
-
-                    {/* Media Icon */}
-                    <button
-                        className={getButtonClasses('/media')}
-                        onClick={handleMediaClick}
-                    >
-                        <img
-                            style={{ cursor: 'pointer' }}
-                            src={mediaIcon}
-                            alt="Media"
-                            className={getIconClasses('/media')}
-                        />
-                    </button>
-
-                    {/* Reviews Icon */}
-                    <button
-                        className={getButtonClasses('/reviews')}
-                        onClick={handleReviewsClick}
-                    >
-                        <img
-                            style={{ cursor: 'pointer' }}
-                            src={reviewsIcon}
-                            alt="Reseñas"
-                            className={getIconClasses('/reviews')}
-                        />
-                    </button>
-
-                    {/* Categories Icon */}
-                    <button
-                        className={getButtonClasses('/categories')}
-                        onClick={handleCategoriesClick}
-                    >
-                        <img
-                            style={{ cursor: 'pointer' }}
-                            src={categoriesIcon}
-                            alt="Categorías"
-                            className={getIconClasses('/categories')}
-                        />
-                    </button>
+        <div className={`fixed top-5 bottom-5 left-0 z-30 bg-gradient-to-b from-[#FF7260] via-[#FF9A8B] to-[#FF7260] rounded-r-2xl shadow-lg transition-all duration-300
+            ${isExpanded ? 'w-48' : 'w-16'}`}>
+            <div className="flex flex-col h-full py-4 px-2">
+                {/* Nav Items */}
+                <nav className="flex flex-col space-y-2 flex-1">
+                {navItems.map(({ path, icon, label, onClick, isToggle }) => {
+    const handleClick = onClick ? onClick : () => navigate(path);
+    const activeClass = isToggle ? "" : (isActive(path) ? "bg-white/30 shadow-inner" : "");
+    return (
+        <button
+            key={label}
+            onClick={handleClick}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 group
+                ${activeClass} hover:bg-white/20`}
+            aria-label={label}
+        >
+            <img
+                src={icon}
+                alt={label}
+                className={`object-contain transition-transform duration-200 ${
+                    isToggle ? 'w-7 h-7' : `w-5 h-5 filter brightness-0 invert ${isActive(path) ? "scale-110" : "group-hover:scale-110"}`
+                }`}
+            />
+            {isExpanded && <span className="text-white text-sm">{label}</span>}
+        </button>
+    );
+})}
                 </nav>
 
-                {/* Logout Icon - Bottom */}
-                <div className="mt-auto">
-                    <button className="w-10 h-10 flex items-center justify-center hover:bg-white/20 rounded-lg transition-colors duration-200 group">
-                        <img
-                            style={{ cursor: 'pointer' }}
-                            onClick={handleLogout}
-                            src={logoutIcon}
-                            alt="Cerrar sesión"
-                            className="w-5 h-5 object-contain filter brightness-0 invert group-hover:scale-110 transition-transform duration-200"
-                        />
-                    </button>
-                </div>
+                {/* Logout */}
+                <div className="mt-auto px-2">
+  <button
+    onClick={handleLogout}
+    className={`flex items-center gap-2 hover:bg-white/20 rounded-lg transition
+      ${isExpanded ? 'px-3 py-2' : 'p-3 justify-center w-full'}`}
+    aria-label="Cerrar sesión"
+  >
+    <img
+      src={logoutIcon}
+      alt="Cerrar sesión"
+      className={`object-contain filter brightness-0 invert
+        ${isExpanded ? 'w-6 h-6' : 'w-8 h-8'}`}
+    />
+    {isExpanded && <span className="text-white text-sm">Cerrar sesión</span>}
+  </button>
+</div>
             </div>
         </div>
     );

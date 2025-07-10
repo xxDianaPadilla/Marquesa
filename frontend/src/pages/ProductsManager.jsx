@@ -1,13 +1,11 @@
-// Importación de librerías y componentes utilizados
 import React, { useState } from "react";
 import NavbarAdmin from "../components/NavbarAdmin";
 import useDataProducts from "../components/ProductsAdmin/hooks/useDataProducts";
 import ProductTable from "../components/ProductsAdmin/ProductTable";
 import ProductForm from "../components/ProductsAdmin/ProductForm";
-import { FaPlus, FaSearch } from 'react-icons/fa';
+import { FaPlus, FaSearch } from "react-icons/fa";
 
 const ProductsManager = () => {
-  // Extraer valores necesarios desde el hook
   const {
     id,
     name,
@@ -25,61 +23,64 @@ const ProductsManager = () => {
     deleteProduct,
     handleEdit,
     updateProduct,
-    resetForm, // Añadir resetForm
+    resetForm,
   } = useDataProducts();
 
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
 
-  // Filtrar productos por búsqueda
-  const filteredProducts = products.filter(product =>
+  // Estado para controlar expansión del sidebar
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const filteredProducts = products.filter((product) =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleOpenForm = () => {
-    setEditingProduct(null); // Limpiar producto en edición
-    resetForm(); // Limpiar el formulario del hook
+    setEditingProduct(null);
+    resetForm();
     setShowForm(true);
   };
 
   const handleCloseForm = () => {
     setShowForm(false);
-    setEditingProduct(null); // Limpiar al cerrar
-    resetForm(); // Limpiar el formulario del hook
+    setEditingProduct(null);
+    resetForm();
   };
 
   const handleEditProduct = (product) => {
     console.log("Producto a editar:", product);
-    setEditingProduct(product); // Establecer producto a editar
-    updateProduct(product); // ¡IMPORTANTE! Esto establece el ID en el hook
+    setEditingProduct(product);
+    updateProduct(product);
     setShowForm(true);
   };
 
-  // Función unificada para manejar submit del formulario
   const handleProductSubmit = async (productData) => {
     try {
       if (editingProduct) {
-        // Si estamos editando, usar handleEdit
         console.log("Editando producto con ID:", id);
         await handleEdit(productData);
       } else {
-        // Si estamos creando, usar createProduct
         console.log("Creando nuevo producto");
         await createProduct(productData);
       }
       handleCloseForm();
     } catch (error) {
-      console.error('Error al procesar producto:', error);
+      console.error("Error al procesar producto:", error);
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <NavbarAdmin />
+      {/* Navbar con control de expansión */}
+      <NavbarAdmin isExpanded={isExpanded} setIsExpanded={setIsExpanded} />
 
-      {/* Contenido principal */}
-      <div className="ml-16 p-3 sm:p-6">
+      {/* Contenido principal con margen dinámico */}
+      <div
+        style={{ marginLeft: isExpanded ? "12rem" : "4rem" }}
+        className="p-3 sm:p-6 transition-margin duration-300"
+      >
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">

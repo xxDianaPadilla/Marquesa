@@ -55,7 +55,6 @@ const ProductTable = ({ products, loading, onEdit, onDelete }) => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-poppins">Categoría</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-poppins">Imágenes</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-poppins">Es personalizable</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-poppins">Detalles</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-poppins">Acciones</th>
             </tr>
           </thead>
@@ -66,22 +65,21 @@ const ProductTable = ({ products, loading, onEdit, onDelete }) => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-poppins">{product.description}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-poppins">${product.price.toFixed(2)}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-poppins">{product.stock}</td>
-       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-poppins">
-  {product.categoryId?.name || product.categoryId}
-</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-poppins">
+                  {product.categoryId?.name || product.categoryId}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-poppins">
                   {product.images?.[0]?.image && (
                     <img
-  src={product.images[0].image}
-  alt="Producto"
-  className="w-16 h-16 rounded-lg object-cover border border-transparent"
-/>
+                      src={product.images[0].image}
+                      alt="Producto"
+                      className="w-16 h-16 rounded-lg object-cover border border-transparent"
+                    />
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-poppins">
                   {product.isPersonalizable ? 'Sí' : 'No'}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-poppins">{product.details}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <ProductActions
                     product={product}

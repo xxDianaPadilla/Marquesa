@@ -27,49 +27,27 @@ const TermsandConditions = () => {
                             className="text-black-600"
                             style={{ fontFamily: 'Poppins, sans-serif' }}
                         >
-                            En La Marquesa, creemos que cada detalle cuenta y que las flores son el lenguaje perfecto para expresar emociones. 
-                            Somos una tienda de arreglos florales ubicada en El Salvador, especializada en crear diseños únicos, personalizados y
-                             llenos de significado para cada ocasión especial.
+                            Al utilizar los servicios de La MarquesaSV, aceptas los siguientes términos:
                         </p>
                         <br />
-                        <p
-                            className="text-black-600"
-                            style={{ fontFamily: 'Poppins, sans-serif' }}
-                        >
-                            Nos caracterizamos por un estilo visual elegante y minimalista, reflejado en cada uno de nuestros productos, empaques y comunicación.
-                             Nuestro logotipo, inspirado en pequeños botones de flor y detalles de regalo, representa la esencia de lo que somos: 
-                             creadores de momentos especiales que florecen con amor y dedicación.
-                        </p>
-                        <br />
-                        <p
-                            className="text-black-600"
-                            style={{ fontFamily: 'Poppins, sans-serif' }}
-                        >
-                            Utilizamos una paleta de colores suaves y delicados, combinando tonos pastel como el rosa, azul y blanco, con acentos modernos en negro y gris. 
-                            Esta identidad se extiende a nuestras redes sociales, donde compartimos de forma cercana y creativa el arte que ponemos en cada arreglo.
-                        </p>
-                        <br />
-                        <p
-                            className="text-black-600"
-                            style={{ fontFamily: 'Poppins, sans-serif' }}
-                        >
-                            Ya sea para cumpleaños, aniversarios, bodas, condolencias o simplemente para alegrar el día de alguien especial, nuestros arreglos buscan 
-                            transmitir emociones auténticas. Más que flores, entregamos sentimientos, historias y recuerdos imborrables.
-                        </p>
-                        <br />
-                        <p
-                            className="text-black-600"
-                            style={{ fontFamily: 'Poppins, sans-serif' }}
-                        >
-                            Déjanos ser parte de tus momentos más importantes, llevando belleza, color y vida a cada uno de ellos. 
-                        </p>
-                        <br />
-                        <p
-                            className="text-black-600 font-medium"
-                            style={{ fontFamily: 'Poppins, sans-serif' }}
-                        >
-                            La Marquesa — Dedicados a realizar detalles únicos
-                        </p>
+                        <p>   1. Pedidos</p>
+                        <p>Todos los pedidos deben realizarse a través de nuestros canales oficiales 
+                            (redes sociales, sitio web o WhatsApp). El pago debe completarse antes de la elaboración del arreglo floral.</p>
+                            <br />
+                        <p>   2. Productos</p>
+                        <p>Nuestros arreglos pueden variar ligeramente en diseño y flores según disponibilidad estacional, 
+                            pero se respeta siempre el estilo y calidad ofrecidos.</p>
+                            <br />
+                        <p>   3. Precios</p>
+                        <p>Los precios están expresados en dólares estadounidenses (USD) e incluyen IVA. Los costos de envío pueden variar según la zona.</p>
+                            <br />
+                        <p>   4. Cancelaciones y reembolsos</p>
+                        <p>Los pedidos pueden cancelarse hasta 48 horas después de la fecha que se emitió la orden del pedido. 
+                            No se hacen reembolsos por cancelaciones fuera de ese plazo o por errores en los datos proporcionados por el cliente.</p>
+                            <br />
+                        <p>   5. Uso del contenido</p>
+                        <p>Todo el contenido visual, logotipos y fotografías pertenecen a La MarquesaSV y no puede ser usado sin autorización previa.</p>
+                            <br />
                         </div>
                     </div>
                 </main>

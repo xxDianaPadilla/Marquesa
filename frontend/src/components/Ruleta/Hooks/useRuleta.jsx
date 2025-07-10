@@ -1,4 +1,4 @@
-// frontend/src/hooks/useRuleta.js
+// frontend/src/components/Ruleta/Hooks/useRuleta.jsx
 import { useState, useCallback } from 'react';
 
 export const useRuleta = () => {
@@ -73,7 +73,7 @@ export const useRuleta = () => {
         };
         console.log('🎯 Código seleccionado:', selectedDiscount);
 
-        // Tiempo de giro: 4 segundos (debe coincidir con la animación CSS)
+        // Tiempo de giro: 4 segundos (coincide con la animación CSS)
         setTimeout(() => {
             console.log('⏰ Giro completado, mostrando resultado...');
             setSelectedCode(selectedDiscount);
@@ -84,7 +84,7 @@ export const useRuleta = () => {
                 setShowResult(true);
                 setHasSpun(true);
                 console.log('🎉 Modal de resultado mostrado');
-            }, 500);
+            }, 1000);
         }, 4000); // 4 segundos - coincide con la animación CSS
     }, [isSpinning, hasSpun, discountCodes]);
 

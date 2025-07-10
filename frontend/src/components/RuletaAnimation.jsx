@@ -44,7 +44,7 @@ const RuletaAnimation = ({ isSpinning, onSpin, hasSpun }) => {
                     <img
                         src={ruletaImage}
                         alt="Ruleta de descuentos"
-                        className={`w-80 h-80 sm:w-96 sm:h-96 lg:w-[450px] lg:h-[450px] ruleta-image ${
+                        className={`w-60 h-60 sm:w-72 sm:h-72 md:w-80 md:h-80 lg:w-96 lg:h-96 xl:w-[450px] xl:h-[450px] ruleta-image ${
                             !hasSpun ? 'hover:shadow-2xl' : 'grayscale'
                         }`}
                         style={{
@@ -55,7 +55,7 @@ const RuletaAnimation = ({ isSpinning, onSpin, hasSpun }) => {
 
                     {/* Punto central de la ruleta */}
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className={`w-6 h-6 bg-white rounded-full border-4 border-pink-400 shadow-lg z-10 ${
+                        <div className={`w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 bg-white rounded-full border-2 sm:border-3 md:border-4 border-pink-400 shadow-lg z-10 ${
                             isSpinning ? 'animate-pulse' : ''
                         }`}></div>
                     </div>
@@ -63,8 +63,8 @@ const RuletaAnimation = ({ isSpinning, onSpin, hasSpun }) => {
                     {/* Overlay de instrucción cuando no ha girado */}
                     {!isSpinning && !hasSpun && (
                         <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300 bg-black bg-opacity-30 rounded-full">
-                            <div className="bg-white text-gray-800 px-6 py-3 rounded-xl shadow-lg transform hover:scale-105 transition-transform">
-                                <span className="text-lg font-bold" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                            <div className="bg-white text-gray-800 px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 rounded-lg sm:rounded-xl shadow-lg transform hover:scale-105 transition-transform">
+                                <span className="text-sm sm:text-base md:text-lg font-bold" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                     ¡Haz clic para girar!
                                 </span>
                             </div>
@@ -74,8 +74,8 @@ const RuletaAnimation = ({ isSpinning, onSpin, hasSpun }) => {
                     {/* Estado usado */}
                     {hasSpun && !isSpinning && (
                         <div className="absolute inset-0 flex items-center justify-center bg-gray-800 bg-opacity-60 rounded-full z-20">
-                            <div className="bg-gray-100 text-gray-800 px-6 py-3 rounded-xl shadow-lg">
-                                <span className="font-bold text-lg" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                            <div className="bg-gray-100 text-gray-800 px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 rounded-lg sm:rounded-xl shadow-lg">
+                                <span className="font-bold text-sm sm:text-base md:text-lg" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                     Ruleta utilizada
                                 </span>
                             </div>
@@ -85,8 +85,8 @@ const RuletaAnimation = ({ isSpinning, onSpin, hasSpun }) => {
 
                 {/* Indicador de que se puede hacer clic */}
                 {!isSpinning && !hasSpun && (
-                    <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
-                        <div className="bg-pink-500 text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg">
+                    <div className="absolute -bottom-6 sm:-bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
+                        <div className="bg-pink-500 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium shadow-lg">
                             <span style={{ fontFamily: 'Poppins, sans-serif' }}>👆 ¡Haz clic!</span>
                         </div>
                     </div>
@@ -95,7 +95,7 @@ const RuletaAnimation = ({ isSpinning, onSpin, hasSpun }) => {
 
             {/* Overlay fullscreen durante el giro */}
             {showFullscreen && isSpinning && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 backdrop-blur-sm">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 backdrop-blur-sm p-4">
                     {/* Contenedor principal centrado */}
                     <div className="relative flex flex-col items-center justify-center">
                         {/* Ruleta grande centrada */}
@@ -103,7 +103,7 @@ const RuletaAnimation = ({ isSpinning, onSpin, hasSpun }) => {
                             <img
                                 src={ruletaImage}
                                 alt="Ruleta de descuentos"
-                                className={`w-72 h-72 sm:w-80 sm:h-80 md:w-96 md:h-96 lg:w-[500px] lg:h-[500px] ${spinClass} drop-shadow-2xl`}
+                                className={`w-64 h-64 sm:w-72 sm:h-72 md:w-80 md:h-80 lg:w-96 lg:h-96 xl:w-[500px] xl:h-[500px] ${spinClass} drop-shadow-2xl`}
                                 style={{
                                     transformOrigin: 'center center'
                                 }}
@@ -111,15 +111,15 @@ const RuletaAnimation = ({ isSpinning, onSpin, hasSpun }) => {
                             
                             {/* Punto central brillante */}
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <div className="w-8 h-8 bg-white rounded-full border-4 border-pink-400 shadow-2xl animate-pulse"></div>
+                                <div className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 bg-white rounded-full border-3 sm:border-4 border-pink-400 shadow-2xl animate-pulse"></div>
                             </div>
                         </div>
 
                         {/* Texto de estado */}
-                        <div className="mt-8 bg-white bg-opacity-90 backdrop-blur-sm px-8 py-4 rounded-2xl shadow-2xl animate-fade-in">
-                            <div className="flex items-center space-x-4">
-                                <div className="animate-spin rounded-full h-6 w-6 border-b-4 border-pink-500"></div>
-                                <span className="text-gray-800 font-bold text-xl" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                        <div className="mt-6 sm:mt-8 bg-white bg-opacity-90 backdrop-blur-sm px-4 sm:px-6 md:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl shadow-2xl animate-fade-in">
+                            <div className="flex items-center space-x-3 sm:space-x-4">
+                                <div className="animate-spin rounded-full h-5 w-5 sm:h-6 sm:w-6 border-b-3 sm:border-b-4 border-pink-500"></div>
+                                <span className="text-gray-800 font-bold text-lg sm:text-xl" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                     ¡La ruleta está girando!
                                 </span>
                             </div>
@@ -132,8 +132,8 @@ const RuletaAnimation = ({ isSpinning, onSpin, hasSpun }) => {
                                     key={i}
                                     className="absolute animate-float-particle"
                                     style={{
-                                        width: `${Math.random() * 8 + 4}px`,
-                                        height: `${Math.random() * 8 + 4}px`,
+                                        width: `${Math.random() * 6 + 4}px`,
+                                        height: `${Math.random() * 6 + 4}px`,
                                         backgroundColor: ['#FF69B4', '#FFB6C1', '#DDA0DD', '#98FB98', '#FFE4B5', '#FFA07A', '#E8ACD2', '#FADDDD', '#C6E2C6'][i % 9],
                                         borderRadius: Math.random() > 0.5 ? '50%' : '0%',
                                         top: `${10 + Math.random() * 80}%`,
@@ -153,8 +153,8 @@ const RuletaAnimation = ({ isSpinning, onSpin, hasSpun }) => {
                                 key={`confetti-${i}`}
                                 className="absolute animate-confetti-fall"
                                 style={{
-                                    width: `${Math.random() * 6 + 2}px`,
-                                    height: `${Math.random() * 6 + 2}px`,
+                                    width: `${Math.random() * 4 + 3}px`,
+                                    height: `${Math.random() * 4 + 3}px`,
                                     backgroundColor: ['#FADDDD', '#E8ACD2', '#C6E2C6', '#FF69B4', '#FFB6C1', '#DDA0DD'][i % 6],
                                     borderRadius: Math.random() > 0.7 ? '50%' : '0%',
                                     top: '-10px',

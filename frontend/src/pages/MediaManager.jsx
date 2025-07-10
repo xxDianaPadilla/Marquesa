@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import NavbarAdmin from "../components/NavbarAdmin";
 import MediaUploadModal from "../components/MediaUploadModal";
 import MediaEditModal from "../components/MediaEditModal";
@@ -7,13 +7,13 @@ import MediaHeader from "../components/MediaHeader";
 import MediaContent from "../components/MediaContent";
 import NotificationContainer from "../components/NotificationContainer";
 
-// Hooks optimizados
 import { useMediaManager } from "../components/Media/Hooks/useMediaManager";
 import { useNotifications } from "../components/Media/Hooks/useNotifications";
 import { useMediaUtils } from "../components/Media/Hooks/useMediaUtils";
 
 const MediaManager = () => {
-    // Hook principal de gestión de medios
+    const [isExpanded, setIsExpanded] = useState(false);
+
     const {
         mediaItems,
         loading,
@@ -32,7 +32,6 @@ const MediaManager = () => {
         closeModal
     } = useMediaManager();
 
-    // Hook de notificaciones
     const {
         notifications,
         showSuccess,
@@ -40,34 +39,30 @@ const MediaManager = () => {
         removeNotification
     } = useNotifications();
 
-    // Hook de utilidades
     const {
         mediaTypes,
         copyToClipboard
     } = useMediaUtils();
 
-    // Mostrar error inicial si existe
-    React.useEffect(() => {
+    useEffect(() => {
         if (error) {
             showError(`Error al cargar multimedia: ${error}`);
         }
     }, [error, showError]);
 
-    // Handlers simplificados para modales
-    const handleEdit = React.useCallback((item) => {
+    const handleEdit = useCallback((item) => {
         openModal('edit', item);
     }, [openModal]);
 
-    const handleDelete = React.useCallback((item) => {
+    const handleDelete = useCallback((item) => {
         openModal('delete', item);
     }, [openModal]);
 
-    const handleOpenUploadModal = React.useCallback(() => {
+    const handleOpenUploadModal = useCallback(() => {
         openModal('upload');
     }, [openModal]);
 
-    // Handler para copiar URLs
-    const handleCopyUrl = React.useCallback(async (url) => {
+    const handleCopyUrl = useCallback(async (url) => {
         const result = await copyToClipboard(url);
         if (result.success) {
             showSuccess("URL copiada al portapapeles");
@@ -76,8 +71,7 @@ const MediaManager = () => {
         }
     }, [copyToClipboard, showSuccess, showError]);
 
-    // Handlers para confirmaciones de modales con manejo de errores unificado
-    const handleConfirmUpload = React.useCallback(async (formData) => {
+    const handleConfirmUpload = useCallback(async (formData) => {
         try {
             const result = await createMediaItem(formData);
             if (result.success) {
@@ -86,12 +80,12 @@ const MediaManager = () => {
             } else {
                 showError(result.error);
             }
-        } catch (error) {
+        } catch {
             showError("Error inesperado al crear multimedia");
         }
     }, [createMediaItem, closeModal, showSuccess, showError]);
 
-    const handleConfirmEdit = React.useCallback(async (formData) => {
+    const handleConfirmEdit = useCallback(async (formData) => {
         if (!selectedItem) return;
         
         try {
@@ -102,12 +96,12 @@ const MediaManager = () => {
             } else {
                 showError(result.error);
             }
-        } catch (error) {
+        } catch {
             showError("Error inesperado al editar multimedia");
         }
     }, [selectedItem, updateMediaItem, closeModal, showSuccess, showError]);
 
-    const handleConfirmDelete = React.useCallback(async () => {
+    const handleConfirmDelete = useCallback(async () => {
         if (!selectedItem) return;
         
         try {
@@ -118,25 +112,24 @@ const MediaManager = () => {
             } else {
                 showError(result.error);
             }
-        } catch (error) {
+        } catch {
             showError("Error inesperado al eliminar multimedia");
         }
     }, [selectedItem, deleteMediaItem, closeModal, showSuccess, showError]);
 
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Navbar Admin */}
-            <NavbarAdmin />
+            <NavbarAdmin isExpanded={isExpanded} setIsExpanded={setIsExpanded} />
 
-            {/* Componente de notificaciones */}
-            <NotificationContainer
-                notifications={notifications}
-                onRemove={removeNotification}
-            />
+            <div
+                style={{ paddingLeft: isExpanded ? '12rem' : '4rem' }}
+                className="p-3 sm:p-6 transition-padding duration-300"
+            >
+                <NotificationContainer
+                    notifications={notifications}
+                    onRemove={removeNotification}
+                />
 
-            {/* Contenido principal */}
-            <div className="ml-16 p-3 sm:p-6">
-                {/* Header con filtros y estadísticas */}
                 <MediaHeader
                     searchTerm={searchTerm}
                     onSearchChange={setSearchTerm}
@@ -147,7 +140,6 @@ const MediaManager = () => {
                     stats={stats}
                 />
 
-                {/* Contenido principal con tabla/lista */}
                 <MediaContent
                     items={mediaItems}
                     loading={loading}
@@ -158,7 +150,6 @@ const MediaManager = () => {
                 />
             </div>
 
-            {/* Modales */}
             {modals.upload && (
                 <MediaUploadModal
                     onClose={() => closeModal('upload')}

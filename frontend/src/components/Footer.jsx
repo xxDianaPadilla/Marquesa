@@ -12,42 +12,18 @@ import telephoneIcon from '../assets/telephoneIcon.png';
 const Footer = () => {
   const navigate = useNavigate();
 
-  // const handleAboutUsClick = () => {
-  //   navigate('/aboutUs');
-  // };
-
-  // const handlePrivacyPoliciesClick = () => {
-  //   navigate('/privacyPolicies');
-  // };
-
-  // const handleTermsConditionsClick = () => {
-  //   navigate('/termsConditions');
-  // };
-
-  // const handleServicesClick = () => {
-  //   navigate('/services');
-  // };
-
-  // const handleHistoryClick = () => {
-  //   navigate('/history');
-  // };
-
   const handleMediaClick = () => {
     navigate('/mediaPage');
   };
-
-  // const handleDeliveryInfoClick = () => {
-  //   navigate('/delivery');
-  // };
 
   // Función para navegar a la página de la ruleta
   const handleConcursosClick = () => {
     navigate('/ruleta');
   };
 
-  // const handleCondicionesOfertasClick = () => {
-  //   navigate('/offers');
-  // };
+  const handleConditionsPromotionsClick = () => {
+    navigate('/conditionsPromotions');
+  };
 
   return (
     <footer className="bg-white border-t border-gray-200 py-16 px-8 font-poppins">
@@ -140,7 +116,7 @@ const Footer = () => {
               </p>
               <p
                 className="text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
-              // onClick={handleCondicionesOfertasClick}
+                onClick={handleConditionsPromotionsClick}
               >
                 Condiciones Ofertas
               </p>

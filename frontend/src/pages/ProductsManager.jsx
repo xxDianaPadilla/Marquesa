@@ -25,10 +25,12 @@ const ProductsManager = () => {
     deleteProduct,
     handleEdit,
     updateProduct,
+    resetForm, // Añadir resetForm
   } = useDataProducts();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
 
   // Filtrar productos por búsqueda
   const filteredProducts = products.filter(product =>
@@ -36,33 +38,39 @@ const ProductsManager = () => {
   );
 
   const handleOpenForm = () => {
+    setEditingProduct(null); // Limpiar producto en edición
+    resetForm(); // Limpiar el formulario del hook
     setShowForm(true);
   };
 
   const handleCloseForm = () => {
     setShowForm(false);
+    setEditingProduct(null); // Limpiar al cerrar
+    resetForm(); // Limpiar el formulario del hook
   };
 
   const handleEditProduct = (product) => {
-    updateProduct(product);
+    console.log("Producto a editar:", product);
+    setEditingProduct(product); // Establecer producto a editar
+    updateProduct(product); // ¡IMPORTANTE! Esto establece el ID en el hook
     setShowForm(true);
   };
 
-  const handleCreateProduct = async (productData) => {
+  // Función unificada para manejar submit del formulario
+  const handleProductSubmit = async (productData) => {
     try {
-      await createProduct(productData);
+      if (editingProduct) {
+        // Si estamos editando, usar handleEdit
+        console.log("Editando producto con ID:", id);
+        await handleEdit(productData);
+      } else {
+        // Si estamos creando, usar createProduct
+        console.log("Creando nuevo producto");
+        await createProduct(productData);
+      }
       handleCloseForm();
     } catch (error) {
-      console.error('Error al crear producto:', error);
-    }
-  };
-
-  const handleUpdateProduct = async (productData) => {
-    try {
-      await handleEdit(productData);
-      handleCloseForm();
-    } catch (error) {
-      console.error('Error al editar producto:', error);
+      console.error('Error al procesar producto:', error);
     }
   };
 
@@ -122,20 +130,10 @@ const ProductsManager = () => {
           <ProductForm
             isOpen={showForm}
             onClose={handleCloseForm}
-            onSubmit={id ? handleUpdateProduct : handleCreateProduct}
+            onSubmit={handleProductSubmit}
+            productData={editingProduct}
             categories={categories}
-            isEditing={!!id}
-            productData={{
-              _id: id,
-              name,
-              description,
-              price,
-              stock,
-              categoryId: { _id: categoryId },
-              isPersonalizable,
-              details,
-              images: image ? [{ image }] : [],
-            }}
+            isEditing={!!editingProduct}
           />
         </div>
       )}

@@ -47,7 +47,14 @@ const productsSchema = new Schema({
     type: String,
     required: false,
     trim: true,
-    minlength: [4, "Los detalles deben tener al menos 4 caracteres"],
+    validate: {
+      validator: function (v) {
+        // Si el campo está vacío o es null/undefined, es válido
+        // Si tiene contenido, debe tener al menos 4 caracteres
+        return !v || v.length >= 4;
+      },
+      message: "Los detalles deben tener al menos 4 caracteres"
+    }
   },
 }, {
   timestamps: true,

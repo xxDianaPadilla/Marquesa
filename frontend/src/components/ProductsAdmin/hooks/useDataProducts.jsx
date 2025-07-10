@@ -20,11 +20,31 @@ const useDataProducts = () => {
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
 
+  // Función auxiliar para manejar respuestas
+  const handleResponse = async (response) => {
+    const contentType = response.headers.get('content-type');
+
+    // Verificar si la respuesta es JSON
+    if (!contentType || !contentType.includes('application/json')) {
+      const textResponse = await response.text();
+      console.error('Respuesta no es JSON:', textResponse);
+      throw new Error(`El servidor devolvió HTML en lugar de JSON. Status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || data.message || `Error ${response.status}`);
+    }
+
+    return data;
+  };
+
   // Cargar categorías
   const fetchCategories = async () => {
     try {
       const response = await fetch("http://localhost:4000/api/categories");
-      const data = await response.json();
+      const data = await handleResponse(response);
       setCategories(data);
     } catch (error) {
       toast.error("Error al cargar las categorías");
@@ -36,7 +56,7 @@ const useDataProducts = () => {
   const fetchProducts = async () => {
     try {
       const response = await fetch(API);
-      const data = await response.json();
+      const data = await handleResponse(response);
       setProducts(data);
     } catch (error) {
       toast.error("Error al cargar los productos");
@@ -65,47 +85,64 @@ const useDataProducts = () => {
   };
 
   const createProduct = async (productData) => {
-  if (
-    !productData.name?.trim() ||
-    !productData.description?.trim() ||
-    !productData.price ||
-    !productData.categoryId
-  ) {
-    toast.error("Faltan campos requeridos");
-    return;
-  }
-
-  const formData = new FormData();
-  formData.append("name", productData.name.trim());
-  formData.append("description", productData.description.trim());
-  formData.append("price", parseFloat(productData.price));
-  formData.append("stock", parseInt(productData.stock));
-  formData.append("categoryId", productData.categoryId);
-  formData.append("isPersonalizable", productData.isPersonalizable ? "true" : "false");
-  formData.append("details", productData.details || "");
-
-  if (productData.image) {
-    formData.append("images", productData.image);
-  }
-
-  try {
-    const res = await fetch("http://localhost:4000/api/products", {
-      method: "POST",
-      body: formData
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(data.message || "Error al crear producto");
+    // Validación más estricta
+    if (!productData.name?.trim()) {
+      toast.error("El nombre es requerido");
+      return;
     }
 
-    setProducts((prev) => [...prev, data]);
-    toast.success("Producto creado exitosamente");
-  } catch (error) {
-    toast.error(error.message || "Error inesperado");
-  }
-};
+    if (!productData.description?.trim()) {
+      toast.error("La descripción es requerida");
+      return;
+    }
+
+    if (!productData.price || isNaN(parseFloat(productData.price))) {
+      toast.error("El precio debe ser un número válido");
+      return;
+    }
+
+    if (!productData.categoryId) {
+      toast.error("La categoría es requerida");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("name", productData.name.trim());
+    formData.append("description", productData.description.trim());
+    formData.append("price", parseFloat(productData.price));
+    formData.append("stock", parseInt(productData.stock) || 0);
+    formData.append("categoryId", productData.categoryId);
+    formData.append("isPersonalizable", productData.isPersonalizable ? "true" : "false");
+    formData.append("details", productData.details || "");
+
+    if (productData.image) {
+      formData.append("images", productData.image);
+    }
+
+    try {
+      const res = await fetch("http://localhost:4000/api/products", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await handleResponse(res);
+
+      const categoryInfo = categories.find(cat => cat._id === productData.categoryId);
+      const enrichedProduct = {
+        ...data,
+        categoryId: categoryInfo ? categoryInfo : data.categoryId
+      };
+
+      setProducts((prev) => [...prev, enrichedProduct]);
+      toast.success("Producto creado exitosamente");
+      resetForm();
+      setActiveTab("list");
+    } catch (error) {
+      console.error("Error completo:", error);
+      toast.error(error.message || "Error inesperado");
+    }
+  };
+
   // Eliminar producto
   const deleteProduct = async (id) => {
     try {
@@ -113,55 +150,80 @@ const useDataProducts = () => {
         method: "DELETE"
       });
 
-      if (!res.ok) throw new Error("Error al eliminar el producto");
+      await handleResponse(res);
 
       toast.success("Producto eliminado");
       fetchProducts();
     } catch (error) {
-      toast.error("Error al eliminar producto");
+      toast.error(error.message || "Error al eliminar producto");
       console.error(error);
     }
   };
 
   // Prellenar formulario para editar
   const updateProduct = (product) => {
+    console.log("Producto a editar:", product);
+    console.log("ID del producto:", product._id);
+
     setId(product._id);
     setName(product.name);
     setDescription(product.description);
     setPrice(product.price);
     setStock(product.stock || 0);
-    setCategoryId(product.categoryId._id || "");
+    setCategoryId(product.categoryId._id || product.categoryId || "");
     setIsPersonalizable(product.isPersonalizable);
     setDetails(product.details || "");
-    setImage(null); // No cargamos imagen vieja
+    setImage(null);
     setActiveTab("form");
   };
 
   // Guardar edición
   const handleEdit = async (productData) => {
-    if (
-      !productData.name.trim() ||
-      !productData.description.trim() ||
-      !productData.price ||
-      !productData.categoryId
-    ) {
-      toast.error("Faltan campos requeridos");
+    // Validación más estricta
+    if (!productData.name?.trim()) {
+      toast.error("El nombre es requerido");
       return;
     }
+
+    if (!productData.description?.trim()) {
+      toast.error("La descripción es requerida");
+      return;
+    }
+
+    if (!productData.price || isNaN(parseFloat(productData.price))) {
+      toast.error("El precio debe ser un número válido");
+      return;
+    }
+
+    if (!productData.categoryId) {
+      toast.error("La categoría es requerida");
+      return;
+    }
+
+    // Verificar que el ID existe
+    if (!id) {
+      console.error("ID del producto no encontrado. ID actual:", id);
+      toast.error("ID del producto no encontrado");
+      return;
+    }
+
+    console.log("ID del producto a actualizar:", id);
 
     try {
       let res;
 
       if (productData.image instanceof File) {
         const formData = new FormData();
-        formData.append("name", productData.name);
-        formData.append("description", productData.description);
-        formData.append("price", productData.price);
-        formData.append("stock", productData.stock);
+        formData.append("name", productData.name.trim());
+        formData.append("description", productData.description.trim());
+        formData.append("price", parseFloat(productData.price));
+        formData.append("stock", parseInt(productData.stock) || 0);
         formData.append("categoryId", productData.categoryId);
-        formData.append("isPersonalizable", productData.isPersonalizable);
-        formData.append("details", productData.details);
+        formData.append("isPersonalizable", productData.isPersonalizable ? "true" : "false");
+        formData.append("details", productData.details || "");
         formData.append("images", productData.image);
+
+        console.log("Enviando FormData a:", `${API}/${id}`);
 
         res = await fetch(`${API}/${id}`, {
           method: "PUT",
@@ -169,14 +231,16 @@ const useDataProducts = () => {
         });
       } else {
         const body = {
-          name: productData.name,
-          description: productData.description,
-          price: productData.price,
-          stock: productData.stock,
+          name: productData.name.trim(),
+          description: productData.description.trim(),
+          price: parseFloat(productData.price),
+          stock: parseInt(productData.stock) || 0,
           categoryId: productData.categoryId,
           isPersonalizable: productData.isPersonalizable,
-          details: productData.details,
+          details: productData.details || "",
         };
+
+        console.log("Enviando JSON a:", `${API}/${id}`, body);
 
         res = await fetch(`${API}/${id}`, {
           method: "PUT",
@@ -185,15 +249,20 @@ const useDataProducts = () => {
         });
       }
 
-      if (!res.ok) throw new Error("Error al actualizar el producto");
+      // Agregar logging de la respuesta
+      console.log("Response status:", res.status);
+      console.log("Response headers:", res.headers);
+      console.log("Response URL:", res.url);
+
+      const data = await handleResponse(res);
 
       toast.success("Producto actualizado");
       resetForm();
       setActiveTab("list");
       fetchProducts();
     } catch (error) {
-      toast.error("Error al editar producto");
-      console.error(error);
+      console.error("Error completo:", error);
+      toast.error(error.message || "Error al editar producto");
     }
   };
 
@@ -224,6 +293,7 @@ const useDataProducts = () => {
     updateProduct,
     handleEdit,
     categories,
+    resetForm,
   };
 };
 

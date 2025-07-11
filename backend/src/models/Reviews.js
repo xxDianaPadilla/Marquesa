@@ -33,6 +33,10 @@ const reviewsSchema = new Schema({
     message: {
         type: String,
         required: true
+    },
+    response: {
+        type: String,
+        required: false
     }
 }, {
     timestamps: true,

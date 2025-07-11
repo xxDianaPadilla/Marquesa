@@ -1,63 +1,118 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import { useMediaUtils } from './useMediaUtils';
 
 export const useMediaForm = (initialData = null) => {
     const { validateFile, getFileInfo } = useMediaUtils();
     
-    // Estado del formulario
-    const [formData, setFormData] = useState({
-        type: initialData?.type || "Dato Curioso",
-        title: initialData?.title || "",
-        description: initialData?.description || ""
+    // Configuración de react-hook-form
+    const {
+        control,
+        handleSubmit,
+        formState: { errors, isSubmitting },
+        setValue,
+        watch,
+        reset,
+        setError,
+        clearErrors,
+        getValues,
+        trigger
+    } = useForm({
+        defaultValues: {
+            type: initialData?.type || "Dato Curioso",
+            title: initialData?.title || "",
+            description: initialData?.description || "",
+            image: null,
+            video: null
+        },
+        mode: 'onChange'
     });
 
-    // Estado de archivos
+    // Estado para archivos (react-hook-form no maneja archivos directamente muy bien)
     const [files, setFiles] = useState({
         image: null,
         video: null
     });
 
-    // Estado de errores
-    const [errors, setErrors] = useState({});
-
-    // Estado de carga
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    // Watch para detectar cambios
+    const watchedValues = watch();
 
     // Efecto para cargar datos iniciales cuando cambien
     useEffect(() => {
         if (initialData) {
-            setFormData({
+            reset({
                 type: initialData.type || "Dato Curioso",
                 title: initialData.title || "",
-                description: initialData.description || ""
+                description: initialData.description || "",
+                image: null,
+                video: null
             });
+            
             // Limpiar archivos al cambiar el item
             setFiles({
                 image: null,
                 video: null
             });
-            // Limpiar errores
-            setErrors({});
         }
-    }, [initialData]);
+    }, [initialData, reset]);
 
-    // Manejar cambios en inputs de texto
-    const handleInputChange = useCallback((e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
-        
-        // Limpiar error del campo si existe
-        if (errors[name]) {
-            setErrors(prev => {
-                const newErrors = { ...prev };
-                delete newErrors[name];
-                return newErrors;
+    // Validación personalizada para archivos
+    const validateFiles = useCallback((isEdit = false) => {
+        // Para creación, requiere al menos un archivo
+        // Para edición, los archivos son completamente opcionales
+        if (!isEdit && !files.image && !files.video) {
+            setError('files', { 
+                type: 'required', 
+                message: 'Se requiere al menos una imagen o un video' 
             });
+            return false;
         }
-    }, [errors]);
+
+        // Para edición, si no hay archivos nuevos, es válido
+        if (isEdit && !files.image && !files.video) {
+            // Limpiar cualquier error previo de archivos
+            clearErrors(['files', 'image', 'video']);
+            return true;
+        }
+
+        // Validar archivo de imagen si existe
+        if (files.image) {
+            const validation = validateFile(files.image, 'image');
+            if (!validation.valid) {
+                setError('image', { 
+                    type: 'validation', 
+                    message: validation.error 
+                });
+                return false;
+            }
+        }
+
+        // Validar archivo de video si existe
+        if (files.video) {
+            const validation = validateFile(files.video, 'video');
+            if (!validation.valid) {
+                setError('video', { 
+                    type: 'validation', 
+                    message: validation.error 
+                });
+                return false;
+            }
+        }
+
+        return true;
+    }, [files, validateFile, setError, clearErrors]);
+
+    // Reglas de validación para los campos de texto
+    const validationRules = {
+        title: {
+            required: "El título es requerido",
+            validate: value => value.trim() !== "" || "El título no puede estar vacío"
+        },
+        description: {
+            required: "La descripción es requerida",
+            validate: value => value.trim() !== "" || "La descripción no puede estar vacía"
+        }
+    };
 
     // Manejar cambios en archivos
     const handleFileChange = useCallback((e) => {
@@ -68,10 +123,10 @@ export const useMediaForm = (initialData = null) => {
             const validation = validateFile(file, fileType);
             
             if (!validation.valid) {
-                setErrors(prev => ({
-                    ...prev,
-                    [name]: validation.error
-                }));
+                setError(name, { 
+                    type: 'validation', 
+                    message: validation.error 
+                });
                 return;
             }
 
@@ -80,73 +135,34 @@ export const useMediaForm = (initialData = null) => {
                 [name]: file
             }));
 
-            // Limpiar error del campo si existe
-            if (errors[name]) {
-                setErrors(prev => {
-                    const newErrors = { ...prev };
-                    delete newErrors[name];
-                    return newErrors;
-                });
-            }
+            // Actualizar el valor en react-hook-form
+            setValue(name, file);
 
-            // Limpiar error general de archivos si existe
-            if (errors.files) {
-                setErrors(prev => {
-                    const newErrors = { ...prev };
-                    delete newErrors.files;
-                    return newErrors;
-                });
-            }
+            // Limpiar errores relacionados
+            clearErrors([name, 'files']);
         }
-    }, [validateFile, errors]);
+    }, [validateFile, setError, setValue, clearErrors]);
 
     // Validar formulario completo
-    const validateForm = useCallback((isEdit = false) => {
-        const newErrors = {};
-
-        // Validar título
-        if (!formData.title.trim()) {
-            newErrors.title = "El título es requerido";
-        }
-
-        // Validar descripción
-        if (!formData.description.trim()) {
-            newErrors.description = "La descripción es requerida";
-        }
-
-        // Para creación, requiere al menos un archivo
-        // Para edición, si no hay archivos nuevos, asumimos que mantendrá los existentes
-        if (!isEdit && !files.image && !files.video) {
-            newErrors.files = "Se requiere al menos una imagen o un video";
-        }
-
-        // Validar archivos si están presentes
-        if (files.image) {
-            const validation = validateFile(files.image, 'image');
-            if (!validation.valid) {
-                newErrors.image = validation.error;
-            }
-        }
-
-        if (files.video) {
-            const validation = validateFile(files.video, 'video');
-            if (!validation.valid) {
-                newErrors.video = validation.error;
-            }
-        }
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    }, [formData, files, validateFile]);
+    const validateForm = useCallback(async (isEdit = false) => {
+        // Validar campos de texto
+        const isValid = await trigger();
+        
+        // Validar archivos
+        const filesValid = validateFiles(isEdit);
+        
+        return isValid && filesValid;
+    }, [trigger, validateFiles]);
 
     // Preparar datos para envío
     const prepareFormData = useCallback(() => {
+        const formValues = getValues();
         const submitData = new FormData();
         
         // Agregar datos del formulario
-        submitData.append('type', formData.type);
-        submitData.append('title', formData.title);
-        submitData.append('description', formData.description);
+        submitData.append('type', formValues.type);
+        submitData.append('title', formValues.title);
+        submitData.append('description', formValues.description);
         
         // Agregar archivos solo si existen
         if (files.image) {
@@ -158,39 +174,41 @@ export const useMediaForm = (initialData = null) => {
         }
 
         return submitData;
-    }, [formData, files]);
+    }, [getValues, files]);
 
     // Resetear formulario
     const resetForm = useCallback(() => {
-        setFormData({
+        reset({
             type: "Dato Curioso",
             title: "",
-            description: ""
+            description: "",
+            image: null,
+            video: null
         });
         setFiles({
             image: null,
             video: null
         });
-        setErrors({});
-        setIsSubmitting(false);
-    }, []);
+    }, [reset]);
 
     // Cargar datos iniciales (para edición)
     const loadInitialData = useCallback((data) => {
         if (data) {
-            setFormData({
+            reset({
                 type: data.type || "Dato Curioso",
                 title: data.title || "",
-                description: data.description || ""
+                description: data.description || "",
+                image: null,
+                video: null
             });
+            
             // Resetear archivos al cargar nuevos datos
             setFiles({
                 image: null,
                 video: null
             });
-            setErrors({});
         }
-    }, []);
+    }, [reset]);
 
     // Obtener información de archivos para mostrar
     const getFilesInfo = useCallback(() => {
@@ -202,67 +220,70 @@ export const useMediaForm = (initialData = null) => {
 
     // Verificar si hay cambios en el formulario
     const hasChanges = useCallback((originalData = null) => {
-        if (!originalData) return true; // Si no hay datos originales, considera que hay cambios
+        if (!originalData) return true;
         
+        const currentValues = getValues();
         const hasTextChanges = 
-            formData.type !== originalData.type ||
-            formData.title !== originalData.title ||
-            formData.description !== originalData.description;
+            currentValues.type !== originalData.type ||
+            currentValues.title !== originalData.title ||
+            currentValues.description !== originalData.description;
             
         const hasFileChanges = files.image || files.video;
         
         return hasTextChanges || hasFileChanges;
-    }, [formData, files]);
+    }, [getValues, files]);
 
     // Función para verificar si hay archivos antes de enviar
     const hasFiles = useCallback(() => {
         return files.image || files.video;
     }, [files]);
 
-    // Función para limpiar errores específicos
-    const clearErrors = useCallback((fieldNames = null) => {
-        if (fieldNames) {
-            const fields = Array.isArray(fieldNames) ? fieldNames : [fieldNames];
-            setErrors(prev => {
-                const newErrors = { ...prev };
-                fields.forEach(field => delete newErrors[field]);
-                return newErrors;
-            });
-        } else {
-            setErrors({});
-        }
-    }, []);
-
     // Función para establecer errores específicos
     const setFieldError = useCallback((fieldName, message) => {
-        setErrors(prev => ({
-            ...prev,
-            [fieldName]: message
-        }));
-    }, []);
+        setError(fieldName, { 
+            type: 'manual', 
+            message 
+        });
+    }, [setError]);
+
+    // Función para limpiar errores específicos
+    const clearFieldErrors = useCallback((fieldNames = null) => {
+        if (fieldNames) {
+            const fields = Array.isArray(fieldNames) ? fieldNames : [fieldNames];
+            clearErrors(fields);
+        } else {
+            clearErrors();
+        }
+    }, [clearErrors]);
 
     return {
-        // Estado
-        formData,
+        // React Hook Form - RETORNAR EL handleSubmit ORIGINAL
+        control,
+        handleSubmit, // <- Este es el handleSubmit original de react-hook-form
+        formState: { errors, isSubmitting },
+        setValue,
+        watch,
+        reset,
+        getValues,
+        trigger,
+        
+        // Estado personalizado
         files,
-        errors,
-        isSubmitting,
+        watchedValues,
         
         // Acciones
-        handleInputChange,
         handleFileChange,
         validateForm,
         prepareFormData,
         resetForm,
         loadInitialData,
-        setIsSubmitting,
-        setErrors,
-        clearErrors,
         setFieldError,
+        clearFieldErrors: clearFieldErrors,
         
         // Utilidades
         getFilesInfo,
         hasChanges,
-        hasFiles
+        hasFiles,
+        validationRules
     };
 };

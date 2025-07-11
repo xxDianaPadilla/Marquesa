@@ -26,7 +26,9 @@ const useDataCategories = () => {
                 throw new Error("Hubo un error al obtener las categorías");
             }
             const data = await response.json();
-            setCategories(data); // Guardo las categorías en el estado
+            
+            // FIX: Acceder a data.data ya que el controller devuelve { success, message, data }
+            setCategories(data.data || []); // Guardo las categorías en el estado
             setLoading(false);   // Finalizo el estado de carga
         } catch (error) {
             console.error("Error al obtener categorías:", error);
@@ -50,30 +52,37 @@ const useDataCategories = () => {
             return;
         }
 
+        // Validación: la imagen es obligatoria
+        if (!image) {
+            toast.error("La imagen es requerida");
+            return;
+        }
+
         try {
-            // Uso FormData para poder enviar imagen si hay
+            // Uso FormData para poder enviar imagen
             const formData = new FormData();
             formData.append("name", name);
-            if (image) {
-                formData.append("image", image);
-            }
+            formData.append("image", image);
 
             const response = await fetch(API, {
                 method: "POST",
                 body: formData
             });
 
+            const result = await response.json();
+
             if (!response.ok) {
-                throw new Error("Hubo un error al registrar la categoría");
+                // Mostrar el mensaje de error específico del backend
+                throw new Error(result.message || "Hubo un error al registrar la categoría");
             }
 
-            toast.success('Categoría registrada');
+            toast.success(result.message || 'Categoría registrada');
             fetchCategories();  // Refresco la lista
             setName("");        // Limpio campos
             setImage(null);
         } catch (error) {
             console.error("Error al crear categoría:", error);
-            toast.error("Error al crear la categoría");
+            toast.error(error.message || "Error al crear la categoría");
         }
     };
 
@@ -87,15 +96,17 @@ const useDataCategories = () => {
                 },
             });
 
+            const result = await response.json();
+
             if (!response.ok) {
-                throw new Error("Hubo un error al eliminar la categoría");
+                throw new Error(result.message || "Hubo un error al eliminar la categoría");
             }
 
-            toast.success('Categoría eliminada');
+            toast.success(result.message || 'Categoría eliminada');
             fetchCategories(); // Actualizo la lista luego de borrar
         } catch (error) {
             console.error("Error al eliminar categoría:", error);
-            toast.error("Error al eliminar la categoría");
+            toast.error(error.message || "Error al eliminar la categoría");
         }
     };
 
@@ -114,6 +125,12 @@ const useDataCategories = () => {
         // Validación: el nombre es obligatorio
         if (!name.trim()) {
             toast.error("El nombre es requerido");
+            return;
+        }
+
+        // Validación: la imagen es obligatoria (debe ser File o URL existente)
+        if (!image) {
+            toast.error("La imagen es requerida");
             return;
         }
 
@@ -141,11 +158,13 @@ const useDataCategories = () => {
                 });
             }
 
+            const result = await response.json();
+
             if (!response.ok) {
-                throw new Error("Error al actualizar la categoría");
+                throw new Error(result.message || "Error al actualizar la categoría");
             }
 
-            toast.success('Categoría actualizada');
+            toast.success(result.message || 'Categoría actualizada');
             // Limpio los campos y vuelvo a la pestaña de lista
             setId("");
             setName("");
@@ -154,7 +173,7 @@ const useDataCategories = () => {
             fetchCategories(); // Refresco los datos
         } catch (error) {
             console.error("Error al editar la categoría:", error);
-            toast.error("Error al actualizar la categoría");
+            toast.error(error.message || "Error al actualizar la categoría");
         }
     };
 

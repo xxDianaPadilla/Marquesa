@@ -37,6 +37,7 @@ const MediaContentCards = ({ item }) => {
                             // src={item.type === 'video' ? playIcon : bookIcon}
                             alt={item.type === 'video' ? 'Play' : 'Read'}
                             className="w-6 h-6 sm:w-8 sm:h-8"
+                            src={playIcon}
                         />
                     </div>
                 </div>

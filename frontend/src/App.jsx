@@ -104,7 +104,6 @@ function App() {
           <Route path="/ProductDetail" element={<ProductDetail />} />
           <Route path="/mediaPage" element={<MediaPage />} />
           <Route path="/MediaDetailPage/:id" element={<MediaDetailPage />} />
-          <Route path="/ruleta" element={<RuletaPage />} />
           <Route path="/conditionsPromotions" element={<ConditionsPromotions />} />
           <Route path="/shippingInformation" element={<ShippingInformation />} />
           <Route path="/aboutUs" element={<AboutUs />} />
@@ -208,6 +207,13 @@ function App() {
               </ProtectedRoutes>
             }
           />
+
+          <Route path="/ruleta"
+            element={
+              <ProtectedRoutes requiredUserType="Customer">
+                <RuletaPage />
+              </ProtectedRoutes>
+            } />
 
           {/* Ruta de fallback - redirige al home si no encuentra la ruta */}
           <Route path='*' element={<Navigate to="/home" replace />} />

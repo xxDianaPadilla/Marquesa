@@ -115,11 +115,14 @@ mediaController.insertMedia = async (req, res) => {
   }
 };
 
-// Actualizar elemento de media
+// Actualizar elemento de media con mejor manejo de errores
 mediaController.putMedia = async (req, res) => {
   try {
     const { type, title, description } = req.body;
     const mediaId = req.params.id;
+
+    // Configurar timeout más largo para operaciones con archivos
+    req.setTimeout(60000); // 60 segundos
 
     // Buscar el elemento existente
     const existingMedia = await mediaModel.findById(mediaId);
@@ -132,27 +135,66 @@ mediaController.putMedia = async (req, res) => {
       type,
       title,
       description,
-      imageURL: existingMedia.imageURL, // Mantener URLs existentes
+      imageURL: existingMedia.imageURL,
       videoURL: existingMedia.videoURL
+    };
+
+    // Función auxiliar para subir con reintentos
+    const uploadWithRetry = async (file, options, maxRetries = 3) => {
+      let lastError;
+      
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          return await cloudinary.uploader.upload(file.path, options);
+        } catch (error) {
+          lastError = error;
+          
+          if (attempt < maxRetries) {
+            console.log(`Reintentando subida... Intento ${attempt + 1}/${maxRetries}`);
+            await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+            continue;
+          }
+          
+          throw error;
+        }
+      }
+      
+      throw lastError;
     };
 
     // Actualizar imagen si se proporciona nueva
     if (req.files && req.files.image && req.files.image[0]) {
-      const imageResult = await cloudinary.uploader.upload(req.files.image[0].path, {
-        folder: "media/images",
-        allowed_formats: ["jpg", "png", "jpeg", "gif", "webp"],
-      });
-      updatedFields.imageURL = imageResult.secure_url;
+      try {
+        const imageResult = await uploadWithRetry(req.files.image[0], {
+          folder: "media/images",
+          allowed_formats: ["jpg", "png", "jpeg", "gif", "webp"],
+          timeout: 30000 // 30 segundos timeout para Cloudinary
+        });
+        updatedFields.imageURL = imageResult.secure_url;
+      } catch (error) {
+        console.error("Error al subir imagen:", error);
+        return res.status(500).json({ 
+          message: "Error al procesar la imagen. Intenta con un archivo más pequeño." 
+        });
+      }
     }
 
     // Actualizar video si se proporciona nuevo
     if (req.files && req.files.video && req.files.video[0]) {
-      const videoResult = await cloudinary.uploader.upload(req.files.video[0].path, {
-        folder: "media/videos",
-        resource_type: "video",
-        allowed_formats: ["mp4", "mov", "avi", "wmv"],
-      });
-      updatedFields.videoURL = videoResult.secure_url;
+      try {
+        const videoResult = await uploadWithRetry(req.files.video[0], {
+          folder: "media/videos",
+          resource_type: "video",
+          allowed_formats: ["mp4", "mov", "avi", "wmv"],
+          timeout: 60000 // 60 segundos timeout para videos
+        });
+        updatedFields.videoURL = videoResult.secure_url;
+      } catch (error) {
+        console.error("Error al subir video:", error);
+        return res.status(500).json({ 
+          message: "Error al procesar el video. Intenta con un archivo más pequeño." 
+        });
+      }
     }
 
     const updatedMedia = await mediaModel.findByIdAndUpdate(
@@ -168,7 +210,21 @@ mediaController.putMedia = async (req, res) => {
 
   } catch (error) {
     console.error("Error al actualizar el elemento de media:", error);
-    res.status(500).json({ message: "Error al actualizar el elemento de media" });
+    
+    // Proporcionar respuestas más específicas según el tipo de error
+    if (error.code === 'ECONNRESET') {
+      res.status(500).json({ 
+        message: "La conexión se interrumpió durante la actualización. Intenta nuevamente." 
+      });
+    } else if (error.code === 'ETIMEDOUT') {
+      res.status(500).json({ 
+        message: "La operación tardó demasiado tiempo. Intenta con archivos más pequeños." 
+      });
+    } else {
+      res.status(500).json({ 
+        message: "Error al actualizar el elemento de media" 
+      });
+    }
   }
 };
 

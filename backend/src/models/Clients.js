@@ -37,6 +37,10 @@ const clientsSchema = new Schema({
     discount: {
         type: String,
         required: false
+    },
+    profilePicture: {
+        type: String,
+        required: false
     }
 }, {
     timestamps: true,

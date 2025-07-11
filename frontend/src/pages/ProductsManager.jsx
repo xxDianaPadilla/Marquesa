@@ -30,7 +30,12 @@ const ProductsManager = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
 
-  const filteredProducts = products.filter((product) =>
+  // Validación segura: asegurarse de que products sea un array
+  const safeProducts = Array.isArray(products) ? products : [];
+  
+  // Filtrar productos solo si products es un array válido
+  const filteredProducts = safeProducts.filter((product) =>
+    product && product.name && 
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -68,6 +73,19 @@ const ProductsManager = () => {
     }
   };
 
+  // Mostrar loading mientras se cargan los datos
+  if (loading) {
+    return (
+      <AdminLayout>
+        <div className="p-3 sm:p-6">
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FF7260]"></div>
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
+
   return (
     <AdminLayout>
       <div className="p-3 sm:p-6">
@@ -80,6 +98,11 @@ const ProductsManager = () => {
               </h1>
               <p className="text-gray-600 mt-1 text-sm sm:text-base font-poppins">
                 Administra tus productos disponibles en el sistema
+              </p>
+              {/* Mostrar información de estado para debug */}
+              <p className="text-xs text-gray-500 mt-1">
+                Total productos: {safeProducts.length} | 
+                Filtrados: {filteredProducts.length}
               </p>
             </div>
             <button
@@ -107,12 +130,42 @@ const ProductsManager = () => {
           </div>
         </div>
 
-        <ProductTable
-          products={filteredProducts}
-          loading={loading}
-          onEdit={handleEditProduct}
-          onDelete={deleteProduct}
-        />
+        {/* Mostrar mensaje si no hay productos */}
+        {safeProducts.length === 0 && !loading && (
+          <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+            <p className="text-gray-500 text-lg font-poppins">
+              No hay productos disponibles
+            </p>
+            <p className="text-gray-400 text-sm mt-2">
+              Comienza añadiendo tu primer producto
+            </p>
+          </div>
+        )}
+
+        {/* Mostrar mensaje si no hay resultados de búsqueda */}
+        {safeProducts.length > 0 && filteredProducts.length === 0 && searchTerm && (
+          <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+            <p className="text-gray-500 text-lg font-poppins">
+              No se encontraron productos que coincidan con "{searchTerm}"
+            </p>
+            <button
+              onClick={() => setSearchTerm("")}
+              className="mt-4 text-[#FF7260] hover:text-[#FF7260]/80 text-sm"
+            >
+              Limpiar búsqueda
+            </button>
+          </div>
+        )}
+
+        {/* Tabla de productos */}
+        {filteredProducts.length > 0 && (
+          <ProductTable
+            products={filteredProducts}
+            loading={loading}
+            onEdit={handleEditProduct}
+            onDelete={deleteProduct}
+          />
+        )}
       </div>
 
       {/* Modal del formulario */}

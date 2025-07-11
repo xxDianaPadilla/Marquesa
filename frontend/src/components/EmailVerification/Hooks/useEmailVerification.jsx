@@ -20,7 +20,7 @@ export const useEmailVerification = () => {
 
             console.log('Enviando solicitud de verificación:', { email, fullName });
 
-            const response = await fetch('http://localhost:4000/api/email-verification/request', {
+            const response = await fetch('http://localhost:4000/api/emailVerification/request', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -141,7 +141,7 @@ export const useEmailVerification = () => {
                 userData: 'datos presentes'
             });
 
-            const response = await fetch('http://localhost:4000/api/email-verification/verify', {
+            const response = await fetch('http://localhost:4000/api/emailVerification/verify', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

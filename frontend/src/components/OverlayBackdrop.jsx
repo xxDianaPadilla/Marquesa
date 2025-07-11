@@ -37,20 +37,20 @@ const OverlayBackdrop = ({ isVisible, children, onClose }) => {
     if (!isVisible) return null;
 
     return (
-        <div className="fixed inset-0 z-50">
-            {/* Backdrop con efecto más suave y menos intenso */}
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+            {/* Backdrop con efecto responsivo */}
             <div 
                 className="absolute inset-0"
                 onClick={onClose}
                 style={{ 
-                    background: 'rgba(255, 255, 255, 0.3)',
-                    backdropFilter: 'blur(1.5px) brightness(0.95)',
-                    WebkitBackdropFilter: 'blur(1.5px) brightness(0.95)' // Safari support
+                    background: 'rgba(0, 0, 0, 0.5)', // Más opaco para mejor contraste en móvil
+                    backdropFilter: 'blur(2px)', // Blur más suave
+                    WebkitBackdropFilter: 'blur(2px)' // Safari support
                 }}
             />
             
-            {/* Contenido del modal que se mantiene funcional */}
-            <div className="relative z-10">
+            {/* Contenido del modal con padding responsivo */}
+            <div className="relative z-10 w-full h-full flex items-center justify-center p-2 sm:p-4">
                 {children}
             </div>
         </div>

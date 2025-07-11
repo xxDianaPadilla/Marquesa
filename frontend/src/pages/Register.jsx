@@ -22,6 +22,9 @@ import EmailVerificationModal from "../components/EmailVerification/EmailVerific
 // Hook personalizado
 import useRegisterForm from "../components/Clients/Hooks/useRegisterForm";
 
+// NUEVO - Importar estilos de requisitos de contraseña
+import '../styles/PasswordRequirements.css';
+
 // Iconos
 import userIcon from "../assets/user.png";
 import phoneIcon from "../assets/phone.png";
@@ -32,7 +35,8 @@ import lockIcon from "../assets/lockIcon.png";
 
 /**
  * Página de registro de usuarios
- * Ahora incluye modal de verificación de email
+ * ACTUALIZADA: Ahora incluye validación visual de contraseña con popup de requisitos
+ * Incluye modal de verificación de email
  */
 const Register = () => {
     // Estado para mostrar/ocultar contraseña
@@ -42,7 +46,7 @@ const Register = () => {
     const navigate = useNavigate();
     const { isAuthenticated, user } = useAuth();
 
-    // Hook personalizado para el formulario de registro (ACTUALIZADO)
+    // Hook personalizado para el formulario de registro
     const {
         formData,
         errors,
@@ -83,6 +87,22 @@ const Register = () => {
     const handleGoogleRegister = () => {
         console.log('Registro con Google - Por implementar');
         // TODO: Implementar registro con Google
+    };
+
+    /**
+     * Función auxiliar para validar si la contraseña cumple requisitos básicos
+     * Se usa para mostrar feedback visual en tiempo real
+     */
+    const isPasswordStrong = (password) => {
+        if (!password) return false;
+        
+        const hasMinLength = password.length >= 8;
+        const hasUppercase = /[A-Z]/.test(password);
+        const hasLowercase = /[a-z]/.test(password);
+        const hasNumber = /\d/.test(password);
+        const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+        
+        return hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecialChar;
     };
 
     return (
@@ -167,19 +187,36 @@ const Register = () => {
                     disabled={isLoading}
                 />
 
-                {/* Campo de contraseña */}
-                <RegisterInput
-                    name="password"
-                    type="password"
-                    placeholder="Contraseña"
-                    icon={lockIcon}
-                    showPassword={showPassword}
-                    onTogglePassword={() => setShowPassword(!showPassword)}
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    error={errors.password}
-                    disabled={isLoading}
-                />
+                {/* Campo de contraseña - ACTUALIZADO con validación visual */}
+                <div className="relative">
+                    <RegisterInput
+                        name="password"
+                        type="password"
+                        placeholder="Contraseña"
+                        icon={lockIcon}
+                        showPassword={showPassword}
+                        onTogglePassword={() => setShowPassword(!showPassword)}
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        error={errors.password}
+                        disabled={isLoading}
+                    />
+                    
+                    {/* Indicador visual de fortaleza de contraseña */}
+                    {formData.password && (
+                        <div className="absolute right-2 top-3 z-10">
+                            <div className={`w-3 h-3 rounded-full ${
+                                isPasswordStrong(formData.password) 
+                                    ? 'bg-green-500 shadow-lg shadow-green-200' 
+                                    : 'bg-orange-400 shadow-lg shadow-orange-200'
+                            } transition-all duration-300`}>
+                                {isPasswordStrong(formData.password) && (
+                                    <div className="w-full h-full rounded-full bg-green-500 animate-pulse" />
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
 
                 {/* Checkbox de términos y condiciones */}
                 <TermsCheckbox
@@ -212,7 +249,7 @@ const Register = () => {
                 <GoogleButton onClick={handleGoogleRegister} />
             </Form>
 
-            {/* NUEVO - Modal de verificación de email */}
+            {/* Modal de verificación de email */}
             <EmailVerificationModal
                 isOpen={showEmailVerificationModal}
                 onClose={closeEmailVerificationModal}
@@ -225,4 +262,4 @@ const Register = () => {
     );
 };
 
-export default Register;
+export default Register

@@ -133,6 +133,7 @@ La plataforma incluye:
 <h3>❤️ Contribuciones</h3>
 
 ¡Este proyecto representa una colaboración entre estudiantes y una marca real!
+<hr>
 
 <h3>📚 Librerías Utilizadas</h3>
 
@@ -179,6 +180,8 @@ La plataforma incluye:
   <li><b>@types/react y @types/react-dom:</b> Tipado estático para React y el DOM en TypeScript.</li>
   <li><b>Globals:</b> Lista de variables globales predefinidas para configurar ESLint.</li>
 </ul>
+
+<hr>
 
 <h3>🗂️ Comandos para Ejecutar Backend</h3>
 <ul>

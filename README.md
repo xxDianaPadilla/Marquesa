@@ -185,15 +185,16 @@ La plataforma incluye:
 
 <h3>🗂️ Comandos para Ejecutar Backend</h3>
 <ul>
-  <li><b>Para cambiarnos a la carpeta del backend</b>"cd backend"/li>
-  <li><b>Para instalar los modulos ocupados en backend</b>"npm install --legacy-peer-deps"/li>
-  <li><b>Para Ejecutar el Proyecto</b>"node index.js"</li>
+  <li><b>Para cambiarnos a la carpeta del backend</b>"cd backend" </li>
+  <li><b>Para instalar los modulos ocupados en backend</b>"npm install --legacy-peer-deps" </li>
+  <li><b>Para Ejecutar el Proyecto</b>"node index.js "</li>
 </ul>
+<hr>
 
 <h3>📎 Comandos para Ejecutar Frontend</h3>
 <ul>
-  <li><b>Para cambiarnos a la carpeta del frontend</b>"cd frontend"/li>
-  <li><b>Para instalar los modulos ocupados en Frontend</b>"npm install"/li>
+  <li><b>Para cambiarnos a la carpeta del frontend</b>"cd frontend" </li>
+  <li><b>Para instalar los modulos ocupados en Frontend</b>"npm install"</li>
   <li><b>Para Ejecutar el Proyecto</b>"npm run dev"</li>
 </ul>
 

@@ -16,7 +16,8 @@ const MediaDetailPage = () => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentItem, setCurrentItem] = useState(null);
     const [relatedItems, setRelatedItems] = useState([]);
-// Iconos para los controles de video
+
+    // Cargar datos del elemento actual y relacionados
     useEffect(() => {
         const item = getItemById(id);
         if (!item) {
@@ -27,7 +28,8 @@ const MediaDetailPage = () => {
         const related = getRelatedItems(id, item.type);
         setRelatedItems(related);
     }, [id, getItemById, getRelatedItems, navigate]);
-// Función para manejar la reproducción y pausa del video
+
+    // Función para manejar la reproducción y pausa del video
     const handlePlayPause = () => {
         setIsPlaying(!isPlaying);
     };
@@ -71,7 +73,7 @@ const MediaDetailPage = () => {
                                             className="bg-white bg-opacity-90 hover:bg-opacity-100 rounded-full p-4 sm:p-6 shadow-lg transition-all duration-300 transform hover:scale-110"
                                         >
                                             <img
-                                                src={isPlaying ? pauseIcon : playIcon}
+                                                src={playIcon}
                                                 alt={isPlaying ? "Pausar" : "Reproducir"}
                                                 className="w-8 h-8 sm:w-12 sm:h-12"
                                             />

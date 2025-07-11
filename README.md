@@ -133,6 +133,17 @@ La plataforma incluye:
 <h3>❤️ Contribuciones</h3>
 
 ¡Este proyecto representa una colaboración entre estudiantes y una marca real!
+
+
+<hr>
+<h3>🔣 Nomenclatura utilizada en el proyecto</h3>
+
+<ul>
+  <li><b>Backend:</b> en el backend se ocupo exclusivamente la nomenclatura "camelCase" </li>
+  <li><b>Para los Hooks:</b>Para el apartado de los hooks se ocupo la nomenclatura tipo "useData"</li>
+  <li><b>Frontend: </b>para el nombramiento de componentes y Paginas se utilizo "PascalCase" </li>
+</ul>
+
 <hr>
 
 <h3>📚 Librerías Utilizadas</h3>

@@ -2,10 +2,23 @@ import React, { useState } from "react";
 import qrIcon from "../assets/qrIcon.png";
 import attentionIcon from "../assets/attentionIcon.png";
 
+/**
+ * Componente PaymentMethodSelection - Selección de método de pago
+ * Permite al usuario elegir entre tarjeta de crédito/débito, PayPal o transferencia bancaria
+ * @param {function} onNext - Callback para avanzar al siguiente paso
+ * @param {function} onBack - Callback para regresar al paso anterior
+ */
 const PaymentMethodSelection = ({ onNext, onBack }) => {
+    // Estado para almacenar el método de pago seleccionado
     const [selectedMethod, setSelectedMethod] = useState('');
+    
+    // Estado para controlar la pestaña activa en transferencia bancaria (datos o QR)
     const [transferTab, setTransferTab] = useState('datos');
 
+    /**
+     * Maneja la confirmación del pago
+     * Valida que se haya seleccionado un método antes de proceder
+     */
     const handleConfirmPayment = () => {
         if (selectedMethod) {
             // Aquí podremos agregar validaciones adicionales
@@ -15,12 +28,17 @@ const PaymentMethodSelection = ({ onNext, onBack }) => {
         }
     };
 
+    // Array con los métodos de pago disponibles
     const paymentMethods = [
         { id: 'card', name: 'Tarjeta de Crédito/Débito', icon: '💳' },
         { id: 'paypal', name: 'PayPal', icon: '🅿️' },
         { id: 'transfer', name: 'Transferencia Bancaria', icon: '🏦' }
     ];
 
+    /**
+     * Renderiza el formulario de PayPal
+     * Muestra información y botón para redireccionar a PayPal
+     */
     const renderPayPalForm = () => (
         <div className="mt-6 space-y-4 p-4 bg-gray-50 rounded-lg">
             <div className="text-sm text-gray-600 mb-4">
@@ -32,8 +50,13 @@ const PaymentMethodSelection = ({ onNext, onBack }) => {
         </div>
     );
 
+    /**
+     * Renderiza el formulario de transferencia bancaria
+     * Incluye pestañas para datos bancarios y código QR, más sección de comprobante
+     */
     const renderTransferForm = () => (
         <div className="mt-6 space-y-4 p-4 bg-gray-50 rounded-lg">
+            {/* Mensaje informativo sobre el proceso de transferencia */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                 <div className="flex items-start">
                     <div className="w-5 h-5 rounded-fullflex items-center justify-center mr-3 mt-0.5">
@@ -45,6 +68,7 @@ const PaymentMethodSelection = ({ onNext, onBack }) => {
                 </div>
             </div>
 
+            {/* Pestañas para alternar entre datos bancarios y código QR */}
             <div className="flex border-b">
                 <button
                     onClick={() => setTransferTab('datos')}
@@ -66,8 +90,10 @@ const PaymentMethodSelection = ({ onNext, onBack }) => {
                 </button>
             </div>
 
+            {/* Contenido condicional según la pestaña seleccionada */}
             {transferTab === 'datos' ? (
                 <div className="space-y-4">
+                    {/* Sección de datos bancarios */}
                     <div className="bg-white p-4 rounded-lg border">
                         <h4 className="font-medium mb-3">Datos bancarios</h4>
                         <div className="space-y-2 text-sm">
@@ -94,6 +120,7 @@ const PaymentMethodSelection = ({ onNext, onBack }) => {
                         </div>
                     </div>
 
+                    {/* Sección para subir comprobante de transferencia */}
                     <div className="bg-white p-4 rounded-lg border">
                         <h4 className="font-medium mb-3">Comprobante de transferencia</h4>
                         <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
@@ -105,6 +132,7 @@ const PaymentMethodSelection = ({ onNext, onBack }) => {
                 </div>
             ) : (
                 <div className="space-y-4">
+                    {/* Sección de código QR */}
                     <div className="bg-white p-4 rounded-lg border">
                         <h4 className="font-medium mb-3">Datos bancarios</h4>
                         <div className="flex justify-center mb-4">
@@ -121,6 +149,7 @@ const PaymentMethodSelection = ({ onNext, onBack }) => {
                         </div>
                     </div>
 
+                    {/* Sección para subir comprobante de transferencia (repetida en pestaña QR) */}
                     <div className="bg-white p-4 rounded-lg border">
                         <h4 className="font-medium mb-3">Comprobante de transferencia</h4>
                         <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
@@ -138,6 +167,7 @@ const PaymentMethodSelection = ({ onNext, onBack }) => {
         <div className="bg-white rounded-lg shadow-sm border p-6">
             <h3 className="text-lg font-semibold mb-6">Método de pago</h3>
             <div className="space-y-4">
+                {/* Mapeo de métodos de pago disponibles */}
                 {paymentMethods.map((method) => (
                     <label
                         key={method.id}
@@ -146,6 +176,7 @@ const PaymentMethodSelection = ({ onNext, onBack }) => {
                             : 'border-gray-300 hover:border-gray-400'
                             }`}
                     >
+                        {/* Input radio oculto para selección */}
                         <input
                             type="radio"
                             name="paymentMethod"
@@ -154,8 +185,10 @@ const PaymentMethodSelection = ({ onNext, onBack }) => {
                             onChange={(e) => setSelectedMethod(e.target.value)}
                             className="sr-only"
                         />
+                        {/* Icono y nombre del método de pago */}
                         <span className="text-2xl mr-4">{method.icon}</span>
                         <span className="text-sm font-medium">{method.name}</span>
+                        {/* Indicador visual personalizado de selección */}
                         <div className={`ml-auto w-4 h-4 rounded-full border-2 ${selectedMethod === method.id
                             ? 'border-pink-400 bg-pink-400'
                             : 'border-gray-300'
@@ -167,8 +200,10 @@ const PaymentMethodSelection = ({ onNext, onBack }) => {
                     </label>
                 ))}
 
+                {/* Formulario de tarjeta de crédito/débito - se muestra cuando está seleccionado */}
                 {selectedMethod === 'card' && (
                     <div className="mt-6 space-y-4 p-4 bg-gray-50 rounded-lg">
+                        {/* Campo número de tarjeta */}
                         <div>
                             <label className="block text-sm font-medium mb-2">Número de la tarjeta</label>
                             <input
@@ -177,6 +212,7 @@ const PaymentMethodSelection = ({ onNext, onBack }) => {
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-300 text-sm"
                             />
                         </div>
+                        {/* Campo nombre del titular */}
                         <div>
                             <label className="block text-sm font-medium mb-2">Nombre del titular</label>
                             <input
@@ -185,6 +221,7 @@ const PaymentMethodSelection = ({ onNext, onBack }) => {
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-300 text-sm"
                             />
                         </div>
+                        {/* Campos fecha de expiración y CVV en grid */}
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium mb-2">Fecha de expiración</label>
@@ -206,11 +243,15 @@ const PaymentMethodSelection = ({ onNext, onBack }) => {
                     </div>
                 )}
 
+                {/* Renderizado condicional del formulario de PayPal */}
                 {selectedMethod === 'paypal' && renderPayPalForm()}
 
+                {/* Renderizado condicional del formulario de transferencia bancaria */}
                 {selectedMethod === 'transfer' && renderTransferForm()}
 
+                {/* Botones de navegación */}
                 <div className="flex gap-4 pt-4">
+                    {/* Botón para regresar */}
                     <button
                         style={{ cursor: 'pointer' }}
                         onClick={onBack}
@@ -218,6 +259,7 @@ const PaymentMethodSelection = ({ onNext, onBack }) => {
                     >
                         Volver
                     </button>
+                    {/* Botón para confirmar/pagar - deshabilitado si no hay método seleccionado */}
                     <button
                         style={{ cursor: 'pointer' }}
                         onClick={handleConfirmPayment}
@@ -227,6 +269,7 @@ const PaymentMethodSelection = ({ onNext, onBack }) => {
                             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                             }`}
                     >
+                        {/* Texto del botón cambia según el método seleccionado */}
                         {selectedMethod === 'transfer' ? 'Confirmar pedido' : 'Pagar ahora'}
                     </button>
                 </div>

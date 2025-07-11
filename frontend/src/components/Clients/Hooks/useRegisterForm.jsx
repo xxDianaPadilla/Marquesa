@@ -1,9 +1,10 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useNavigate } from 'react-router-dom';
 
 /**
  * Hook personalizado para manejar el formulario de registro
- * Ahora maneja la lógica de validación previa y activación del modal de verificación
+ * CORREGIDO: Uso de useCallback para evitar re-renderizados innecesarios
+ * Maneja la lógica de validación previa y activación del modal de verificación
  */
 const useRegisterForm = () => {
     const [formData, setFormData] = useState({
@@ -27,30 +28,33 @@ const useRegisterForm = () => {
 
     /**
      * Maneja los cambios en los inputs del formulario
-     * @param {Event} e - Evento del input
+     * Memoizada para evitar re-creaciones innecesarias
      */
-    const handleInputChange = (e) => {
+    const handleInputChange = useCallback((e) => {
         const { name, value, type, checked } = e.target;
+        
         setFormData(prev => ({
             ...prev,
             [name]: type === 'checkbox' ? checked : value
         }));
 
         // Limpiar error específico cuando el usuario empiece a escribir
-        if (errors[name]) {
-            setErrors(prev => {
+        setErrors(prev => {
+            if (prev[name] || prev.general) {
                 const newErrors = { ...prev };
                 delete newErrors[name];
+                delete newErrors.general;
                 return newErrors;
-            });
-        }
-    };
+            }
+            return prev;
+        });
+    }, []);
 
     /**
      * Valida todos los campos del formulario
-     * @returns {boolean} true si es válido, false si hay errores
+     * Memoizada para optimización
      */
-    const validateForm = () => {
+    const validateForm = useCallback(() => {
         const newErrors = {};
 
         // Validar nombre completo
@@ -58,19 +62,23 @@ const useRegisterForm = () => {
             newErrors.fullName = 'El nombre completo es requerido';
         } else if (formData.fullName.trim().length < 2) {
             newErrors.fullName = 'El nombre debe tener al menos 2 caracteres';
+        } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(formData.fullName.trim())) {
+            newErrors.fullName = 'El nombre solo puede contener letras y espacios';
         }
 
         // Validar teléfono
         if (!formData.phone.trim()) {
             newErrors.phone = 'El teléfono es requerido';
-        } else if (!/^[0-9+\-\s()]+$/.test(formData.phone)) {
+        } else if (!/^[0-9+\-\s()]+$/.test(formData.phone.trim())) {
             newErrors.phone = 'Ingresa un número de teléfono válido';
+        } else if (formData.phone.replace(/[^0-9]/g, '').length < 8) {
+            newErrors.phone = 'El teléfono debe tener al menos 8 dígitos';
         }
 
         // Validar email
         if (!formData.email.trim()) {
             newErrors.email = 'El correo electrónico es requerido';
-        } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+        } else if (!/\S+@\S+\.\S+/.test(formData.email.trim())) {
             newErrors.email = 'El correo electrónico no es válido';
         }
 
@@ -78,11 +86,17 @@ const useRegisterForm = () => {
         if (!formData.birthDate) {
             newErrors.birthDate = 'La fecha de nacimiento es requerida';
         } else {
-            // Validar que la fecha no sea futura
             const today = new Date();
             const birthDate = new Date(formData.birthDate);
+            const age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+            
             if (birthDate > today) {
                 newErrors.birthDate = 'La fecha de nacimiento no puede ser futura';
+            } else if (age < 13 || (age === 13 && monthDiff < 0)) {
+                newErrors.birthDate = 'Debes tener al menos 13 años para registrarte';
+            } else if (age > 120) {
+                newErrors.birthDate = 'Por favor ingresa una fecha de nacimiento válida';
             }
         }
 
@@ -93,28 +107,60 @@ const useRegisterForm = () => {
             newErrors.address = 'La dirección debe tener al menos 5 caracteres';
         }
 
-        // Validar contraseña
+        // Validar contraseña con requisitos más estrictos
         if (!formData.password) {
             newErrors.password = 'La contraseña es requerida';
-        } else if (formData.password.length < 6) {
-            newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
+        } else {
+            const passwordErrors = [];
+            
+            if (formData.password.length < 8) {
+                passwordErrors.push('mínimo 8 caracteres');
+            }
+            if (!/[A-Z]/.test(formData.password)) {
+                passwordErrors.push('una letra mayúscula');
+            }
+            if (!/[a-z]/.test(formData.password)) {
+                passwordErrors.push('una letra minúscula');
+            }
+            if (!/\d/.test(formData.password)) {
+                passwordErrors.push('un número');
+            }
+            if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) {
+                passwordErrors.push('un carácter especial');
+            }
+            
+            if (passwordErrors.length > 0) {
+                newErrors.password = `La contraseña debe tener: ${passwordErrors.join(', ')}`;
+            }
         }
 
         // Validar términos y condiciones
         if (!formData.acceptTerms) {
-            newErrors.acceptTerms = 'Debes aceptar los términos y condiciones';
+            newErrors.acceptTerms = 'Debes aceptar los términos y condiciones para continuar';
         }
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
-    };
+    }, [formData]);
+
+    /**
+     * Valida si el formulario está completamente vacío
+     */
+    const isFormEmpty = useCallback(() => {
+        return !formData.fullName.trim() && 
+               !formData.phone.trim() && 
+               !formData.email.trim() && 
+               !formData.birthDate && 
+               !formData.address.trim() && 
+               !formData.password && 
+               !formData.acceptTerms;
+    }, [formData]);
 
     /**
      * Maneja el envío del formulario de registro
-     * Ahora solo valida y abre el modal de verificación
-     * @param {Event} e - Evento del formulario
+     * Memoizada para evitar re-creaciones
      */
-    const handleSubmit = async (e) => {
+    const handleSubmit = useCallback(async (e) => {
         e.preventDefault();
 
         const now = Date.now();
@@ -138,8 +184,38 @@ const useRegisterForm = () => {
 
         console.log('Datos del formulario antes de validar:', formData);
 
+        // Verificar si el formulario está completamente vacío
+        if (isFormEmpty()) {
+            console.log('Formulario enviado vacío - mostrando todos los errores');
+            
+            // Mostrar errores para todos los campos requeridos
+            setErrors({
+                fullName: 'El nombre completo es requerido',
+                phone: 'El teléfono es requerido',
+                email: 'El correo electrónico es requerido',
+                birthDate: 'La fecha de nacimiento es requerida',
+                address: 'La dirección es requerida',
+                password: 'La contraseña es requerida',
+                acceptTerms: 'Debes aceptar los términos y condiciones para continuar',
+                general: 'Por favor completa todos los campos requeridos'
+            });
+            
+            // Scroll al primer error (parte superior del formulario)
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
+
+        // Validación normal del formulario
         if (!validateForm()) {
             console.log('Errores de validación:', errors);
+            
+            // Scroll al primer error
+            const firstErrorField = Object.keys(errors)[0];
+            const errorElement = document.querySelector(`[name="${firstErrorField}"]`);
+            if (errorElement) {
+                errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                errorElement.focus();
+            }
             return;
         }
 
@@ -196,12 +272,12 @@ const useRegisterForm = () => {
         }
 
         console.log('=== FIN handleSubmit ===');
-    };
+    }, [formData, isFormEmpty, validateForm, errors]);
 
     /**
      * Maneja el éxito de la verificación de email
      */
-    const handleEmailVerificationSuccess = () => {
+    const handleEmailVerificationSuccess = useCallback(() => {
         console.log('Verificación exitosa, cerrando modal y navegando al login');
         setShowEmailVerificationModal(false);
         
@@ -212,29 +288,29 @@ const useRegisterForm = () => {
         setTimeout(() => {
             navigate('/login');
         }, 1000);
-    };
+    }, [navigate]);
 
     /**
      * Cierra el modal de verificación de email
      */
-    const closeEmailVerificationModal = () => {
+    const closeEmailVerificationModal = useCallback(() => {
         console.log('Cerrando modal de verificación');
         setShowEmailVerificationModal(false);
         // Resetear estado de envío al cerrar modal
         isSubmittingRef.current = false;
-    };
+    }, []);
 
     /**
      * Limpia todos los errores del formulario
      */
-    const clearErrors = () => {
+    const clearErrors = useCallback(() => {
         setErrors({});
-    };
+    }, []);
 
     /**
      * Resetea el formulario a su estado inicial
      */
-    const resetForm = () => {
+    const resetForm = useCallback(() => {
         setFormData({
             fullName: '',
             phone: '',
@@ -248,13 +324,13 @@ const useRegisterForm = () => {
         setShowEmailVerificationModal(false);
         isSubmittingRef.current = false;
         lastSubmitTimeRef.current = 0;
-    };
+    }, []);
 
     /**
      * Prepara los datos del usuario para el registro
      * @returns {Object} - Datos del usuario limpios y validados
      */
-    const getUserDataForRegistration = () => {
+    const getUserDataForRegistration = useCallback(() => {
         return {
             fullName: formData.fullName.trim(),
             phone: formData.phone.trim(),
@@ -264,7 +340,7 @@ const useRegisterForm = () => {
             favorites: [],
             discount: null
         };
-    };
+    }, [formData]);
 
     return {
         formData,

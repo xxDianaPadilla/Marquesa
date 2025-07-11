@@ -2,15 +2,21 @@ import React from "react";
 import { Star, StarHalf } from "lucide-react";
 import { useBestRankedProducts } from "./Products/Hooks/useBestRankedProducts";
 
+/**
+ * Componente que muestra los productos mejor calificados
+ * Incluye sistema de estrellas, agrupación de productos duplicados y scroll personalizado
+ */
 const BestRankedProductsCards = () => {
     const { bestProducts, loading, error } = useBestRankedProducts();
 
+    // Estados de carga con skeleton loading
     if (loading) {
         return (
             <div className="bg-white rounded-lg shadow-sm p-6">
                 <h3 className="text-lg font-semibold mb-4" style={{ fontFamily: 'Poppins, sans-serif' }}>
                     ¡Tus mejores productos!
                 </h3>
+                {/* Skeleton placeholders animados */}
                 <div className="space-y-3">
                     {[1, 2, 3].map((i) => (
                         <div key={i} className="animate-pulse">
@@ -33,43 +39,17 @@ const BestRankedProductsCards = () => {
         );
     }
 
-    if (error) {
-        return (
-            <div className="bg-white rounded-lg shadow-sm p-6">
-                <h3 className="text-lg font-semibold mb-4" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                    ¡Tus mejores productos!
-                </h3>
-                <div className="text-center py-8">
-                    <p className="text-gray-500 text-sm" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                        Error al cargar los productos mejor calificados
-                    </p>
-                </div>
-            </div>
-        );
-    }
-
-    if (bestProducts.length === 0) {
-        return (
-            <div className="bg-white rounded-lg shadow-sm p-6">
-                <h3 className="text-lg font-semibold mb-4" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                    ¡Tus mejores productos!
-                </h3>
-                <div className="text-center py-8">
-                    <p className="text-gray-500 text-sm" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                        No hay productos calificados aún
-                    </p>
-                </div>
-            </div>
-        );
-    }
-
+    /**
+     * Renderiza estrellas basado en rating decimal
+     * Soporta medias estrellas y redondeo a 0.5
+     */
     const renderStars = (rating) => {
         const stars = [];
-        const roundedRating = Math.round(rating * 2) / 2; // Redondear a 0.5 más cercano
+        const roundedRating = Math.round(rating * 2) / 2; // Redondeo a 0.5
         const fullStars = Math.floor(roundedRating);
         const hasHalfStar = roundedRating % 1 !== 0;
 
-        // Estrellas llenas
+        // Estrellas completas
         for (let i = 0; i < fullStars; i++) {
             stars.push(
                 <Star
@@ -79,7 +59,7 @@ const BestRankedProductsCards = () => {
             );
         }
 
-        // Media estrella
+        // Media estrella si aplica
         if (hasHalfStar && fullStars < 5) {
             stars.push(
                 <StarHalf
@@ -103,9 +83,11 @@ const BestRankedProductsCards = () => {
         return stars;
     };
 
-    // Mejorar la lógica de agrupación con validaciones más estrictas
+    /**
+     * Agrupa productos duplicados y combina sus ratings
+     * Validación estricta por ID, nombre y categoría
+     */
     const groupedProducts = bestProducts.reduce((acc, product) => {
-        // Solo agrupar si tienen exactamente el mismo _id Y el mismo nombre
         const existingProduct = acc.find(p => 
             p._id === product._id && 
             p.name === product.name &&
@@ -113,7 +95,7 @@ const BestRankedProductsCards = () => {
         );
         
         if (existingProduct) {
-            // Combinar ratings solo si son realmente el mismo producto
+            // Combinar ratings ponderados por número de reseñas
             const totalRating = existingProduct.averageRating * existingProduct.reviewCount + product.averageRating * product.reviewCount;
             const totalReviews = existingProduct.reviewCount + product.reviewCount;
             existingProduct.averageRating = totalRating / totalReviews;
@@ -129,19 +111,19 @@ const BestRankedProductsCards = () => {
             <h3 className="text-lg font-semibold mb-4" style={{ fontFamily: 'Poppins, sans-serif' }}>
                 ¡Tus mejores productos!
             </h3>
-            {/* Contenedor con scroll mejorado */}
+            {/* Contenedor con scroll personalizado y altura fija */}
             <div 
                 className="overflow-y-auto pr-2"
                 style={{ 
-                    maxHeight: '300px', // Altura adecuada
-                    scrollbarWidth: 'thin', // Para Firefox
-                    scrollbarColor: '#CBD5E0 #F7FAFC' // Para Firefox
+                    maxHeight: '300px',
+                    scrollbarWidth: 'thin', // Firefox
+                    scrollbarColor: '#CBD5E0 #F7FAFC' // Firefox
                 }}
             >
                 {groupedProducts.map((product, index) => (
                     <div key={product._id || index} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0" style={{ minHeight: '70px' }}>
                         <div className="flex items-center space-x-3 flex-1">
-                            {/* Imagen del producto */}
+                            {/* Imagen del producto con fallback a emoji o inicial */}
                             {product.image && product.image.includes('http') ? (
                                 <img
                                     style={{ borderRadius: '5px' }}
@@ -159,16 +141,15 @@ const BestRankedProductsCards = () => {
 
                             {/* Información del producto */}
                             <div className="flex-1 min-w-0">
-                                <div className="flex items-center space-x-2">
-                                    <h4 className="text-sm font-medium text-gray-900 truncate"
-                                        style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                        {product.name}
-                                    </h4>
-                                </div>
+                                <h4 className="text-sm font-medium text-gray-900 truncate"
+                                    style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                    {product.name}
+                                </h4>
                                 <p className="text-xs text-gray-500 truncate"
                                     style={{ fontFamily: 'Poppins, sans-serif' }}>
                                     {product.category}
                                 </p>
+                                {/* Información adicional para productos personalizados */}
                                 {product.type === 'custom' && product.selectedItemsCount > 0 && (
                                     <p className="text-xs text-gray-400"
                                         style={{ fontFamily: 'Poppins, sans-serif' }}>
@@ -178,7 +159,7 @@ const BestRankedProductsCards = () => {
                             </div>
                         </div>
 
-                        {/* Rating y reseñas */}
+                        {/* Rating visual y numérico */}
                         <div className="flex flex-col items-end space-y-1 flex-shrink-0">
                             <div className="flex items-center space-x-1">
                                 {renderStars(product.averageRating)}
@@ -198,7 +179,7 @@ const BestRankedProductsCards = () => {
                 ))}
             </div>
             
-            {/* Estilo personalizado para el scrollbar */}
+            {/* Estilos CSS personalizados para scrollbar webkit */}
             <style jsx>{`
                 div::-webkit-scrollbar {
                     width: 6px;

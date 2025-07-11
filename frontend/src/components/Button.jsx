@@ -1,6 +1,13 @@
 import React from "react";
 
+/**
+ * Componente de botón reutilizable con múltiples variantes
+ * Soporta iconos, diferentes estilos y estados disabled
+ */
 const Button = ({ text, onClick, variant = "primary", icon, type, disabled }) => {
+    /**
+     * Define estilos de texto basado en la variante
+     */
     const getButtonStyles = () => {
         switch (variant) {
             case "primary":
@@ -14,16 +21,19 @@ const Button = ({ text, onClick, variant = "primary", icon, type, disabled }) =>
         }
     };
 
+    /**
+     * Define color de fondo basado en la variante
+     */
     const getBackgroundColor = () => {
         switch (variant) {
             case "primary":
-                return "#FADDDD"; 
+                return "#FADDDD"; // Rosa claro del tema
             case "secondary":
                 return "";
             case "Google":
                 return "";
             default:
-                return "#F8BBD9";
+                return "#F8BBD9"; // Rosa alternativo
         }
     };
 
@@ -45,6 +55,7 @@ const Button = ({ text, onClick, variant = "primary", icon, type, disabled }) =>
                 cursor: 'pointer'
             }}
         >
+            {/* Icono opcional a la izquierda del texto */}
             {icon && (
                 <img
                     src={icon}

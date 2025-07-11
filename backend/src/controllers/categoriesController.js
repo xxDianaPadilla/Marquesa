@@ -104,7 +104,7 @@ categoriesController.createCategories = async (req, res) => {
     }
 };
 
-// Método de actualizar categorías
+// Método de actualizar categorías (CORREGIDO)
 categoriesController.updateCategories = async (req, res) => {
     try {
         const { name } = req.body;
@@ -114,13 +114,6 @@ categoriesController.updateCategories = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: "El campo 'name' es requerido"
-            });
-        }
-        
-        if (!req.file) {
-            return res.status(400).json({
-                success: false,
-                message: "La imagen es requerida"
             });
         }
 
@@ -133,14 +126,16 @@ categoriesController.updateCategories = async (req, res) => {
             });
         }
 
-        let imageURL = "";
+        let imageURL = existingCategory.image; // Usar la imagen existente por defecto
 
-        // Subir imagen a Cloudinary
-        const result = await cloudinary.uploader.upload(req.file.path, {
-            folder: "categories",
-            allowed_formats: ["jpg", "jpeg", "png"],
-        });
-        imageURL = result.secure_url;
+        // Solo subir nueva imagen si se proporcionó una
+        if (req.file) {
+            const result = await cloudinary.uploader.upload(req.file.path, {
+                folder: "categories",
+                allowed_formats: ["jpg", "jpeg", "png"],
+            });
+            imageURL = result.secure_url;
+        }
 
         // Actualizar categoría
         const updateData = { name: name.trim(), image: imageURL };

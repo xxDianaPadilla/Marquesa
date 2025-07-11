@@ -7,22 +7,50 @@ const ReviewReplyModal = ({ isOpen, onClose, review, onSubmit }) => {
 
     useEffect(() => {
         if (isOpen) {
-            setReply('');
+            // Si la reseña ya tiene una respuesta, mostrarla
+            setReply(review?.response || '');
         }
-    }, [isOpen]);
+    }, [isOpen, review]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
-        if (!reply.trim()) return;
+
+        console.log('=== MODAL SUBMIT DEBUG ===');
+        console.log('Reply text:', reply.trim());
+        console.log('Reply length:', reply.trim().length);
+        console.log('Selected review:', review);
+        console.log('Selected review ID:', review?._id);
+        console.log('onSubmit function:', typeof onSubmit);
+
+        if (!reply.trim()) {
+            console.log('Reply is empty, returning');
+            return;
+        }
+
+        if (!review?._id) {
+            console.error('No review ID found');
+            alert('Error: No se encontró el ID de la reseña');
+            return;
+        }
+
+        if (typeof onSubmit !== 'function') {
+            console.error('onSubmit is not a function');
+            alert('Error: Función onSubmit no está definida');
+            return;
+        }
 
         setIsSubmitting(true);
-        
+
         try {
+            console.log('Calling onSubmit with:', reply.trim());
             await onSubmit(reply.trim());
-            setReply('');
+            console.log('onSubmit completed successfully');
+
+            // No limpiar el reply aquí, se maneja desde el componente padre
         } catch (error) {
-            console.error('Error al enviar respuesta:', error);
+            console.error('Error in modal handleSubmit:', error);
+            // Mostrar el error al usuario
+            alert('Error al enviar la respuesta: ' + (error.message || 'Error desconocido'));
         } finally {
             setIsSubmitting(false);
         }
@@ -45,7 +73,39 @@ const ReviewReplyModal = ({ isOpen, onClose, review, onSubmit }) => {
         return stars;
     };
 
+    // Función para obtener información del cliente
+    const getClientInfo = (review) => {
+        return {
+            name: review?.clientId?.fullName || 'Usuario Anónimo',
+            profilePicture: review?.clientId?.profilePicture || null
+        };
+    };
+
+    // Función para obtener información del producto
+    const getProductInfo = (review) => {
+        if (!review?.products || review.products.length === 0) {
+            return { name: 'Sin producto', image: null };
+        }
+
+        const firstProduct = review.products[0];
+
+        if (firstProduct.itemType === 'custom') {
+            return {
+                name: 'Producto personalizado',
+                image: firstProduct.itemId?.referenceImage || null
+            };
+        } else {
+            return {
+                name: firstProduct.itemId?.name || 'Producto',
+                image: firstProduct.itemId?.images?.[0]?.image || null
+            };
+        }
+    };
+
     if (!isOpen || !review) return null;
+
+    const clientInfo = getClientInfo(review);
+    const productInfo = getProductInfo(review);
 
     return (
         <OverlayBackdrop isVisible={isOpen} onClose={onClose}>
@@ -57,7 +117,7 @@ const ReviewReplyModal = ({ isOpen, onClose, review, onSubmit }) => {
                     {/* Header */}
                     <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 bg-white flex-shrink-0">
                         <h2 className="text-lg sm:text-xl font-bold text-gray-800 pr-4" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                            Responder Reseña
+                            {review.response ? 'Editar Respuesta' : 'Responder Reseña'}
                         </h2>
                         <button
                             style={{ cursor: 'pointer' }}
@@ -76,19 +136,31 @@ const ReviewReplyModal = ({ isOpen, onClose, review, onSubmit }) => {
                         {/* Información de la reseña */}
                         <div className="bg-gray-50 rounded-lg p-4 mb-6">
                             <div className="flex items-start gap-3 mb-3">
+                                {/* Avatar del cliente */}
                                 <div className="flex-shrink-0 h-10 w-10">
-                                    <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                                    {clientInfo.profilePicture ? (
+                                        <img
+                                            src={clientInfo.profilePicture}
+                                            alt="Cliente"
+                                            className="h-10 w-10 rounded-full object-cover"
+                                            onError={(e) => {
+                                                e.target.style.display = 'none';
+                                                e.target.nextSibling.style.display = 'flex';
+                                            }}
+                                        />
+                                    ) : null}
+                                    <div className={`h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center ${clientInfo.profilePicture ? 'hidden' : ''}`}>
                                         <span className="text-sm font-medium text-gray-700" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                            {review.customerName?.charAt(0)?.toUpperCase() || 'U'}
+                                            {clientInfo.name.charAt(0)?.toUpperCase() || 'U'}
                                         </span>
                                     </div>
                                 </div>
                                 <div className="flex-1">
                                     <h3 className="font-medium text-gray-900" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                        {review.customerName || 'Usuario Anónimo'}
+                                        {clientInfo.name}
                                     </h3>
                                     <p className="text-sm text-gray-500" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                        {review.productName}
+                                        {productInfo.name}
                                     </p>
                                 </div>
                             </div>
@@ -104,7 +176,7 @@ const ReviewReplyModal = ({ isOpen, onClose, review, onSubmit }) => {
                             {/* Comentario */}
                             <div className="bg-white rounded-lg p-3 border">
                                 <p className="text-sm text-gray-900" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                    "{review.comment}"
+                                    "{review.message}"
                                 </p>
                             </div>
 
@@ -122,11 +194,23 @@ const ReviewReplyModal = ({ isOpen, onClose, review, onSubmit }) => {
                             </div>
                         </div>
 
+                        {/* Respuesta actual (si existe) */}
+                        {review.response && (
+                            <div className="bg-blue-50 rounded-lg p-4 mb-4 border border-blue-200">
+                                <h4 className="text-sm font-medium text-blue-800 mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                    Respuesta actual:
+                                </h4>
+                                <p className="text-sm text-blue-700" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                    {review.response}
+                                </p>
+                            </div>
+                        )}
+
                         {/* Formulario de respuesta */}
                         <form onSubmit={handleSubmit}>
                             <div className="mb-4">
                                 <label className="block text-sm font-medium text-gray-700 mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                    Tu respuesta
+                                    {review.response ? 'Editar tu respuesta' : 'Tu respuesta'}
                                 </label>
                                 <textarea
                                     value={reply}
@@ -188,7 +272,7 @@ const ReviewReplyModal = ({ isOpen, onClose, review, onSubmit }) => {
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                                         </svg>
-                                        Enviar Respuesta
+                                        {review.response ? 'Actualizar Respuesta' : 'Enviar Respuesta'}
                                     </>
                                 )}
                             </button>

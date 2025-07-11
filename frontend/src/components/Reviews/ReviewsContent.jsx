@@ -3,13 +3,15 @@ import ReviewsTable from './ReviewsTable';
 import ReviewsList from './ReviewsList';
 import LoadingState from '../LoadingState';
 
-const ReviewsContent = ({ 
-    reviews, 
-    loading, 
+const ReviewsContent = ({
+    reviews,
+    loading,
     error,
     totalItems,
-    onReply, 
-    onModerate 
+    onReply,
+    onModerate,
+    onDelete, // Añadir esta prop
+    onReviewUpdate
 }) => {
     if (loading) {
         return <LoadingState message="Cargando reseñas..." />;
@@ -37,6 +39,8 @@ const ReviewsContent = ({
                 reviews={reviews}
                 onReply={onReply}
                 onModerate={onModerate}
+                onDelete={onDelete} // Pasar la función onDelete
+                onReviewUpdate={onReviewUpdate}
             />
 
             {/* Vista Mobile y Tablet - Lista */}
@@ -44,6 +48,8 @@ const ReviewsContent = ({
                 reviews={reviews}
                 onReply={onReply}
                 onModerate={onModerate}
+                onDelete={onDelete} // También pasarla a ReviewsList si la necesita
+                onReviewUpdate={onReviewUpdate}
             />
 
             {/* Footer con información */}

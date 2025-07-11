@@ -36,7 +36,12 @@ const reviewsSchema = new Schema({
     },
     response: {
         type: String,
-        required: false
+        default: null // Explícitamente permitir null
+    },
+    status: {
+        type: String,
+        enum: ['pending', 'replied'],
+        default: 'pending'
     }
 }, {
     timestamps: true,

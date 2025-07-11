@@ -4,6 +4,8 @@ import userDashboard from "../assets/userDashboard.png";
 import giftDashboard from "../assets/giftDashboard.png";
 import increaseArrow from "../assets/increaseArrow.png";
 
+// Componente para las tarjetas del dashboard
+// Muestra estadísticas clave como clientes nuevos y productos vendidos
 const DashboardCards = () => {
     const { stats, error, refetch } = useDashboardStats();
 
@@ -22,7 +24,8 @@ const DashboardCards = () => {
             </div>
         );
     }
-
+    // Componente para una tarjeta de estadística
+    // Muestra el título, valor, cambio porcentual y un icono
     const StatCard = ({
         title,
         value,

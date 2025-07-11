@@ -3,6 +3,8 @@ import { Controller } from "react-hook-form";
 import OverlayBackdrop from "./OverlayBackdrop";
 import { useMediaForm } from "./Media/Hooks/useMediaForm";
 
+// Componente para el modal de carga de medios
+// Permite al usuario subir imágenes y videos con validación de archivos
 const MediaUploadModal = ({ onClose, onConfirm }) => {
     const {
         control,

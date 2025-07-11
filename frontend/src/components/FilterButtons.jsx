@@ -1,5 +1,7 @@
 import React from "react";
 
+// Componente para los botones de filtro
+// Permite seleccionar diferentes categorías de contenido
 const FilterButtons = ({ activeFilter, onFilterChange }) => {
     const filters = [
         { id: "all", label: "Todos" },

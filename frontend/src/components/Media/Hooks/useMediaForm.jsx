@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useMediaUtils } from './useMediaUtils';
 
+// Hook para manejar la lógica del formulario de medios
+// Permite crear, editar, validar y enviar elementos multimedia
 export const useMediaForm = (initialData = null) => {
     const { validateFile, getFileInfo } = useMediaUtils();
     

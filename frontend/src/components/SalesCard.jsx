@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+// Imports de los íconos de Lucide
 import {
   Eye,
   X,
@@ -10,7 +11,7 @@ import {
   CreditCard,
   Clock,
 } from "lucide-react";
-
+// Importación de estilos
 const SalesCard = ({ sale, onUpdateStatus }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [showPaymentProof, setShowPaymentProof] = useState(false);
@@ -27,7 +28,7 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
         return "bg-gradient-to-br from-gray-50 to-slate-50 border-gray-200 shadow-gray-100";
     }
   };
-
+// Función para obtener el color del badge según el estado
   const getStatusBadgeColor = (status) => {
     switch (status) {
       case "Agendado":
@@ -40,7 +41,7 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
         return "bg-gray-100 text-gray-700 border-gray-300 shadow-sm";
     }
   };
-
+// Función para obtener el ícono según el estado
   const getStatusIcon = (status) => {
     switch (status) {
       case "Agendado":
@@ -53,7 +54,7 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
         return <Clock className="w-3 h-3" />;
     }
   };
-
+// Función para obtener el ícono del tipo de pago
   const getPaymentTypeIcon = (paymentType) => {
     switch (paymentType) {
       case "Transferencia":
@@ -68,7 +69,7 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
         return <CreditCard className="w-4 h-4 text-gray-600" />;
     }
   };
-
+// Función para manejar el cambio de estado
   const handleStatusChange = async (newStatus) => {
     setIsUpdating(true);
     const success = await onUpdateStatus(sale._id, newStatus);
@@ -78,7 +79,7 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
       alert("Error al actualizar el estado");
     }
   };
-
+// Función para formatear la fecha
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("es-ES", {
@@ -87,7 +88,7 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
       day: "2-digit",
     });
   };
-
+// Función para formatear la hora
   const formatTime = (dateString) => {
     return new Date(dateString).toLocaleTimeString("es-ES", {
       hour: "2-digit",

@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 
+// Hook para manejar el formulario de inicio de sesión
+// Permite manejar los datos del formulario, validaciones, errores y el envío del formulario
 const useLoginForm = () => {
     const [formData, setFormData] = useState({
         email: '',
@@ -29,7 +31,8 @@ const useLoginForm = () => {
             }));
         }
     };
-
+// Función para validar el formulario antes de enviarlo
+// Verifica que el email y la contraseña cumplan con las reglas de validación
     const validateForm = () => {
         const newErrors = {};
 
@@ -50,7 +53,8 @@ const useLoginForm = () => {
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
-
+// Función para manejar el envío del formulario
+// Realiza la validación, llama al método de inicio de sesión del AuthContext y maneja los errores
     const handleSubmit = async (e) => {
         e.preventDefault();
 

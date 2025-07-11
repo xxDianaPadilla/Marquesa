@@ -3,6 +3,8 @@ import chatIcon from "../assets/chatIcon.png";
 import bellIcon from "../assets/bell.png";
 import marquesaMiniLogo from "../assets/marquesaMiniLogo.png";
 
+// Componente para las herramientas del administrador
+// Muestra iconos de chat, notificaciones y perfil del administrador
 const AdminTools = () => {
     return (
         <div className="flex items-center justify-end gap-4 mb-6">

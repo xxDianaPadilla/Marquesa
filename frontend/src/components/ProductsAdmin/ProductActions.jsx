@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 
+// Componente para las acciones de productos
+// Permite editar y eliminar productos con confirmación de eliminación
 const ProductActions = ({ product, onEdit, onDelete }) => {
     const [showConfirm, setShowConfirm] = useState(false);
 

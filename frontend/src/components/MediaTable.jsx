@@ -2,6 +2,8 @@
 import React from 'react';
 import { useMediaUtils } from './Media/Hooks/useMediaUtils';
 
+// Componente para mostrar una tabla de elementos multimedia
+// Permite editar, eliminar y copiar URLs de imágenes y videos
 const MediaTable = ({ items, onEdit, onDelete, onCopyUrl }) => {
     const { getFileIcon, formatDate, getTypeBadgeColor } = useMediaUtils();
 

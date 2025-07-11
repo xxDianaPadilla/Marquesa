@@ -10,6 +10,8 @@ import reviewsIcon from "../assets/reviewsIcon.png";
 import categoriesIcon from "../assets/categoriesIcon.png";
 import logoutIcon from "../assets/logout.png";
 
+// Componente para la barra de navegación del administrador
+// Permite navegar entre diferentes secciones del panel de administración
 const NavbarAdmin = ({ isExpanded, setIsExpanded }) => {
   const navigate = useNavigate();
   const location = useLocation();

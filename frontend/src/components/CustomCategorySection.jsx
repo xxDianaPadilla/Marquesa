@@ -2,6 +2,8 @@
 import React from "react";
 import ProductCard from "./CustomProductCard";
 
+// Componente para mostrar una sección personalizada de categorías
+// Permite mostrar productos de una categoría específica con opciones para añadir al carrito o personalizar
 const CustomCategorySection = ({ 
     title = "Categoría", 
     products = [], 

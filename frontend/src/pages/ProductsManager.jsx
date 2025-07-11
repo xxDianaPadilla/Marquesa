@@ -5,6 +5,8 @@ import useDataProducts from "../components/ProductsAdmin/hooks/useDataProducts";
 import ProductTable from "../components/ProductsAdmin/ProductTable";
 import ProductForm from "../components/ProductsAdmin/ProductForm";
 
+// Componente principal para la gestión de productos
+// Utiliza el hook useDataProducts para manejar la lógica de productos
 const ProductsManager = () => {
   const {
     id,
@@ -26,6 +28,7 @@ const ProductsManager = () => {
     resetForm,
   } = useDataProducts();
 
+  // Estados locales para manejar la búsqueda y el formulario
   const [searchTerm, setSearchTerm] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -38,26 +41,26 @@ const ProductsManager = () => {
     product && product.name && 
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
+  // Funciones para manejar la apertura y cierre del formulario
   const handleOpenForm = () => {
     setEditingProduct(null);
     resetForm();
     setShowForm(true);
   };
-
+  // Función para cerrar el formulario y resetear el estado
   const handleCloseForm = () => {
     setShowForm(false);
     setEditingProduct(null);
     resetForm();
   };
-
+// Función para manejar la edición de un producto
   const handleEditProduct = (product) => {
     console.log("Producto a editar:", product);
     setEditingProduct(product);
     updateProduct(product);
     setShowForm(true);
   };
-
+// Función para manejar el envío del formulario
   const handleProductSubmit = async (productData) => {
     try {
       if (editingProduct) {

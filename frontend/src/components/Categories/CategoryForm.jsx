@@ -2,6 +2,8 @@ import React, { useRef, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { AlertCircle, CheckCircle, X } from 'lucide-react';
 
+// Componente para el formulario de categorías
+// Permite crear y editar categorías con validaciones y manejo de imágenes
 const CategoryForm = ({
   isOpen,      
   onClose,     

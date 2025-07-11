@@ -2,6 +2,8 @@
 
 import React from 'react';
 
+// Componente para la navegación de categorías
+// Permite seleccionar una categoría para filtrar productos
 const CategoryNavigation = ({ categories, activeCategory, onCategoryChange }) => {
   return (
     <div className="overflow-x-auto whitespace-nowrap px-4 py-3 bg-white shadow-sm border-b">

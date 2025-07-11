@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { FaRegStar, FaStar } from 'react-icons/fa';
 
+// Componente para el formulario de reseñas
+// Permite a los usuarios dejar una calificación y un comentario sobre un producto
 const ReviewForm = () => {
   const [rating, setRating] = useState(0); // Estado para la calificación
 

@@ -2,6 +2,8 @@ import React from 'react';
 import perfilUsuario from '../../assets/perfilUsuario.png';
 import { FaStar } from 'react-icons/fa';
 
+// Componente para mostrar la lista de reseñas de productos
+// Recibe un objeto reviews con las propiedades average, count y comments
 const ReviewList = ({ reviews }) => (
   <div className="space-y-6">
     <h4 className="text-sm font-semibold text-gray-800 mb-1">{reviews.length} opiniones</h4>

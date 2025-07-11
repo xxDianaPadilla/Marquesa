@@ -5,13 +5,16 @@ import playIcon from "../assets/playIcon.png";
 import likeIcon from "../assets/likeIcon.png";
 import calendarIcon from "../assets/calendar.png";
 
+// Componente para mostrar tarjetas de contenido multimedia
+// Permite navegar a la página de detalle del medio y manejar likes
 const MediaContentCards = ({ item }) => {
     const navigate = useNavigate();
-
+    // Función para manejar el clic en la tarjeta y navegar a la página de detalle
     const handleCardClick = () => {
         navigate(`/MediaDetailPage/${item.id}`);
     };
-
+    // Función para manejar el clic en el botón de like
+    // Aquí podrías agregar lógica para manejar el like, como actualizar el estado o enviar una
     const handleLikeClick = (e) => {
         e.stopPropagation();
         // Lógica para manejar el like

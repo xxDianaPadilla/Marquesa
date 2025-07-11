@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { X, Copy, CheckCircle } from 'lucide-react';
 
+// Componente para mostrar el modal de resultados
+// Recibe isOpen, selectedCode, onClose y onCopyCode como props
 const ResultModal = ({ isOpen, selectedCode, onClose, onCopyCode }) => {
     const [copied, setCopied] = useState(false);
 
@@ -10,7 +12,7 @@ const ResultModal = ({ isOpen, selectedCode, onClose, onCopyCode }) => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
-
+// Función para manejar el cierre del modal
     const handleClose = () => {
         onClose();
     };

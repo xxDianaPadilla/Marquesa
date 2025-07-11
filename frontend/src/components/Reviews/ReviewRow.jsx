@@ -1,6 +1,8 @@
 // frontend/src/components/Reviews/Components/ReviewRow.jsx
 import React, { useState } from 'react';
 
+// Componente para una fila de reseña
+// Permite mostrar detalles de la reseña, responder, moderar o eliminar
 const ReviewRow = ({ 
     review, 
     onReply, 
@@ -9,6 +11,8 @@ const ReviewRow = ({
     expandedReviews, 
     onToggleExpand 
 }) => {
+    // Formatea la fecha de creación y respuesta
+    // Utiliza el formato de fecha local para mostrar la fecha de manera legible
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleDateString('es-ES', {
             year: 'numeric',
@@ -18,7 +22,8 @@ const ReviewRow = ({
             minute: '2-digit'
         });
     };
-
+// Renderiza las estrellas de calificación
+    // Utiliza un bucle para crear 5 estrellas, llenas o vacías según la calificación
     const renderStars = (rating) => {
         const stars = [];
         for (let i = 1; i <= 5; i++) {

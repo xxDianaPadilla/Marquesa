@@ -1,6 +1,8 @@
 import React from "react";
 import googleIcon from "../assets/google.png";
 
+// Componente para el botón de Google
+// Este componente muestra un botón estilizado para iniciar sesión con Google
 const GoogleButton = ({ onClick }) => {
     return (
         <button

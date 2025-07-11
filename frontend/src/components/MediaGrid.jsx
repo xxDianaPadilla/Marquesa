@@ -1,6 +1,8 @@
 import React from "react";
 import MediaContentCards from "./MediaContentCards";
 
+// Componente para mostrar una cuadrícula de elementos multimedia
+// Utiliza MediaContentCards para renderizar cada elemento
 const MediaGrid = ({ mediaItems }) => {
     return (
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

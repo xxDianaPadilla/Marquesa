@@ -3,6 +3,8 @@ import ReviewsTable from './ReviewsTable';
 import ReviewsList from './ReviewsList';
 import LoadingState from '../LoadingState';
 
+// Componente para mostrar el contenido de reseñas
+// Incluye lógica para manejar estados de carga, error y vista responsiva
 const ReviewsContent = ({
     reviews,
     loading,

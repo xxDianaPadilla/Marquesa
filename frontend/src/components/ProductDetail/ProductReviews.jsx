@@ -2,6 +2,8 @@ import React from 'react';
 import ReviewForm from './ReviewForm';
 import ReviewList from './ReviewList';
 
+// Componente para mostrar las reseñas de un producto
+// Incluye un formulario para dejar una reseña y una lista de reseñas existentes
 const ProductReviews = ({ reviews }) => (
   <div className="mt-12">
     <div className="mb-6">

@@ -1,12 +1,15 @@
 // frontend/src/components/CartItem.jsx
 import React from "react";
 
+// Componente para un artículo del carrito
+// Muestra la información del producto, cantidad y permite actualizar o eliminar el artículo
 const CartItem = ({ item, onUpdateQuantity, onRemoveItem }) => {
     const handleQuantityChange = (newQuantity) => {
         if (newQuantity < 1) return;
         onUpdateQuantity(item.id, newQuantity);
     };
-
+// Función para manejar el cambio de cantidad
+// Esta función se utiliza para actualizar la cantidad del producto en el carrito
     const handleRemove = () => {
         onRemoveItem(item.id);
     };

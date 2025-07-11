@@ -1,3 +1,4 @@
+// esto sirve para el componente Button.jsx
 export const Button = ({ children, onClick, className = '', variant = 'solid', ...props }) => {
   return (
     <button

@@ -1,5 +1,7 @@
 import React from 'react';
 
+// Componente para mostrar la lista de opiniones de clientes
+// Recibe un objeto reviews con las propiedades average, count y comments
 const ReviewList = ({ reviews }) => {
   return (
     <div className="mt-6">

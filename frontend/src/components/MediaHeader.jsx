@@ -1,5 +1,7 @@
 import React from 'react';
 
+// Componente para el encabezado de la sección de medios
+// Incluye título, filtros, buscador y estadísticas
 const MediaHeader = ({ 
     searchTerm, 
     onSearchChange, 

@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 
+// Hook para manejar la lógica del administrador de medios
+// Permite crear, editar, eliminar y filtrar elementos multimedia
 export const useMediaManager = () => {
     const [mediaItems, setMediaItems] = useState([]);
     const [loading, setLoading] = useState(true);

@@ -23,9 +23,13 @@ const ProductCard = ({ product, sold, percentage }) => {
                     <h4 className="text-sm font-medium text-gray-900 truncate" style={{ fontFamily: 'Poppins, sans-serif' }}>
                         {productName}
                     </h4>
-                    <p className="text-xs text-gray-500 truncate" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                        {productDescription}
+                    <p
+                   className="text-xs text-gray-500 break-words whitespace-normal leading-snug sm:truncate"
+                   style={{ fontFamily: 'Poppins, sans-serif' }}
+                    >
+                   {productDescription}
                     </p>
+
                 </div>
             </div>
             <div className="flex items-center space-x-2 flex-shrink-0">

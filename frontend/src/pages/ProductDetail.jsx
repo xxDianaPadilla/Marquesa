@@ -8,7 +8,7 @@ import ProductInfo from '../components/ProductDetail/ProductInfo'; // Muestra la
 import ProductTabs from '../components/ProductDetail/ProductTabs'; // Componente para manejar las pestañas (Descripción, Detalles, Envío)
 import ProductReviews from '../components/ProductDetail/ProductReviews'; // Muestra las opiniones del producto
 import { useNavigate } from 'react-router-dom'; // Hook de React Router para la navegación
-import RecommendedProducts from '../components/RecommendedProducts'; // Muestra los productos recomendados
+import RecommendedProducts from '../components/RecommendedProducts '; // Muestra los productos recomendados
 
 const ProductDetail = () => {
   // Estado para controlar la imagen seleccionada del producto

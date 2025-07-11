@@ -1,3 +1,4 @@
+// frontend/src/components/MediaContentCards.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import playIcon from "../assets/playIcon.png";
@@ -12,9 +13,17 @@ const MediaContentCards = ({ item }) => {
     const [isLiked, setIsLiked] = useState(false);
     const [imageLoading, setImageLoading] = useState(true);
 
-    // Función para manejar el clic en la tarjeta y navegar a la página de detalle
+    // Función mejorada para manejar el clic en la tarjeta y navegar a la página de detalle
     const handleCardClick = () => {
-        navigate(`/MediaDetailPage/${item.id}`);
+        try {
+            // Usar replace: false para permitir navegación hacia atrás
+            navigate(`/MediaDetailPage/${item.id}`, { 
+                replace: false,
+                state: { fromMediaPage: true } 
+            });
+        } catch (error) {
+            console.error("Error en navegación:", error);
+        }
     };
 
     // Función para manejar el clic en el botón de like
@@ -35,10 +44,24 @@ const MediaContentCards = ({ item }) => {
         setImageLoading(false);
     };
 
+    // Función mejorada para manejar el botón de acción principal
+    const handleActionClick = (e) => {
+        e.stopPropagation();
+        handleCardClick();
+    };
+
     return (
         <article 
             className="bg-white rounded-lg sm:rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group transform hover:-translate-y-1 border border-gray-100"
             onClick={handleCardClick}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleCardClick();
+                }
+            }}
         >
             {/* Image Container */}
             <div className="relative overflow-hidden">
@@ -129,8 +152,9 @@ const MediaContentCards = ({ item }) => {
                 <div className="flex items-center justify-between">
                     <button 
                         className="bg-pink-200 hover:bg-pink-300 text-pink-800 px-3 py-2 sm:px-4 sm:py-2 lg:px-5 lg:py-3 rounded-full text-xs sm:text-sm font-medium hover:shadow-lg transition-all duration-300 transform hover:scale-105 flex items-center gap-2"
-                        onClick={handleCardClick}
+                        onClick={handleActionClick}
                         style={{ fontFamily: 'Poppins, sans-serif' }}
+                        type="button"
                     >
                         <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -146,6 +170,7 @@ const MediaContentCards = ({ item }) => {
                         className={`p-2 sm:p-3 hover:bg-gray-100 rounded-full transition-all duration-300 transform hover:scale-110 ${isLiked ? 'bg-red-50 text-red-500' : 'text-gray-400'}`}
                         onClick={handleLikeClick}
                         title={isLiked ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                        type="button"
                     >
                         <svg className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors ${isLiked ? 'fill-current' : ''}`} fill={isLiked ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />

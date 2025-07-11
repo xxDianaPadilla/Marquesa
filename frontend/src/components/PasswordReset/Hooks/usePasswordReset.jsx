@@ -17,7 +17,7 @@ export const usePasswordReset = () => {
         try {
             setIsLoading(true);
 
-            const response = await fetch('http://localhost:4000/api/password-reset/request', {
+            const response = await fetch('http://localhost:4000/api/passwordReset/request', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -94,7 +94,7 @@ export const usePasswordReset = () => {
         try {
             setIsLoading(true);
 
-            const response = await fetch('http://localhost:4000/api/password-reset/verify', {
+            const response = await fetch('http://localhost:4000/api/passwordReset/verify', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -172,7 +172,7 @@ export const usePasswordReset = () => {
         try {
             setIsLoading(true);
 
-            const response = await fetch('http://localhost:4000/api/password-reset/update', {
+            const response = await fetch('http://localhost:4000/api/passwordReset/update', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -133,3 +133,66 @@ La plataforma incluye:
 <h3>❤️ Contribuciones</h3>
 
 ¡Este proyecto representa una colaboración entre estudiantes y una marca real!
+
+<h3>📚 Librerías Utilizadas</h3>
+
+<p>En este proyecto se han utilizado las siguientes dependencias y herramientas para el desarrollo del backend:</p>
+
+<ul>
+  <li><b>Express:</b> Framework para crear el servidor y gestionar rutas.</li>
+  <li><b>Mongoose:</b> ODM para interactuar con bases de datos MongoDB.</li>
+  <li><b>Dotenv:</b> Gestión de variables de entorno de forma segura.</li>
+  <li><b>Nodemailer:</b> Envío de correos electrónicos desde el servidor.</li>
+  <li><b>Crypto:</b> Módulo de cifrado para generar tokens seguros.</li>
+  <li><b>Jsonwebtoken:</b> Autenticación mediante JSON Web Tokens (JWT).</li>
+  <li><b>Bcryptjs:</b> Cifrado de contraseñas para almacenamiento seguro.</li>
+  <li><b>Cookie-parser:</b> Lectura y manejo de cookies en las solicitudes HTTP.</li>
+  <li><b>Multer:</b> Middleware para la gestión de archivos enviados por el usuario.</li>
+  <li><b>Multer-storage-cloudinary:</b> Almacenamiento de archivos en la nube usando Cloudinary.</li>
+  <li><b>Cloudinary:</b> Servicio para almacenar y gestionar imágenes en la nube.</li>
+  <li><b>Cors:</b> Permite habilitar el intercambio de recursos entre distintos orígenes (CORS).</li>
+</ul>
+
+<h3>🎨 Librerías Utilizadas (Frontend)</h3>
+
+<p>Para el desarrollo del frontend se ha utilizado <b>React</b> junto con <b>Vite</b> como herramienta de construcción. Estas son las principales modulos:</p>
+
+<ul>
+  <li><b>React:</b> Biblioteca principal para construir interfaces de usuario.</li>
+  <li><b>React DOM:</b> Renderizado de componentes React en el DOM.</li>
+  <li><b>React Router DOM:</b> Manejo de rutas en aplicaciones SPA (Single Page Application).</li>
+  <li><b>React Hook Form:</b> Manejo de formularios de manera eficiente y controlada.</li>
+  <li><b>React Hot Toast:</b> Notificaciones elegantes y personalizables.</li>
+  <li><b>React Icons:</b> Colección de íconos populares listos para usar con React.</li>
+  <li><b>Lucide React:</b> Íconos en estilo línea, livianos y modernos.</li>
+  <li><b>Recharts:</b> Visualización de datos con gráficos personalizables.</li>
+  <li><b>Tailwind CSS:</b> Framework de utilidades CSS para crear diseños modernos y responsivos.</li>
+</ul>
+
+<h4>🛠️ Herramientas de desarrollo</h4>
+<ul>
+  <li><b>Vite:</b> Herramienta de desarrollo rápida y moderna para aplicaciones React.</li>
+  <li><b>@vitejs/plugin-react:</b> Plugin oficial para integrar React con Vite.</li>
+  <li><b>ESLint:</b> Herramienta de análisis de código para mantener buenas prácticas.</li>
+  <li><b>eslint-plugin-react-hooks:</b> Enfocado en buenas prácticas con los hooks de React.</li>
+  <li><b>eslint-plugin-react-refresh:</b> Mejora la experiencia de desarrollo con recarga en caliente.</li>
+  <li><b>@types/react y @types/react-dom:</b> Tipado estático para React y el DOM en TypeScript.</li>
+  <li><b>Globals:</b> Lista de variables globales predefinidas para configurar ESLint.</li>
+</ul>
+
+<h3>🗂️ Comandos para Ejecutar Backend</h3>
+<ul>
+  <li><b>Para cambiarnos a la carpeta del backend</b>"cd backend"/li>
+  <li><b>Para instalar los modulos ocupados en backend</b>"npm install --legacy-peer-deps"/li>
+  <li><b>Para Ejecutar el Proyecto</b>"node index.js"</li>
+</ul>
+
+<h3>📎 Comandos para Ejecutar Frontend</h3>
+<ul>
+  <li><b>Para cambiarnos a la carpeta del frontend</b>"cd frontend"/li>
+  <li><b>Para instalar los modulos ocupados en Frontend</b>"npm install"/li>
+  <li><b>Para Ejecutar el Proyecto</b>"npm run dev"</li>
+</ul>
+
+
+

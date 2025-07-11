@@ -1,173 +1,189 @@
-// frontend/src/pages/MediaPage.jsx
-import React, { useEffect } from "react";
-import { useLocation } from "react-router-dom";
-import Header from "../components/Header/Header";
-import Footer from "../components/Footer";
-import MediaGrid from "../components/MediaGrid";
-import FilterButtons from "../components/FilterButtons";
-import useMedia from "../components/Media/Hooks/useMedia";
+import React, { useState, useEffect, useCallback } from "react";
+import AdminLayout from "../components/AdminLayout"; // Layout principal para el panel de administración
+import MediaUploadModal from "../components/MediaUploadModal"; // Modal para cargar archivos multimedia
+import MediaEditModal from "../components/MediaEditModal"; // Modal para editar archivos multimedia
+import DeleteConfirmModal from "../components/DeleteConfirmModal"; // Modal para confirmar la eliminación de un archivo multimedia
+import MediaHeader from "../components/MediaHeader"; // Encabezado con controles para búsqueda y filtros
+import MediaContent from "../components/MediaContent"; // Contenido que muestra la lista de archivos multimedia
+import NotificationContainer from "../components/NotificationContainer"; // Componente para mostrar notificaciones
 
-// Página principal del blog de Marquesa
-// Utiliza el hook useMedia para manejar la lógica de filtrado y carga de artículos
-const MediaPage = () => {
-    const location = useLocation();
+import { useMediaManager } from "../components/Media/Hooks/useMediaManager"; // Hook personalizado para gestionar medios
+import { useNotifications } from "../components/Media/Hooks/useNotifications"; // Hook personalizado para gestionar notificaciones
+import { useMediaUtils } from "../components/Media/Hooks/useMediaUtils"; // Hook personalizado con utilidades relacionadas con medios
+
+const MediaManager = () => {
+    // Extraemos el estado y las funciones del hook useMediaManager
     const {
-        displayedItems,
-        activeFilter,
-        hasMoreItems,
-        loadMoreItems,
-        handleFilterChange,
-        totalItems
-    } = useMedia();
+        mediaItems, // Lista de archivos multimedia
+        loading, // Estado de carga
+        error, // Error en la carga
+        searchTerm, // Término de búsqueda
+        selectedType, // Tipo de archivo multimedia seleccionado
+        modals, // Modales abiertos
+        selectedItem, // Elemento seleccionado para editar o eliminar
+        stats, // Estadísticas sobre los medios (total, etc.)
+        createMediaItem, // Función para crear un nuevo archivo multimedia
+        updateMediaItem, // Función para actualizar un archivo multimedia existente
+        deleteMediaItem, // Función para eliminar un archivo multimedia
+        setSearchTerm, // Función para actualizar el término de búsqueda
+        setSelectedType, // Función para cambiar el tipo de medio
+        openModal, // Función para abrir un modal
+        closeModal // Función para cerrar un modal
+    } = useMediaManager();
 
-    // Efecto para resetear el scroll cuando se navega de vuelta desde el detalle
+    // Extraemos las funciones de notificación
+    const {
+        notifications, // Lista de notificaciones
+        showSuccess, // Función para mostrar una notificación de éxito
+        showError, // Función para mostrar una notificación de error
+        removeNotification // Función para eliminar una notificación
+    } = useNotifications();
+
+    // Extraemos las utilidades relacionadas con los medios
+    const {
+        mediaTypes, // Tipos de medios disponibles
+        copyToClipboard // Función para copiar una URL al portapapeles
+    } = useMediaUtils();
+
+    // Hook useEffect que muestra un error si hay un fallo en la carga de medios
     useEffect(() => {
-        // Si venimos de una página de detalle, hacer scroll al top
-        if (location.state?.fromDetail) {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (error) {
+            showError(`Error al cargar multimedia: ${error}`);
         }
-    }, [location]);
+    }, [error, showError]);
+
+    // Función para manejar la edición de un archivo multimedia
+    const handleEdit = useCallback((item) => {
+        openModal('edit', item); // Abre el modal de edición
+    }, [openModal]);
+
+    // Función para manejar la eliminación de un archivo multimedia
+    const handleDelete = useCallback((item) => {
+        openModal('delete', item); // Abre el modal de confirmación de eliminación
+    }, [openModal]);
+
+    // Función para abrir el modal de carga de un nuevo archivo multimedia
+    const handleOpenUploadModal = useCallback(() => {
+        openModal('upload'); // Abre el modal de carga
+    }, [openModal]);
+
+    // Función para copiar una URL al portapapeles y mostrar una notificación
+    const handleCopyUrl = useCallback(async (url) => {
+        const result = await copyToClipboard(url);
+        if (result.success) {
+            showSuccess("URL copiada al portapapeles"); // Muestra mensaje de éxito
+        } else {
+            showError(result.error || "Error al copiar URL"); // Muestra mensaje de error si algo falla
+        }
+    }, [copyToClipboard, showSuccess, showError]);
+
+    // Función que maneja la confirmación de la carga de un nuevo archivo multimedia
+    const handleConfirmUpload = useCallback(async (formData) => {
+        try {
+            const result = await createMediaItem(formData); // Crea el nuevo archivo multimedia
+            if (result.success) {
+                closeModal('upload'); // Cierra el modal de carga
+                showSuccess("Multimedia agregada exitosamente"); // Muestra mensaje de éxito
+            } else {
+                showError(result.error); // Muestra el error si la creación falla
+            }
+        } catch {
+            showError("Error inesperado al crear multimedia"); // Muestra un mensaje de error inesperado
+        }
+    }, [createMediaItem, closeModal, showSuccess, showError]);
+
+    // Función que maneja la confirmación de la edición de un archivo multimedia
+    const handleConfirmEdit = useCallback(async (formData) => {
+        if (!selectedItem) return; // Si no hay un elemento seleccionado, no hace nada
+        
+        try {
+            const result = await updateMediaItem(selectedItem._id, formData); // Actualiza el archivo multimedia
+            if (result.success) {
+                closeModal('edit'); // Cierra el modal de edición
+                showSuccess("Multimedia editada exitosamente"); // Muestra mensaje de éxito
+            } else {
+                showError(result.error); // Muestra el error si la edición falla
+            }
+        } catch {
+            showError("Error inesperado al editar multimedia"); // Muestra un mensaje de error inesperado
+        }
+    }, [selectedItem, updateMediaItem, closeModal, showSuccess, showError]);
+
+    // Función que maneja la confirmación de la eliminación de un archivo multimedia
+    const handleConfirmDelete = useCallback(async () => {
+        if (!selectedItem) return; // Si no hay un elemento seleccionado, no hace nada
+        
+        try {
+            const result = await deleteMediaItem(selectedItem._id); // Elimina el archivo multimedia
+            if (result.success) {
+                closeModal('delete'); // Cierra el modal de eliminación
+                showSuccess("Multimedia eliminada exitosamente"); // Muestra mensaje de éxito
+            } else {
+                showError(result.error); // Muestra el error si la eliminación falla
+            }
+        } catch {
+            showError("Error inesperado al eliminar multimedia"); // Muestra un mensaje de error inesperado
+        }
+    }, [selectedItem, deleteMediaItem, closeModal, showSuccess, showError]);
 
     return (
-        <>
-            <Header />
+        <AdminLayout>
+            <div className="p-3 sm:p-6">
+                {/* Muestra las notificaciones actuales */}
+                <NotificationContainer
+                    notifications={notifications}
+                    onRemove={removeNotification} // Elimina la notificación cuando se hace clic
+                />
 
-            <main className="min-h-screen">
-                {/* Page Header */}
-                <section className="relative pt-8 sm:pt-12 lg:pt-16 xl:pt-20 pb-8 sm:pb-12 lg:pb-16">
-                    <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-                        <div className="text-center max-w-4xl mx-auto">
-                            <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-800 mb-4 sm:mb-6"
-                                style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                Blog de Marquesa
-                            </h1>
-                            <p className="text-sm sm:text-base lg:text-lg xl:text-xl text-gray-600 leading-relaxed px-4 sm:px-0"
-                               style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                Descubre consejos, técnicas y contenido especialmente diseñado para el cuidado y disfrute de las flores.
-                            </p>
-                        </div>
-                    </div>
-                </section>
+                {/* Encabezado de medios con controles de búsqueda y filtros */}
+                <MediaHeader
+                    searchTerm={searchTerm} // El término de búsqueda actual
+                    onSearchChange={setSearchTerm} // Función que se llama cuando cambia el término de búsqueda
+                    selectedType={selectedType} // El tipo de medio seleccionado
+                    onTypeChange={setSelectedType} // Función que se llama cuando cambia el tipo de medio
+                    mediaTypes={mediaTypes} // Los tipos de medios disponibles
+                    onAddClick={handleOpenUploadModal} // Función que se llama cuando se hace clic en "Agregar"
+                    stats={stats} // Estadísticas sobre los medios
+                />
 
-                {/* Filter Section */}
-                <section className="pb-6 sm:pb-8">
-                    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                        <FilterButtons 
-                            activeFilter={activeFilter}
-                            onFilterChange={handleFilterChange}
-                        />
-                    </div>
-                </section>
+                {/* Contenido de medios con los elementos multimedia y las acciones */}
+                <MediaContent
+                    items={mediaItems} // Elementos multimedia a mostrar
+                    loading={loading} // Estado de carga
+                    totalItems={stats.total} // Número total de elementos multimedia
+                    onEdit={handleEdit} // Función para editar un medio
+                    onDelete={handleDelete} // Función para eliminar un medio
+                    onCopyUrl={handleCopyUrl} // Función para copiar la URL de un medio
+                />
+            </div>
 
-                {/* Results Counter */}
-                <section className="pb-6 sm:pb-8">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                            <p className="text-sm sm:text-base text-gray-600 text-center" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                {displayedItems.length === 0 ? (
-                                    <span className="flex items-center justify-center gap-2">
-                                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                        </svg>
-                                        No se encontraron artículos para este filtro
-                                    </span>
-                                ) : (
-                                    <>
-                                        Mostrando <span className="font-semibold text-gray-800">{displayedItems.length}</span> de <span className="font-semibold text-gray-800">{totalItems}</span> artículos
-                                        {activeFilter !== 'all' && (
-                                            <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                                                Filtro: {activeFilter === 'datos-curiosos' ? 'Datos curiosos' : activeFilter === 'tips' ? 'Tips' : 'Blog'}
-                                            </span>
-                                        )}
-                                    </>
-                                )}
-                            </p>
-                        </div>
-                    </div>
-                </section>
+            {/* Modal para cargar un archivo multimedia */}
+            {modals.upload && (
+                <MediaUploadModal
+                    onClose={() => closeModal('upload')} // Cierra el modal de carga
+                    onConfirm={handleConfirmUpload} // Función que se llama al confirmar la carga
+                />
+            )}
 
-                {/* Blog Cards Grid */}
-                <section className="py-8 sm:py-12 lg:py-16">
-                    {displayedItems.length > 0 ? (
-                        <MediaGrid mediaItems={displayedItems} />
-                    ) : (
-                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 sm:p-12 text-center">
-                                <div className="text-gray-400 mb-6">
-                                    <svg className="w-16 h-16 sm:w-20 sm:h-20 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                                    </svg>
-                                </div>
-                                <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-4" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                    No hay contenido disponible
-                                </h3>
-                                <p className="text-gray-500 text-sm sm:text-base mb-6" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                    No se encontraron artículos que coincidan con el filtro seleccionado.
-                                </p>
-                                <button
-                                    onClick={() => handleFilterChange('all')}
-                                    className="bg-pink-200 hover:bg-pink-300 text-pink-800 px-4 sm:px-6 py-2 sm:py-3 rounded-full font-medium transition-all duration-300 transform hover:scale-105 text-sm sm:text-base"
-                                    style={{ fontFamily: 'Poppins, sans-serif' }}
-                                >
-                                    Ver todos los artículos
-                                </button>
-                            </div>
-                        </div>
-                    )}
-                </section>
+            {/* Modal para editar un archivo multimedia */}
+            {modals.edit && selectedItem && (
+                <MediaEditModal
+                    item={selectedItem} // Elemento multimedia a editar
+                    onClose={() => closeModal('edit')} // Cierra el modal de edición
+                    onConfirm={handleConfirmEdit} // Función que se llama al confirmar la edición
+                />
+            )}
 
-                {/* Load More Button */}
-                {hasMoreItems && displayedItems.length > 0 && (
-                    <section className="pb-12 sm:pb-16 lg:pb-20">
-                        <div className="text-center">
-                            <button 
-                                onClick={loadMoreItems}
-                                className="bg-pink-200 hover:bg-pink-300 text-pink-800 px-6 sm:px-8 lg:px-10 py-3 sm:py-4 rounded-full font-medium transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl text-sm sm:text-base lg:text-lg"
-                                style={{ fontFamily: 'Poppins, sans-serif' }}
-                            >
-                                <span className="flex items-center gap-2">
-                                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                    </svg>
-                                    Cargar más contenido
-                                </span>
-                            </button>
-                        </div>
-                    </section>
-                )}
-
-                {/* Call to Action Section */}
-                <section className="py-12 sm:py-16 lg:py-20 bg-white">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                        <div className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-2xl p-8 sm:p-12 lg:p-16 border border-pink-100">
-                            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-800 mb-4 sm:mb-6"
-                                style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                ¿Te gustó nuestro contenido?
-                            </h2>
-                            <p className="text-sm sm:text-base lg:text-lg text-gray-600 mb-6 sm:mb-8 max-w-2xl mx-auto"
-                               style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                Explora nuestra tienda para encontrar los mejores arreglos florales y productos especiales para tus momentos más importantes.
-                            </p>
-                            <button
-                                onClick={() => window.location.href = '/'}
-                                className="bg-pink-200 hover:bg-pink-300 text-pink-800 px-6 sm:px-8 lg:px-10 py-3 sm:py-4 rounded-full font-medium transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl text-sm sm:text-base lg:text-lg"
-                                style={{ fontFamily: 'Poppins, sans-serif' }}
-                            >
-                                <span className="flex items-center gap-2 justify-center">
-                                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                                    </svg>
-                                    Explorar tienda
-                                </span>
-                            </button>
-                        </div>
-                    </div>
-                </section>
-            </main>
-
-            <Footer />
-        </>
+            {/* Modal para confirmar la eliminación de un archivo multimedia */}
+            {modals.delete && selectedItem && (
+                <DeleteConfirmModal
+                    item={selectedItem} // Elemento multimedia a eliminar
+                    onClose={() => closeModal('delete')} // Cierra el modal de eliminación
+                    onConfirm={handleConfirmDelete} // Función que se llama al confirmar la eliminación
+                />
+            )}
+        </AdminLayout>
     );
 };
 
-export default MediaPage;
+export default MediaManager;

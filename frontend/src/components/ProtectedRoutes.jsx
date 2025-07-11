@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 
 // Componente ProtectedRoute que protege rutas basándose en autenticación y tipo de usuario
 // Recibe 'children' (componentes hijos) y 'requiredUserType' (tipo de usuario requerido, opcional)
-const ProtectedRoute = ({ children, requiredUserType = null }) => {
+const ProtectedRoutes = ({ children, requiredUserType = null }) => {
     // Obtiene el estado de autenticación, información del usuario y estado de carga del contexto
     const { isAuthenticated, user, loading } = useAuth();
 
@@ -43,4 +43,4 @@ const ProtectedRoute = ({ children, requiredUserType = null }) => {
 };
 
 // Exporta el componente como default
-export default ProtectedRoute;
+export default ProtectedRoutes;

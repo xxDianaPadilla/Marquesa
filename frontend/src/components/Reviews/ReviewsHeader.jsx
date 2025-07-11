@@ -1,6 +1,8 @@
 // Ruta: frontend/src/components/Reviews/ReviewsHeader.jsx
 import React from 'react';
 
+// Componente para el encabezado de reseñas
+// Incluye título, descripción, buscador y estadísticas responsivas
 const ReviewsHeader = ({ 
     searchTerm, 
     onSearchChange, 

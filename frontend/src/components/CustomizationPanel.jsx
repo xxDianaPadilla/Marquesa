@@ -1,6 +1,7 @@
-
 import React from "react";
 
+// Componente para el panel de personalización
+// Permite a los usuarios ver y gestionar los productos seleccionados para personalizar
 const CustomizationPanel = ({ 
     selectedProducts = [], 
     onRemoveProduct = () => {}, 

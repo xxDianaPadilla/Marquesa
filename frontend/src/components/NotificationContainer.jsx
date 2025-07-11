@@ -1,5 +1,7 @@
 import React from 'react';
 
+// Componente para el contenedor de notificaciones
+// Muestra notificaciones de diferentes tipos (éxito, error, advertencia, información
 const NotificationItem = ({ notification, onRemove }) => {
     const { id, message, type } = notification;
 
@@ -19,7 +21,8 @@ const NotificationItem = ({ notification, onRemove }) => {
                 return `${baseStyles} bg-gray-50 border-gray-500 text-gray-800`;
         }
     };
-
+// Función para obtener el ícono según el tipo de notificación
+    // Retorna un SVG correspondiente al tipo de notificación
     const getIcon = () => {
         switch (type) {
             case 'success':

@@ -1,5 +1,7 @@
 import React from 'react';
 
+// Componente para mostrar una tarjeta de reseña
+// Permite responder, moderar o eliminar reseñas de clientes
 const ReviewCard = ({ 
     review, 
     onReply, 
@@ -8,6 +10,7 @@ const ReviewCard = ({
     expandedReviews, 
     onToggleExpand 
 }) => {
+    // Formatea la fecha de creación y respuesta
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleDateString('es-ES', {
             year: 'numeric',
@@ -34,19 +37,19 @@ const ReviewCard = ({
         }
         return stars;
     };
-
+    // Genera el badge de estado según el estado de la reseña
     const getStatusBadge = (status, hasResponse) => {
         if (hasResponse && status !== 'replied') {
             status = 'replied';
         }
-
+        // Configuración de estilos para cada estado
         const statusConfig = {
             'pending': { color: 'bg-yellow-100 text-yellow-800 border-yellow-300', text: 'Pendiente', icon: '⏳' },
             'approved': { color: 'bg-green-100 text-green-800 border-green-300', text: 'Aprobada', icon: '✅' },
             'rejected': { color: 'bg-red-100 text-red-800 border-red-300', text: 'Rechazada', icon: '❌' },
             'replied': { color: 'bg-blue-100 text-blue-800 border-blue-300', text: 'Respondida', icon: '💬' }
         };
-
+        // Selecciona la configuración según el estado
         const config = statusConfig[status] || statusConfig['pending'];
 
         return (
@@ -56,11 +59,11 @@ const ReviewCard = ({
             </span>
         );
     };
-
+    // Verifica si la reseña tiene respuesta
     const isReviewReplied = (review) => {
         return review.response && review.response.trim() !== '';
     };
-
+    // Obtiene la información del producto asociado a la reseña
     const getProductInfo = (review) => {
         if (!review.products || review.products.length === 0) {
             return { name: 'Sin producto', image: null };
@@ -80,14 +83,14 @@ const ReviewCard = ({
             };
         }
     };
-
+    // Obtiene la información del cliente que dejó la reseña
     const getClientInfo = (review) => {
         return {
             name: review.clientId?.fullName || 'Usuario Anónimo',
             profilePicture: review.clientId?.profilePicture || null
         };
     };
-
+    // Trunca el texto del mensaje para mostrar una vista previa
     const truncateText = (text, maxLength = 100, mobileMaxLength = 60) => {
         if (!text) return '';
         // Usar longitud diferente según el tamaño de pantalla

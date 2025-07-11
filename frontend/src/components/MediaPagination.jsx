@@ -1,5 +1,7 @@
 import React from 'react';
 
+// Componente para mostrar una tabla de elementos multimedia
+// Permite editar, eliminar y copiar URLs de imágenes y videos
 const MediaPagination = ({ 
     paginationInfo, 
     onPageChange, 
@@ -20,7 +22,7 @@ const MediaPagination = ({
     if (totalPages <= 1) {
         return null; // No mostrar paginación si solo hay una página
     }
-
+   // Generar números de página para mostrar
     const pageNumbers = getPageNumbers(5);
 
     return (

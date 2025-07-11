@@ -1,6 +1,8 @@
 // frontend/src/components/Reviews/Hooks/useReviews.jsx
 import { useState, useEffect } from "react";
 
+// Hook para manejar las reseñas
+// Realiza solicitudes a la API y maneja el estado de carga, error y reseñas
 export const useReviews = () => {
     const [reviews, setReviews] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -26,7 +28,7 @@ export const useReviews = () => {
 
         fetchReviews();
     }, []);
-
+// Función para eliminar una reseña
     const deleteReview = async (reviewId) => {
         try {
             console.log('=== FRONTEND deleteReview DEBUG ===');
@@ -74,7 +76,7 @@ export const useReviews = () => {
             throw error;
         }
     };
-
+// Función para renderizar estrellas de calificación
     const replyToReview = async (reviewId, replyText) => {
         try {
             console.log('=== FRONTEND replyToReview DEBUG ===');

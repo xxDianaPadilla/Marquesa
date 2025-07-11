@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import OverlayBackdrop from '../OverlayBackdrop';
 
+// Componente para el modal de respuesta a reseñas
+// Permite a los administradores responder a reseñas de clientes
 const ReviewReplyModal = ({ isOpen, onClose, review, onSubmit }) => {
     const [reply, setReply] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -11,7 +13,7 @@ const ReviewReplyModal = ({ isOpen, onClose, review, onSubmit }) => {
             setReply(review?.response || '');
         }
     }, [isOpen, review]);
-
+// Dependencia review para actualizar la respuesta cuando cambie
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -55,7 +57,7 @@ const ReviewReplyModal = ({ isOpen, onClose, review, onSubmit }) => {
             setIsSubmitting(false);
         }
     };
-
+// Función para renderizar las estrellas de calificación
     const renderStars = (rating) => {
         const stars = [];
         for (let i = 1; i <= 5; i++) {
@@ -86,7 +88,7 @@ const ReviewReplyModal = ({ isOpen, onClose, review, onSubmit }) => {
         if (!review?.products || review.products.length === 0) {
             return { name: 'Sin producto', image: null };
         }
-
+        // Si hay varios productos, mostrar el primero
         const firstProduct = review.products[0];
 
         if (firstProduct.itemType === 'custom') {

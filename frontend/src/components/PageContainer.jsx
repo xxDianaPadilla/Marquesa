@@ -2,6 +2,8 @@ import React from "react";
 import marquesaLogo from "../assets/marquesaLogo2.png";
 import bgImage from "../assets/bgImage.png";
 
+// Componente para el contenedor de la página
+// Este componente define la estructura básica de la página con un diseño dividido
 const PageContainer = ({ children }) => {
     return (
         <div className="min-h-screen w-full flex">

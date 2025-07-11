@@ -1,5 +1,7 @@
 import { useState } from 'react';
 
+// Hook para manejar acciones de reseñas
+// Permite responder, moderar, eliminar reseñas y manejar estados de modales
 export const useReviewActions = ({ onReply, onModerate, onDelete, onReviewUpdate }) => {
     const [replyModalOpen, setReplyModalOpen] = useState(false);
     const [selectedReview, setSelectedReview] = useState(null);

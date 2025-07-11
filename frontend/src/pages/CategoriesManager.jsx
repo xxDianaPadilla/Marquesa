@@ -5,6 +5,7 @@ import useDataCategories from "../components/Categories/hooks/useDataCategories"
 import CategoryTable from "../components/Categories/CategoryTable";
 import CategoryForm from "../components/Categories/CategoryForm";
 
+// Página para gestionar las categorías de productos
 const CategoriesManager = () => {
   const {
     activeTab,
@@ -22,7 +23,7 @@ const CategoriesManager = () => {
     updateCategorie,
     handleEdit,
   } = useDataCategories();
-
+  // Estado para manejar la búsqueda de categorías
   const [searchTerm, setSearchTerm] = useState("");
   const [showForm, setShowForm] = useState(false);
 
@@ -32,22 +33,22 @@ const CategoriesManager = () => {
   const filteredCategories = safeCategories.filter((category) =>
     category.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
+// Función para manejar la apertura del formulario de creación/edición
   const handleOpenForm = () => {
     setShowForm(true);
     setActiveTab("form");
   };
-
+// Función para cerrar el formulario y resetear el estado
   const handleCloseForm = () => {
     setShowForm(false);
     setActiveTab("list");
   };
-
+// Función para manejar la edición de una categoría
   const handleEditCategory = (category) => {
     updateCategorie(category);
     setShowForm(true);
   };
-
+// Función para manejar la creación de una nueva categoría
   const handleCreateCategory = async (categoryData) => {
     try {
       await createCategorie(categoryData);
@@ -56,7 +57,7 @@ const CategoriesManager = () => {
       console.error("Error al crear categoría:", error);
     }
   };
-
+// Función para manejar la actualización de una categoría
   const handleUpdateCategory = async (categoryData) => {
     try {
       await handleEdit(categoryData);

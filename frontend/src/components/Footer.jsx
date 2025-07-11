@@ -9,9 +9,11 @@ import locationIcon from '../assets/locationIcon.png';
 import emailIcon from '../assets/emailIcon.png';
 import telephoneIcon from '../assets/telephoneIcon.png';
 
+// Componente para el pie de página
 const Footer = () => {
+  // Hook para la navegación
   const navigate = useNavigate();
-
+// Función para navegar a la página de medios
   const handleMediaClick = () => {
     navigate('/mediaPage');
   };
@@ -20,27 +22,33 @@ const Footer = () => {
   const handleConcursosClick = () => {
     navigate('/ruleta');
   };
-
+// Función para navegar a las condiciones de promociones
+  // Esta función se utiliza para navegar a la página de condiciones de promociones
   const handleConditionsPromotionsClick = () => {
     navigate('/conditionsPromotions');
   };
-
+// Función para navegar a la información de envío
+  // Esta función se utiliza para navegar a la página de información de envío  
   const handleShippingInformationClick = () => {
     navigate('/shippingInformation');
   };
-
+// Función para navegar a la página "Sobre nosotros"
+  // Esta función se utiliza para navegar a la página "Sobre nosotros"
   const handleAboutUsClick = () => {
     navigate('/aboutUs');
   };
-
+// Función para navegar a la página de políticas de privacidad
+  // Esta función se utiliza para navegar a la página de políticas de privacidad
   const handlePrivacyPoliciesClick = () => {
     navigate('/privacyPolicies');
   };
-
+// Función para navegar a la página de términos y condiciones
+  // Esta función se utiliza para navegar a la página de términos y condiciones
   const handleTermsandConditionsClick = () => {
     navigate('/termsandConditions');
   };
-
+// Función para navegar a la página de servicios
+  // Esta función se utiliza para navegar a la página de servicios
   const handleServicesClick = () => {
     navigate('/home');
   };

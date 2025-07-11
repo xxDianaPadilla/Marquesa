@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 
+// Componente para los filtros avanzados de medios
+// Permite filtrar por fecha, tipo de archivo y ordenamiento
 const MediaFilters = ({ 
     filters, 
     onFiltersChange, 
@@ -7,14 +9,16 @@ const MediaFilters = ({
     isVisible,
     onToggleVisibility
 }) => {
+    // Estado local para manejar los filtros
+    // Esto permite que los cambios se reflejen en el componente sin afectar directamente al estado global
     const [localFilters, setLocalFilters] = useState(filters);
-
+    // Funciones para manejar los cambios en los filtros
     const handleFilterChange = (key, value) => {
         const newFilters = { ...localFilters, [key]: value };
         setLocalFilters(newFilters);
         onFiltersChange(newFilters);
     };
-
+    // Función para limpiar todos los filtros
     const handleClearAll = () => {
         const clearedFilters = {
             dateFrom: '',
@@ -28,7 +32,7 @@ const MediaFilters = ({
         onFiltersChange(clearedFilters);
         onClearFilters();
     };
-
+    // Verificar si hay filtros activos para mostrar el botón de limpiar
     const hasActiveFilters = localFilters.dateFrom || localFilters.dateTo || 
                             localFilters.hasImage || localFilters.hasVideo ||
                             localFilters.sortBy !== 'createdAt' || localFilters.sortOrder !== 'desc';

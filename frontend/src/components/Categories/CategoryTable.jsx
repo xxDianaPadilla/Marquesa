@@ -2,6 +2,8 @@
 import React from 'react';
 import CategoryActions from './CategoryActions';
 
+// Componente para mostrar una tabla de categorías
+// Este componente maneja la visualización de categorías en formato de tabla y tarjetas
 const CategoryTable = ({ categories, loading, onEdit, onDelete }) => {
     if (loading) {
         return (

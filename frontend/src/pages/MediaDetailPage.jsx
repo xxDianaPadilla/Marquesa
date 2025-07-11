@@ -8,6 +8,7 @@ import calendarIcon from "../assets/calendar.png";
 import playIcon from "../assets/playIcon.png";
 // import pauseIcon from "../assets/pauseIcon.png";
 
+// Página de detalle de un artículo del blog
 const MediaDetailPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -15,7 +16,7 @@ const MediaDetailPage = () => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentItem, setCurrentItem] = useState(null);
     const [relatedItems, setRelatedItems] = useState([]);
-
+// Iconos para los controles de video
     useEffect(() => {
         const item = getItemById(id);
         if (!item) {
@@ -26,7 +27,7 @@ const MediaDetailPage = () => {
         const related = getRelatedItems(id, item.type);
         setRelatedItems(related);
     }, [id, getItemById, getRelatedItems, navigate]);
-
+// Función para manejar la reproducción y pausa del video
     const handlePlayPause = () => {
         setIsPlaying(!isPlaying);
     };

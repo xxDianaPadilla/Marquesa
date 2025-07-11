@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { useProducts } from "./useProducts";
 import { useCustomProducts } from "../../CustomProducts/Hooks/useCustomProducts";
 
+// Hook para obtener los productos más vendidos
+// Calcula los productos más vendidos a partir de las ventas de productos y productos personalizados
+// Devuelve los productos más vendidos y un estado de carga
 export const useBestSellingProducts = () => {
     const {products, loading: productsLoading} = useProducts();
     const {customProducts, loading: customProductsLoading} = useCustomProducts(); 

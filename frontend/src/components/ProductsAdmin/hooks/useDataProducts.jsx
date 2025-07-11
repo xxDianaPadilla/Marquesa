@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 
+// Hook para manejar la lógica de productos
+// Permite crear, editar, eliminar productos y manejar el estado del formulario
 const useDataProducts = () => {
   const [activeTab, setActiveTab] = useState("list");
   const API = "http://localhost:4000/api/products";

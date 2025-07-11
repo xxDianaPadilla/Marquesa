@@ -1,6 +1,8 @@
 // frontend/src/components/Reviews/Hooks/useReviewStats.jsx
 import { useState, useEffect } from "react";
 
+// Hook para obtener estadísticas de reseñas
+// Realiza una solicitud a la API y maneja el estado de carga y errores
 export const useReviewStats = () => {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -15,7 +17,7 @@ export const useReviewStats = () => {
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: Error al obtener estadísticas`);
                 }
-                
+                // Verifica que la respuesta sea JSON
                 const data = await response.json();
                 
                 // Validar y normalizar los datos recibidos

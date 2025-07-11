@@ -16,11 +16,11 @@ import regalo from '../assets/Regalo.png';
 import relog from '../assets/relog.png';
 import calendario from '../assets/calendario.png';
 import cancelar from "../assets/cancelar.png";
-
+//Pantalla de perfil
 const Perfil = () => {
   const navigate = useNavigate();
   const { logout } = useAuth();
-
+  // Función para manejar el cierre de sesión
   const handleLogout = async () => {
     const result = await logout();
     if (result.success) {

@@ -1,6 +1,8 @@
 // frontend/src/components/Reviews/Components/DeleteConfirmationModal.jsx
 import React from 'react';
 
+// Componente para confirmar la eliminación de una reseña
+// Muestra detalles de la reseña y solicita confirmación para eliminarla
 const DeleteConfirmationModal = ({ 
     isOpen, 
     onClose, 
@@ -23,14 +25,14 @@ const DeleteConfirmationModal = ({
         }
         return stars;
     };
-
+// Función para obtener la información del cliente que dejó la reseña
     const getClientInfo = (review) => {
         return {
             name: review.clientId?.fullName || 'Usuario Anónimo',
             profilePicture: review.clientId?.profilePicture || null
         };
     };
-
+// Función para truncar el texto del mensaje de la reseña
     const truncateText = (text, maxLength = 100) => {
         if (!text) return '';
         if (text.length <= maxLength) return text;

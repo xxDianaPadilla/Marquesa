@@ -3,6 +3,8 @@ import React, { useRef, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { AlertCircle, CheckCircle, X } from 'lucide-react';
 
+// Componente para el formulario de productos
+// Permite crear o editar productos con validación y manejo de imágenes
 const ProductForm = ({
   isOpen,
   onClose,
@@ -58,7 +60,8 @@ const ProductForm = ({
       }
     }
   }, [isOpen, productData, setValue]);
-
+  // Validar imagen
+  // Verifica que la imagen sea válida y cumpla con los requisitos
   const validateImage = (value) => {
     if (!value) return 'La imagen es obligatoria';
     if (value instanceof File) {
@@ -68,7 +71,8 @@ const ProductForm = ({
     }
     return true;
   };
-
+// Manejar cambio de imagen
+  // Actualiza el estado del formulario con la imagen seleccionada
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -81,20 +85,20 @@ const ProductForm = ({
       }
     }
   };
-
+// Manejar clic en la imagen
   const handleImageClick = () => {
     fileInputRef.current?.click();
   };
-
+// Manejar envío del formulario
   const handleFormSubmit = (data) => {
     onSubmit(data);
   };
-
+// Manejar cierre del formulario
   const handleClose = () => {
     reset();
     onClose();
   };
-
+// Componente de alerta para mostrar mensajes de error o éxito
   const Alert = ({ type, message }) => {
     const styles = {
       error: {

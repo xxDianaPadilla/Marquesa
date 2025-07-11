@@ -2,6 +2,8 @@ import React from 'react';
 import ReviewCard from './ReviewCard';
 import { useReviewActions } from './Hooks/useReviewActions';
 
+// Componente para mostrar la lista de reseñas
+// Permite a los usuarios ver, responder, moderar o eliminar reseñas
 const ReviewsList = ({ reviews, onReply, onModerate, onDelete, onReviewUpdate }) => {
     const {
         // Estados del modal

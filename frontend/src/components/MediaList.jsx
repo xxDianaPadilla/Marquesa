@@ -1,6 +1,8 @@
 import React from 'react';
 import { useMediaUtils } from './Media/Hooks/useMediaUtils';
 
+// Componente para mostrar una lista de elementos multimedia
+// Permite editar, eliminar y copiar URLs de imágenes y videos
 const MediaList = ({ items, onEdit, onDelete, onCopyUrl }) => {
     const { getFileIcon, formatDate, getTypeBadgeColor } = useMediaUtils();
 

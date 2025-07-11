@@ -3,6 +3,8 @@ import { Controller } from 'react-hook-form';
 import OverlayBackdrop from "./OverlayBackdrop";
 import { useMediaForm } from "./Media/Hooks/useMediaForm";
 
+// Componente para editar elementos multimedia
+// Permite editar título, descripción, tipo, reemplazar archivos y ver información del elemento
 const MediaEditModal = ({ item, onClose, onConfirm }) => {
     const {
         control,

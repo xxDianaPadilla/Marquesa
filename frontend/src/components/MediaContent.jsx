@@ -3,6 +3,8 @@ import MediaTable from './MediaTable';
 import MediaList from './MediaList';
 import LoadingState from './LoadingState';
 
+// Componente para mostrar contenido multimedia
+// Este componente maneja la visualización de elementos multimedia en diferentes formatos
 const MediaContent = ({ 
     items, 
     loading, 

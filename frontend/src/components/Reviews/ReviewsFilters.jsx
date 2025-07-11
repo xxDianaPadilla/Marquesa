@@ -1,6 +1,8 @@
 // Ruta: frontend/src/components/Reviews/ReviewsFilters.jsx
 import React, { useState } from 'react';
 
+// Componente para los filtros de reseñas
+// Permite filtrar por calificación, estado, fecha y producto
 const ReviewsFilters = ({ 
     filters, 
     onFiltersChange, 
@@ -12,19 +14,24 @@ const ReviewsFilters = ({
     onSortChange,
     availableProducts = []
 }) => {
+    // Estado local para manejar los filtros
+    // Esto permite que los cambios se reflejen inmediatamente en la UI
     const [localFilters, setLocalFilters] = useState(filters);
-
+// Inicializa los filtros locales con los valores recibidos
+    // Maneja el cambio de filtros
     const handleFilterChange = (key, value) => {
         const newFilters = { ...localFilters, [key]: value };
         setLocalFilters(newFilters);
         onFiltersChange(newFilters);
     };
-
+// Maneja el cambio de ordenamiento
+// Permite alternar entre ascendente y descendente
     const handleSortChange = (field) => {
         const newOrder = sortBy === field && sortOrder === 'desc' ? 'asc' : 'desc';
         onSortChange(field, newOrder);
     };
-
+// Maneja el borrado de todos los filtros
+// Resetea los filtros a sus valores por defecto
     const handleClearAll = () => {
         const clearedFilters = {
             rating: 'todos',
@@ -37,7 +44,8 @@ const ReviewsFilters = ({
         onFiltersChange(clearedFilters);
         onClearFilters();
     };
-
+// Verifica si hay filtros activos
+// Esto se usa para mostrar un indicador visual si hay filtros aplicados    
     const hasActiveFilters = localFilters.rating !== 'todos' || 
                             localFilters.status !== 'todos' ||
                             localFilters.product !== 'todos' ||

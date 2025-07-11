@@ -1,6 +1,8 @@
 import React from "react";
 import { Eye, EyeOff } from "lucide-react";
 
+// Componente de entrada personalizado
+// Permite mostrar un campo de entrada con íconos, validación y estado de contraseña
 const Input = ({
     name,
     type = "text",

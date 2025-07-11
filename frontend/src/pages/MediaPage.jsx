@@ -5,6 +5,8 @@ import MediaGrid from "../components/MediaGrid";
 import FilterButtons from "../components/FilterButtons";
 import useMedia from "../components/Media/Hooks/useMedia";
 
+// Página principal del blog de Marquesa
+// Utiliza el hook useMedia para manejar la lógica de filtrado y carga de artículos
 const MediaPage = () => {
     const {
         displayedItems,

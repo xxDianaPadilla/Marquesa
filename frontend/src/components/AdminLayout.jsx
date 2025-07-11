@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import NavbarAdmin from './NavbarAdmin';
 
+// Componente para el layout del administrador
+// Incluye la barra de navegación y el contenido principal con padding dinámico
 const AdminLayout = ({ children }) => {
   // Inicializar el estado desde localStorage o usar false como default
   const [isMenuExpanded, setIsMenuExpanded] = useState(() => {

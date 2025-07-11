@@ -1,21 +1,24 @@
 import React, { useEffect } from "react";
+import { Controller } from 'react-hook-form';
 import OverlayBackdrop from "./OverlayBackdrop";
 import { useMediaForm } from "./Media/Hooks/useMediaForm";
 
 const MediaEditModal = ({ item, onClose, onConfirm }) => {
     const {
-        formData,
+        control,
+        handleSubmit,
+        formState: { errors, isSubmitting },
+        setValue,
+        watchedValues,
         files,
-        errors,
-        isSubmitting,
-        handleInputChange,
         handleFileChange,
         validateForm,
         prepareFormData,
         loadInitialData,
-        setIsSubmitting,
-        setErrors,
-        getFilesInfo
+        setFieldError,
+        clearFieldErrors,
+        getFilesInfo,
+        validationRules
     } = useMediaForm(item);
 
     // Tipos disponibles según el modelo
@@ -32,26 +35,36 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
         }
     }, [item, loadInitialData]);
 
-    // Manejar envío del formulario
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-
-        if (!validateForm(true)) { // true para indicar que es edición
-            return;
-        }
-
-        setIsSubmitting(true);
-
+    // Función de envío corregida
+    const onSubmit = async (data) => {
         try {
+            console.log('Iniciando envío...', data);
+            
+            // Validar formulario completo indicando que es edición
+            const isValid = await validateForm(true);
+            
+            if (!isValid) {
+                console.log('Formulario no válido');
+                return;
+            }
+
+            // Preparar datos para envío
             const submitData = prepareFormData();
             
-            // Llamar al callback del componente padre (MediaManager)
+            // Log para debug
+            console.log('Datos preparados para envío:', {
+                formData: submitData,
+                files: files,
+                formValues: data
+            });
+
+            // Enviar datos
             await onConfirm(submitData);
+            
+            console.log('Datos enviados exitosamente');
         } catch (error) {
             console.error("Error al actualizar multimedia:", error);
-            setErrors({ submit: error.message || "Error inesperado" });
-        } finally {
-            setIsSubmitting(false);
+            setFieldError('submit', error.message || "Error inesperado al actualizar");
         }
     };
 
@@ -84,7 +97,7 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
                     </div>
 
                     {/* Contenido scrolleable con formulario */}
-                    <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+                    <form onSubmit={handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
                         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4" style={{ scrollbarWidth: 'thin', scrollbarColor: '#d1d5db #f8f9fa' }}>
                             <div className="space-y-4">
                                 {/* Tipo */}
@@ -92,20 +105,24 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
                                     <label className="block text-sm font-medium text-gray-700 mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                         Tipo *
                                     </label>
-                                    <select
+                                    <Controller
                                         name="type"
-                                        value={formData.type}
-                                        onChange={handleInputChange}
-                                        disabled={isSubmitting}
-                                        className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                        style={{ fontFamily: 'Poppins, sans-serif' }}
-                                    >
-                                        {typeOptions.map((type) => (
-                                            <option key={type.value} value={type.value}>
-                                                {type.label}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        control={control}
+                                        render={({ field }) => (
+                                            <select
+                                                {...field}
+                                                disabled={isSubmitting}
+                                                className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                style={{ fontFamily: 'Poppins, sans-serif' }}
+                                            >
+                                                {typeOptions.map((type) => (
+                                                    <option key={type.value} value={type.value}>
+                                                        {type.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        )}
+                                    />
                                 </div>
 
                                 {/* Título */}
@@ -113,23 +130,29 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
                                     <label className="block text-sm font-medium text-gray-700 mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                         Título *
                                     </label>
-                                    <input
-                                        type="text"
+                                    <Controller
                                         name="title"
-                                        value={formData.title}
-                                        onChange={handleInputChange}
-                                        disabled={isSubmitting}
-                                        className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${errors.title ? 'border-red-500' : 'border-gray-300'
-                                            }`}
-                                        placeholder="Ingresa el título"
-                                        style={{ fontFamily: 'Poppins, sans-serif' }}
+                                        control={control}
+                                        rules={validationRules.title}
+                                        render={({ field, fieldState }) => (
+                                            <input
+                                                {...field}
+                                                type="text"
+                                                disabled={isSubmitting}
+                                                className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                                    fieldState.error ? 'border-red-500' : 'border-gray-300'
+                                                }`}
+                                                placeholder="Ingresa el título"
+                                                style={{ fontFamily: 'Poppins, sans-serif' }}
+                                            />
+                                        )}
                                     />
                                     {errors.title && (
                                         <p className="text-red-500 text-sm mt-1 flex items-center gap-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
-                                            {errors.title}
+                                            {errors.title.message}
                                         </p>
                                     )}
                                 </div>
@@ -139,23 +162,29 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
                                     <label className="block text-sm font-medium text-gray-700 mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                         Descripción *
                                     </label>
-                                    <textarea
+                                    <Controller
                                         name="description"
-                                        value={formData.description}
-                                        onChange={handleInputChange}
-                                        disabled={isSubmitting}
-                                        rows={3}
-                                        className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent resize-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${errors.description ? 'border-red-500' : 'border-gray-300'
-                                            }`}
-                                        placeholder="Describe el contenido multimedia"
-                                        style={{ fontFamily: 'Poppins, sans-serif' }}
+                                        control={control}
+                                        rules={validationRules.description}
+                                        render={({ field, fieldState }) => (
+                                            <textarea
+                                                {...field}
+                                                disabled={isSubmitting}
+                                                rows={3}
+                                                className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent resize-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                                    fieldState.error ? 'border-red-500' : 'border-gray-300'
+                                                }`}
+                                                placeholder="Describe el contenido multimedia"
+                                                style={{ fontFamily: 'Poppins, sans-serif' }}
+                                            />
+                                        )}
                                     />
                                     {errors.description && (
                                         <p className="text-red-500 text-sm mt-1 flex items-center gap-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
-                                            {errors.description}
+                                            {errors.description.message}
                                         </p>
                                     )}
                                 </div>
@@ -226,14 +255,27 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
                                         <label className="block text-sm font-medium text-gray-700 mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                             Nueva imagen
                                         </label>
-                                        <input
-                                            type="file"
+                                        <Controller
                                             name="image"
-                                            accept="image/*"
-                                            onChange={handleFileChange}
-                                            disabled={isSubmitting}
-                                            className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${errors.image ? 'border-red-500' : 'border-gray-300'
-                                                }`}
+                                            control={control}
+                                            render={({ field: { onChange, name, ...field } }) => (
+                                                <input
+                                                    {...field}
+                                                    type="file"
+                                                    name={name}
+                                                    accept="image/*"
+                                                    onChange={(e) => {
+                                                        const file = e.target.files[0] || null;
+                                                        handleFileChange(e);
+                                                        onChange(file);
+                                                    }}
+                                                    disabled={isSubmitting}
+                                                    className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                                        errors.image ? 'border-red-500' : 'border-gray-300'
+                                                    }`}
+                                                    value=""
+                                                />
+                                            )}
                                         />
                                         {filesInfo.image && (
                                             <p className="text-sm text-gray-600 mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
@@ -247,7 +289,7 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
                                         )}
                                         {errors.image && (
                                             <p className="text-red-500 text-sm mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                                {errors.image}
+                                                {errors.image.message}
                                             </p>
                                         )}
                                     </div>
@@ -257,14 +299,27 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
                                         <label className="block text-sm font-medium text-gray-700 mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                             Nuevo video
                                         </label>
-                                        <input
-                                            type="file"
+                                        <Controller
                                             name="video"
-                                            accept="video/*"
-                                            onChange={handleFileChange}
-                                            disabled={isSubmitting}
-                                            className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${errors.video ? 'border-red-500' : 'border-gray-300'
-                                                }`}
+                                            control={control}
+                                            render={({ field: { onChange, name, ...field } }) => (
+                                                <input
+                                                    {...field}
+                                                    type="file"
+                                                    name={name}
+                                                    accept="video/*"
+                                                    onChange={(e) => {
+                                                        const file = e.target.files[0] || null;
+                                                        handleFileChange(e);
+                                                        onChange(file);
+                                                    }}
+                                                    disabled={isSubmitting}
+                                                    className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                                        errors.video ? 'border-red-500' : 'border-gray-300'
+                                                    }`}
+                                                    value=""
+                                                />
+                                            )}
                                         />
                                         {filesInfo.video && (
                                             <p className="text-sm text-gray-600 mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
@@ -278,7 +333,7 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
                                         )}
                                         {errors.video && (
                                             <p className="text-red-500 text-sm mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                                {errors.video}
+                                                {errors.video.message}
                                             </p>
                                         )}
                                     </div>
@@ -291,7 +346,7 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
-                                            {errors.submit}
+                                            {errors.submit.message}
                                         </p>
                                     </div>
                                 )}
@@ -357,7 +412,7 @@ const MediaEditModal = ({ item, onClose, onConfirm }) => {
                 </div>
 
                 {/* Estilos CSS inline para scrollbar */}
-                <style jsx>{`
+                <style>{`
                     .overflow-y-auto::-webkit-scrollbar {
                         width: 8px;
                     }

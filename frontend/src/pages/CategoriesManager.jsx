@@ -25,7 +25,10 @@ const CategoriesManager = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showForm, setShowForm] = useState(false);
 
-  const filteredCategories = categories.filter((category) =>
+  // Fix: Asegurar que categories sea siempre un array
+  const safeCategories = Array.isArray(categories) ? categories : [];
+
+  const filteredCategories = safeCategories.filter((category) =>
     category.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 

@@ -16,6 +16,7 @@ const useDataProducts = () => {
   const [details, setDetails] = useState("");
   const [image, setImage] = useState(null);
 
+  // Inicializar products como array vacío
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
@@ -34,7 +35,9 @@ const useDataProducts = () => {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || data.message || `Error ${response.status}`);
+      // Manejar la nueva estructura de errores del controlador
+      const errorMessage = data.error || data.message || `Error ${response.status}`;
+      throw new Error(errorMessage);
     }
 
     return data;
@@ -45,22 +48,47 @@ const useDataProducts = () => {
     try {
       const response = await fetch("http://localhost:4000/api/categories");
       const data = await handleResponse(response);
-      setCategories(data);
+      
+      // Verificar si la respuesta tiene la nueva estructura
+      if (data.success && Array.isArray(data.data)) {
+        setCategories(data.data);
+      } else if (Array.isArray(data)) {
+        // Para compatibilidad con controladores que no usan la nueva estructura
+        setCategories(data);
+      } else {
+        console.warn("Estructura de respuesta de categorías inesperada:", data);
+        setCategories([]);
+      }
     } catch (error) {
       toast.error("Error al cargar las categorías");
-      console.error(error);
+      console.error("Error al cargar categorías:", error);
+      setCategories([]); // Fallback a array vacío
     }
   };
 
   // Cargar productos
   const fetchProducts = async () => {
     try {
+      setLoading(true);
       const response = await fetch(API);
       const data = await handleResponse(response);
-      setProducts(data);
+      
+      // Verificar si la respuesta tiene la nueva estructura del controlador
+      if (data.success && Array.isArray(data.data)) {
+        setProducts(data.data);
+        console.log("Productos cargados:", data.data.length);
+      } else if (Array.isArray(data)) {
+        // Para compatibilidad con controladores que no usan la nueva estructura
+        setProducts(data);
+        console.log("Productos cargados (formato anterior):", data.length);
+      } else {
+        console.warn("Estructura de respuesta de productos inesperada:", data);
+        setProducts([]);
+      }
     } catch (error) {
       toast.error("Error al cargar los productos");
-      console.error(error);
+      console.error("Error al cargar productos:", error);
+      setProducts([]); // Fallback a array vacío
     } finally {
       setLoading(false);
     }
@@ -101,8 +129,19 @@ const useDataProducts = () => {
       return;
     }
 
+    if (parseFloat(productData.price) <= 0) {
+      toast.error("El precio debe ser mayor a 0");
+      return;
+    }
+
     if (!productData.categoryId) {
       toast.error("La categoría es requerida");
+      return;
+    }
+
+    // Validar stock si se proporciona
+    if (productData.stock && (isNaN(parseInt(productData.stock)) || parseInt(productData.stock) < 0)) {
+      toast.error("El stock debe ser un número mayor o igual a 0");
       return;
     }
 
@@ -127,14 +166,22 @@ const useDataProducts = () => {
 
       const data = await handleResponse(res);
 
+      // Manejar la nueva estructura de respuesta
+      const newProduct = data.success ? data.data : data;
+
+      // Enriquecer con información de categoría
       const categoryInfo = categories.find(cat => cat._id === productData.categoryId);
       const enrichedProduct = {
-        ...data,
-        categoryId: categoryInfo ? categoryInfo : data.categoryId
+        ...newProduct,
+        categoryId: categoryInfo ? categoryInfo : newProduct.categoryId
       };
 
       setProducts((prev) => [...prev, enrichedProduct]);
-      toast.success("Producto creado exitosamente");
+      
+      // Mostrar mensaje de éxito de la respuesta o uno por defecto
+      const successMessage = data.success ? data.message : "Producto creado exitosamente";
+      toast.success(successMessage);
+      
       resetForm();
       setActiveTab("list");
     } catch (error) {
@@ -150,9 +197,12 @@ const useDataProducts = () => {
         method: "DELETE"
       });
 
-      await handleResponse(res);
+      const data = await handleResponse(res);
 
-      toast.success("Producto eliminado");
+      // Mostrar mensaje de éxito de la respuesta o uno por defecto
+      const successMessage = data.success ? data.message : "Producto eliminado";
+      toast.success(successMessage);
+      
       fetchProducts();
     } catch (error) {
       toast.error(error.message || "Error al eliminar producto");
@@ -168,10 +218,10 @@ const useDataProducts = () => {
     setId(product._id);
     setName(product.name);
     setDescription(product.description);
-    setPrice(product.price);
+    setPrice(product.price.toString()); // Convertir a string para el input
     setStock(product.stock || 0);
     setCategoryId(product.categoryId._id || product.categoryId || "");
-    setIsPersonalizable(product.isPersonalizable);
+    setIsPersonalizable(product.isPersonalizable || false);
     setDetails(product.details || "");
     setImage(null);
     setActiveTab("form");
@@ -195,8 +245,19 @@ const useDataProducts = () => {
       return;
     }
 
+    if (parseFloat(productData.price) <= 0) {
+      toast.error("El precio debe ser mayor a 0");
+      return;
+    }
+
     if (!productData.categoryId) {
       toast.error("La categoría es requerida");
+      return;
+    }
+
+    // Validar stock
+    if (productData.stock && (isNaN(parseInt(productData.stock)) || parseInt(productData.stock) < 0)) {
+      toast.error("El stock debe ser un número mayor o igual a 0");
       return;
     }
 
@@ -256,7 +317,10 @@ const useDataProducts = () => {
 
       const data = await handleResponse(res);
 
-      toast.success("Producto actualizado");
+      // Mostrar mensaje de éxito de la respuesta o uno por defecto
+      const successMessage = data.success ? data.message : "Producto actualizado";
+      toast.success(successMessage);
+      
       resetForm();
       setActiveTab("list");
       fetchProducts();

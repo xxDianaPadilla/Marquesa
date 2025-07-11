@@ -1,20 +1,17 @@
 import React from "react";
+import { Controller } from "react-hook-form";
 import OverlayBackdrop from "./OverlayBackdrop";
 import { useMediaForm } from "./Media/Hooks/useMediaForm";
 
 const MediaUploadModal = ({ onClose, onConfirm }) => {
     const {
-        formData,
-        files,
-        errors,
-        isSubmitting,
-        handleInputChange,
+        control,
+        handleSubmit,
+        formState: { errors, isSubmitting },
         handleFileChange,
-        validateForm,
-        prepareFormData,
-        setIsSubmitting,
-        setErrors,
-        getFilesInfo
+        validationRules,
+        getFilesInfo,
+        setFieldError
     } = useMediaForm();
 
     // Tipos disponibles según el modelo
@@ -25,25 +22,14 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
     ];
 
     // Manejar envío del formulario
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-
-        if (!validateForm()) {
-            return;
-        }
-
-        setIsSubmitting(true);
-
+    const onSubmit = async (data) => {
         try {
-            const submitData = prepareFormData();
-            
-            // Llamar al callback del componente padre (MediaManager)
-            await onConfirm(submitData);
+            // Los datos ya están validados por react-hook-form
+            // prepareFormData se ejecuta dentro del hook
+            await onConfirm(data);
         } catch (error) {
             console.error("Error en el formulario:", error);
-            setErrors({ submit: error.message || "Error inesperado" });
-        } finally {
-            setIsSubmitting(false);
+            setFieldError("submit", error.message || "Error inesperado");
         }
     };
 
@@ -74,7 +60,7 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
                     </div>
 
                     {/* Contenido scrolleable con formulario */}
-                    <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+                    <form onSubmit={handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
                         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4" style={{ scrollbarWidth: 'thin', scrollbarColor: '#d1d5db #f8f9fa' }}>
                             <div className="space-y-4">
                                 {/* Tipo */}
@@ -82,20 +68,24 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
                                     <label className="block text-sm font-medium text-gray-700 mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                         Tipo *
                                     </label>
-                                    <select
+                                    <Controller
                                         name="type"
-                                        value={formData.type}
-                                        onChange={handleInputChange}
-                                        disabled={isSubmitting}
-                                        className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                        style={{ fontFamily: 'Poppins, sans-serif' }}
-                                    >
-                                        {typeOptions.map((type) => (
-                                            <option key={type.value} value={type.value}>
-                                                {type.label}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        control={control}
+                                        render={({ field }) => (
+                                            <select
+                                                {...field}
+                                                disabled={isSubmitting}
+                                                className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                style={{ fontFamily: 'Poppins, sans-serif' }}
+                                            >
+                                                {typeOptions.map((type) => (
+                                                    <option key={type.value} value={type.value}>
+                                                        {type.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        )}
+                                    />
                                 </div>
 
                                 {/* Título */}
@@ -103,23 +93,29 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
                                     <label className="block text-sm font-medium text-gray-700 mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                         Título *
                                     </label>
-                                    <input
-                                        type="text"
+                                    <Controller
                                         name="title"
-                                        value={formData.title}
-                                        onChange={handleInputChange}
-                                        disabled={isSubmitting}
-                                        className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${errors.title ? 'border-red-500' : 'border-gray-300'
-                                            }`}
-                                        placeholder="Ingresa el título"
-                                        style={{ fontFamily: 'Poppins, sans-serif' }}
+                                        control={control}
+                                        rules={validationRules.title}
+                                        render={({ field }) => (
+                                            <input
+                                                {...field}
+                                                type="text"
+                                                disabled={isSubmitting}
+                                                className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                                    errors.title ? 'border-red-500' : 'border-gray-300'
+                                                }`}
+                                                placeholder="Ingresa el título"
+                                                style={{ fontFamily: 'Poppins, sans-serif' }}
+                                            />
+                                        )}
                                     />
                                     {errors.title && (
                                         <p className="text-red-500 text-sm mt-1 flex items-center gap-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
-                                            {errors.title}
+                                            {errors.title.message}
                                         </p>
                                     )}
                                 </div>
@@ -129,23 +125,29 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
                                     <label className="block text-sm font-medium text-gray-700 mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                         Descripción *
                                     </label>
-                                    <textarea
+                                    <Controller
                                         name="description"
-                                        value={formData.description}
-                                        onChange={handleInputChange}
-                                        disabled={isSubmitting}
-                                        rows={3}
-                                        className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent resize-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${errors.description ? 'border-red-500' : 'border-gray-300'
-                                            }`}
-                                        placeholder="Describe el contenido multimedia"
-                                        style={{ fontFamily: 'Poppins, sans-serif' }}
+                                        control={control}
+                                        rules={validationRules.description}
+                                        render={({ field }) => (
+                                            <textarea
+                                                {...field}
+                                                disabled={isSubmitting}
+                                                rows={3}
+                                                className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent resize-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                                    errors.description ? 'border-red-500' : 'border-gray-300'
+                                                }`}
+                                                placeholder="Describe el contenido multimedia"
+                                                style={{ fontFamily: 'Poppins, sans-serif' }}
+                                            />
+                                        )}
                                     />
                                     {errors.description && (
                                         <p className="text-red-500 text-sm mt-1 flex items-center gap-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
-                                            {errors.description}
+                                            {errors.description.message}
                                         </p>
                                     )}
                                 </div>
@@ -167,8 +169,9 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
                                             accept="image/*"
                                             onChange={handleFileChange}
                                             disabled={isSubmitting}
-                                            className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${errors.image ? 'border-red-500' : 'border-gray-300'
-                                                }`}
+                                            className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                                errors.image ? 'border-red-500' : 'border-gray-300'
+                                            }`}
                                         />
                                         {filesInfo.image && (
                                             <p className="text-sm text-gray-600 mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
@@ -182,7 +185,7 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
                                         )}
                                         {errors.image && (
                                             <p className="text-red-500 text-sm mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                                {errors.image}
+                                                {errors.image.message}
                                             </p>
                                         )}
                                     </div>
@@ -198,8 +201,9 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
                                             accept="video/*"
                                             onChange={handleFileChange}
                                             disabled={isSubmitting}
-                                            className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${errors.video ? 'border-red-500' : 'border-gray-300'
-                                                }`}
+                                            className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                                errors.video ? 'border-red-500' : 'border-gray-300'
+                                            }`}
                                         />
                                         {filesInfo.video && (
                                             <p className="text-sm text-gray-600 mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
@@ -213,7 +217,7 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
                                         )}
                                         {errors.video && (
                                             <p className="text-red-500 text-sm mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                                {errors.video}
+                                                {errors.video.message}
                                             </p>
                                         )}
                                     </div>
@@ -226,7 +230,7 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
-                                            {errors.files}
+                                            {errors.files.message}
                                         </p>
                                     </div>
                                 )}
@@ -238,7 +242,7 @@ const MediaUploadModal = ({ onClose, onConfirm }) => {
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
-                                            {errors.submit}
+                                            {errors.submit.message}
                                         </p>
                                     </div>
                                 )}

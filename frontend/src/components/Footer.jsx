@@ -41,6 +41,10 @@ const Footer = () => {
     navigate('/termsandConditions');
   };
 
+  const handleServicesClick = () => {
+    navigate('/home');
+  };
+
   return (
     <footer className="bg-white border-t border-gray-200 py-16 px-8 font-poppins">
       {/* Logo y decoración superior */}
@@ -164,13 +168,13 @@ const Footer = () => {
             <div className="space-y-3 mb-6">
               <p
                 className="text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
-              // onClick={handleServicesClick}
+                onClick={handleServicesClick}
               >
                 Servicios
               </p>
               <p
                 className="text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
-               onClick={handleAboutUsClick}
+                onClick={handleAboutUsClick}
               >
                 Historia
               </p>

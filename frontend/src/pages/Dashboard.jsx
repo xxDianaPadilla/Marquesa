@@ -31,25 +31,29 @@ const DashboardLayout = ({ children }) => {
 const Dashboard = () => {
   return (
     <AdminLayout>
-      <div className="p-6">
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          {/* Contenedor flex para alinear AdminTools con el contenido */}
-          <div className="flex items-start justify-between">
-            <div>
+      <div className="p-3 sm:p-6">
+        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6">
+          {/* Contenedor flex responsivo para alinear AdminTools con el contenido */}
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-0">
+            <div className="flex-1">
               <h1
-                className="text-2xl font-bold mb-4"
+                className="text-xl sm:text-2xl lg:text-3xl font-bold mb-2 sm:mb-4"
                 style={{ fontFamily: "Poppins, sans-serif" }}
               >
                 ¡Bienvenido de nuevo, Miguel!
               </h1>
               <p
-                className="text-gray-600"
+                className="text-gray-600 text-sm sm:text-base"
                 style={{ fontFamily: "Poppins, sans-serif" }}
               >
                 ¡Han pasado muchas cosas mientras no has estado!
               </p>
             </div>
-            <AdminTools />
+
+            {/* AdminTools se mueve debajo en mobile y a la derecha en desktop */}
+            <div className="flex-shrink-0 w-full sm:w-auto">
+              <AdminTools />
+            </div>
           </div>
         </div>
 
@@ -121,7 +125,7 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
-    </AdminLayout>
+    </AdminLayout >
   );
 };
 

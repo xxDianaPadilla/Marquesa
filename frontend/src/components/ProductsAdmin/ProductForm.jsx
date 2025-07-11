@@ -124,6 +124,9 @@ const ProductForm = ({
     );
   };
 
+  // Asegurar que categories sea siempre un array
+  const categoriesArray = Array.isArray(categories) ? categories : [];
+
   if (!isOpen) return null;
 
   return (
@@ -241,7 +244,7 @@ const ProductForm = ({
                   }`}
                 >
                   <option value="">Selecciona una categoría</option>
-                  {categories.map(cat => (
+                  {categoriesArray.map(cat => (
                     <option key={cat._id} value={cat._id}>{cat.name}</option>
                   ))}
                 </select>

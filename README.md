@@ -133,8 +133,10 @@ La plataforma incluye:
 <h3>❤️ Contribuciones</h3>
 
 ¡Este proyecto representa una colaboración entre estudiantes y una marca real!
+
+
 <hr>
-<h3>🔣 Nomenclatura usada en el proyecto</h3>
+<h3>🔣 Nomenclatura utilizada en el proyecto</h3>
 
 <ul>
   <li><b>Backend:</b> en el backend se ocupo exclusivamente la nomenclatura "camelCase" </li>

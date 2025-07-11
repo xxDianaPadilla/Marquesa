@@ -5,11 +5,22 @@ import ReviewsFilters from "../components/Reviews/ReviewsFilters";
 import ReviewsContent from "../components/Reviews/ReviewsContent";
 import ReviewsPagination from "../components/Reviews/ReviewsPagination";
 import { useReviews } from "../components/Reviews/Hooks/useReviews";
-import { useReviewStats } from "../components/Reviews/Hooks/useReviewStats";
 
 const ReviewsManager = () => {
-  const { reviews, loading: reviewsLoading, error: reviewsError } = useReviews();
-  const { stats, loading: statsLoading, error: statsError } = useReviewStats();
+  // Usar el hook useReviews actualizado - AGREGAR deleteReview
+  const { 
+    reviews, 
+    loading: reviewsLoading, 
+    error: reviewsError, 
+    moderateReview, 
+    deleteReview,        // ← ESTA LÍNEA FALTABA
+    replyToReview, 
+    updateReview, 
+    getReviewStats 
+  } = useReviews();
+
+  // Obtener estadísticas directamente del hook
+  const stats = getReviewStats();
 
   // Estados para filtros y búsqueda
   const [searchTerm, setSearchTerm] = useState('');
@@ -93,7 +104,7 @@ const ReviewsManager = () => {
           break;
         default:
           aValue = new Date(a.createdAt);
-          bValue = new Date(b.createdAt);
+          bValue = b.createdAt;
       }
 
       if (sortOrder === 'asc') {
@@ -204,13 +215,60 @@ const ReviewsManager = () => {
     return pages;
   };
 
-  // Funciones para responder y moderar reseñas (a implementar)
-  const handleReplyReview = (reviewId, reply) => {
-    console.log('Responder a reseña:', reviewId, reply);
+  // Funciones para responder y moderar reseñas usando el hook
+  const handleReplyReview = async (reviewId, reply) => {
+    try {
+      console.log('=== COMPONENTE ReviewsManager DEBUG ===');
+      console.log('Intentando responder reseña:', reviewId, reply);
+      
+      await replyToReview(reviewId, reply);
+      console.log('Respuesta enviada exitosamente');
+      
+      // Opcional: Mostrar notificación de éxito
+      // toast.success('Respuesta enviada exitosamente');
+      
+    } catch (error) {
+      console.error('Error al responder reseña:', error);
+      // Opcional: Mostrar notificación de error
+      // toast.error('Error al enviar la respuesta: ' + error.message);
+    }
   };
 
-  const handleModerateReview = (reviewId, action) => {
-    console.log('Moderar reseña:', reviewId, action);
+  const handleModerateReview = async (reviewId, action) => {
+    try {
+      console.log('=== COMPONENTE ReviewsManager DEBUG ===');
+      console.log('Intentando moderar reseña:', reviewId, action);
+      
+      await moderateReview(reviewId, action);
+      console.log('Reseña moderada exitosamente');
+      
+      // Opcional: Mostrar notificación de éxito
+      // toast.success(`Reseña ${action === 'approve' ? 'aprobada' : 'rechazada'} exitosamente`);
+      
+    } catch (error) {
+      console.error('Error al moderar reseña:', error);
+      // Opcional: Mostrar notificación de error
+      // toast.error('Error al moderar la reseña: ' + error.message);
+    }
+  };
+
+  // NUEVA FUNCIÓN: Handler para eliminar reseña
+  const handleDeleteReview = async (reviewId) => {
+    try {
+      console.log('=== COMPONENTE ReviewsManager DEBUG ===');
+      console.log('Intentando eliminar reseña:', reviewId);
+      
+      await deleteReview(reviewId);
+      console.log('Reseña eliminada exitosamente');
+      
+      // Opcional: Mostrar notificación de éxito
+      // toast.success('Reseña eliminada exitosamente');
+      
+    } catch (error) {
+      console.error('Error al eliminar reseña:', error);
+      // Opcional: Mostrar notificación de error
+      // toast.error('Error al eliminar la reseña: ' + error.message);
+    }
   };
 
   return (
@@ -224,8 +282,8 @@ const ReviewsManager = () => {
           selectedProduct={selectedProduct}
           onProductChange={handleProductChange}
           stats={stats}
-          loading={statsLoading}
-          error={statsError}
+          loading={reviewsLoading}
+          error={reviewsError}
         />
 
         <ReviewsFilters
@@ -246,6 +304,8 @@ const ReviewsManager = () => {
           totalItems={totalItems}
           onReply={handleReplyReview}
           onModerate={handleModerateReview}
+          onDelete={handleDeleteReview}  // ← ESTA LÍNEA FALTABA
+          onReviewUpdate={updateReview}
         />
 
         {totalPages > 1 && (

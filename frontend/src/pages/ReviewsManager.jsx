@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+// frontend/src/pages/ReviewsManager.jsx
+import React, { useState, useMemo } from "react";
 import AdminLayout from "../components/AdminLayout";
 import ReviewsHeader from "../components/Reviews/ReviewsHeader";
 import ReviewsFilters from "../components/Reviews/ReviewsFilters";
@@ -7,25 +8,23 @@ import ReviewsPagination from "../components/Reviews/ReviewsPagination";
 import { useReviews } from "../components/Reviews/Hooks/useReviews";
 
 const ReviewsManager = () => {
-  // Usar el hook useReviews actualizado - AGREGAR deleteReview
+  // Usar el hook useReviews actualizado
   const { 
     reviews, 
     loading: reviewsLoading, 
     error: reviewsError, 
     moderateReview, 
-    deleteReview,        // ← ESTA LÍNEA FALTABA
+    deleteReview,
     replyToReview, 
     updateReview, 
-    getReviewStats 
+    getReviewStats,
+    filterReviews,
+    sortReviews,
+    getUniqueProducts
   } = useReviews();
-
-  // Obtener estadísticas directamente del hook
-  const stats = getReviewStats();
 
   // Estados para filtros y búsqueda
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedRating, setSelectedRating] = useState('todos');
-  const [selectedProduct, setSelectedProduct] = useState('todos');
   const [sortBy, setSortBy] = useState('fecha');
   const [sortOrder, setSortOrder] = useState('desc');
 
@@ -36,95 +35,48 @@ const ReviewsManager = () => {
   // Estados para filtros avanzados
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
+    rating: 'todos',
+    status: 'todos',
+    product: 'todos',
     dateFrom: '',
     dateTo: '',
     verified: false,
-    hasImages: false,
-    sortBy: 'fecha',
-    sortOrder: 'desc'
+    hasImages: false
   });
 
-  // Función para filtrar y ordenar reseñas
-  const getFilteredReviews = () => {
-    if (!reviews || reviews.length === 0) return [];
+  // Obtener productos únicos para el filtro
+  const availableProducts = useMemo(() => {
+    return getUniqueProducts();
+  }, [reviews]);
 
-    let filtered = [...reviews];
+  // Obtener reseñas filtradas y ordenadas usando el hook
+  const filteredAndSortedReviews = useMemo(() => {
+    // Combinar filtros de búsqueda con otros filtros
+    const allFilters = {
+      ...filters,
+      searchTerm: searchTerm.trim()
+    };
 
-    if (searchTerm.trim()) {
-      filtered = filtered.filter(review =>
-        review.comment?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        review.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        review.productName?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
+    // Aplicar filtros
+    const filtered = filterReviews(allFilters);
+    
+    // Aplicar ordenamiento
+    const sorted = sortReviews(filtered, sortBy, sortOrder);
+    
+    return sorted;
+  }, [reviews, filters, searchTerm, sortBy, sortOrder, filterReviews, sortReviews]);
 
-    if (selectedRating !== 'todos') {
-      filtered = filtered.filter(review => review.rating === parseInt(selectedRating));
-    }
-
-    if (selectedProduct !== 'todos') {
-      filtered = filtered.filter(review => review.productId === selectedProduct);
-    }
-
-    if (filters.dateFrom) {
-      filtered = filtered.filter(review => new Date(review.createdAt) >= new Date(filters.dateFrom));
-    }
-
-    if (filters.dateTo) {
-      filtered = filtered.filter(review => new Date(review.createdAt) <= new Date(filters.dateTo));
-    }
-
-    if (filters.verified) {
-      filtered = filtered.filter(review => review.verified === true);
-    }
-
-    if (filters.hasImages) {
-      filtered = filtered.filter(review => review.images && review.images.length > 0);
-    }
-
-    filtered.sort((a, b) => {
-      let aValue, bValue;
-
-      switch (sortBy) {
-        case 'fecha':
-          aValue = new Date(a.createdAt);
-          bValue = new Date(b.createdAt);
-          break;
-        case 'calificacion':
-          aValue = a.rating;
-          bValue = b.rating;
-          break;
-        case 'producto':
-          aValue = a.productName?.toLowerCase() || '';
-          bValue = b.productName?.toLowerCase() || '';
-          break;
-        case 'cliente':
-          aValue = a.customerName?.toLowerCase() || '';
-          bValue = b.customerName?.toLowerCase() || '';
-          break;
-        default:
-          aValue = new Date(a.createdAt);
-          bValue = b.createdAt;
-      }
-
-      if (sortOrder === 'asc') {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
-      }
-    });
-
-    return filtered;
-  };
-
-  const filteredReviews = getFilteredReviews();
+  // Obtener estadísticas actualizadas
+  const stats = useMemo(() => {
+    return getReviewStats();
+  }, [reviews, getReviewStats]);
 
   // Paginación
-  const totalItems = filteredReviews.length;
+  const totalItems = filteredAndSortedReviews.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentReviews = filteredReviews.slice(startIndex, endIndex);
+  const currentReviews = filteredAndSortedReviews.slice(startIndex, endIndex);
 
   const paginationInfo = {
     startItem: totalItems > 0 ? startIndex + 1 : 0,
@@ -136,19 +88,9 @@ const ReviewsManager = () => {
     hasPreviousPage: currentPage > 1
   };
 
-  // Handlers de eventos (búsqueda, filtros, paginación)
+  // Handlers de eventos
   const handleSearchChange = (term) => {
     setSearchTerm(term);
-    setCurrentPage(1);
-  };
-
-  const handleRatingChange = (rating) => {
-    setSelectedRating(rating);
-    setCurrentPage(1);
-  };
-
-  const handleProductChange = (product) => {
-    setSelectedProduct(product);
     setCurrentPage(1);
   };
 
@@ -165,17 +107,16 @@ const ReviewsManager = () => {
 
   const handleClearFilters = () => {
     setSearchTerm('');
-    setSelectedRating('todos');
-    setSelectedProduct('todos');
     setSortBy('fecha');
     setSortOrder('desc');
     setFilters({
+      rating: 'todos',
+      status: 'todos',
+      product: 'todos',
       dateFrom: '',
       dateTo: '',
       verified: false,
-      hasImages: false,
-      sortBy: 'fecha',
-      sortOrder: 'desc'
+      hasImages: false
     });
     setCurrentPage(1);
   };
@@ -215,77 +156,88 @@ const ReviewsManager = () => {
     return pages;
   };
 
-  // Funciones para responder y moderar reseñas usando el hook
+  // Funciones para responder y moderar reseñas
   const handleReplyReview = async (reviewId, reply) => {
     try {
-      console.log('=== COMPONENTE ReviewsManager DEBUG ===');
-      console.log('Intentando responder reseña:', reviewId, reply);
+      console.log('=== ReviewsManager: Respondiendo reseña ===');
+      console.log('Review ID:', reviewId);
+      console.log('Reply:', reply);
       
       await replyToReview(reviewId, reply);
       console.log('Respuesta enviada exitosamente');
       
-      // Opcional: Mostrar notificación de éxito
-      // toast.success('Respuesta enviada exitosamente');
+      // Mostrar notificación de éxito (opcional)
+      showNotification('Respuesta enviada exitosamente', 'success');
       
     } catch (error) {
       console.error('Error al responder reseña:', error);
-      // Opcional: Mostrar notificación de error
-      // toast.error('Error al enviar la respuesta: ' + error.message);
+      showNotification('Error al enviar la respuesta: ' + error.message, 'error');
     }
   };
 
   const handleModerateReview = async (reviewId, action) => {
     try {
-      console.log('=== COMPONENTE ReviewsManager DEBUG ===');
-      console.log('Intentando moderar reseña:', reviewId, action);
+      console.log('=== ReviewsManager: Moderando reseña ===');
+      console.log('Review ID:', reviewId);
+      console.log('Action:', action);
       
       await moderateReview(reviewId, action);
       console.log('Reseña moderada exitosamente');
       
-      // Opcional: Mostrar notificación de éxito
-      // toast.success(`Reseña ${action === 'approve' ? 'aprobada' : 'rechazada'} exitosamente`);
+      const actionText = action === 'approve' ? 'aprobada' : 'rechazada';
+      showNotification(`Reseña ${actionText} exitosamente`, 'success');
       
     } catch (error) {
       console.error('Error al moderar reseña:', error);
-      // Opcional: Mostrar notificación de error
-      // toast.error('Error al moderar la reseña: ' + error.message);
+      showNotification('Error al moderar la reseña: ' + error.message, 'error');
     }
   };
 
-  // NUEVA FUNCIÓN: Handler para eliminar reseña
   const handleDeleteReview = async (reviewId) => {
     try {
-      console.log('=== COMPONENTE ReviewsManager DEBUG ===');
-      console.log('Intentando eliminar reseña:', reviewId);
+      console.log('=== ReviewsManager: Eliminando reseña ===');
+      console.log('Review ID:', reviewId);
       
       await deleteReview(reviewId);
       console.log('Reseña eliminada exitosamente');
       
-      // Opcional: Mostrar notificación de éxito
-      // toast.success('Reseña eliminada exitosamente');
+      showNotification('Reseña eliminada exitosamente', 'success');
+      
+      // Si estamos en la última página y se elimina el último elemento, volver a la página anterior
+      if (currentReviews.length === 1 && currentPage > 1) {
+        setCurrentPage(currentPage - 1);
+      }
       
     } catch (error) {
       console.error('Error al eliminar reseña:', error);
-      // Opcional: Mostrar notificación de error
-      // toast.error('Error al eliminar la reseña: ' + error.message);
+      showNotification('Error al eliminar la reseña: ' + error.message, 'error');
+    }
+  };
+
+  // Función para mostrar notificaciones (simplificada, podrías usar react-toast o similar)
+  const showNotification = (message, type) => {
+    // Por ahora solo console.log, pero podrías implementar un sistema de notificaciones real
+    console.log(`[${type.toUpperCase()}]: ${message}`);
+    
+    // Implementación básica con alert (reemplazar por un sistema de toast mejor)
+    if (type === 'error') {
+      alert(`Error: ${message}`);
     }
   };
 
   return (
     <AdminLayout>
       <div className="p-6">
+        {/* Header con búsqueda y estadísticas */}
         <ReviewsHeader
           searchTerm={searchTerm}
           onSearchChange={handleSearchChange}
-          selectedRating={selectedRating}
-          onRatingChange={handleRatingChange}
-          selectedProduct={selectedProduct}
-          onProductChange={handleProductChange}
           stats={stats}
           loading={reviewsLoading}
           error={reviewsError}
         />
 
+        {/* Panel de filtros avanzados */}
         <ReviewsFilters
           filters={filters}
           onFiltersChange={handleFiltersChange}
@@ -295,8 +247,10 @@ const ReviewsManager = () => {
           sortBy={sortBy}
           sortOrder={sortOrder}
           onSortChange={handleSortChange}
+          availableProducts={availableProducts}
         />
 
+        {/* Contenido principal con reseñas */}
         <ReviewsContent
           reviews={currentReviews}
           loading={reviewsLoading}
@@ -304,10 +258,11 @@ const ReviewsManager = () => {
           totalItems={totalItems}
           onReply={handleReplyReview}
           onModerate={handleModerateReview}
-          onDelete={handleDeleteReview}  // ← ESTA LÍNEA FALTABA
+          onDelete={handleDeleteReview}
           onReviewUpdate={updateReview}
         />
 
+        {/* Paginación */}
         {totalPages > 1 && (
           <ReviewsPagination
             paginationInfo={paginationInfo}
@@ -316,6 +271,41 @@ const ReviewsManager = () => {
             onPreviousPage={handlePreviousPage}
             getPageNumbers={getPageNumbers}
           />
+        )}
+
+        {/* Información adicional si no hay reseñas */}
+        {!reviewsLoading && !reviewsError && totalItems === 0 && (
+          <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+            <div className="text-gray-400 mb-4">
+              <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
+              {searchTerm || Object.values(filters).some(f => f && f !== 'todos' && f !== false)
+                ? 'No se encontraron reseñas'
+                : 'Aún no hay reseñas'
+              }
+            </h3>
+            <p className="text-gray-500 mb-4" style={{ fontFamily: 'Poppins, sans-serif' }}>
+              {searchTerm || Object.values(filters).some(f => f && f !== 'todos' && f !== false)
+                ? 'Intenta ajustar los filtros de búsqueda para encontrar lo que buscas.'
+                : 'Las reseñas de tus clientes aparecerán aquí cuando las recibas.'
+              }
+            </p>
+            {(searchTerm || Object.values(filters).some(f => f && f !== 'todos' && f !== false)) && (
+              <button
+                onClick={handleClearFilters}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#FF7260] hover:bg-[#FF6250] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF7260]"
+                style={{ fontFamily: 'Poppins, sans-serif', cursor: 'pointer' }}
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Limpiar filtros
+              </button>
+            )}
+          </div>
         )}
       </div>
     </AdminLayout>

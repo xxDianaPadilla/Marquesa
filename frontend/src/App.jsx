@@ -216,7 +216,7 @@ function App() {
             } />
 
           {/* Ruta de fallback - redirige al home si no encuentra la ruta */}
-          <Route path='*' element={<Navigate to="/home" replace />} />
+          <Route path='*' element={<Navigate to="/login" replace />} />
         </Routes>
       </Router>
     </AuthProvider>

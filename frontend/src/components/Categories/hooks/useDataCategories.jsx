@@ -128,12 +128,6 @@ const useDataCategories = () => {
             return;
         }
 
-        // Validación: la imagen es obligatoria (debe ser File o URL existente)
-        if (!image) {
-            toast.error("La imagen es requerida");
-            return;
-        }
-
         try {
             let response;
 

@@ -1,7 +1,9 @@
 import React from "react";
 import { useBestSellingProducts } from "./Products/Hooks/useBestSellingProducts";
 
+// Individual product card component that displays product info, sales and percentage
 const ProductCard = ({ product, sold, percentage }) => {
+    // Destructure product properties with fallback values
     const productName = product?.name || 'Producto sin nombre';
     const productDescription = product?.description || 'Sin descripción';
     const productImage = product?.images?.[0]?.image;
@@ -46,6 +48,7 @@ const ProductCard = ({ product, sold, percentage }) => {
     );
 };
 
+// Loading skeleton component shown while data is being fetched
 const LoadingCard = () => (
     <div className="flex items-center justify-between p-3 animate-pulse">
         <div className="flex items-center space-x-3">
@@ -62,6 +65,7 @@ const LoadingCard = () => (
     </div>
 );
 
+// Component displayed when no products are available
 const EmptyState = () => (
     <div className="text-center py-8">
         <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
@@ -78,11 +82,14 @@ const EmptyState = () => (
     </div>
 );
 
+// Main component that manages the display of best-selling products
 const BestSelledProductsCards = () => {
+    // Custom hook to fetch best selling products data
     const {bestSelling, loading} = useBestSellingProducts();
 
     return (
         <div className="bg-white rounded-lg shadow-sm p-6">
+            {/* Header section with title and update status */}
             <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold text-gray-900" style={{ fontFamily: 'Poppins, sans-serif' }}>
                     Productos más comprados
@@ -95,14 +102,15 @@ const BestSelledProductsCards = () => {
                 </div>
             </div>
 
+            {/* Conditional rendering based on loading and data state */}
             <div className="space-y-1">
                 {loading ? (
-                    // Loading state
+                    // Show loading cards while fetching data
                     Array.from({ length: 3 }).map((_, index) => (
                         <LoadingCard key={index} />
                     ))
                 ) : bestSelling.length > 0 ? (
-                    // Products list
+                    // Display product cards if data exists
                     bestSelling.map((item, index) => (
                         <ProductCard
                             key={item.product._id || index}
@@ -112,11 +120,12 @@ const BestSelledProductsCards = () => {
                         />
                     ))
                 ) : (
-                    // Empty state
+                    // Show empty state if no products
                     <EmptyState />
                 )}
             </div>
 
+            {/* "View all" button shown only when products exist */}
             {bestSelling.length > 0 && (
                 <div className="mt-6 pt-4 border-t border-gray-100">
                     <button className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors duration-200" style={{ fontFamily: 'Poppins, sans-serif', cursor: 'pointer' }}>

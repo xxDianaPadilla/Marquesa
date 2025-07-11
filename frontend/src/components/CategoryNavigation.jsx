@@ -1,10 +1,13 @@
 import React, { useState } from "react";
 
+/**
+ * Componente de navegación por categorías con scroll horizontal en móviles
+ * Diseño responsive con indicadores visuales
+ */
 const CategoryNavigation = ({ categories, activeCategory, onCategoryChange }) => {
 
     /**
-     * Maneja el click en una categoría
-     * @param {string} categoryId - ID de la categoría seleccionada
+     * Maneja el click en una categoría y notifica al componente padre
      */
     const handleCategoryClick = (categoryId) => {
         if (onCategoryChange) {
@@ -14,15 +17,15 @@ const CategoryNavigation = ({ categories, activeCategory, onCategoryChange }) =>
 
     return (
         <div className="w-full bg-white-50 py-2 sm:py-4">
-            {/* Container responsive para las categorías */}
+            {/* Container responsive */}
             <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
                 
-                {/* Contenedor con fondo redondeado */}
+                {/* Contenedor con fondo rosa claro redondeado */}
                 <div 
                     className="rounded-xl sm:rounded-2xl px-3 sm:px-6 py-2 sm:py-4 shadow-sm"
                     style={{ backgroundColor: '#FDF2F8' }}
                 >
-                    {/* Navegación horizontal con scroll en móviles */}
+                    {/* Navegación horizontal con scroll automático en móviles */}
                     <div className="flex space-x-2 sm:space-x-4 overflow-x-auto scrollbar-hide">
                         {categories.map((category) => (
                             <button
@@ -43,6 +46,7 @@ const CategoryNavigation = ({ categories, activeCategory, onCategoryChange }) =>
                                     fontStyle: 'italic',
                                     fontWeight: activeCategory === category.id ? '500' : '400',
                                     fontSize: window.innerWidth < 640 ? '12px' : '14px',
+                                    // Colores dinámicos según estado activo
                                     backgroundColor: activeCategory === category.id ? '#E8ACD2' : 'white',
                                     color: activeCategory === category.id ? '#FFFFFF' : '#CD5277',
                                     minWidth: 'max-content'
@@ -53,7 +57,7 @@ const CategoryNavigation = ({ categories, activeCategory, onCategoryChange }) =>
                         ))}
                     </div>
 
-                    {/* Indicadores de scroll para móvil */}
+                    {/* Indicadores de scroll para móvil (decorativos) */}
                     <div className="block sm:hidden">
                         <div className="flex justify-center mt-2 space-x-1">
                             <div className="w-1 h-1 bg-gray-300 rounded-full"></div>

@@ -44,8 +44,8 @@ const Login = () => {
         password: {
             required: 'La contraseña es requerida',
             minLength: {
-                value: 6,
-                message: 'La contraseña debe tener al menos 6 caracteres'
+                value: 8,
+                message: 'La contraseña debe tener al menos 8 caracteres'
             }
         }
     };
@@ -126,12 +126,12 @@ const Login = () => {
                     </div>
                 )}
 
-                <Title>Inicia Sesión</Title>
+                <Title>Inicia sesión</Title>
 
                 <Input
                     name="email" 
                     type="email"
-                    placeholder="Correo"
+                    placeholder="Correo electrónico"
                     icon={emailIcon}
                     register={register}
                     validationRules={validationRules.email}

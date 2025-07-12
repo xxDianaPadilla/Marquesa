@@ -8,13 +8,26 @@ const router = express.Router();
 
 // Ruta para obtener estadísticas de nuevos clientes
 // GET /newClientsStats - Obtener métricas sobre registros de nuevos clientes
-router.route("/newClientsStats")
-.get(clientsController.getNewClientsStats);
+router.get("/newClientsStats", clientsController.getNewClientsStats);
 
 // Ruta para obtener el total de clientes
 // GET /total - Obtener el número total de clientes registrados
-router.route("/total")
-.get(clientsController.getTotalClients);
+router.get("/total", clientsController.getTotalClients);
+
+// Ruta adicional para estadísticas detalladas (si existe la función)
+router.get("/detailedStats", (req, res) => {
+    // Verificar si la función existe antes de llamarla
+    if (typeof clientsController.getDetailedClientsStats === 'function') {
+        return clientsController.getDetailedClientsStats(req, res);
+    } else {
+        // Si no existe, devolver estadísticas básicas
+        return res.status(200).json({
+            success: true,
+            message: "Función de estadísticas detalladas no implementada",
+            data: {}
+        });
+    }
+});
 
 // Exportar el enrutador para ser usado en la aplicación principal
 export default router;

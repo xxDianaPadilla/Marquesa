@@ -42,82 +42,59 @@ const storage = multer.diskStorage({
 // Configuración principal de multer
 const upload = multer({
     storage: storage,
-    // Límite de tamaño de archivo: 5MB
+    // Límite de tamaño de archivo: 10MB
     limits: {
-        fileSize: 5 * 1024 * 1024,
+        fileSize: 10 * 1024 * 1024,
     },
-    // Filtro para aceptar solo archivos de imagen
+    // Filtro para aceptar archivos de imagen y PDF
     fileFilter: function (req, file, cb) {
-        // Aceptamos solo archivos que empiecen con 'image/' en su mimetype
-        if (file.mimetype.startsWith('image/')) {
+        // Aceptamos archivos que empiecen con 'image/' en su mimetype o PDF
+        if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
             cb(null, true);
         } else {
-            cb(new Error('Solo se permiten archivos de imagen (JPG, PNG, JPEG)'), false);
+            cb(new Error('Solo se permiten archivos de imagen (JPG, PNG, JPEG, WEBP) o PDF'), false);
         }
     }
 });
 
+// ===== RUTAS ESPECÍFICAS PRIMERO (para evitar conflictos con :id) =====
+
 // Ruta para obtener estadísticas de productos vendidos
-router.route("/soldProductsStats")
-    .get(salesController.getSoldProductsStats);
+router.get("/soldProductsStats", salesController.getSoldProductsStats);
 
 // Ruta para obtener el total de ventas
-router.route("/total")
-    .get(salesController.getTotalSales);
+router.get("/total", salesController.getTotalSales);
 
 // Ruta para obtener estadísticas del dashboard
-router.route("/dashboardStats")
-    .get(salesController.getDashboardStats);
-
-// Ruta para obtener ventas por estado de pago específico
-router.route("/paymentStatus/:status")
-    .get(salesController.getSalesByPaymentStatus);
-
-// Ruta para obtener ventas por estado de seguimiento/tracking específico
-router.route("/trackingStatus/:trackingStatus")
-    .get(salesController.getSalesByTrackingStatus);
+router.get("/dashboardStats", salesController.getDashboardStats);
 
 // Ruta para obtener ventas con información detallada
-router.route("/detailed")
-    .get(salesController.getSalesDetailed);
+router.get("/detailed", salesController.getSalesDetailed);
 
-// Ruta para actualizar el estado de seguimiento de una venta específica
-router.route("/:id/tracking")
-    .put(salesController.updateTrackingStatus);
+// Ruta para obtener ventas por estado de pago específico
+router.get("/paymentStatus/:status", salesController.getSalesByPaymentStatus);
 
-// Ruta para obtener ventas por estado general
-router.route("/status/:status")
-    .get(salesController.getSalesByStatus);
+// Ruta para obtener ventas por estado de seguimiento/tracking específico
+router.get("/trackingStatus/:trackingStatus", salesController.getSalesByTrackingStatus);
 
-// Ruta para obtener ventas dentro de un rango de fechas
-router.route("/dateRange")
-    .get(salesController.getSalesByDateRange);
-
-// Ruta para buscar ventas con parámetros de búsqueda
-router.route("/search")
-    .get(salesController.searchSales);
-
-// Ruta para obtener estadísticas generales de ventas
-router.route("/stats")
-    .get(salesController.getSalesStats);
+// ===== RUTAS CON PARÁMETROS :id =====
 
 // Ruta para actualizar solo el estado de pago de una venta
-router.route("/:id/paymentStatus")
-    .patch(salesController.updatePaymentStatus);
+router.patch("/:id/paymentStatus", salesController.updatePaymentStatus);
 
 // Ruta para actualizar solo el estado de seguimiento de una venta
-router.route("/:id/trackingStatus")
-    .patch(salesController.updateTrackingStatus);
+router.patch("/:id/trackingStatus", salesController.updateTrackingStatus);
 
 // Ruta para actualizar el comprobante de pago (con subida de imagen)
-router.route("/:id/paymentProof")
-    .patch(upload.single('paymentProofImage'), salesController.updatePaymentProof);
+router.patch("/:id/paymentProof", upload.single('paymentProofImage'), salesController.updatePaymentProof);
 
 // Rutas para operaciones específicas de una venta por ID
 router.route("/:id")
     .get(salesController.getSaleById) // Obtener una venta específica por ID
     .put(upload.single('paymentProofImage'), salesController.updateSale) // Actualizar una venta completa
     .delete(salesController.deleteSale); // Eliminar una venta específica
+
+// ===== RUTAS GENERALES =====
 
 // Rutas para operaciones generales de ventas
 router.route("/")

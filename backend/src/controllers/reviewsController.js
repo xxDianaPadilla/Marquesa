@@ -1,6 +1,121 @@
 import reviewsModel from "../models/Reviews.js";
+import mongoose from "mongoose";
 
 const reviewsController = {};
+
+// Función helper para validar ObjectId
+const isValidObjectId = (id) => {
+    return mongoose.Types.ObjectId.isValid(id);
+};
+
+// Función helper para validar rating
+const validateRating = (rating) => {
+    if (rating === undefined || rating === null) {
+        return { isValid: false, error: "La calificación es requerida" };
+    }
+    
+    const numericRating = parseInt(rating);
+    
+    if (isNaN(numericRating)) {
+        return { isValid: false, error: "La calificación debe ser un número" };
+    }
+    
+    if (numericRating < 1 || numericRating > 5) {
+        return { isValid: false, error: "La calificación debe estar entre 1 y 5" };
+    }
+    
+    return { isValid: true, value: numericRating };
+};
+
+// Función helper para validar mensaje
+const validateMessage = (message) => {
+    if (!message || typeof message !== 'string') {
+        return { isValid: false, error: "El mensaje es requerido" };
+    }
+    
+    const trimmedMessage = message.trim();
+    
+    if (trimmedMessage.length < 10) {
+        return { isValid: false, error: "El mensaje debe tener al menos 10 caracteres" };
+    }
+    
+    if (trimmedMessage.length > 1000) {
+        return { isValid: false, error: "El mensaje no puede exceder 1000 caracteres" };
+    }
+    
+    // Validar caracteres especiales maliciosos
+    const dangerousChars = /<script|javascript:|on\w+=/i;
+    if (dangerousChars.test(trimmedMessage)) {
+        return { isValid: false, error: "El mensaje contiene contenido no permitido" };
+    }
+    
+    return { isValid: true, value: trimmedMessage };
+};
+
+// Función helper para validar productos
+const validateProducts = (products) => {
+    if (!products || !Array.isArray(products) || products.length === 0) {
+        return { isValid: false, error: "Se requiere al menos un producto" };
+    }
+    
+    if (products.length > 10) {
+        return { isValid: false, error: "Máximo 10 productos por reseña" };
+    }
+    
+    for (let i = 0; i < products.length; i++) {
+        const product = products[i];
+        
+        if (!product.itemType || !['product', 'custom'].includes(product.itemType)) {
+            return { 
+                isValid: false, 
+                error: `Tipo de producto inválido en posición ${i + 1}. Debe ser 'product' o 'custom'` 
+            };
+        }
+        
+        if (!product.itemId || !isValidObjectId(product.itemId)) {
+            return { 
+                isValid: false, 
+                error: `ID de producto inválido en posición ${i + 1}` 
+            };
+        }
+        
+        // Validar itemTypeRef
+        const validRefs = { product: 'products', custom: 'CustomProducts' };
+        if (!product.itemTypeRef || product.itemTypeRef !== validRefs[product.itemType]) {
+            return { 
+                isValid: false, 
+                error: `Referencia de tipo incorrecta en posición ${i + 1}` 
+            };
+        }
+    }
+    
+    return { isValid: true };
+};
+
+// Función helper para validar respuesta
+const validateResponse = (response) => {
+    if (!response || typeof response !== 'string') {
+        return { isValid: false, error: "La respuesta es requerida" };
+    }
+    
+    const trimmedResponse = response.trim();
+    
+    if (trimmedResponse.length < 10) {
+        return { isValid: false, error: "La respuesta debe tener al menos 10 caracteres" };
+    }
+    
+    if (trimmedResponse.length > 1000) {
+        return { isValid: false, error: "La respuesta no puede exceder 1000 caracteres" };
+    }
+    
+    // Validar caracteres especiales maliciosos
+    const dangerousChars = /<script|javascript:|on\w+=/i;
+    if (dangerousChars.test(trimmedResponse)) {
+        return { isValid: false, error: "La respuesta contiene contenido no permitido" };
+    }
+    
+    return { isValid: true, value: trimmedResponse };
+};
 
 // Función helper para populate consistente
 const getPopulateOptions = () => ({
@@ -21,44 +136,162 @@ const getClientPopulateOptions = () => ({
 
 reviewsController.getReviews = async (req, res) => {
     try {
-        const reviews = await reviewsModel.find()
-            .populate(getClientPopulateOptions())
-            .populate(getPopulateOptions());
+        const { page = 1, limit = 10, status, rating } = req.query;
+        
+        // Validar parámetros de paginación
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        
+        if (isNaN(pageNum) || pageNum < 1) {
+            return res.status(400).json({
+                success: false,
+                message: "Número de página inválido"
+            });
+        }
+        
+        if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
+            return res.status(400).json({
+                success: false,
+                message: "Límite inválido (1-100)"
+            });
+        }
+        
+        // Construir filtros
+        const filters = {};
+        
+        if (status && ['pending', 'replied'].includes(status)) {
+            filters.status = status;
+        }
+        
+        if (rating) {
+            const ratingValidation = validateRating(rating);
+            if (ratingValidation.isValid) {
+                filters.rating = ratingValidation.value;
+            }
+        }
+        
+        const skip = (pageNum - 1) * limitNum;
+        
+        const [reviews, totalCount] = await Promise.all([
+            reviewsModel.find(filters)
+                .populate(getClientPopulateOptions())
+                .populate(getPopulateOptions())
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limitNum),
+            reviewsModel.countDocuments(filters)
+        ]);
 
         console.log('Reviews encontradas:', reviews.length);
-        console.log('Primera review con cliente:', reviews[0]?.clientId);
 
-        res.json(reviews);
+        res.status(200).json({
+            success: true,
+            data: reviews,
+            pagination: {
+                currentPage: pageNum,
+                totalPages: Math.ceil(totalCount / limitNum),
+                totalItems: totalCount,
+                itemsPerPage: limitNum,
+                hasNextPage: skip + limitNum < totalCount,
+                hasPrevPage: pageNum > 1
+            }
+        });
     } catch (error) {
         console.error('Error en getReviews:', error);
-        res.status(500).json({ message: "Error al obtener las reviews", error: error.message });
+        res.status(500).json({ 
+            success: false,
+            message: "Error interno del servidor al obtener las reseñas", 
+            error: error.message 
+        });
     }
 };
 
 reviewsController.getReviewById = async (req, res) => {
     try {
-        const review = await reviewsModel.findById(req.params.id)
+        const { id } = req.params;
+        
+        if (!isValidObjectId(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de reseña no válido"
+            });
+        }
+        
+        const review = await reviewsModel.findById(id)
             .populate(getClientPopulateOptions())
             .populate(getPopulateOptions());
 
         if (!review) {
-            return res.status(404).json({ message: "Review no encontrada" });
+            return res.status(404).json({ 
+                success: false,
+                message: "Reseña no encontrada" 
+            });
         }
 
-        res.json(review);
+        res.status(200).json({
+            success: true,
+            data: review
+        });
     } catch (error) {
-        res.status(500).json({ message: "Error al obtener la review", error: error.message });
+        console.error('Error en getReviewById:', error);
+        res.status(500).json({ 
+            success: false,
+            message: "Error interno del servidor al obtener la reseña", 
+            error: error.message 
+        });
     }
 };
 
 reviewsController.getReviewByClient = async (req, res) => {
     try {
-        const reviews = await reviewsModel.find({ clientId: req.params.clientId })
-            .populate(getClientPopulateOptions())
-            .populate(getPopulateOptions());
-        res.json(reviews);
+        const { clientId } = req.params;
+        const { page = 1, limit = 10 } = req.query;
+        
+        if (!isValidObjectId(clientId)) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de cliente no válido"
+            });
+        }
+        
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        
+        if (isNaN(pageNum) || pageNum < 1 || isNaN(limitNum) || limitNum < 1 || limitNum > 50) {
+            return res.status(400).json({
+                success: false,
+                message: "Parámetros de paginación inválidos"
+            });
+        }
+        
+        const skip = (pageNum - 1) * limitNum;
+        
+        const [reviews, totalCount] = await Promise.all([
+            reviewsModel.find({ clientId })
+                .populate(getClientPopulateOptions())
+                .populate(getPopulateOptions())
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limitNum),
+            reviewsModel.countDocuments({ clientId })
+        ]);
+        
+        res.status(200).json({
+            success: true,
+            data: reviews,
+            pagination: {
+                currentPage: pageNum,
+                totalPages: Math.ceil(totalCount / limitNum),
+                totalItems: totalCount
+            }
+        });
     } catch (error) {
-        res.status(500).json({ message: "Error al obtener las reviews del cliente", error: error.message });
+        console.error('Error en getReviewByClient:', error);
+        res.status(500).json({ 
+            success: false,
+            message: "Error interno del servidor al obtener las reseñas del cliente", 
+            error: error.message 
+        });
     }
 };
 
@@ -66,15 +299,46 @@ reviewsController.createReview = async (req, res) => {
     try {
         const { clientId, products, rating, message } = req.body;
 
-        if (rating < 1 || rating > 5) {
-            return res.status(400).json({ message: "El rating debe estar entre 1 y 5" });
+        // Validar clientId
+        if (!clientId || !isValidObjectId(clientId)) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de cliente inválido"
+            });
+        }
+
+        // Validar productos
+        const productsValidation = validateProducts(products);
+        if (!productsValidation.isValid) {
+            return res.status(400).json({
+                success: false,
+                message: productsValidation.error
+            });
+        }
+
+        // Validar rating
+        const ratingValidation = validateRating(rating);
+        if (!ratingValidation.isValid) {
+            return res.status(400).json({
+                success: false,
+                message: ratingValidation.error
+            });
+        }
+
+        // Validar mensaje
+        const messageValidation = validateMessage(message);
+        if (!messageValidation.isValid) {
+            return res.status(400).json({
+                success: false,
+                message: messageValidation.error
+            });
         }
 
         const newReview = new reviewsModel({
             clientId,
             products,
-            rating,
-            message
+            rating: ratingValidation.value,
+            message: messageValidation.value
         });
 
         await newReview.save();
@@ -84,146 +348,373 @@ reviewsController.createReview = async (req, res) => {
             .populate(getClientPopulateOptions())
             .populate(getPopulateOptions());
 
-        res.status(201).json({ message: "Review guardada exitosamente", review: populatedReview });
+        res.status(201).json({ 
+            success: true,
+            message: "Reseña guardada exitosamente", 
+            data: populatedReview 
+        });
     } catch (error) {
-        res.status(400).json({ message: "Error al crear la review", error: error.message });
+        console.error('Error en createReview:', error);
+        
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({
+                success: false,
+                message: "Error de validación",
+                details: Object.values(error.errors).map(err => err.message)
+            });
+        }
+        
+        if (error.name === 'CastError') {
+            return res.status(400).json({
+                success: false,
+                message: "Datos con formato incorrecto"
+            });
+        }
+        
+        res.status(500).json({ 
+            success: false,
+            message: "Error interno del servidor al crear la reseña", 
+            error: error.message 
+        });
     }
 };
 
 reviewsController.updateReview = async (req, res) => {
     try {
+        const { id } = req.params;
         const { clientId, products, rating, message } = req.body;
 
-        if (rating && (rating < 1 || rating > 5)) {
-            return res.status(400).json({ message: "El rating debe estar entre 1 y 5" });
+        if (!isValidObjectId(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de reseña no válido"
+            });
+        }
+
+        // Verificar que la reseña existe
+        const existingReview = await reviewsModel.findById(id);
+        if (!existingReview) {
+            return res.status(404).json({
+                success: false,
+                message: "Reseña no encontrada"
+            });
+        }
+
+        const updateData = {};
+
+        // Validar campos opcionales para actualización
+        if (clientId !== undefined) {
+            if (!isValidObjectId(clientId)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "ID de cliente inválido"
+                });
+            }
+            updateData.clientId = clientId;
+        }
+
+        if (products !== undefined) {
+            const productsValidation = validateProducts(products);
+            if (!productsValidation.isValid) {
+                return res.status(400).json({
+                    success: false,
+                    message: productsValidation.error
+                });
+            }
+            updateData.products = products;
+        }
+
+        if (rating !== undefined) {
+            const ratingValidation = validateRating(rating);
+            if (!ratingValidation.isValid) {
+                return res.status(400).json({
+                    success: false,
+                    message: ratingValidation.error
+                });
+            }
+            updateData.rating = ratingValidation.value;
+        }
+
+        if (message !== undefined) {
+            const messageValidation = validateMessage(message);
+            if (!messageValidation.isValid) {
+                return res.status(400).json({
+                    success: false,
+                    message: messageValidation.error
+                });
+            }
+            updateData.message = messageValidation.value;
+        }
+
+        // Verificar que hay algo que actualizar
+        if (Object.keys(updateData).length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: "No se proporcionaron datos para actualizar"
+            });
         }
 
         const updatedReview = await reviewsModel.findByIdAndUpdate(
-            req.params.id,
-            { clientId, products, rating, message },
+            id,
+            updateData,
             { new: true, runValidators: true }
         ).populate(getClientPopulateOptions())
-            .populate(getPopulateOptions());
+         .populate(getPopulateOptions());
 
-        if (!updatedReview) {
-            return res.status(404).json({ message: "Review no encontrada" });
-        }
-
-        res.json({ message: "Review actualizada exitosamente", review: updatedReview });
+        res.status(200).json({ 
+            success: true,
+            message: "Reseña actualizada exitosamente", 
+            data: updatedReview 
+        });
     } catch (error) {
-        res.status(400).json({ message: "Error al actualizar la review", error: error.message });
+        console.error('Error en updateReview:', error);
+        
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({
+                success: false,
+                message: "Error de validación",
+                details: Object.values(error.errors).map(err => err.message)
+            });
+        }
+        
+        if (error.name === 'CastError') {
+            return res.status(400).json({
+                success: false,
+                message: "Datos con formato incorrecto"
+            });
+        }
+        
+        res.status(500).json({ 
+            success: false,
+            message: "Error interno del servidor al actualizar la reseña", 
+            error: error.message 
+        });
     }
 };
 
 reviewsController.deleteReview = async (req, res) => {
     try {
-        const deletedReview = await reviewsModel.findByIdAndDelete(req.params.id);
+        const { id } = req.params;
 
-        if (!deletedReview) {
-            return res.status(404).json({ message: "Review no encontrada" });
+        if (!isValidObjectId(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de reseña no válido"
+            });
         }
 
-        res.json({ message: "Review eliminada exitosamente" });
+        const deletedReview = await reviewsModel.findByIdAndDelete(id);
+
+        if (!deletedReview) {
+            return res.status(404).json({ 
+                success: false,
+                message: "Reseña no encontrada" 
+            });
+        }
+
+        res.status(200).json({ 
+            success: true,
+            message: "Reseña eliminada exitosamente",
+            data: {
+                id: deletedReview._id
+            }
+        });
     } catch (error) {
-        res.status(500).json({ message: "Error al eliminar la review", error: error.message });
+        console.error('Error en deleteReview:', error);
+        res.status(500).json({ 
+            success: false,
+            message: "Error interno del servidor al eliminar la reseña", 
+            error: error.message 
+        });
     }
 };
 
 // Agregar endpoints para moderar y responder reseñas
 reviewsController.moderateReview = async (req, res) => {
     try {
+        const { id } = req.params;
         const { action } = req.body;
 
+        if (!isValidObjectId(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de reseña no válido"
+            });
+        }
+
         if (!['approve', 'reject'].includes(action)) {
-            return res.status(400).json({ message: "Acción inválida. Usa 'approve' o 'reject'" });
+            return res.status(400).json({ 
+                success: false,
+                message: "Acción inválida. Use 'approve' o 'reject'" 
+            });
         }
 
         const status = action === 'approve' ? 'approved' : 'rejected';
 
         const updatedReview = await reviewsModel.findByIdAndUpdate(
-            req.params.id,
+            id,
             { status },
-            { new: true }
+            { new: true, runValidators: true }
         ).populate(getClientPopulateOptions())
-            .populate(getPopulateOptions());
+         .populate(getPopulateOptions());
 
         if (!updatedReview) {
-            return res.status(404).json({ message: "Review no encontrada" });
+            return res.status(404).json({ 
+                success: false,
+                message: "Reseña no encontrada" 
+            });
         }
 
-        res.json({ message: "Review moderada exitosamente", review: updatedReview });
+        res.status(200).json({ 
+            success: true,
+            message: "Reseña moderada exitosamente", 
+            data: updatedReview 
+        });
     } catch (error) {
-        res.status(500).json({ message: "Error al moderar la review", error: error.message });
+        console.error('Error en moderateReview:', error);
+        res.status(500).json({ 
+            success: false,
+            message: "Error interno del servidor al moderar la reseña", 
+            error: error.message 
+        });
     }
 };
 
 reviewsController.replyToReview = async (req, res) => {
     try {
+        console.log('=== BACKEND replyToReview DEBUG ===');
+        console.log('Full req.params:', req.params);
+        console.log('Full req.url:', req.url);
+        console.log('Full req.path:', req.path);
+        console.log('Review ID:', req.params.id);
+        console.log('Request body:', req.body);
+        
+        const { id } = req.params;
         const { response } = req.body;
-
-        if (!response || response.trim() === '') {
-            return res.status(400).json({ message: "La respuesta no puede estar vacía" });
+        
+        // Validaciones
+        if (!isValidObjectId(id)) {
+            return res.status(400).json({ 
+                success: false,
+                message: 'ID de reseña no válido' 
+            });
+        }
+        
+        const responseValidation = validateResponse(response);
+        if (!responseValidation.isValid) {
+            return res.status(400).json({
+                success: false,
+                message: responseValidation.error
+            });
         }
 
+        // Verificar que la reseña existe
+        const existingReview = await reviewsModel.findById(id);
+        if (!existingReview) {
+            return res.status(404).json({
+                success: false,
+                message: "Reseña no encontrada"
+            });
+        }
+
+        // Actualizar en la base de datos y poblar los datos relacionados
         const updatedReview = await reviewsModel.findByIdAndUpdate(
-            req.params.id,
-            { response, status: 'replied' },
-            { new: true }
-        ).populate(getClientPopulateOptions())
-            .populate(getPopulateOptions());
-
-        if (!updatedReview) {
-            return res.status(404).json({ message: "Review no encontrada" });
-        }
-
-        res.json({ message: "Respuesta enviada exitosamente", review: updatedReview });
+            id,
+            { 
+                response: responseValidation.value,
+                status: 'replied'
+            },
+            { new: true, runValidators: true }
+        )
+        .populate(getClientPopulateOptions())
+        .populate(getPopulateOptions());
+        
+        console.log('Reseña actualizada exitosamente:', updatedReview);
+        
+        res.status(200).json({ 
+            success: true, 
+            message: 'Respuesta guardada correctamente',
+            data: updatedReview 
+        });
+        
     } catch (error) {
-        res.status(500).json({ message: "Error al responder la review", error: error.message });
+        console.error('Error en replyToReview backend:', error);
+        res.status(500).json({ 
+            success: false,
+            message: "Error interno del servidor al responder la reseña",
+            error: error.message 
+        });
     }
 };
 
 reviewsController.getReviewStats = async (req, res) => {
     try {
-        const stats = await reviewsModel.aggregate([
-            {
-                $group: {
-                    _id: null,
-                    totalReviews: { $sum: 1 },
-                    averageRating: { $avg: "$rating" },
-                    minRating: { $min: "$rating" },
-                    maxRating: { $max: "$rating" }
+        const [stats, ratingDistribution] = await Promise.all([
+            reviewsModel.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        totalReviews: { $sum: 1 },
+                        averageRating: { $avg: "$rating" },
+                        minRating: { $min: "$rating" },
+                        maxRating: { $max: "$rating" }
+                    }
                 }
-            }
+            ]),
+            reviewsModel.aggregate([
+                {
+                    $group: {
+                        _id: "$rating",
+                        count: { $sum: 1 }
+                    }
+                },
+                {
+                    $sort: { _id: 1 }
+                }
+            ])
         ]);
 
-        const ratingDistribution = await reviewsModel.aggregate([
-            {
-                $group: {
-                    _id: "$rating",
-                    count: { $sum: 1 }
-                }
-            },
-            {
-                $sort: { _id: 1 }
-            }
-        ]);
+        const generalStats = stats[0] || {
+            totalReviews: 0,
+            averageRating: 0,
+            minRating: 0,
+            maxRating: 0
+        };
 
-        res.json({
-            generalStats: stats[0] || {
-                totalReviews: 0,
-                averageRating: 0,
-                minRating: 0,
-                maxRating: 0
-            },
-            ratingDistribution
+        // Redondear el promedio a 2 decimales
+        if (generalStats.averageRating) {
+            generalStats.averageRating = Math.round(generalStats.averageRating * 100) / 100;
+        }
+
+        res.status(200).json({
+            success: true,
+            data: {
+                generalStats,
+                ratingDistribution
+            }
         });
     } catch (error) {
-        res.status(500).json({ message: "Error al obtener estadísticas", error: error.message });
+        console.error('Error en getReviewStats:', error);
+        res.status(500).json({ 
+            success: false,
+            message: "Error interno del servidor al obtener estadísticas", 
+            error: error.message 
+        });
     }
 };
 
 reviewsController.getBestRankedProducts = async (req, res) => {
     try {
+        const { limit = 10 } = req.query;
+        
+        const limitNum = parseInt(limit);
+        if (isNaN(limitNum) || limitNum < 1 || limitNum > 50) {
+            return res.status(400).json({
+                success: false,
+                message: "Límite inválido (1-50)"
+            });
+        }
+
         const reviews = await reviewsModel.find()
             .populate(getClientPopulateOptions())
             .populate(getPopulateOptions());
@@ -321,69 +812,22 @@ reviewsController.getBestRankedProducts = async (req, res) => {
                 }
                 return b.averageRating - a.averageRating;
             })
-            .slice(0, 10);
+            .slice(0, limitNum);
 
         console.log('Productos rankeados:', rankedProducts.length);
 
-        res.json(rankedProducts);
+        res.status(200).json({
+            success: true,
+            data: rankedProducts,
+            count: rankedProducts.length
+        });
     } catch (error) {
         console.error('Error completo en getBestRankedProducts:', error);
         res.status(500).json({
-            message: "Error al obtener productos mejor calificados",
-            error: error.message,
-            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            success: false,
+            message: "Error interno del servidor al obtener productos mejor calificados",
+            error: error.message
         });
-    }
-};
-
-reviewsController.replyToReview = async (req, res) => {
-    try {
-        console.log('=== BACKEND replyToReview DEBUG ===');
-        console.log('Full req.params:', req.params);
-        console.log('Full req.url:', req.url);
-        console.log('Full req.path:', req.path);
-        console.log('Review ID:', req.params.reviewId);
-        console.log('Request body:', req.body);
-        
-        const { id: reviewId } = req.params;
-        const { response } = req.body;
-        
-        // Validaciones
-        if (!reviewId) {
-            return res.status(400).json({ message: 'reviewId es requerido' });
-        }
-        
-        if (!response || response.trim() === '') {
-            return res.status(400).json({ message: 'response es requerido' });
-        }
-
-        // Actualizar en la base de datos y poblar los datos relacionados
-        const updatedReview = await reviewsModel.findByIdAndUpdate(
-            reviewId,
-            { 
-                response: response.trim(),
-                status: 'replied'
-            },
-            { new: true }
-        )
-        .populate(getClientPopulateOptions())
-        .populate(getPopulateOptions());
-        
-        if (!updatedReview) {
-            return res.status(404).json({ message: 'Reseña no encontrada' });
-        }
-        
-        console.log('Reseña actualizada exitosamente:', updatedReview);
-        
-        res.json({ 
-            success: true, 
-            message: 'Respuesta guardada correctamente',
-            review: updatedReview 
-        });
-        
-    } catch (error) {
-        console.error('Error en replyToReview backend:', error);
-        res.status(500).json({ message: error.message });
     }
 };
 

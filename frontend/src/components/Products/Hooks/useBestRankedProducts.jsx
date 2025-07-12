@@ -18,7 +18,7 @@ export const useBestRankedProducts = () => {
         setLoading(true);
         // Realiza la petición GET al endpoint de la API que devuelve los productos mejor calificados.
         const response = await fetch(
-          "http://localhost:4000/api/reviews/best-ranked"
+          "http://localhost:4000/api/reviews/bestRanked"
         );
         // Si la respuesta no fue exitosa (ej. error 404 o 500), lanza un error.
         if (!response.ok) {

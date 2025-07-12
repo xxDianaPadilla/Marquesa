@@ -5,7 +5,7 @@ import Footer from "../components/Footer";
 const ShippingInformation = () => {
     return (
         <>
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-white">
+            <div className="min-h-screen bg-white-50">
                 {/* Header de la página */}
                 <Header />
 

@@ -30,6 +30,11 @@ const validateCustomProductData = (data, isUpdate = false) => {
     if (!isUpdate && (!data.selectedItems || data.selectedItems.length === 0)) {
         errors.push("Se requiere al menos un producto seleccionado");
     } else if (data.selectedItems && Array.isArray(data.selectedItems)) {
+        // Validar límite máximo de productos
+        if (data.selectedItems.length > 50) {
+            errors.push("No se pueden seleccionar más de 50 productos");
+        }
+        
         data.selectedItems.forEach((item, index) => {
             if (!item.productId) {
                 errors.push(`El producto en la posición ${index + 1} debe tener un productId válido`);
@@ -39,8 +44,8 @@ const validateCustomProductData = (data, isUpdate = false) => {
             
             // Validamos quantity si está presente
             if (item.quantity !== undefined && item.quantity !== null) {
-                if (typeof item.quantity !== 'number' || item.quantity < 0) {
-                    errors.push(`La cantidad en la posición ${index + 1} debe ser un número positivo`);
+                if (typeof item.quantity !== 'number' || item.quantity < 0 || item.quantity > 1000) {
+                    errors.push(`La cantidad en la posición ${index + 1} debe ser un número entre 0 y 1000`);
                 }
             }
         });
@@ -50,19 +55,23 @@ const validateCustomProductData = (data, isUpdate = false) => {
     if (!isUpdate && (data.totalPrice === undefined || data.totalPrice === null)) {
         errors.push("El precio total es requerido");
     } else if (data.totalPrice !== undefined && data.totalPrice !== null) {
-        if (typeof data.totalPrice !== 'number' || data.totalPrice <= 0) {
-            errors.push("El precio total debe ser un número mayor a 0");
+        if (typeof data.totalPrice !== 'number' || data.totalPrice <= 0 || data.totalPrice > 999999) {
+            errors.push("El precio total debe ser un número entre 0.01 y 999999");
         }
     }
 
     // Validamos referenceImage si está presente
     if (data.referenceImage && typeof data.referenceImage !== 'string') {
         errors.push("La imagen de referencia debe ser una cadena de texto");
+    } else if (data.referenceImage && data.referenceImage.length > 500) {
+        errors.push("La URL de la imagen de referencia es demasiado larga");
     }
 
     // Validamos extraComments si está presente
     if (data.extraComments && typeof data.extraComments !== 'string') {
         errors.push("Los comentarios extra deben ser una cadena de texto");
+    } else if (data.extraComments && data.extraComments.length > 1000) {
+        errors.push("Los comentarios extra no pueden exceder 1000 caracteres");
     }
 
     return errors;
@@ -77,18 +86,34 @@ customProductsController.getCustomProducts = async (req, res) => {
             .populate('selectedItems.productId');
         
         if (customProducts.length === 0) {
-            return res.status(204).json({ message: "No se encontraron productos personalizados" });
+            return res.status(204).json({
+                success: true,
+                message: "No hay productos personalizados disponibles",
+                data: []
+            });
         }
 
         res.status(200).json({
+            success: true,
             message: "Productos personalizados obtenidos exitosamente",
             data: customProducts,
             count: customProducts.length
         });
     } catch (error) {
-        res.status(500).json({ 
-            message: "Error interno del servidor al obtener los productos personalizados", 
-            error: error.message 
+        console.error('Error en getCustomProducts:', error);
+        
+        // Manejar errores específicos de MongoDB
+        if (error.name === 'MongoNetworkError') {
+            return res.status(503).json({
+                success: false,
+                message: "Servicio de base de datos no disponible temporalmente"
+            });
+        }
+        
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor al obtener los productos personalizados",
+            error: error.message
         });
     }
 };
@@ -100,7 +125,10 @@ customProductsController.getCustomProductsById = async (req, res) => {
 
         // Validamos que el ID sea un ObjectId válido
         if (!isValidObjectId(id)) {
-            return res.status(400).json({ message: "El ID proporcionado no es válido" });
+            return res.status(400).json({
+                success: false,
+                message: "El ID proporcionado no es válido"
+            });
         }
 
         const customProduct = await customProductsModel.findById(id)
@@ -109,17 +137,23 @@ customProductsController.getCustomProductsById = async (req, res) => {
             .populate('selectedItems.productId');
         
         if (!customProduct) {
-            return res.status(404).json({ message: "Producto personalizado no encontrado" });
+            return res.status(404).json({
+                success: false,
+                message: "Producto personalizado no encontrado"
+            });
         }
         
         res.status(200).json({
+            success: true,
             message: "Producto personalizado obtenido exitosamente",
             data: customProduct
         });
     } catch (error) {
-        res.status(500).json({ 
-            message: "Error interno del servidor al obtener el producto personalizado", 
-            error: error.message 
+        console.error('Error en getCustomProductsById:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor al obtener el producto personalizado",
+            error: error.message
         });
     }
 };
@@ -132,9 +166,10 @@ customProductsController.createCustomProducts = async (req, res) => {
         // Validamos datos de entrada
         const validationErrors = validateCustomProductData(req.body);
         if (validationErrors.length > 0) {
-            return res.status(400).json({ 
-                message: "Errores de validación", 
-                errors: validationErrors 
+            return res.status(400).json({
+                success: false,
+                message: "Errores de validación",
+                errors: validationErrors
             });
         }
 
@@ -155,26 +190,32 @@ customProductsController.createCustomProducts = async (req, res) => {
             .populate('categoryId')
             .populate('selectedItems.productId');
 
-        res.status(201).json({ 
-            message: "Producto personalizado creado exitosamente", 
-            data: populatedProduct 
+        res.status(201).json({
+            success: true,
+            message: "Producto personalizado creado exitosamente",
+            data: populatedProduct
         });
     } catch (error) {
+        console.error('Error en createCustomProducts:', error);
+        
         if (error.name === 'ValidationError') {
-            return res.status(400).json({ 
-                message: "Error de validación de datos", 
-                errors: Object.values(error.errors).map(err => err.message) 
+            return res.status(400).json({
+                success: false,
+                message: "Error de validación de datos",
+                errors: Object.values(error.errors).map(err => err.message)
             });
         }
         if (error.name === 'CastError') {
-            return res.status(400).json({ 
-                message: "Error en el formato de datos", 
-                error: "Uno o más IDs no tienen el formato correcto" 
+            return res.status(400).json({
+                success: false,
+                message: "Error en el formato de datos",
+                error: "Uno o más IDs no tienen el formato correcto"
             });
         }
-        res.status(500).json({ 
-            message: "Error interno del servidor al crear el producto personalizado", 
-            error: error.message 
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor al crear el producto personalizado",
+            error: error.message
         });
     }
 };
@@ -187,20 +228,27 @@ customProductsController.updateCustomProduct = async (req, res) => {
 
         // Validamos que el ID sea un ObjectId válido
         if (!isValidObjectId(id)) {
-            return res.status(400).json({ message: "El ID proporcionado no es válido" });
+            return res.status(400).json({
+                success: false,
+                message: "El ID proporcionado no es válido"
+            });
         }
 
         // Validamos que al menos un campo esté presente para actualizar
         if (!clientId && !categoryId && !selectedItems && !referenceImage && !extraComments && totalPrice === undefined) {
-            return res.status(400).json({ message: "Se requiere al menos un campo para actualizar" });
+            return res.status(400).json({
+                success: false,
+                message: "Se requiere al menos un campo para actualizar"
+            });
         }
 
         // Validamos datos de entrada para actualización
         const validationErrors = validateCustomProductData(req.body, true);
         if (validationErrors.length > 0) {
-            return res.status(400).json({ 
-                message: "Errores de validación", 
-                errors: validationErrors 
+            return res.status(400).json({
+                success: false,
+                message: "Errores de validación",
+                errors: validationErrors
             });
         }
 
@@ -213,29 +261,38 @@ customProductsController.updateCustomProduct = async (req, res) => {
          .populate('selectedItems.productId');
 
         if (!updatedCustomProduct) {
-            return res.status(404).json({ message: "Producto personalizado no encontrado" });
+            return res.status(404).json({
+                success: false,
+                message: "Producto personalizado no encontrado"
+            });
         }
 
-        res.status(200).json({ 
-            message: "Producto personalizado actualizado exitosamente", 
-            data: updatedCustomProduct 
+        res.status(200).json({
+            success: true,
+            message: "Producto personalizado actualizado exitosamente",
+            data: updatedCustomProduct
         });
     } catch (error) {
+        console.error('Error en updateCustomProduct:', error);
+        
         if (error.name === 'ValidationError') {
-            return res.status(400).json({ 
-                message: "Error de validación de datos", 
-                errors: Object.values(error.errors).map(err => err.message) 
+            return res.status(400).json({
+                success: false,
+                message: "Error de validación de datos",
+                errors: Object.values(error.errors).map(err => err.message)
             });
         }
         if (error.name === 'CastError') {
-            return res.status(400).json({ 
-                message: "Error en el formato de datos", 
-                error: "Uno o más IDs no tienen el formato correcto" 
+            return res.status(400).json({
+                success: false,
+                message: "Error en el formato de datos",
+                error: "Uno o más IDs no tienen el formato correcto"
             });
         }
-        res.status(500).json({ 
-            message: "Error interno del servidor al actualizar el producto personalizado", 
-            error: error.message 
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor al actualizar el producto personalizado",
+            error: error.message
         });
     }
 };
@@ -247,23 +304,32 @@ customProductsController.deleteCustomProducts = async (req, res) => {
 
         // Validamos que el ID sea un ObjectId válido
         if (!isValidObjectId(id)) {
-            return res.status(400).json({ message: "El ID proporcionado no es válido" });
+            return res.status(400).json({
+                success: false,
+                message: "El ID proporcionado no es válido"
+            });
         }
 
         const deletedCustomProducts = await customProductsModel.findByIdAndDelete(id);
         
         if (!deletedCustomProducts) {
-            return res.status(404).json({ message: "Producto personalizado no encontrado" });
+            return res.status(404).json({
+                success: false,
+                message: "Producto personalizado no encontrado"
+            });
         }
         
-        res.status(200).json({ 
+        res.status(200).json({
+            success: true,
             message: "Producto personalizado eliminado exitosamente",
             data: { id: deletedCustomProducts._id }
         });
     } catch (error) {
-        res.status(500).json({ 
-            message: "Error interno del servidor al eliminar el producto personalizado", 
-            error: error.message 
+        console.error('Error en deleteCustomProducts:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor al eliminar el producto personalizado",
+            error: error.message
         });
     }
 };
@@ -275,7 +341,10 @@ customProductsController.getCustomProductsByClient = async (req, res) => {
 
         // Validamos que el clientId sea un ObjectId válido
         if (!isValidObjectId(clientId)) {
-            return res.status(400).json({ message: "El clientId proporcionado no es válido" });
+            return res.status(400).json({
+                success: false,
+                message: "El clientId proporcionado no es válido"
+            });
         }
 
         const customProducts = await customProductsModel.find({ clientId })
@@ -284,18 +353,25 @@ customProductsController.getCustomProductsByClient = async (req, res) => {
             .populate('selectedItems.productId');
         
         if (customProducts.length === 0) {
-            return res.status(204).json({ message: "No se encontraron productos personalizados para este cliente" });
+            return res.status(204).json({
+                success: true,
+                message: "No hay productos personalizados disponibles para este cliente",
+                data: []
+            });
         }
 
         res.status(200).json({
+            success: true,
             message: "Productos personalizados del cliente obtenidos exitosamente",
             data: customProducts,
             count: customProducts.length
         });
     } catch (error) {
-        res.status(500).json({ 
-            message: "Error interno del servidor al obtener los productos personalizados del cliente", 
-            error: error.message 
+        console.error('Error en getCustomProductsByClient:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor al obtener los productos personalizados del cliente",
+            error: error.message
         });
     }
 };
@@ -307,7 +383,10 @@ customProductsController.getCustomProductsByCategory = async (req, res) => {
 
         // Validamos que el categoryId sea un ObjectId válido
         if (!isValidObjectId(categoryId)) {
-            return res.status(400).json({ message: "El categoryId proporcionado no es válido" });
+            return res.status(400).json({
+                success: false,
+                message: "El categoryId proporcionado no es válido"
+            });
         }
 
         const customProducts = await customProductsModel.find({ categoryId })
@@ -316,18 +395,25 @@ customProductsController.getCustomProductsByCategory = async (req, res) => {
             .populate('selectedItems.productId');
         
         if (customProducts.length === 0) {
-            return res.status(204).json({ message: "No se encontraron productos personalizados para esta categoría" });
+            return res.status(204).json({
+                success: true,
+                message: "No hay productos personalizados disponibles para esta categoría",
+                data: []
+            });
         }
 
         res.status(200).json({
+            success: true,
             message: "Productos personalizados de la categoría obtenidos exitosamente",
             data: customProducts,
             count: customProducts.length
         });
     } catch (error) {
-        res.status(500).json({ 
-            message: "Error interno del servidor al obtener los productos personalizados de la categoría", 
-            error: error.message 
+        console.error('Error en getCustomProductsByCategory:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor al obtener los productos personalizados de la categoría",
+            error: error.message
         });
     }
 };
@@ -339,14 +425,20 @@ customProductsController.getProductsSummary = async (req, res) => {
 
         // Validamos que el ID sea un ObjectId válido
         if (!isValidObjectId(id)) {
-            return res.status(400).json({ message: "El ID proporcionado no es válido" });
+            return res.status(400).json({
+                success: false,
+                message: "El ID proporcionado no es válido"
+            });
         }
 
         const customProduct = await customProductsModel.findById(id)
             .populate('selectedItems.productId');
         
         if (!customProduct) {
-            return res.status(404).json({ message: "Producto personalizado no encontrado" });
+            return res.status(404).json({
+                success: false,
+                message: "Producto personalizado no encontrado"
+            });
         }
 
         const totalProducts = customProduct.selectedItems.reduce((total, item) => {
@@ -355,6 +447,7 @@ customProductsController.getProductsSummary = async (req, res) => {
         const uniqueProducts = customProduct.selectedItems.length;
 
         res.status(200).json({
+            success: true,
             message: "Resumen del producto obtenido exitosamente",
             data: {
                 productId: customProduct._id,
@@ -365,9 +458,11 @@ customProductsController.getProductsSummary = async (req, res) => {
             }
         });
     } catch (error) {
-        res.status(500).json({ 
-            message: "Error interno del servidor al obtener el resumen del producto", 
-            error: error.message 
+        console.error('Error en getProductsSummary:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor al obtener el resumen del producto",
+            error: error.message
         });
     }
 };

@@ -107,7 +107,7 @@ const RecoverPassword = () => {
                 <Input
                     name="email"
                     type="email"
-                    placeholder="Correo"
+                    placeholder="Correo electrónico"
                     icon={emailIcon}
                     register={register}
                     validationRules={validationRules.email}

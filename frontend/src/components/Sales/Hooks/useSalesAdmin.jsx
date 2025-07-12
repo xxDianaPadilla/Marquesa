@@ -35,9 +35,9 @@ const useSalesAdmin = () => {
   const updateTrackingStatus = async (saleId, newStatus) => {
     try {
       const response = await fetch(
-        `http://localhost:4000/api/sales/${saleId}/tracking`,
+        `http://localhost:4000/api/sales/${saleId}/trackingStatus`,
         {
-          method: "PUT",
+          method: "PATCH",
           headers: {
             "Content-Type": "application/json",
           },

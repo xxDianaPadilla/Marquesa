@@ -14,34 +14,31 @@ export const useBestRankedProducts = () => {
     // Define una función asíncrona para realizar la llamada a la API.
     const fetchBestRankedProducts = async () => {
       try {
-        // Establece el estado de carga a 'true' antes de iniciar la petición.
         setLoading(true);
-        // Realiza la petición GET al endpoint de la API que devuelve los productos mejor calificados.
         const response = await fetch(
           "http://localhost:4000/api/reviews/bestRanked"
         );
-        // Si la respuesta no fue exitosa (ej. error 404 o 500), lanza un error.
+
         if (!response.ok) {
           throw new Error("Error al obtener productos mejor calificados");
         }
-        // Convierte la respuesta de la API a formato JSON.
-        const data = await response.json();
-        // Mensaje de depuración para ver los datos crudos recibidos en la consola.
-        console.log("Datos recibidos del servidor:", data);
-        // Limita la cantidad de productos a los primeros 5 del array recibido.
-        const limitedProducts = data.slice(0, 5);
-        // Actualiza el estado 'bestProducts' con la lista limitada.
-        setBestProducts(limitedProducts);
-        // Limpia cualquier error previo si la petición actual fue exitosa.
+
+        const responseData = await response.json();
+        console.log("Datos recibidos del servidor:", responseData);
+
+        // Verifica que la respuesta tenga el formato esperado
+        if (responseData.success && Array.isArray(responseData.data)) {
+          const limitedProducts = responseData.data.slice(0, 5);
+          setBestProducts(limitedProducts);
+        } else {
+          throw new Error("Formato de respuesta inválido del servidor");
+        }
+
         setError(null);
       } catch (err) {
-        // Si ocurre un error en el bloque 'try', se captura aquí.
         setError(err.message);
-        // Muestra el error detallado en la consola para facilitar la depuración.
         console.error("Error fetching best ranked products:", err);
       } finally {
-        // El bloque 'finally' se ejecuta siempre, independientemente de si hubo un error o no.
-        // Establece el estado de carga a 'false' para indicar que la operación ha finalizado.
         setLoading(false);
       }
     };

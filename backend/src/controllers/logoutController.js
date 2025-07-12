@@ -1,14 +1,69 @@
-// Se crea un objeto vacío que servirá como controlador para la funcionalidad de logout (cerrar sesión)
-const logoutController = {}; 
+import jsonwebtoken from "jsonwebtoken";
+import { config } from "../config.js";
 
-// Se define el método logout dentro del controlador, utilizando una función asíncrona
+const logoutController = {};
+
 logoutController.logout = async (req, res) => {
-  // Se limpia (elimina) la cookie llamada "authToken", lo que equivale a cerrar la sesión del usuario
-  res.clearCookie("authToken");
+    try {
+        const token = req.cookies.authToken;
+        
+        // Verificar si existe token
+        if (!token) {
+            return res.status(400).json({
+                success: false,
+                message: "No hay sesión activa para cerrar"
+            });
+        }
 
-  // Se responde al cliente con un código de estado 200 (OK) y un mensaje de confirmación en formato JSON
-  res.status(200).json({ message: "Logged out successfully" });
+        // Verificar configuración JWT
+        if (!config.JWT.secret) {
+            console.error("JWT secret no configurado");
+            return res.status(500).json({
+                success: false,
+                message: "Error de configuración del servidor"
+            });
+        }
+
+        // Verificar validez del token antes de cerrar sesión
+        try {
+            const decoded = jsonwebtoken.verify(token, config.JWT.secret);
+            
+            // Validar estructura del token
+            if (!decoded.id || !decoded.userType) {
+                console.log("Token con estructura inválida al cerrar sesión");
+            }
+        } catch (jwtError) {
+            // El token es inválido pero aún así limpiamos la cookie
+            console.log("Token inválido al cerrar sesión:", jwtError.message);
+        }
+
+        // Limpiar cookie de autenticación
+        res.clearCookie("authToken", {
+            httpOnly: false,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax'
+        });
+
+        res.status(200).json({
+            success: true,
+            message: "Sesión cerrada exitosamente"
+        });
+
+    } catch (error) {
+        console.error("Error en logout:", error);
+        
+        // Aún así limpiar la cookie en caso de error
+        res.clearCookie("authToken", {
+            httpOnly: false,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax'
+        });
+
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor"
+        });
+    }
 };
 
-// Se exporta el controlador para poder utilizarlo en otras partes de la aplicación
 export default logoutController;

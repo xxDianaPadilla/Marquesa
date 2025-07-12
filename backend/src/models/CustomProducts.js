@@ -20,7 +20,8 @@ const customProductsSchema = new Schema({
             },
             quantity: {
                 type: Number,
-                required: false
+                required: false,
+                min: 1
             }
         }
     ],
@@ -30,11 +31,13 @@ const customProductsSchema = new Schema({
     },
     extraComments: {
         type: String,
-        required: false
+        required: false,
+        minLength: 10
     },
     totalPrice: {
         type: Number,
-        required: true
+        required: true,
+        min: [0, "El total no puede ser negativo"]
     }
 }, {
     timestamps: true,

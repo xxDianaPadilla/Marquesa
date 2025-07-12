@@ -11,15 +11,137 @@ const emailVerificationController = {};
 const requestCache = new Map();
 const CACHE_DURATION = 30000; // 30 segundos
 
+// Función helper para validar email
+const validateEmail = (email) => {
+    if (!email || typeof email !== 'string') {
+        return { isValid: false, error: "Email es requerido" };
+    }
+    
+    const trimmedEmail = email.trim().toLowerCase();
+    
+    if (trimmedEmail.length === 0) {
+        return { isValid: false, error: "Email no puede estar vacío" };
+    }
+    
+    // Validación de formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+        return { isValid: false, error: "Formato de email no válido" };
+    }
+    
+    if (trimmedEmail.length > 254) {
+        return { isValid: false, error: "Email demasiado largo" };
+    }
+    
+    return { isValid: true, value: trimmedEmail };
+};
+
+// Función helper para validar fullName
+const validateFullName = (fullName) => {
+    if (!fullName || typeof fullName !== 'string') {
+        return { isValid: true, value: null }; // Es opcional
+    }
+    
+    const trimmedName = fullName.trim();
+    
+    if (trimmedName.length > 100) {
+        return { isValid: false, error: "Nombre demasiado largo" };
+    }
+    
+    // Validar caracteres no permitidos
+    const invalidChars = /[<>{}()[\]]/;
+    if (invalidChars.test(trimmedName)) {
+        return { isValid: false, error: "Nombre contiene caracteres no válidos" };
+    }
+    
+    return { isValid: true, value: trimmedName };
+};
+
+// Función helper para validar datos de usuario
+const validateUserData = (userData) => {
+    if (!userData || typeof userData !== 'object') {
+        return { isValid: false, error: "Datos de usuario son requeridos" };
+    }
+
+    const requiredFields = ['fullName', 'phone', 'birthDate', 'address', 'password'];
+    const missingFields = requiredFields.filter(field => !userData[field]);
+    
+    if (missingFields.length > 0) {
+        return { 
+            isValid: false, 
+            error: `Campos requeridos faltantes: ${missingFields.join(', ')}` 
+        };
+    }
+
+    // Validar nombre completo
+    if (typeof userData.fullName !== 'string' || userData.fullName.trim().length < 10) {
+        return { isValid: false, error: "Nombre completo debe tener al menos 10 caracteres" };
+    }
+
+    // Validar teléfono
+    if (typeof userData.phone !== 'string' || userData.phone.trim().length < 8) {
+        return { isValid: false, error: "Teléfono debe tener al menos 8 caracteres" };
+    }
+
+    // Validar fecha de nacimiento
+    const birthDate = new Date(userData.birthDate);
+    if (isNaN(birthDate.getTime())) {
+        return { isValid: false, error: "Fecha de nacimiento no válida" };
+    }
+
+    // Validar que sea mayor de edad (18 años)
+    const today = new Date();
+    const age = today.getFullYear() - birthDate.getFullYear();
+    if (age < 13) {
+        return { isValid: false, error: "Debe ser mayor de 13 años para registrarse" };
+    }
+
+    // Validar dirección
+    if (typeof userData.address !== 'string' || userData.address.trim().length < 10) {
+        return { isValid: false, error: "Dirección debe tener al menos 10 caracteres" };
+    }
+
+    // Validar contraseña
+    if (typeof userData.password !== 'string' || userData.password.length < 8) {
+        return { isValid: false, error: "Contraseña debe tener al menos 8 caracteres" };
+    }
+
+    return { isValid: true };
+};
+
+// Función helper para validar código de verificación
+const validateVerificationCode = (code) => {
+    if (!code || typeof code !== 'string') {
+        return { isValid: false, error: "Código de verificación es requerido" };
+    }
+    
+    const trimmedCode = code.toString().trim();
+    
+    if (!/^\d{6}$/.test(trimmedCode)) {
+        return { isValid: false, error: "Código debe ser exactamente 6 dígitos" };
+    }
+    
+    return { isValid: true, value: trimmedCode };
+};
+
 // Configuración del transportador de email usando nodemailer
 const createTransporter = () => {
-    return nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            user: config.emailUser.user_email,
-            pass: config.emailUser.user_pass
+    try {
+        if (!config.emailUser.user_email || !config.emailUser.user_pass) {
+            throw new Error('Configuración de email incompleta');
         }
-    });
+
+        return nodemailer.createTransporter({
+            service: 'gmail',
+            auth: {
+                user: config.emailUser.user_email,
+                pass: config.emailUser.user_pass
+            }
+        });
+    } catch (error) {
+        console.error('Error creando transportador de email:', error);
+        throw error;
+    }
 };
 
 // Generar código de verificación de 6 dígitos
@@ -115,16 +237,25 @@ emailVerificationController.requestEmailVerification = async (req, res) => {
         console.log('Datos recibidos:', { email, fullName });
         console.log('Timestamp:', new Date().toISOString());
 
-        // Validar que el email esté presente
-        if (!email) {
-            console.log('Email faltante');
+        // Validar email
+        const emailValidation = validateEmail(email);
+        if (!emailValidation.isValid) {
             return res.status(400).json({
                 success: false,
-                message: "El correo electrónico es requerido"
+                message: emailValidation.error
             });
         }
 
-        const emailKey = email.toLowerCase().trim();
+        // Validar fullName si está presente
+        const nameValidation = validateFullName(fullName);
+        if (!nameValidation.isValid) {
+            return res.status(400).json({
+                success: false,
+                message: nameValidation.error
+            });
+        }
+
+        const emailKey = emailValidation.value;
         const now = Date.now();
 
         // Verificar si hay una solicitud reciente para este email
@@ -148,22 +279,41 @@ emailVerificationController.requestEmailVerification = async (req, res) => {
         requestCache.set(emailKey, now);
 
         // Verificar que el cliente no exista ya en la base de datos
-        const existingClient = await clientsModel.findOne({ email: emailKey });
+        let existingClient;
+        try {
+            existingClient = await clientsModel.findOne({ email: emailKey });
+        } catch (dbError) {
+            console.error('Error verificando cliente existente:', dbError);
+            return res.status(503).json({
+                success: false,
+                message: "Servicio de base de datos no disponible temporalmente"
+            });
+        }
+
         if (existingClient) {
             console.log('Email ya registrado:', emailKey);
-            return res.status(400).json({
+            return res.status(409).json({
                 success: false,
                 message: "Este correo electrónico ya está registrado"
             });
         }
 
         // Buscar códigos existentes para este email
-        const existingCodes = await emailVerificationModel.find({ email: emailKey });
-        console.log(`Códigos existentes para ${emailKey}:`, existingCodes.length);
+        let existingCodes;
+        try {
+            existingCodes = await emailVerificationModel.find({ email: emailKey });
+            console.log(`Códigos existentes para ${emailKey}:`, existingCodes.length);
 
-        // Eliminar códigos anteriores para este email
-        const deleteResult = await emailVerificationModel.deleteMany({ email: emailKey });
-        console.log('Códigos eliminados:', deleteResult.deletedCount);
+            // Eliminar códigos anteriores para este email
+            const deleteResult = await emailVerificationModel.deleteMany({ email: emailKey });
+            console.log('Códigos eliminados:', deleteResult.deletedCount);
+        } catch (dbError) {
+            console.error('Error gestionando códigos existentes:', dbError);
+            return res.status(503).json({
+                success: false,
+                message: "Error en el servicio de verificación"
+            });
+        }
 
         // Generar código de verificación
         const verificationCode = generateVerificationCode();
@@ -174,14 +324,22 @@ emailVerificationController.requestEmailVerification = async (req, res) => {
         console.log('Nuevo código generado:', verificationCode);
 
         // Crear nuevo registro de verificación
-        const emailVerification = new emailVerificationModel({
-            email: emailKey,
-            verificationCode,
-            expiresAt
-        });
+        try {
+            const emailVerification = new emailVerificationModel({
+                email: emailKey,
+                verificationCode,
+                expiresAt
+            });
 
-        await emailVerification.save();
-        console.log('Código guardado en BD con ID:', emailVerification._id);
+            await emailVerification.save();
+            console.log('Código guardado en BD con ID:', emailVerification._id);
+        } catch (dbError) {
+            console.error('Error guardando código de verificación:', dbError);
+            return res.status(503).json({
+                success: false,
+                message: "Error guardando código de verificación"
+            });
+        }
 
         // Configurar y enviar email
         try {
@@ -192,9 +350,9 @@ emailVerificationController.requestEmailVerification = async (req, res) => {
                     name: 'Marquesa - Tienda de Regalos',
                     address: config.emailUser.user_email
                 },
-                to: email,
+                to: emailKey,
                 subject: '🌸 Verifica tu correo electrónico - Marquesa',
-                html: getEmailTemplate(verificationCode, fullName)
+                html: getEmailTemplate(verificationCode, nameValidation.value)
             };
 
             const emailResult = await transporter.sendMail(mailOptions);
@@ -202,11 +360,15 @@ emailVerificationController.requestEmailVerification = async (req, res) => {
         } catch (emailError) {
             console.error('Error al enviar email:', emailError);
             // Aún así devolver éxito porque el código se guardó en BD
+            return res.status(502).json({
+                success: false,
+                message: "Error enviando correo de verificación. Inténtalo de nuevo."
+            });
         }
 
         console.log('=== FIN requestEmailVerification ===');
 
-        res.json({
+        res.status(200).json({
             success: true,
             message: "Correo de verificación enviado. Tienes 10 minutos para usar el código"
         });
@@ -232,54 +394,59 @@ emailVerificationController.verifyEmailAndRegister = async (req, res) => {
             userData: userData ? 'presente' : 'ausente'
         });
 
-        // Validar campos requeridos
-        if (!email || !verificationCode || !userData) {
-            console.log('Campos faltantes:', { email: !!email, verificationCode: !!verificationCode, userData: !!userData });
+        // Validar email
+        const emailValidation = validateEmail(email);
+        if (!emailValidation.isValid) {
             return res.status(400).json({
                 success: false,
-                message: "Email, código de verificación y datos de usuario son requeridos"
+                message: emailValidation.error
             });
         }
 
-        // Validar estructura de userData
-        const requiredFields = ['fullName', 'phone', 'birthDate', 'address', 'password'];
-        const missingFields = requiredFields.filter(field => !userData[field]);
-        
-        if (missingFields.length > 0) {
-            console.log('Campos faltantes en userData:', missingFields);
+        // Validar código de verificación
+        const codeValidation = validateVerificationCode(verificationCode);
+        if (!codeValidation.isValid) {
             return res.status(400).json({
                 success: false,
-                message: `Campos requeridos faltantes: ${missingFields.join(', ')}`
+                message: codeValidation.error
             });
         }
 
-        const emailKey = email.toLowerCase().trim();
-        const codeToVerify = verificationCode.toString().trim();
+        // Validar userData
+        const userDataValidation = validateUserData(userData);
+        if (!userDataValidation.isValid) {
+            return res.status(400).json({
+                success: false,
+                message: userDataValidation.error
+            });
+        }
 
-        // Buscar TODOS los códigos para este email (para debugging)
-        const allCodes = await emailVerificationModel.find({ email: emailKey });
-        console.log('Todos los códigos para este email:', allCodes.map(c => ({
-            id: c._id,
-            code: c.verificationCode,
-            expiresAt: c.expiresAt,
-            isUsed: c.isUsed,
-            createdAt: c.createdAt
-        })));
+        const emailKey = emailValidation.value;
+        const codeToVerify = codeValidation.value;
 
         // Buscar código válido y no expirado (el más reciente)
-        const verificationRecord = await emailVerificationModel.findOne({
-            email: emailKey,
-            verificationCode: codeToVerify,
-            expiresAt: { $gt: new Date() },
-            isUsed: false
-        }).sort({ createdAt: -1 }); // Obtener el más reciente
+        let verificationRecord;
+        try {
+            verificationRecord = await emailVerificationModel.findOne({
+                email: emailKey,
+                verificationCode: codeToVerify,
+                expiresAt: { $gt: new Date() },
+                isUsed: false
+            }).sort({ createdAt: -1 }); // Obtener el más reciente
 
-        console.log('Código encontrado para verificación:', verificationRecord ? {
-            id: verificationRecord._id,
-            code: verificationRecord.verificationCode,
-            expiresAt: verificationRecord.expiresAt,
-            isUsed: verificationRecord.isUsed
-        } : 'Ninguno');
+            console.log('Código encontrado para verificación:', verificationRecord ? {
+                id: verificationRecord._id,
+                code: verificationRecord.verificationCode,
+                expiresAt: verificationRecord.expiresAt,
+                isUsed: verificationRecord.isUsed
+            } : 'Ninguno');
+        } catch (dbError) {
+            console.error('Error buscando código de verificación:', dbError);
+            return res.status(503).json({
+                success: false,
+                message: "Error en el servicio de verificación"
+            });
+        }
 
         if (!verificationRecord) {
             return res.status(400).json({
@@ -289,42 +456,90 @@ emailVerificationController.verifyEmailAndRegister = async (req, res) => {
         }
 
         // Verificar nuevamente que el cliente no exista
-        const existingClient = await clientsModel.findOne({ email: emailKey });
+        let existingClient;
+        try {
+            existingClient = await clientsModel.findOne({ email: emailKey });
+        } catch (dbError) {
+            console.error('Error verificando cliente existente:', dbError);
+            return res.status(503).json({
+                success: false,
+                message: "Error verificando datos existentes"
+            });
+        }
+
         if (existingClient) {
-            return res.status(400).json({
+            return res.status(409).json({
                 success: false,
                 message: "Este correo electrónico ya está registrado"
             });
         }
 
         // Hashear contraseña
-        const hashedPassword = await bcryptjs.hash(userData.password, 10);
+        let hashedPassword;
+        try {
+            hashedPassword = await bcryptjs.hash(userData.password, 10);
+        } catch (hashError) {
+            console.error('Error hasheando contraseña:', hashError);
+            return res.status(500).json({
+                success: false,
+                message: "Error procesando datos de seguridad"
+            });
+        }
 
         // Crear nuevo cliente
-        const newClient = new clientsModel({
-            fullName: userData.fullName.trim(),
-            phone: userData.phone.trim(),
-            birthDate: userData.birthDate,
-            email: emailKey,
-            password: hashedPassword,
-            address: userData.address.trim(),
-            favorites: userData.favorites || [],
-            discount: userData.discount || null
-        });
+        try {
+            const newClient = new clientsModel({
+                fullName: userData.fullName.trim(),
+                phone: userData.phone.trim(),
+                birthDate: userData.birthDate,
+                email: emailKey,
+                password: hashedPassword,
+                address: userData.address.trim(),
+                favorites: userData.favorites || [],
+                discount: userData.discount || null
+            });
 
-        await newClient.save();
-        console.log('Cliente creado exitosamente:', newClient._id);
+            await newClient.save();
+            console.log('Cliente creado exitosamente:', newClient._id);
+        } catch (dbError) {
+            console.error('Error creando cliente:', dbError);
+            
+            if (dbError.code === 11000) {
+                return res.status(409).json({
+                    success: false,
+                    message: "Este correo electrónico ya está registrado"
+                });
+            }
+            
+            if (dbError.name === 'ValidationError') {
+                return res.status(400).json({
+                    success: false,
+                    message: "Datos de usuario no válidos",
+                    details: Object.values(dbError.errors).map(err => err.message)
+                });
+            }
+            
+            return res.status(503).json({
+                success: false,
+                message: "Error creando cuenta de usuario"
+            });
+        }
 
         // Marcar código como usado Y eliminar todos los códigos para este email
-        await emailVerificationModel.deleteMany({ email: emailKey });
-        console.log('Todos los códigos eliminados para:', emailKey);
+        try {
+            await emailVerificationModel.deleteMany({ email: emailKey });
+            console.log('Todos los códigos eliminados para:', emailKey);
+        } catch (dbError) {
+            console.error('Error limpiando códigos:', dbError);
+            // No fallar por esto
+        }
 
         // Limpiar cache
         requestCache.delete(emailKey);
 
         console.log('=== FIN verifyEmailAndRegister ===');
 
-        res.json({
+        res.status(201).json({
             success: true,
             message: "Correo verificado y registro completado exitosamente"
         });

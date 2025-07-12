@@ -7,15 +7,93 @@ import { config } from "../config.js";
 
 const passwordResetController = {};
 
+// Función helper para validar email
+const validateEmail = (email) => {
+    if (!email || typeof email !== 'string') {
+        return { isValid: false, error: "Email es requerido" };
+    }
+    
+    const trimmedEmail = email.trim().toLowerCase();
+    
+    if (trimmedEmail.length === 0) {
+        return { isValid: false, error: "Email no puede estar vacío" };
+    }
+    
+    // Validación de formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+        return { isValid: false, error: "Formato de email no válido" };
+    }
+    
+    if (trimmedEmail.length > 254) {
+        return { isValid: false, error: "Email demasiado largo" };
+    }
+    
+    return { isValid: true, value: trimmedEmail };
+};
+
+// Función helper para validar código de verificación
+const validateVerificationCode = (code) => {
+    if (!code || typeof code !== 'string') {
+        return { isValid: false, error: "Código de verificación es requerido" };
+    }
+    
+    const trimmedCode = code.toString().trim();
+    
+    if (!/^\d{6}$/.test(trimmedCode)) {
+        return { isValid: false, error: "Código debe ser exactamente 6 dígitos" };
+    }
+    
+    return { isValid: true, value: trimmedCode };
+};
+
+// Función helper para validar contraseña
+const validatePassword = (password) => {
+    if (!password || typeof password !== 'string') {
+        return { isValid: false, error: "Contraseña es requerida" };
+    }
+    
+    if (password.length < 8) {
+        return { isValid: false, error: "Contraseña debe tener al menos 8 caracteres" };
+    }
+    
+    if (password.length > 128) {
+        return { isValid: false, error: "Contraseña demasiado larga" };
+    }
+    
+    // Validar complejidad de contraseña
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasLowercase = /[a-z]/.test(password);
+    const hasNumbers = /\d/.test(password);
+    
+    if (!hasUppercase || !hasLowercase || !hasNumbers) {
+        return { 
+            isValid: false, 
+            error: "Contraseña debe contener al menos una mayúscula, una minúscula y un número" 
+        };
+    }
+    
+    return { isValid: true };
+};
+
 // Configuración del transportador de email usando nodemailer
 const createTransporter = () => {
-    return nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            user: config.emailUser.user_email,
-            pass: config.emailUser.user_pass
+    try {
+        if (!config.emailUser.user_email || !config.emailUser.user_pass) {
+            throw new Error('Configuración de email incompleta');
         }
-    });
+
+        return nodemailer.createTransporter({
+            service: 'gmail',
+            auth: {
+                user: config.emailUser.user_email,
+                pass: config.emailUser.user_pass
+            }
+        });
+    } catch (error) {
+        console.error('Error creando transportador de email:', error);
+        throw error;
+    }
 };
 
 // Generar código de verificación de 6 dígitos
@@ -97,16 +175,29 @@ passwordResetController.requestPasswordReset = async (req, res) => {
     try {
         const { email } = req.body;
 
-        // Validar que el email esté presente
-        if (!email) {
+        // Validar email
+        const emailValidation = validateEmail(email);
+        if (!emailValidation.isValid) {
             return res.status(400).json({
                 success: false,
-                message: "El correo electrónico es requerido"
+                message: emailValidation.error
             });
         }
 
+        const emailKey = emailValidation.value;
+
         // Verificar que el cliente existe en la base de datos
-        const client = await clientsModel.findOne({ email: email.toLowerCase().trim() });
+        let client;
+        try {
+            client = await clientsModel.findOne({ email: emailKey });
+        } catch (dbError) {
+            console.error('Error verificando cliente:', dbError);
+            return res.status(503).json({
+                success: false,
+                message: "Servicio de base de datos no disponible temporalmente"
+            });
+        }
+
         if (!client) {
             return res.status(404).json({
                 success: false,
@@ -120,33 +211,49 @@ passwordResetController.requestPasswordReset = async (req, res) => {
         // Calcular tiempo de expiración (5 minutos)
         const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-        // Eliminar códigos anteriores para este email
-        await passwordResetModel.deleteMany({ email: email.toLowerCase().trim() });
+        try {
+            // Eliminar códigos anteriores para este email
+            await passwordResetModel.deleteMany({ email: emailKey });
 
-        // Crear nuevo registro de recuperación
-        const passwordReset = new passwordResetModel({
-            email: email.toLowerCase().trim(),
-            verificationCode,
-            expiresAt
-        });
+            // Crear nuevo registro de recuperación
+            const passwordReset = new passwordResetModel({
+                email: emailKey,
+                verificationCode,
+                expiresAt
+            });
 
-        await passwordReset.save();
+            await passwordReset.save();
+        } catch (dbError) {
+            console.error('Error guardando código de reset:', dbError);
+            return res.status(503).json({
+                success: false,
+                message: "Error en el servicio de recuperación"
+            });
+        }
 
         // Configurar y enviar email
-        const transporter = createTransporter();
-        const mailOptions = {
-            from: {
-                name: 'Marquesa - Tienda de Regalos',
-                address: config.emailUser.user_email
-            },
-            to: email,
-            subject: '🔐 Código de Recuperación de Contraseña - Marquesa',
-            html: getEmailTemplate(verificationCode)
-        };
+        try {
+            const transporter = createTransporter();
+            const mailOptions = {
+                from: {
+                    name: 'Marquesa - Tienda de Regalos',
+                    address: config.emailUser.user_email
+                },
+                to: emailKey,
+                subject: '🔐 Código de Recuperación de Contraseña - Marquesa',
+                html: getEmailTemplate(verificationCode)
+            };
 
-        await transporter.sendMail(mailOptions);
+            await transporter.sendMail(mailOptions);
+        } catch (emailError) {
+            console.error('Error enviando email de recuperación:', emailError);
+            return res.status(502).json({
+                success: false,
+                message: "Error enviando correo de recuperación. Inténtalo de nuevo."
+            });
+        }
 
-        res.json({
+        res.status(200).json({
             success: true,
             message: "Correo enviado, tienes 5 minutos para usar el código"
         });
@@ -165,21 +272,43 @@ passwordResetController.verifyCode = async (req, res) => {
     try {
         const { email, verificationCode } = req.body;
 
-        // Validar campos requeridos
-        if (!email || !verificationCode) {
+        // Validar email
+        const emailValidation = validateEmail(email);
+        if (!emailValidation.isValid) {
             return res.status(400).json({
                 success: false,
-                message: "Email y código de verificación son requeridos"
+                message: emailValidation.error
             });
         }
 
+        // Validar código de verificación
+        const codeValidation = validateVerificationCode(verificationCode);
+        if (!codeValidation.isValid) {
+            return res.status(400).json({
+                success: false,
+                message: codeValidation.error
+            });
+        }
+
+        const emailKey = emailValidation.value;
+        const codeToVerify = codeValidation.value;
+
         // Buscar código válido y no expirado
-        const resetRecord = await passwordResetModel.findOne({
-            email: email.toLowerCase().trim(),
-            verificationCode,
-            expiresAt: { $gt: new Date() },
-            isUsed: false
-        });
+        let resetRecord;
+        try {
+            resetRecord = await passwordResetModel.findOne({
+                email: emailKey,
+                verificationCode: codeToVerify,
+                expiresAt: { $gt: new Date() },
+                isUsed: false
+            });
+        } catch (dbError) {
+            console.error('Error verificando código de reset:', dbError);
+            return res.status(503).json({
+                success: false,
+                message: "Error en el servicio de verificación"
+            });
+        }
 
         if (!resetRecord) {
             return res.status(400).json({
@@ -188,7 +317,7 @@ passwordResetController.verifyCode = async (req, res) => {
             });
         }
 
-        res.json({
+        res.status(200).json({
             success: true,
             message: "Código verificado correctamente"
         });
@@ -207,21 +336,52 @@ passwordResetController.updatePassword = async (req, res) => {
     try {
         const { email, verificationCode, newPassword } = req.body;
 
-        // Validar campos requeridos
-        if (!email || !verificationCode || !newPassword) {
+        // Validar email
+        const emailValidation = validateEmail(email);
+        if (!emailValidation.isValid) {
             return res.status(400).json({
                 success: false,
-                message: "Todos los campos son requeridos"
+                message: emailValidation.error
             });
         }
 
+        // Validar código de verificación
+        const codeValidation = validateVerificationCode(verificationCode);
+        if (!codeValidation.isValid) {
+            return res.status(400).json({
+                success: false,
+                message: codeValidation.error
+            });
+        }
+
+        // Validar nueva contraseña
+        const passwordValidation = validatePassword(newPassword);
+        if (!passwordValidation.isValid) {
+            return res.status(400).json({
+                success: false,
+                message: passwordValidation.error
+            });
+        }
+
+        const emailKey = emailValidation.value;
+        const codeToVerify = codeValidation.value;
+
         // Verificar que el código sigue siendo válido
-        const resetRecord = await passwordResetModel.findOne({
-            email: email.toLowerCase().trim(),
-            verificationCode,
-            expiresAt: { $gt: new Date() },
-            isUsed: false
-        });
+        let resetRecord;
+        try {
+            resetRecord = await passwordResetModel.findOne({
+                email: emailKey,
+                verificationCode: codeToVerify,
+                expiresAt: { $gt: new Date() },
+                isUsed: false
+            });
+        } catch (dbError) {
+            console.error('Error verificando código de reset:', dbError);
+            return res.status(503).json({
+                success: false,
+                message: "Error en el servicio de verificación"
+            });
+        }
 
         if (!resetRecord) {
             return res.status(400).json({
@@ -231,7 +391,17 @@ passwordResetController.updatePassword = async (req, res) => {
         }
 
         // Verificar que el cliente existe
-        const client = await clientsModel.findOne({ email: email.toLowerCase().trim() });
+        let client;
+        try {
+            client = await clientsModel.findOne({ email: emailKey });
+        } catch (dbError) {
+            console.error('Error verificando cliente:', dbError);
+            return res.status(503).json({
+                success: false,
+                message: "Error verificando usuario"
+            });
+        }
+
         if (!client) {
             return res.status(404).json({
                 success: false,
@@ -240,19 +410,41 @@ passwordResetController.updatePassword = async (req, res) => {
         }
 
         // Hashear nueva contraseña
-        const hashedPassword = await bcryptjs.hash(newPassword, 10);
+        let hashedPassword;
+        try {
+            hashedPassword = await bcryptjs.hash(newPassword, 10);
+        } catch (hashError) {
+            console.error('Error hasheando nueva contraseña:', hashError);
+            return res.status(500).json({
+                success: false,
+                message: "Error procesando nueva contraseña"
+            });
+        }
 
         // Actualizar contraseña del cliente
-        await clientsModel.findByIdAndUpdate(client._id, {
-            password: hashedPassword
-        });
+        try {
+            await clientsModel.findByIdAndUpdate(client._id, {
+                password: hashedPassword
+            });
+        } catch (dbError) {
+            console.error('Error actualizando contraseña:', dbError);
+            return res.status(503).json({
+                success: false,
+                message: "Error actualizando contraseña"
+            });
+        }
 
         // Marcar código como usado
-        await passwordResetModel.findByIdAndUpdate(resetRecord._id, {
-            isUsed: true
-        });
+        try {
+            await passwordResetModel.findByIdAndUpdate(resetRecord._id, {
+                isUsed: true
+            });
+        } catch (dbError) {
+            console.error('Error marcando código como usado:', dbError);
+            // No fallar por esto
+        }
 
-        res.json({
+        res.status(200).json({
             success: true,
             message: "Contraseña actualizada correctamente"
         });

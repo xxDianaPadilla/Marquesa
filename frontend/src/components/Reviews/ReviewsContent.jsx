@@ -199,21 +199,7 @@ const ReviewsContent = ({
             )}
 
             {/* Estado vacío - Responsive */}
-            {reviews.length === 0 && !loading && !error && (
-                <div className="p-4 sm:p-8 text-center">
-                    <div className="text-gray-400 mb-4">
-                        <svg className="w-12 h-12 sm:w-16 sm:h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                        </svg>
-                    </div>
-                    <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                        No hay reseñas disponibles
-                    </h3>
-                    <p className="text-gray-500 text-sm" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                        Las reseñas de tus productos aparecerán aquí cuando los clientes las envíen.
-                    </p>
-                </div>
-            )}
+            
         </div>
     );
 };

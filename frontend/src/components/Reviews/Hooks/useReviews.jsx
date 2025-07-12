@@ -8,19 +8,73 @@ export const useReviews = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    // Función helper para obtener el nombre del cliente
+    const getClientName = (review) => {
+        if (!review.clientId) return 'Cliente no disponible';
+        if (typeof review.clientId === 'string') return 'Cliente';
+        return review.clientId.fullName || review.clientId.name || 'Cliente sin nombre';
+    };
+
+    // Función para obtener el nombre del producto
+    const getProductName = (review) => {
+        if (!review.products || review.products.length === 0) {
+            return review.productName || 'Sin producto';
+        }
+
+        const firstProduct = review.products[0];
+        if (firstProduct.itemType === 'custom') {
+            return 'Producto personalizado';
+        } else {
+            return firstProduct.itemId?.name || 'Producto';
+        }
+    };
+
     useEffect(() => {
         const fetchReviews = async () => {
             try {
                 setLoading(true);
+                setError(null);
+                
+                console.log('=== Fetch Reviews Debug ===');
+                console.log('Iniciando solicitud a /api/reviews');
+                
                 const response = await fetch('http://localhost:4000/api/reviews');
+                
+                console.log('Response status:', response.status);
+                console.log('Response ok:', response.ok);
+                
                 if (!response.ok) {
-                    throw new Error('Error al obtener las reseñas');
+                    throw new Error(`HTTP ${response.status}: Error al obtener las reseñas`);
                 }
+                
                 const data = await response.json();
-                setReviews(data);
+                console.log('Data received:', data);
+                console.log('Data type:', typeof data);
+                console.log('Is array:', Array.isArray(data));
+                
+                // Verificar si la respuesta es un array directo o tiene estructura de éxito
+                let reviewsArray = [];
+                
+                if (Array.isArray(data)) {
+                    reviewsArray = data;
+                } else if (data.success && Array.isArray(data.data)) {
+                    reviewsArray = data.data;
+                } else if (data.data && Array.isArray(data.data)) {
+                    reviewsArray = data.data;
+                } else {
+                    console.warn('Formato de datos inesperado:', data);
+                    reviewsArray = [];
+                }
+                
+                console.log('Reviews array final:', reviewsArray);
+                console.log('Total reviews:', reviewsArray.length);
+                
+                setReviews(reviewsArray);
                 setError(null);
             } catch (error) {
+                console.error('Error fetching reviews:', error);
                 setError(error.message);
+                setReviews([]); // Fallback a array vacío
             } finally {
                 setLoading(false);
             }
@@ -28,7 +82,8 @@ export const useReviews = () => {
 
         fetchReviews();
     }, []);
-// Función para eliminar una reseña
+
+    // Función para eliminar una reseña
     const deleteReview = async (reviewId) => {
         try {
             console.log('=== FRONTEND deleteReview DEBUG ===');
@@ -76,7 +131,8 @@ export const useReviews = () => {
             throw error;
         }
     };
-// Función para renderizar estrellas de calificación
+
+    // Función para responder a una reseña
     const replyToReview = async (reviewId, replyText) => {
         try {
             console.log('=== FRONTEND replyToReview DEBUG ===');
@@ -124,10 +180,10 @@ export const useReviews = () => {
             console.log('Success response:', data);
 
             // Actualizar estado local con la respuesta del servidor
-            if (data.review) {
+            if (data.success && data.data) {
                 setReviews(prev => prev.map(review =>
                     review._id === reviewId
-                        ? data.review
+                        ? data.data
                         : review
                 ));
             } else {
@@ -142,6 +198,77 @@ export const useReviews = () => {
 
         } catch (error) {
             console.error('Error en replyToReview frontend:', error);
+            throw error;
+        }
+    };
+
+    // Función para moderar una reseña
+    const moderateReview = async (reviewId, action) => {
+        try {
+            console.log('=== FRONTEND moderateReview DEBUG ===');
+            console.log('Review ID:', reviewId);
+            console.log('Action:', action);
+            
+            if (!reviewId) {
+                throw new Error('reviewId es requerido');
+            }
+            
+            if (!action || !['approve', 'reject'].includes(action)) {
+                throw new Error('action debe ser "approve" o "reject"');
+            }
+
+            const requestBody = { action };
+            console.log('Request body:', JSON.stringify(requestBody));
+
+            const response = await fetch(`http://localhost:4000/api/reviews/${reviewId}/moderate`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody),
+            });
+
+            console.log('Response status:', response.status);
+            console.log('Response ok:', response.ok);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.log('Error response text:', errorText);
+                
+                let errorData;
+                try {
+                    errorData = JSON.parse(errorText);
+                } catch (e) {
+                    console.log('Error parsing JSON:', e);
+                    errorData = { message: errorText || `Error HTTP ${response.status}` };
+                }
+                
+                throw new Error(errorData.message || `Error HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('Success response:', data);
+
+            // Actualizar estado local
+            const newStatus = action === 'approve' ? 'approved' : 'rejected';
+            if (data.success && data.data) {
+                setReviews(prev => prev.map(review =>
+                    review._id === reviewId
+                        ? data.data
+                        : review
+                ));
+            } else {
+                setReviews(prev => prev.map(review =>
+                    review._id === reviewId
+                        ? { ...review, status: newStatus }
+                        : review
+                ));
+            }
+
+            return data;
+
+        } catch (error) {
+            console.error('Error en moderateReview frontend:', error);
             throw error;
         }
     };
@@ -327,19 +454,6 @@ export const useReviews = () => {
         return sorted;
     };
 
-    const getProductName = (review) => {
-        if (!review.products || review.products.length === 0) {
-            return review.productName || 'Sin producto';
-        }
-
-        const firstProduct = review.products[0];
-        if (firstProduct.itemType === 'custom') {
-            return 'Producto personalizado';
-        } else {
-            return firstProduct.itemId?.name || 'Producto';
-        }
-    };
-
     // Función para obtener productos únicos de las reseñas
     const getUniqueProducts = () => {
         const products = new Set();
@@ -360,11 +474,13 @@ export const useReviews = () => {
         error,
         deleteReview,
         replyToReview,
+        moderateReview,
         updateReview,
         getReviewStats,
         filterReviews,
         sortReviews,
         getUniqueProducts,
-        getProductName
+        getProductName,
+        getClientName
     };
 };

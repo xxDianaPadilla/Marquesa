@@ -134,6 +134,7 @@ const getClientPopulateOptions = () => ({
     select: 'fullName email phone profilePicture'
 });
 
+// CORREGIDO: Devolver array directo para compatibilidad con frontend
 reviewsController.getReviews = async (req, res) => {
     try {
         const { page = 1, limit = 10, status, rating } = req.query;
@@ -184,18 +185,8 @@ reviewsController.getReviews = async (req, res) => {
 
         console.log('Reviews encontradas:', reviews.length);
 
-        res.status(200).json({
-            success: true,
-            data: reviews,
-            pagination: {
-                currentPage: pageNum,
-                totalPages: Math.ceil(totalCount / limitNum),
-                totalItems: totalCount,
-                itemsPerPage: limitNum,
-                hasNextPage: skip + limitNum < totalCount,
-                hasPrevPage: pageNum > 1
-            }
-        });
+        // CORREGIDO: Devolver array directo para compatibilidad
+        res.status(200).json(reviews);
     } catch (error) {
         console.error('Error en getReviews:', error);
         res.status(500).json({ 
@@ -647,9 +638,10 @@ reviewsController.replyToReview = async (req, res) => {
     }
 };
 
+// CORREGIDO: Devolver estadísticas en formato simple para compatibilidad
 reviewsController.getReviewStats = async (req, res) => {
     try {
-        const [stats, ratingDistribution] = await Promise.all([
+        const [generalStats, ratingDistribution] = await Promise.all([
             reviewsModel.aggregate([
                 {
                     $group: {
@@ -674,7 +666,7 @@ reviewsController.getReviewStats = async (req, res) => {
             ])
         ]);
 
-        const generalStats = stats[0] || {
+        const stats = generalStats[0] || {
             totalReviews: 0,
             averageRating: 0,
             minRating: 0,
@@ -682,16 +674,23 @@ reviewsController.getReviewStats = async (req, res) => {
         };
 
         // Redondear el promedio a 2 decimales
-        if (generalStats.averageRating) {
-            generalStats.averageRating = Math.round(generalStats.averageRating * 100) / 100;
+        if (stats.averageRating) {
+            stats.averageRating = Math.round(stats.averageRating * 100) / 100;
         }
 
+        // Crear distribución completa
+        const fullDistribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+        ratingDistribution.forEach(item => {
+            fullDistribution[item._id] = item.count;
+        });
+
+        // CORREGIDO: Devolver formato simple para compatibilidad
         res.status(200).json({
-            success: true,
-            data: {
-                generalStats,
-                ratingDistribution
-            }
+            totalReviews: stats.totalReviews,
+            averageRating: stats.averageRating,
+            minRating: stats.minRating,
+            maxRating: stats.maxRating,
+            ratingDistribution: fullDistribution
         });
     } catch (error) {
         console.error('Error en getReviewStats:', error);

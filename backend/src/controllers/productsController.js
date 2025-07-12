@@ -503,11 +503,20 @@ productsController.updateProducts = async (req, res) => {
                     message: nameValidation.error
                 });
             }
-            if (duplicateProduct) {
-                return res.status(409).json({
-                    success: false,
-                    message: "Ya existe otro producto con este nombre"
+            
+            // Verificar duplicados solo si el nombre es diferente al actual
+            if (nameValidation.value !== existingProduct.name) {
+                const duplicateProduct = await productsModel.findOne({
+                    name: nameValidation.value,
+                    _id: { $ne: productId } // Excluir el producto actual
                 });
+                
+                if (duplicateProduct) {
+                    return res.status(409).json({
+                        success: false,
+                        message: "Ya existe otro producto con este nombre"
+                    });
+                }
             }
             
             updateData.name = nameValidation.value;

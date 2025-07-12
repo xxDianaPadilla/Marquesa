@@ -5,7 +5,7 @@ import Footer from "../components/Footer";
 const ConditionsPromotions = () => {
     return (
         <>
-            <div className="min-h-screen bg-gradient-to-br from-rose-50 via-pink-50 to-white">
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-white">
                 {/* Header de la página */}
                 <Header />
 
@@ -16,34 +16,37 @@ const ConditionsPromotions = () => {
                         {/* Decoración superior */}
                         <div className="flex justify-center mb-6">
                             <div className="flex space-x-2">
-                                <div className="w-3 h-3 bg-rose-300 rounded-full animate-pulse"></div>
-                                <div className="w-3 h-3 bg-pink-400 rounded-full animate-pulse delay-75"></div>
-                                <div className="w-3 h-3 bg-rose-300 rounded-full animate-pulse delay-150"></div>
+                                <div className="w-3 h-3 rounded-full animate-pulse" style={{ backgroundColor: '#FDB4B7' }}></div>
+                                <div className="w-3 h-3 rounded-full animate-pulse delay-75" style={{ backgroundColor: '#F2C6C2' }}></div>
+                                <div className="w-3 h-3 rounded-full animate-pulse delay-150" style={{ backgroundColor: '#FDB4B7' }}></div>
                             </div>
                         </div>
 
                         <h1
-                            className="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent mb-6 px-4"
-                            style={{ fontFamily: 'Poppins, sans-serif' }}
+                            className="text-3xl sm:text-4xl lg:text-5xl font-bold bg-clip-text text-transparent mb-6 px-4"
+                            style={{ 
+                                fontFamily: 'Poppins, sans-serif',
+                                backgroundImage: 'linear-gradient(to right, #FF6A5F, #FDB4B7)'
+                            }}
                         >
                             Condiciones de Ofertas y Promociones
                         </h1>
 
                         {/* Línea decorativa */}
-                        <div className="w-24 h-1 bg-gradient-to-r from-rose-400 to-pink-400 mx-auto rounded-full mb-8"></div>
+                        <div className="w-24 h-1 mx-auto rounded-full mb-8" style={{ background: 'linear-gradient(to right, #F2C6C2, #FADDDD)' }}></div>
 
                         {/* Descripción introductoria */}
-                        <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-rose-100 p-8 sm:p-10 max-w-4xl mx-auto">
+                        <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl p-8 sm:p-10 max-w-4xl mx-auto" style={{ borderColor: '#FADDDD', borderWidth: '1px' }}>
                             <div className="flex items-center justify-center mb-6">
-                                <div className="w-16 h-16 bg-gradient-to-br from-rose-400 to-pink-500 rounded-full flex items-center justify-center shadow-lg">
+                                <div className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg" style={{ background: 'linear-gradient(to bottom right, #F2C6C2, #FDB4B7)' }}>
                                     <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
                                         <path fillRule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732L14.146 12.8l-1.179 4.456a1 1 0 01-1.934 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732L9.854 7.2l1.179-4.456A1 1 0 0112 2z" clipRule="evenodd" />
                                     </svg>
                                 </div>
                             </div>
                             <p
-                                className="text-gray-700 text-lg sm:text-xl leading-relaxed text-center"
-                                style={{ fontFamily: 'Poppins, sans-serif' }}
+                                className="text-lg sm:text-xl leading-relaxed text-center"
+                                style={{ fontFamily: 'Poppins, sans-serif', color: '#999999' }}
                             >
                                 Las ofertas o promociones que se publiquen a través de nuestras redes sociales o sitio web están sujetas a los siguientes términos:
                             </p>
@@ -54,14 +57,14 @@ const ConditionsPromotions = () => {
                     <div className="space-y-8 mb-12">
                         
                         {/* Tarjeta principal con todas las condiciones */}
-                        <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-rose-100 p-8 sm:p-10 lg:p-12 hover:shadow-2xl transition-all duration-300">
+                        <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl p-8 sm:p-10 lg:p-12 hover:shadow-2xl transition-all duration-300" style={{ borderColor: '#FADDDD', borderWidth: '1px' }}>
                             <div className="text-center mb-8">
-                                <div className="w-20 h-20 bg-gradient-to-br from-pink-400 to-rose-500 rounded-full flex items-center justify-center shadow-lg mx-auto mb-6">
+                                <div className="w-20 h-20 rounded-full flex items-center justify-center shadow-lg mx-auto mb-6" style={{ background: 'linear-gradient(to bottom right, #FADDDD, #F2C6C2)' }}>
                                     <svg className="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 20 20">
                                         <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
                                     </svg>
                                 </div>
-                                <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                <h2 className="text-2xl sm:text-3xl font-bold mb-4" style={{ fontFamily: 'Poppins, sans-serif', color: '#3C3550' }}>
                                     Términos de nuestras promociones
                                 </h2>
                             </div>
@@ -70,16 +73,16 @@ const ConditionsPromotions = () => {
                             <div className="grid md:grid-cols-2 gap-6">
                                 
                                 {/* Condición 1 */}
-                                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6 border border-blue-200 hover:shadow-lg transition-all duration-300">
+                                <div className="rounded-2xl p-6 hover:shadow-lg transition-all duration-300" style={{ backgroundColor: '#BEF7FF', borderColor: '#CCCCCC', borderWidth: '1px' }}>
                                     <div className="flex items-start space-x-4">
-                                        <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
+                                        <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-md flex-shrink-0" style={{ backgroundColor: '#3C3550' }}>
                                             <span className="text-white text-lg font-bold">1</span>
                                         </div>
                                         <div>
-                                            <h3 className="text-blue-800 font-bold text-lg mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                            <h3 className="font-bold text-lg mb-2" style={{ fontFamily: 'Poppins, sans-serif', color: '#000000' }}>
                                                 Vigencia limitada
                                             </h3>
-                                            <p className="text-gray-700 text-base leading-relaxed" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                            <p className="text-base leading-relaxed" style={{ fontFamily: 'Poppins, sans-serif', color: '#999999' }}>
                                                 Aplican únicamente dentro del período de vigencia especificado.
                                             </p>
                                         </div>
@@ -87,16 +90,16 @@ const ConditionsPromotions = () => {
                                 </div>
 
                                 {/* Condición 2 */}
-                                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl p-6 border border-purple-200 hover:shadow-lg transition-all duration-300">
+                                <div className="rounded-2xl p-6 hover:shadow-lg transition-all duration-300" style={{ backgroundColor: '#FADDDD', borderColor: '#CCCCCC', borderWidth: '1px' }}>
                                     <div className="flex items-start space-x-4">
-                                        <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
+                                        <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-md flex-shrink-0" style={{ backgroundColor: '#3C3550' }}>
                                             <span className="text-white text-lg font-bold">2</span>
                                         </div>
                                         <div>
-                                            <h3 className="text-purple-800 font-bold text-lg mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                            <h3 className="font-bold text-lg mb-2" style={{ fontFamily: 'Poppins, sans-serif', color: '#000000' }}>
                                                 No acumulables
                                             </h3>
-                                            <p className="text-gray-700 text-base leading-relaxed" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                            <p className="text-base leading-relaxed" style={{ fontFamily: 'Poppins, sans-serif', color: '#999999' }}>
                                                 No son acumulables con otras promociones.
                                             </p>
                                         </div>
@@ -104,16 +107,16 @@ const ConditionsPromotions = () => {
                                 </div>
 
                                 {/* Condición 3 */}
-                                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl p-6 border border-green-200 hover:shadow-lg transition-all duration-300">
+                                <div className="rounded-2xl p-6 hover:shadow-lg transition-all duration-300" style={{ backgroundColor: '#F2C6C2', borderColor: '#CCCCCC', borderWidth: '1px' }}>
                                     <div className="flex items-start space-x-4">
-                                        <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
+                                        <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-md flex-shrink-0" style={{ backgroundColor: '#3C3550' }}>
                                             <span className="text-white text-lg font-bold">3</span>
                                         </div>
                                         <div>
-                                            <h3 className="text-green-800 font-bold text-lg mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                            <h3 className="font-bold text-lg mb-2" style={{ fontFamily: 'Poppins, sans-serif', color: '#000000' }}>
                                                 Sujetas a disponibilidad
                                             </h3>
-                                            <p className="text-gray-700 text-base leading-relaxed" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                            <p className="text-base leading-relaxed" style={{ fontFamily: 'Poppins, sans-serif', color: '#999999' }}>
                                                 Están sujetas a disponibilidad de producto y zonas de cobertura.
                                             </p>
                                         </div>
@@ -121,16 +124,16 @@ const ConditionsPromotions = () => {
                                 </div>
 
                                 {/* Condición 4 */}
-                                <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl p-6 border border-orange-200 hover:shadow-lg transition-all duration-300">
+                                <div className="rounded-2xl p-6 hover:shadow-lg transition-all duration-300" style={{ backgroundColor: '#FDB4B7', borderColor: '#CCCCCC', borderWidth: '1px' }}>
                                     <div className="flex items-start space-x-4">
-                                        <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
+                                        <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-md flex-shrink-0" style={{ backgroundColor: '#3C3550' }}>
                                             <span className="text-white text-lg font-bold">4</span>
                                         </div>
                                         <div>
-                                            <h3 className="text-orange-800 font-bold text-lg mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                            <h3 className="font-bold text-lg mb-2" style={{ fontFamily: 'Poppins, sans-serif', color: '#000000' }}>
                                                 Restricciones de entrega
                                             </h3>
-                                            <p className="text-gray-700 text-base leading-relaxed" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                            <p className="text-base leading-relaxed" style={{ fontFamily: 'Poppins, sans-serif', color: '#999999' }}>
                                                 No aplican para entregas fuera de área o en días feriados, salvo que se indique lo contrario.
                                             </p>
                                         </div>
@@ -140,7 +143,7 @@ const ConditionsPromotions = () => {
                         </div>
 
                         {/* Nota importante */}
-                        <div className="bg-gradient-to-r from-yellow-400 to-orange-400 rounded-3xl shadow-xl p-8 sm:p-10">
+                        <div className="rounded-3xl shadow-xl p-8 sm:p-10" style={{ background: 'linear-gradient(to right, #FF6A5F, #FDB4B7)' }}>
                             <div className="flex items-start space-x-6">
                                 <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
                                     <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -159,7 +162,7 @@ const ConditionsPromotions = () => {
                         </div>
 
                         {/* Mensaje final */}
-                        <div className="bg-gradient-to-r from-rose-500 to-pink-500 rounded-3xl shadow-xl p-8 sm:p-10 text-center">
+                        <div className="rounded-3xl shadow-xl p-8 sm:p-10 text-center" style={{ background: 'linear-gradient(to right, #FDB4B7, #F2C6C2)' }}>
                             <div className="flex justify-center mb-6">
                                 <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
                                     <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">

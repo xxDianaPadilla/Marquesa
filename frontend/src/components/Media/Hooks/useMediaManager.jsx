@@ -24,7 +24,7 @@ export const useMediaManager = () => {
     // Función utilitaria para reintentos con mejor manejo de errores
     const fetchWithRetry = useCallback(async (url, options = {}, maxRetries = 3) => {
         let lastError;
-        
+
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
             try {
                 const response = await fetch(url, {
@@ -35,7 +35,7 @@ export const useMediaManager = () => {
 
                 // Obtener texto de respuesta para debugging
                 const responseText = await response.text();
-                
+
                 if (!response.ok) {
                     // Intentar parsear como JSON para obtener error específico
                     let errorMessage = `Error ${response.status}: ${response.statusText}`;
@@ -52,7 +52,7 @@ export const useMediaManager = () => {
                             errorMessage = responseText;
                         }
                     }
-                    
+
                     console.error('Error Response:', {
                         status: response.status,
                         statusText: response.statusText,
@@ -60,7 +60,7 @@ export const useMediaManager = () => {
                         url: url,
                         method: options.method || 'GET'
                     });
-                    
+
                     throw new Error(errorMessage);
                 }
 
@@ -77,7 +77,7 @@ export const useMediaManager = () => {
                 }
             } catch (error) {
                 lastError = error;
-                
+
                 // Si es ECONNRESET y no es el último intento, reintentar
                 if ((error.code === 'ECONNRESET' || error.name === 'TypeError') && attempt < maxRetries) {
                     console.log(`Reintentando... Intento ${attempt + 1}/${maxRetries}`);
@@ -85,11 +85,11 @@ export const useMediaManager = () => {
                     await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
                     continue;
                 }
-                
+
                 throw error;
             }
         }
-        
+
         throw lastError;
     }, []);
 
@@ -99,7 +99,7 @@ export const useMediaManager = () => {
 
         // Filtrar por tipo
         if (selectedType !== 'todos') {
-            filtered = filtered.filter(item => item.type === selectedType);
+            filtered = filtered.filter(item => item && item.type === selectedType);
         }
 
         // Filtrar por término de búsqueda
@@ -127,15 +127,15 @@ export const useMediaManager = () => {
         try {
             setLoading(true);
             setError(null);
-            
+
             const response = await fetchWithRetry(API_BASE_URL);
             const data = await response.json();
             setMediaItems(data);
-            
+
         } catch (error) {
             console.error('Error al cargar multimedia:', error);
             setError(error.message);
-            
+
             // Datos mock para desarrollo
             const mockData = [
                 {
@@ -158,7 +158,7 @@ export const useMediaManager = () => {
                 }
             ];
             setMediaItems(mockData);
-            
+
         } finally {
             setLoading(false);
         }
@@ -170,10 +170,10 @@ export const useMediaManager = () => {
         if (data instanceof FormData) {
             return data;
         }
-        
+
         // Si es un objeto, convertirlo a FormData
         const formData = new FormData();
-        
+
         for (const [key, value] of Object.entries(data)) {
             if (value !== null && value !== undefined) {
                 // Si es un archivo (File o Blob), agregarlo directamente
@@ -185,44 +185,44 @@ export const useMediaManager = () => {
                 }
             }
         }
-        
+
         return formData;
     }, []);
 
     // Función para validar FormData antes de enviar
     const validateFormData = useCallback((formData) => {
         const errors = [];
-        
+
         // Asegurarse de que sea FormData
         if (!(formData instanceof FormData)) {
             formData = convertToFormData(formData);
         }
-        
+
         // Validar campos requeridos
         const type = formData.get('type');
         const title = formData.get('title');
         const description = formData.get('description');
-        
+
         if (!type || String(type).trim() === '') {
             errors.push('El tipo es requerido');
         }
-        
+
         if (!title || String(title).trim() === '') {
             errors.push('El título es requerido');
         }
-        
+
         if (!description || String(description).trim() === '') {
             errors.push('La descripción es requerida');
         }
-        
+
         // Validar archivos (al menos uno debe existir para creación)
         const image = formData.get('image');
         const video = formData.get('video');
-        
+
         if (!image && !video) {
             errors.push('Se requiere al menos una imagen o un video');
         }
-        
+
         return { errors, formData };
     }, [convertToFormData]);
 
@@ -230,14 +230,14 @@ export const useMediaManager = () => {
     const createMediaItem = useCallback(async (data) => {
         try {
             setError(null);
-            
+
             // Convertir a FormData si es necesario y validar
             const { errors, formData } = validateFormData(data);
-            
+
             if (errors.length > 0) {
                 throw new Error(`Datos inválidos: ${errors.join(', ')}`);
             }
-            
+
             // Debug: Mostrar contenido del FormData
             console.log('FormData a enviar:');
             for (let [key, value] of formData.entries()) {
@@ -247,19 +247,19 @@ export const useMediaManager = () => {
                     console.log(`${key}: ${value}`);
                 }
             }
-            
+
             const response = await fetchWithRetry(API_BASE_URL, {
                 method: 'POST',
                 body: formData,
             });
 
             const result = await response.json();
-            
+
             // Actualizar estado local de forma optimizada
-            setMediaItems(prev => [result.media, ...prev]);
-            
-            return { success: true, data: result.media };
-            
+            setMediaItems(prev => [result.data, ...prev]);
+
+            return { success: true, data: result.data };
+
         } catch (error) {
             console.error('Error al crear multimedia:', error);
             return { success: false, error: error.message };
@@ -270,10 +270,10 @@ export const useMediaManager = () => {
     const updateMediaItem = useCallback(async (itemId, data) => {
         try {
             setError(null);
-            
+
             // Convertir a FormData si es necesario
             const formData = convertToFormData(data);
-            
+
             // Debug: Mostrar contenido del FormData para actualización
             console.log('FormData para actualización:');
             for (let [key, value] of formData.entries()) {
@@ -283,32 +283,32 @@ export const useMediaManager = () => {
                     console.log(`${key}: ${value}`);
                 }
             }
-            
+
             // Mostrar indicador de carga para operaciones largas
             const hasFiles = formData.get('image') || formData.get('video');
             if (hasFiles) {
                 console.log('Actualizando con archivos... Esto puede tomar un momento.');
             }
-            
+
             const response = await fetchWithRetry(`${API_BASE_URL}/${itemId}`, {
                 method: 'PUT',
                 body: formData,
             }, 5); // Más reintentos para updates con archivos
 
             const result = await response.json();
-            
+
             // Actualizar estado local de forma optimizada
-            setMediaItems(prev => 
-                prev.map(item => 
-                    item._id === itemId ? result.media : item
+            setMediaItems(prev =>
+                prev.map(item =>
+                    item._id === itemId ? result.data : item
                 )
             );
-            
-            return { success: true, data: result.media };
-            
+
+            return { success: true, data: result.data };
+
         } catch (error) {
             console.error('Error al actualizar multimedia:', error);
-            
+
             // Proporcionar mensaje más específico según el tipo de error
             let errorMessage = error.message;
             if (error.code === 'ECONNRESET') {
@@ -316,7 +316,7 @@ export const useMediaManager = () => {
             } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
                 errorMessage = 'Error de conexión. Verifica tu conexión a internet e intenta nuevamente.';
             }
-            
+
             return { success: false, error: errorMessage };
         }
     }, [fetchWithRetry, convertToFormData]);
@@ -325,16 +325,16 @@ export const useMediaManager = () => {
     const deleteMediaItem = useCallback(async (itemId) => {
         try {
             setError(null);
-            
+
             const response = await fetchWithRetry(`${API_BASE_URL}/${itemId}`, {
                 method: 'DELETE',
             });
 
             // Actualizar estado local de forma optimizada
             setMediaItems(prev => prev.filter(item => item._id !== itemId));
-            
+
             return { success: true };
-            
+
         } catch (error) {
             console.error('Error al eliminar multimedia:', error);
             return { success: false, error: error.message };
@@ -391,33 +391,33 @@ export const useMediaManager = () => {
         allItems: mediaItems,
         loading,
         error,
-        
+
         // Estados de filtros
         searchTerm,
         selectedType,
-        
+
         // Estados de modales
         modals,
         selectedItem,
-        
+
         // Estadísticas
         stats,
-        
+
         // Acciones de API
         createMediaItem,
         updateMediaItem,
         deleteMediaItem,
         refreshItems,
-        
+
         // Filtros optimizados
         setSearchTerm: handleSearch,
         setSelectedType: handleTypeFilter,
-        
+
         // Modales optimizados
         openModal,
         closeModal,
         closeAllModals,
-        
+
         // Utilidades
         setError
     };

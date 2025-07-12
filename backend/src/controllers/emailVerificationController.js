@@ -131,7 +131,7 @@ const createTransporter = () => {
             throw new Error('Configuración de email incompleta');
         }
 
-        return nodemailer.createTransporter({
+        return nodemailer.createTransport({
             service: 'gmail',
             auth: {
                 user: config.emailUser.user_email,

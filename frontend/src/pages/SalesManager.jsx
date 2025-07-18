@@ -50,28 +50,47 @@ const SalesManager = () => {
     loading,
     error,
     updateTrackingStatus,
-    filterSalesByStatus,
-    searchSales,
   } = useSalesAdmin();
 
   /**
+   * Función local para filtrar ventas por estado
+   */
+  const filterByStatus = (salesArray, status) => {
+    if (status === "all") return salesArray;
+    return salesArray.filter((sale) => sale.trackingStatus === status);
+  };
+
+  /**
+   * Función local para filtrar ventas por término de búsqueda
+   */
+  const filterBySearchTerm = (salesArray, term) => {
+    if (!term.trim()) return salesArray;
+    
+    const searchTermLower = term.toLowerCase();
+    return salesArray.filter(
+      (sale) =>
+        sale.clientName?.toLowerCase().includes(searchTermLower) ||
+        sale.receiverName?.toLowerCase().includes(searchTermLower) ||
+        sale.deliveryPoint?.toLowerCase().includes(searchTermLower) ||
+        sale.deliveryAddress?.toLowerCase().includes(searchTermLower)
+    );
+  };
+
+  /**
    * Efecto para filtrar ventas según búsqueda y estado seleccionado
+   * CORREGIDO: Aplica filtros de forma secuencial sobre el mismo array
    */
   useEffect(() => {
     let filtered = sales;
 
-    // Filtrar por estado si no es 'all'
-    if (selectedStatus !== "all") {
-      filtered = filterSalesByStatus(selectedStatus);
-    }
+    // Aplicar filtro por estado primero
+    filtered = filterByStatus(filtered, selectedStatus);
 
-    // Filtrar por término de búsqueda
-    if (searchTerm.trim()) {
-      filtered = searchSales(searchTerm);
-    }
+    // Luego aplicar filtro por búsqueda
+    filtered = filterBySearchTerm(filtered, searchTerm);
 
     setFilteredSales(filtered);
-  }, [sales, selectedStatus, searchTerm, filterSalesByStatus, searchSales]);
+  }, [sales, selectedStatus, searchTerm]);
 
   /**
    * Efecto para calcular estadísticas de ventas

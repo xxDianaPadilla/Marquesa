@@ -1,3 +1,21 @@
+/**
+ * Componente CategoryProducts (Home) - Página principal de productos por categorías
+ * ACTUALIZADA: Implementa componentes reutilizables para mejorar la organización del código
+ * 
+ * Funcionalidades principales:
+ * - Navegación por categorías con filtros
+ * - Productos organizados por secciones
+ * - Sistema de carga y estados vacíos
+ * - Navegación a páginas de detalle de productos
+ * 
+ * Componentes utilizados:
+ * - Header/Footer (existentes)
+ * - CategoryNavigation (existente)
+ * - CategorySection (existente)
+ * - LoadingSpinner (nuevo)
+ * - Container (nuevo)
+ */
+
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header/Header";
@@ -5,27 +23,22 @@ import Footer from "../components/Footer";
 import CategoryNavigation from "../components/CategoryNavigation";
 import CategorySection from "../components/CategorySection";
 
+// Componentes nuevos reutilizables
+import LoadingSpinner from "../components/LoadingSpinner";
+import Container from "../components/Container";
+
 // Importar imágenes de productos
 import Flower1 from "../assets/savesFlower1.png";
 import Flower2 from "../assets/savesFlower2.png";
 import Flower3 from "../assets/savesFlower3.png";
 
-/**
- * Componente CategoryProducts (Home)
- * Página principal que muestra todas las categorías y productos
- * Incluye navegación por categorías y secciones de productos
- */
 const CategoryProducts = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    // Estado para la categoría activa en la navegación
+    
+    // Estados para el manejo de la página
     const [activeCategory, setActiveCategory] = useState('todos');
-    // Estado para controlar la carga de datos
     const [isLoading, setIsLoading] = useState(true);
-
-    const handleProductDetailClick = () => {
-        navigate('/ProductDetail');
-    };
 
     /**
      * Configuración de categorías disponibles
@@ -40,7 +53,7 @@ const CategoryProducts = () => {
     ];
 
     /**
-     * Datos expandidos de productos por categoría (exactamente los mismos datos)
+     * Datos expandidos de productos por categoría
      * En una aplicación real, estos datos vendrían de una API
      */
     const productsByCategory = {
@@ -107,28 +120,30 @@ const CategoryProducts = () => {
 
     /**
      * Maneja el cambio de categoría en la navegación
-     * @param {string} categoryId - ID de la categoría seleccionada
      */
     const handleCategoryChange = (categoryId) => {
         setActiveCategory(categoryId);
         
         if (categoryId === 'todos') {
-            // Si selecciona "todos", mostrar todas las categorías en scroll horizontal
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } else {
-            // Si selecciona una categoría específica, navegar a la página individual
             navigate(`/categoria/${categoryId}`);
         }
     };
 
     /**
      * Maneja el click en "Ver todos" de una categoría
-     * @param {string} categoryId - ID de la categoría
      */
     const handleViewAll = (categoryId) => {
         console.log('Ver todos de categoría:', categoryId);
-        // Navegar a la página de categoría individual
         navigate(`/categoria/${categoryId}`);
+    };
+
+    /**
+     * Maneja la navegación al detalle del producto
+     */
+    const handleProductDetailClick = () => {
+        navigate('/ProductDetail');
     };
 
     /**
@@ -143,30 +158,11 @@ const CategoryProducts = () => {
 
     /**
      * Obtiene el nombre de una categoría por su ID
-     * @param {string} categoryId - ID de la categoría
-     * @returns {string} Nombre de la categoría
      */
     const getCategoryName = (categoryId) => {
         const category = categories.find(cat => cat.id === categoryId);
         return category ? category.name : categoryId;
     };
-
-    /**
-     * Componente de estado de carga
-     */
-    const LoadingState = () => (
-        <div className="flex items-center justify-center min-h-[300px] sm:min-h-[400px]">
-            <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-[#FDB4B7] mx-auto mb-4"></div>
-                <p 
-                    className="text-gray-600 text-sm sm:text-base"
-                    style={{ fontFamily: 'Poppins, sans-serif' }}
-                >
-                    Cargando productos...
-                </p>
-            </div>
-        </div>
-    );
 
     return (
         <div className="min-h-screen bg-white-50">
@@ -174,32 +170,42 @@ const CategoryProducts = () => {
             <Header />
 
             {/* Navegación de categorías */}
-            <CategoryNavigation
-                categories={categories}
-                activeCategory={activeCategory}
-                onCategoryChange={handleCategoryChange}
-            />
+            <section className="bg-white pt-2 sm:pt-4 pb-4 sm:pb-6">
+                <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+                    <CategoryNavigation
+                        categories={categories}
+                        activeCategory={activeCategory}
+                        onCategoryChange={handleCategoryChange}
+                    />
+                </div>
+            </section>
 
             {/* Contenido principal */}
-            <main className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
-                {isLoading ? (
-                    <LoadingState />
-                ) : (
-                    <div className="space-y-6 sm:space-y-8">
-                        {/* Renderizar secciones según la categoría activa */}
-                        {getCategoriesToShow().map((categoryId) => (
-                            <div key={categoryId} id={`section-${categoryId}`}>
-                                <CategorySection
-                                    title={getCategoryName(categoryId)}
-                                    products={productsByCategory[categoryId] || []}
-                                    categoryId={categoryId}
-                                    onProductClick={handleProductDetailClick}
-                                    onViewAll={handleViewAll}
-                                />
-                            </div>
-                        ))}
-                    </div>
-                )}
+            <main className="py-4 sm:py-8">
+                <Container>
+                    {isLoading ? (
+                        // Componente de carga reutilizable
+                        <LoadingSpinner 
+                            text="Cargando productos..."
+                            className="min-h-[300px] sm:min-h-[400px]"
+                        />
+                    ) : (
+                        <div className="space-y-6 sm:space-y-8">
+                            {/* Renderizar secciones según la categoría activa */}
+                            {getCategoriesToShow().map((categoryId) => (
+                                <div key={categoryId} id={`section-${categoryId}`}>
+                                    <CategorySection
+                                        title={getCategoryName(categoryId)}
+                                        products={productsByCategory[categoryId] || []}
+                                        categoryId={categoryId}
+                                        onProductClick={handleProductDetailClick}
+                                        onViewAll={handleViewAll}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </Container>
             </main>
 
             {/* Footer de la página */}

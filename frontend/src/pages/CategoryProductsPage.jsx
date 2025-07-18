@@ -194,7 +194,7 @@ const CategoryProductsPage = () => {
     );
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-white-50">
             {/* Header de la página */}
             <Header />
 

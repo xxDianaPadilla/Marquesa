@@ -1,5 +1,6 @@
 /**
  * Componente HomePage - Página principal de la tienda La Marquesa
+ * ACTUALIZADA: Implementa componentes reutilizables para mejorar la organización del código
  * 
  * Funcionalidades principales:
  * - Landing page con diseño atractivo y responsivo
@@ -10,36 +11,37 @@
  * - Chat button integrado para soporte
  * - Notificaciones toast para feedback del usuario
  * 
- * Secciones incluidas:
- * 1. Header con navegación
- * 2. Navegación de categorías
- * 3. Hero section con call-to-action
- * 4. Galería de categorías visuales
- * 5. Productos destacados con interactividad
- * 6. Sección "¿Por qué elegirnos?"
- * 7. Testimonios de clientes
- * 8. Footer
- * 
- * Estados manejados:
- * - Favoritos del usuario
- * - Carrito de compras
- * - Notificaciones temporales
- * - Autenticación del usuario
+ * Componentes utilizados:
+ * - Header/Footer (existentes)
+ * - CategoryNavigation (existente)
+ * - ChatButton (existente)
+ * - FeatureCard (nuevo)
+ * - TestimonialCard (nuevo)
+ * - NotificationToast (nuevo)
+ * - Container (nuevo)
+ * - ActionButton (nuevo)
+ * - PriceDisplay (nuevo)
  */
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-// Importación de componentes principales
+// Componentes principales existentes
 import Header from "../components/Header/Header";
 import Footer from "../components/Footer";
 import CategoryNavigation from "../components/CategoryNavigation";
-
-// Componente de chat integrado
 import ChatButton from "../components/Chat/ChatButton";
 
-// Recursos visuales e iconos
+// Componentes nuevos reutilizables
+import FeatureCard from "../components/FeatureCard";
+import TestimonialCard from "../components/TestimonialCard";
+import NotificationToast from "../components/NotificationToast";
+import Container from "../components/Container";
+import ActionButton from "../components/ActionButton";
+import PriceDisplay from "../components/PriceDisplay";
+
+// Recursos visuales
 import heroImage from "../assets/postfebruaryhome.png";
 import cat1 from "../assets/naturalcatflowers.png";
 import cat2 from "../assets/driedflowerscat.png";
@@ -56,14 +58,13 @@ const HomePage = () => {
   const { user, isAuthenticated } = useAuth();
 
   // Estados para funcionalidades interactivas
-  const [favorites, setFavorites] = useState(new Set()); // Productos favoritos del usuario
-  const [cart, setCart] = useState([]); // Carrito de compras
-  const [showCartMessage, setShowCartMessage] = useState(false); // Notificación de carrito
-  const [showFavoriteMessage, setShowFavoriteMessage] = useState(false); // Notificación de favoritos
+  const [favorites, setFavorites] = useState(new Set());
+  const [cart, setCart] = useState([]);
+  const [showCartMessage, setShowCartMessage] = useState(false);
+  const [showFavoriteMessage, setShowFavoriteMessage] = useState(false);
 
   /**
-   * Productos destacados mostrados en la página principal
-   * En producción, estos datos vendrían de una API
+   * Datos de productos destacados
    */
   const featuredProducts = [
     {
@@ -94,7 +95,6 @@ const HomePage = () => {
 
   /**
    * Categorías disponibles en la tienda
-   * Utilizadas para la navegación y filtrado
    */
   const categories = [
     { id: "todos", name: "Todos" },
@@ -106,73 +106,117 @@ const HomePage = () => {
   ];
 
   /**
-   * Función auxiliar para mostrar notificaciones temporales
-   * @param {Function} setter - Función para cambiar el estado de la notificación
+   * Datos de características de la empresa
    */
-  const showTemporaryMessage = (setter) => {
-    setter(true);
-    setTimeout(() => setter(false), 2000);
-  };
+  const features = [
+    {
+      icon: (
+        <svg className="w-6 h-6 sm:w-8 sm:h-8 text-[#CD5277]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+      ),
+      title: "Calidad Garantizada",
+      description: "Todos nuestros productos son cuidadosamente seleccionados y elaborados con los mejores materiales."
+    },
+    {
+      icon: (
+        <svg className="w-6 h-6 sm:w-8 sm:h-8 text-[#CD5277]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" />
+          <circle cx="12" cy="12" r="9" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+        </svg>
+      ),
+      title: "Diseños únicos",
+      description: "Adaptamos nuestros productos a tus necesidades y preferencias para crear algo único."
+    },
+    {
+      icon: (
+        <svg className="w-6 h-6 sm:w-8 sm:h-8 text-[#CD5277]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+        </svg>
+      ),
+      title: "Amplia Variedad",
+      description: "Ofrecemos una extensa gama de productos para todas las ocasiones y gustos."
+    }
+  ];
+
+  /**
+   * Datos de testimonios de clientes
+   */
+  const testimonials = [
+    {
+      name: "María González",
+      year: 2024,
+      comment: "El arreglo floral que compré para el cumpleaños de mi madre superó todas mis expectativas. La calidad y frescura de las flores fue excepcional.",
+      rating: 5,
+      avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
+    },
+    {
+      name: "Carlos Rodríguez",
+      year: 2023,
+      comment: "La Giftbox personalizada que pedí para mi aniversario fue perfecta. El servicio al cliente fue excelente y me ayudaron a crear algo realmente especial.",
+      rating: 5,
+      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
+    },
+    {
+      name: "Laura Martínez",
+      year: 2025,
+      comment: "Los cuadros decorativos que compré para mi nueva casa son preciosos. La calidad es excelente y el envío fue rápido y seguro.",
+      rating: 5,
+      avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
+    }
+  ];
 
   /**
    * Maneja el cambio de categoría en la navegación
-   * Redirige a la página correspondiente según la selección
-   * @param {string} newCategoryId - ID de la categoría seleccionada
    */
   const handleCategoryChange = (newCategoryId) => {
     if (newCategoryId === 'todos') {
-      navigate('/categoryProducts'); // Vista de todas las categorías
+      navigate('/categoryProducts');
     } else {
-      navigate(`/categoria/${newCategoryId}`); // Vista de categoría específica
+      navigate(`/categoria/${newCategoryId}`);
     }
   };
 
   /**
    * Maneja la funcionalidad de favoritos
-   * Alterna el estado de favorito de un producto y muestra notificación
-   * @param {string} productId - ID del producto a marcar/desmarcar como favorito
    */
   const handleToggleFavorite = (productId) => {
     const newFavorites = new Set(favorites);
     if (newFavorites.has(productId)) {
-      newFavorites.delete(productId); // Remover de favoritos
+      newFavorites.delete(productId);
     } else {
-      newFavorites.add(productId); // Añadir a favoritos
-      showTemporaryMessage(setShowFavoriteMessage);
+      newFavorites.add(productId);
+      setShowFavoriteMessage(true);
     }
     setFavorites(newFavorites);
   };
 
   /**
    * Maneja la adición de productos al carrito
-   * Actualiza cantidades si el producto ya existe, o lo añade como nuevo
-   * @param {Object} product - Objeto del producto a añadir
    */
   const handleAddToCart = (product) => {
     const existingItem = cart.find(item => item.id === product.id);
     if (existingItem) {
-      // Incrementar cantidad si ya existe
       setCart(cart.map(item =>
         item.id === product.id
           ? { ...item, quantity: item.quantity + 1 }
           : item
       ));
     } else {
-      // Añadir como nuevo producto
       setCart([...cart, { ...product, quantity: 1 }]);
     }
-    showTemporaryMessage(setShowCartMessage);
+    setShowCartMessage(true);
   };
 
   /**
-   * Maneja la navegación a la página de todos los productos
+   * Navegación a la página de todos los productos
    */
   const handleViewAll = () => {
     navigate('/categoria/flores-naturales');
   };
 
   /**
-   * Maneja el scroll suave hacia la sección de productos desde el hero
+   * Scroll suave hacia la sección de productos
    */
   const handleShopNow = () => {
     const productsSection = document.getElementById('productos-destacados');
@@ -181,61 +225,33 @@ const HomePage = () => {
     }
   };
 
-  /**
-   * Componente de notificación temporal
-   * @param {Object} props - Propiedades del componente
-   * @param {boolean} props.show - Si mostrar la notificación
-   * @param {string} props.message - Mensaje a mostrar
-   * @param {string} props.type - Tipo de notificación (success, favorite)
-   */
-  const Notification = ({ show, message, type = 'success' }) => {
-    if (!show) return null;
-
-    return (
-      <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transition-all duration-300 ${
-        type === 'success' ? 'bg-green-500 text-white' : 'bg-pink-500 text-white'
-      }`}>
-        <div className="flex items-center">
-          {type === 'success' ? (
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          ) : (
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-            </svg>
-          )}
-          {message}
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="bg-pink-50">
-      {/* Botón de chat flotante para soporte al cliente */}
+      {/* Componentes de soporte */}
       <ChatButton />
 
-      {/* Sistema de notificaciones */}
-      <Notification
+      {/* Sistema de notificaciones usando el nuevo componente */}
+      <NotificationToast
         show={showCartMessage}
         message="¡Producto añadido al carrito!"
         type="success"
+        onClose={() => setShowCartMessage(false)}
       />
-      <Notification
+      <NotificationToast
         show={showFavoriteMessage}
         message="¡Añadido a favoritos!"
         type="favorite"
+        onClose={() => setShowFavoriteMessage(false)}
       />
 
-      {/* Header principal de la página */}
+      {/* Header principal */}
       <div className="bg-white">
         <Header />
       </div>
 
-      {/* Navegación de categorías - Sticky en la parte superior */}
-      <section className="bg-white pt-4 pb-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Navegación de categorías */}
+      <section className="bg-white pt-2 sm:pt-4 pb-4 sm:pb-6">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
           <CategoryNavigation
             categories={categories}
             activeCategory="todos"
@@ -244,9 +260,9 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Hero Section - Sección principal con call-to-action */}
+      {/* Hero Section */}
       <section className="bg-pink-50 py-8 sm:py-14 -mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col-reverse md:flex-row items-center gap-8 lg:gap-12">
+        <Container className="flex flex-col-reverse md:flex-row items-center gap-8 lg:gap-12">
           {/* Contenido textual del hero */}
           <div className="md:w-1/2 text-center md:text-left">
             <h1
@@ -258,15 +274,17 @@ const HomePage = () => {
             <p className="text-gray-600 mb-8 sm:mb-10 text-base sm:text-lg max-w-md mx-auto md:mx-0" style={{ fontFamily: "Poppins" }}>
               Descubre nuestra colección de diseños que combinan forma y función a la perfección
             </p>
-            <button
+            <ActionButton
               onClick={handleShopNow}
-              className="bg-[#E8ACD2] hover:bg-[#E096C8] text-white py-3 px-6 sm:py-2 sm:px-6 rounded-lg font-medium text-sm shadow-md transition-all w-full sm:w-auto hover:scale-105 cursor-pointer"
+              variant="primary"
+              size="lg"
+              className="w-full sm:w-auto"
             >
               Comprar ahora 🡢
-            </button>
+            </ActionButton>
           </div>
 
-          {/* Imagen hero con overlay responsivo */}
+          {/* Imagen hero */}
           <div className="md:w-1/2 relative w-full">
             <img
               src={heroImage}
@@ -274,12 +292,12 @@ const HomePage = () => {
               className="rounded-lg shadow-xl w-full h-64 sm:h-80 lg:h-120 object-cover"
             />
           </div>
-        </div>
+        </Container>
       </section>
 
       {/* Sección de categorías visuales */}
       <section className="bg-white py-8 sm:py-14">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <Container className="text-center">
           <h2
             className="text-2xl sm:text-3xl lg:text-4xl font-medium text-gray-900 text-center mb-2"
             style={{ fontFamily: "Poppins" }}
@@ -290,7 +308,7 @@ const HomePage = () => {
             Explora nuestra selección de productos cuidadosamente curados para cada ocasión.
           </p>
 
-          {/* Grid responsivo de imágenes de categorías */}
+          {/* Grid de categorías */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
             {[cat1, cat2, cat3, cat4, cat5].map((categoryImg, index) => (
               <div key={index} className="rounded-lg overflow-hidden shadow-sm group cursor-pointer">
@@ -302,12 +320,12 @@ const HomePage = () => {
               </div>
             ))}
           </div>
-        </div>
+        </Container>
       </section>
 
-      {/* Sección de productos destacados con interactividad */}
+      {/* Sección de productos destacados */}
       <section id="productos-destacados" className="bg-pink-50 py-8 sm:py-14">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <Container>
           <h2
             className="text-2xl sm:text-3xl lg:text-4xl font-medium text-gray-900 text-center mb-2"
             style={{ fontFamily: "Poppins" }}
@@ -319,7 +337,7 @@ const HomePage = () => {
             Descubre nuestros productos más populares y mejor valorados.
           </p>
 
-          {/* Grid de productos destacados con funcionalidad completa */}
+          {/* Grid de productos destacados */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8" style={{ cursor: 'pointer' }}>
             {featuredProducts.map((product) => (
               <div
@@ -328,22 +346,18 @@ const HomePage = () => {
                 onClick={() => navigate(`/categoria/${product.category}`)}
               >
                 <div className="relative">
-                  {/* Imagen del producto */}
                   <img
                     src={product.image}
                     alt={product.name}
                     className="w-full h-48 sm:h-64 lg:h-85 object-cover rounded-t-lg"
                   />
                   
-                  {/* Badge de precio */}
+                  {/* Badge de precio usando componente nuevo */}
                   <div className="absolute top-3 right-3 bg-white bg-opacity-90 rounded-full px-3 py-1 shadow-md">
-                    <span className="text-sm font-bold text-gray-800">
-                      {product.price.toFixed(2)}$
-                    </span>
+                    <PriceDisplay price={product.price} size="sm" />
                   </div>
                 </div>
 
-                {/* Información y controles del producto */}
                 <div className="p-4">
                   <h3 className="text-lg font-semibold mb-1" style={{ fontFamily: "Poppins" }}>
                     {product.name}
@@ -352,17 +366,13 @@ const HomePage = () => {
                     {product.description}
                   </p>
                   
-                  {/* Fila de precio y botón de favoritos */}
                   <div className="flex items-center justify-between mb-3">
-                    <span className="font-bold text-gray-800">
-                      {product.price.toFixed(2)}$
-                    </span>
+                    <PriceDisplay price={product.price} />
                     
-                    {/* Botón de favoritos con estado visual */}
                     <button
                       style={{ cursor: 'pointer' }}
                       onClick={(e) => {
-                        e.stopPropagation(); // Evitar navegación al hacer clic en favoritos
+                        e.stopPropagation();
                         handleToggleFavorite(product.id);
                       }}
                       className={`p-1 rounded-full transition-all duration-200 transform hover:scale-110 ${
@@ -382,17 +392,17 @@ const HomePage = () => {
                     </button>
                   </div>
 
-                  {/* Botón de añadir al carrito */}
-                  <button
-                    style={{ cursor: 'pointer' }}
+                  <ActionButton
                     onClick={(e) => {
-                      e.stopPropagation(); // Evitar navegación al añadir al carrito
+                      e.stopPropagation();
                       handleAddToCart(product);
                     }}
-                    className="bg-[#E8ACD2] hover:bg-[#E096C8] text-white py-2 px-4 rounded-lg text-sm font-medium w-full transition-all duration-200 hover:scale-105"
+                    variant="primary"
+                    size="md"
+                    className="w-full"
                   >
                     Añadir al carrito
-                  </button>
+                  </ActionButton>
                 </div>
               </div>
             ))}
@@ -400,21 +410,21 @@ const HomePage = () => {
 
           {/* Botón para ver todos los productos */}
           <div className="flex justify-center mt-8 sm:mt-10">
-            <button
-              style={{ cursor: 'pointer' }}
+            <ActionButton
               onClick={handleViewAll}
-              className="text-[#E8ACD2] border border-[#E8ACD2] hover:bg-[#E8ACD2] hover:text-white py-3 px-6 sm:py-2 sm:px-6 rounded-lg text-sm font-medium transition-all w-full sm:w-auto hover:scale-105"
+              variant="outline"
+              size="lg"
+              className="w-full sm:w-auto"
             >
               Ver todos los productos 🡢
-            </button>
+            </ActionButton>
           </div>
-        </div>
+        </Container>
       </section>
 
-      {/* Sección "¿Por qué elegirnos?" */}
+      {/* Sección "¿Por qué elegirnos?" usando FeatureCard */}
       <section className="bg-white py-8 sm:py-14">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Título y subtítulo */}
+        <Container>
           <div className="text-center mb-8 sm:mb-12">
             <h2
               className="text-2xl sm:text-3xl lg:text-4xl font-medium text-gray-900 mb-4"
@@ -430,86 +440,22 @@ const HomePage = () => {
             </p>
           </div>
 
-          {/* Tarjetas de características con efectos hover */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            
-            {/* Calidad Garantizada */}
-            <div className="bg-white border border-gray-200 rounded-lg p-6 sm:p-8 text-center hover:shadow-lg transition-shadow duration-300 group" style={{ cursor: 'pointer' }}>
-              <div className="flex justify-center mb-4 sm:mb-6">
-                <div className="p-3 sm:p-4 bg-pink-50 rounded-full group-hover:bg-[#F2C6C2] group-hover:bg-opacity-10 transition-colors duration-300">
-                  <svg className="w-6 h-6 sm:w-8 sm:h-8 text-[#CD5277]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                  </svg>
-                </div>
-              </div>
-              <h3
-                className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4"
-                style={{ fontFamily: "Poppins" }}
-              >
-                Calidad Garantizada
-              </h3>
-              <p
-                className="text-gray-600 leading-relaxed text-sm sm:text-base"
-                style={{ fontFamily: "Poppins" }}
-              >
-                Todos nuestros productos son cuidadosamente seleccionados y elaborados con los mejores materiales.
-              </p>
-            </div>
-
-            {/* Diseños únicos */}
-            <div className="bg-white border border-gray-200 rounded-lg p-6 sm:p-8 text-center hover:shadow-lg transition-shadow duration-300 group" style={{cursor: 'pointer'}}>
-              <div className="flex justify-center mb-4 sm:mb-6">
-                <div className="p-3 sm:p-4 bg-pink-50 rounded-full group-hover:bg-[#F2C6C2] group-hover:bg-opacity-10 transition-colors duration-300">
-                  <svg className="w-6 h-6 sm:w-8 sm:h-8 text-[#CD5277]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" />
-                    <circle cx="12" cy="12" r="9" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
-                  </svg>
-                </div>
-              </div>
-              <h3
-                className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4"
-                style={{ fontFamily: "Poppins" }}
-              >
-                Diseños únicos
-              </h3>
-              <p
-                className="text-gray-600 leading-relaxed text-sm sm:text-base"
-                style={{ fontFamily: "Poppins" }}
-              >
-                Adaptamos nuestros productos a tus necesidades y preferencias para crear algo único.
-              </p>
-            </div>
-
-            {/* Amplia Variedad */}
-            <div className="bg-white border border-gray-200 rounded-lg p-6 sm:p-8 text-center hover:shadow-lg transition-shadow duration-300 group md:col-span-2 lg:col-span-1" style={{cursor: 'pointer'}}>
-              <div className="flex justify-center mb-4 sm:mb-6">
-                <div className="p-3 sm:p-4 bg-pink-50 rounded-full group-hover:bg-[#F2C6C2] group-hover:bg-opacity-10 transition-colors duration-300">
-                  <svg className="w-6 h-6 sm:w-8 sm:h-8 text-[#CD5277]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                  </svg>
-                </div>
-              </div>
-              <h3
-                className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4"
-                style={{ fontFamily: "Poppins" }}
-              >
-                Amplia Variedad
-              </h3>
-              <p
-                className="text-gray-600 leading-relaxed text-sm sm:text-base"
-                style={{ fontFamily: "Poppins" }}
-              >
-                Ofrecemos una extensa gama de productos para todas las ocasiones y gustos.
-              </p>
-            </div>
+            {features.map((feature, index) => (
+              <FeatureCard
+                key={index}
+                icon={feature.icon}
+                title={feature.title}
+                description={feature.description}
+              />
+            ))}
           </div>
-        </div>
+        </Container>
       </section>
 
-      {/* Sección de testimonios de clientes */}
+      {/* Sección de testimonios usando TestimonialCard */}
       <section className="bg-pink-50 py-8 sm:py-14">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Título y subtítulo */}
+        <Container>
           <div className="text-center mb-8 sm:mb-12">
             <h2
               className="text-2xl sm:text-3xl lg:text-4xl font-medium text-gray-900 mb-4"
@@ -525,136 +471,22 @@ const HomePage = () => {
             </p>
           </div>
 
-          {/* Grid de testimonios con información real de clientes */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            
-            {/* Testimonio 1 - María González */}
-            <div className="bg-white rounded-lg p-6 sm:p-8 shadow-md hover:shadow-lg transition-shadow duration-300">
-              {/* Sistema de calificación con estrellas */}
-              <div className="flex mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <svg key={i} className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 fill-current" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                ))}
-              </div>
-
-              {/* Comentario del cliente */}
-              <p
-                className="text-gray-600 mb-4 sm:mb-6 leading-relaxed text-sm sm:text-base"
-                style={{ fontFamily: "Poppins" }}
-              >
-                "El arreglo floral que compré para el cumpleaños de mi madre superó todas mis expectativas. La calidad y frescura de las flores fue excepcional."
-              </p>
-
-              {/* Información del cliente con foto */}
-              <div className="flex items-center">
-                <img
-                  src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
-                  alt="María González"
-                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover mr-3 sm:mr-4"
-                />
-                <div>
-                  <h4
-                    className="font-semibold text-gray-900 text-sm sm:text-base"
-                    style={{ fontFamily: "Poppins" }}
-                  >
-                    María González
-                  </h4>
-                  <p
-                    className="text-xs sm:text-sm text-gray-500"
-                    style={{ fontFamily: "Poppins" }}
-                  >
-                    Publicado en 2024
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Testimonio 2 - Carlos Rodríguez */}
-            <div className="bg-white rounded-lg p-6 sm:p-8 shadow-md hover:shadow-lg transition-shadow duration-300">
-              <div className="flex mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <svg key={i} className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 fill-current" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                ))}
-              </div>
-
-              <p
-                className="text-gray-600 mb-4 sm:mb-6 leading-relaxed text-sm sm:text-base"
-                style={{ fontFamily: "Poppins" }}
-              >
-                "La Giftbox personalizada que pedí para mi aniversario fue perfecta. El servicio al cliente fue excelente y me ayudaron a crear algo realmente especial."
-              </p>
-
-              <div className="flex items-center">
-                <img
-                  src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
-                  alt="Carlos Rodríguez"
-                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover mr-3 sm:mr-4"
-                />
-                <div>
-                  <h4
-                    className="font-semibold text-gray-900 text-sm sm:text-base"
-                    style={{ fontFamily: "Poppins" }}
-                  >
-                    Carlos Rodríguez
-                  </h4>
-                  <p
-                    className="text-xs sm:text-sm text-gray-500"
-                    style={{ fontFamily: "Poppins" }}
-                  >
-                    Publicado en 2023
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Testimonio 3 - Laura Martínez */}
-            <div className="bg-white rounded-lg p-6 sm:p-8 shadow-md hover:shadow-lg transition-shadow duration-300 md:col-span-2 lg:col-span-1">
-              <div className="flex mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <svg key={i} className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 fill-current" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                ))}
-              </div>
-
-              <p
-                className="text-gray-600 mb-4 sm:mb-6 leading-relaxed text-sm sm:text-base"
-                style={{ fontFamily: "Poppins" }}
-              >
-                "Los cuadros decorativos que compré para mi nueva casa son preciosos. La calidad es excelente y el envío fue rápido y seguro."
-              </p>
-
-              <div className="flex items-center">
-                <img
-                  src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
-                  alt="Laura Martínez"
-                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover mr-3 sm:mr-4"
-                />
-                <div>
-                  <h4
-                    className="font-semibold text-gray-900 text-sm sm:text-base"
-                    style={{ fontFamily: "Poppins" }}
-                  >
-                    Laura Martínez
-                  </h4>
-                  <p
-                    className="text-xs sm:text-sm text-gray-500"
-                    style={{ fontFamily: "Poppins" }}
-                  >
-                    Publicado en 2025
-                  </p>
-                </div>
-              </div>
-            </div>
+            {testimonials.map((testimonial, index) => (
+              <TestimonialCard
+                key={index}
+                name={testimonial.name}
+                year={testimonial.year}
+                comment={testimonial.comment}
+                rating={testimonial.rating}
+                avatar={testimonial.avatar}
+                className="md:col-span-2 lg:col-span-1"
+              />
+            ))}
           </div>
-        </div>
+        </Container>
       </section>
 
-      {/* Footer de la página */}
       <Footer />
     </div>
   );

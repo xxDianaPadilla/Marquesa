@@ -1,3 +1,8 @@
+/**
+ * Página principal del blog de Marquesa
+ * Muestra una lista filtrable de artículos con paginación
+ * Utiliza el hook useMedia para manejar la lógica de filtrado y carga de artículos
+ */
 import React from "react";
 import Header from "../components/Header/Header";
 import Footer from "../components/Footer";
@@ -5,16 +10,15 @@ import MediaGrid from "../components/MediaGrid";
 import FilterButtons from "../components/FilterButtons";
 import useMedia from "../components/Media/Hooks/useMedia";
 
-// Página principal del blog de Marquesa
-// Utiliza el hook useMedia para manejar la lógica de filtrado y carga de artículos
 const MediaPage = () => {
+    // Extraer funcionalidades del hook personalizado useMedia
     const {
-        displayedItems,
-        activeFilter,
-        hasMoreItems,
-        loadMoreItems,
-        handleFilterChange,
-        totalItems
+        displayedItems, // Artículos actualmente mostrados
+        activeFilter, // Filtro actualmente activo
+        hasMoreItems, // Boolean para saber si hay más artículos para cargar
+        loadMoreItems, // Función para cargar más artículos
+        handleFilterChange, // Función para cambiar el filtro activo
+        totalItems // Total de artículos disponibles
     } = useMedia();
 
     return (
@@ -22,7 +26,7 @@ const MediaPage = () => {
             <Header />
 
             <main className="min-h-screen">
-                {/* Page Header */}
+                {/* Header de la página */}
                 <section className="relative pt-8 sm:pt-12 lg:pt-16 xl:pt-20 pb-8 sm:pb-12 lg:pb-16">
                     <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
                         <div className="text-center max-w-4xl mx-auto">
@@ -37,8 +41,8 @@ const MediaPage = () => {
                     </div>
                 </section>
 
-                {/* Filter Section */}
-                <section >
+                {/* Sección de filtros */}
+                <section>
                     <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                         <FilterButtons 
                             activeFilter={activeFilter}
@@ -47,8 +51,8 @@ const MediaPage = () => {
                     </div>
                 </section>
 
-                {/* Results Counter */}
-                <section >
+                {/* Contador de resultados */}
+                <section>
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                             <p className="text-sm sm:text-base text-gray-600 text-center" style={{ fontFamily: 'Poppins, sans-serif' }}>
@@ -74,11 +78,12 @@ const MediaPage = () => {
                     </div>
                 </section>
 
-                {/* Blog Cards Grid */}
-                <section className="py-8 sm:py-12 lg:py-16 ">
+                {/* Grid de tarjetas del blog */}
+                <section className="py-8 sm:py-12 lg:py-16">
                     {displayedItems.length > 0 ? (
                         <MediaGrid mediaItems={displayedItems} />
                     ) : (
+                        // Estado vacío cuando no hay artículos
                         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 sm:p-12 text-center">
                                 <div className="text-gray-400 mb-6">
@@ -104,9 +109,9 @@ const MediaPage = () => {
                     )}
                 </section>
 
-                {/* Load More Button */}
+                {/* Botón "Cargar más" */}
                 {hasMoreItems && displayedItems.length > 0 && (
-                    <section className="pb-12 sm:pb-16 lg:pb-20 ">
+                    <section className="pb-12 sm:pb-16 lg:pb-20">
                         <div className="text-center">
                             <button 
                                 onClick={loadMoreItems}
@@ -124,7 +129,7 @@ const MediaPage = () => {
                     </section>
                 )}
 
-                {/* Call to Action Section */}
+                {/* Sección de llamada a la acción */}
                 <section className="py-12 sm:py-16 lg:py-20 bg-white">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                         <div className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-2xl p-8 sm:p-12 lg:p-16 border border-pink-100">

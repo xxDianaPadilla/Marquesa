@@ -1,3 +1,8 @@
+/**
+ * Página principal del dashboard administrativo
+ * Muestra estadísticas generales, gráficos de ingresos, productos más vendidos,
+ * productos mejor valorados y controles de la ruleta de descuentos
+ */
 import React, { useState } from "react";
 import ruletaIcon from "../assets/ruleta.png";
 import AdminLayout from "../components/AdminLayout";
@@ -7,6 +12,11 @@ import StatisticsCharts from "../components/StatisticsCharts";
 import BestSelledProductsCards from "../components/BestSelledProductsCards";
 import BestRankedProductsCards from "../components/BestRankedProductsCards";
 
+/**
+ * Componente de layout del dashboard (no utilizado, pero mantenido para referencia)
+ * @param {Object} props - Props del componente
+ * @param {React.ReactNode} props.children - Componentes hijos
+ */
 const DashboardLayout = ({ children }) => {
   // Estado para controlar si el sidebar está expandido o contraído
   const [isExpanded, setIsExpanded] = useState(false);
@@ -16,7 +26,7 @@ const DashboardLayout = ({ children }) => {
       {/* Sidebar con control de expansión */}
       <NavbarAdmin isExpanded={isExpanded} setIsExpanded={setIsExpanded} />
 
-      {/* Main content area con margen dinámico según sidebar */}
+      {/* Área de contenido principal con margen dinámico según sidebar */}
       <div
         style={{ marginLeft: isExpanded ? "12rem" : "4rem" }}
         className="transition-margin duration-300"
@@ -28,14 +38,20 @@ const DashboardLayout = ({ children }) => {
   );
 };
 
+/**
+ * Componente principal del Dashboard
+ * Renderiza todas las secciones del dashboard administrativo
+ */
 const Dashboard = () => {
   return (
     <AdminLayout>
       <div className="p-3 sm:p-6">
+        {/* Header de bienvenida con herramientas administrativas */}
         <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6">
           {/* Contenedor flex responsivo para alinear AdminTools con el contenido */}
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-0">
             <div className="flex-1">
+              {/* Mensaje de bienvenida personalizado */}
               <h1
                 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-2 sm:mb-4"
                 style={{ fontFamily: "Poppins, sans-serif" }}
@@ -57,12 +73,12 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Cards de estadísticas */}
+        {/* Tarjetas de estadísticas principales */}
         <DashboardCards />
 
         {/* Grid principal del dashboard */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Gráfico de ingresos - Ocupa 2 columnas */}
+          {/* Sección de gráfico de ingresos - Ocupa 2 columnas en pantallas grandes */}
           <div className="lg:col-span-2 bg-white rounded-lg shadow-sm p-6">
             <h3
               className="text-lg font-semibold mb-4"
@@ -77,10 +93,10 @@ const Dashboard = () => {
 
           {/* Sidebar derecho - Ocupa 1 columna */}
           <div className="space-y-6">
-            {/* Productos más comprados */}
+            {/* Sección de productos más comprados */}
             <BestSelledProductsCards />
 
-            {/* Ruleta de descuentos */}
+            {/* Widget de ruleta de descuentos */}
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3
@@ -89,8 +105,9 @@ const Dashboard = () => {
                 >
                   Ruleta de descuentos
                 </h3>
+                {/* Icono de la ruleta */}
                 <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
-                  <img src={ruletaIcon} alt="" />
+                  <img src={ruletaIcon} alt="Icono de ruleta" />
                 </div>
               </div>
               <p
@@ -99,6 +116,7 @@ const Dashboard = () => {
               >
                 ¿Deseas habilitar la ruleta de descuentos y promociones?
               </p>
+              {/* Botones de control de la ruleta */}
               <div className="flex space-x-3">
                 <button
                   className="flex-1 px-4 py-2 text-sm rounded-lg hover:bg-orange-600 transition-colors duration-200"
@@ -120,12 +138,12 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* Tus mejores productos */}
+            {/* Sección de productos mejor valorados */}
             <BestRankedProductsCards />
           </div>
         </div>
       </div>
-    </AdminLayout >
+    </AdminLayout>
   );
 };
 

@@ -1,16 +1,45 @@
+/**
+ * Componente HomePage - Página principal de la tienda La Marquesa
+ * 
+ * Funcionalidades principales:
+ * - Landing page con diseño atractivo y responsivo
+ * - Navegación de categorías con filtros
+ * - Productos destacados con sistema de favoritos
+ * - Gestión de carrito de compras
+ * - Sección de testimonios de clientes
+ * - Chat button integrado para soporte
+ * - Notificaciones toast para feedback del usuario
+ * 
+ * Secciones incluidas:
+ * 1. Header con navegación
+ * 2. Navegación de categorías
+ * 3. Hero section con call-to-action
+ * 4. Galería de categorías visuales
+ * 5. Productos destacados con interactividad
+ * 6. Sección "¿Por qué elegirnos?"
+ * 7. Testimonios de clientes
+ * 8. Footer
+ * 
+ * Estados manejados:
+ * - Favoritos del usuario
+ * - Carrito de compras
+ * - Notificaciones temporales
+ * - Autenticación del usuario
+ */
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-// Importación de componentes 
+// Importación de componentes principales
 import Header from "../components/Header/Header";
 import Footer from "../components/Footer";
 import CategoryNavigation from "../components/CategoryNavigation";
 
-// ACTUALIZADO - Importar el nuevo componente ChatButton
+// Componente de chat integrado
 import ChatButton from "../components/Chat/ChatButton";
 
-// Imágenes utilizadas
+// Recursos visuales e iconos
 import heroImage from "../assets/postfebruaryhome.png";
 import cat1 from "../assets/naturalcatflowers.png";
 import cat2 from "../assets/driedflowerscat.png";
@@ -20,20 +49,22 @@ import cat5 from "../assets/cardscat.png";
 import flower1 from "../assets/savesFlower1.png";
 import flower2 from "../assets/savesFlower2.png";
 import flower3 from "../assets/savesFlower3.png";
-
-// Iconos de favoritos desde la carpeta "assets"
 import iconFavorites from '../assets/favoritesIcon.png';
 
 const HomePage = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
 
-  // Estados para funcionalidades
-  const [favorites, setFavorites] = useState(new Set());
-  const [cart, setCart] = useState([]);
-  const [showCartMessage, setShowCartMessage] = useState(false);
-  const [showFavoriteMessage, setShowFavoriteMessage] = useState(false);
+  // Estados para funcionalidades interactivas
+  const [favorites, setFavorites] = useState(new Set()); // Productos favoritos del usuario
+  const [cart, setCart] = useState([]); // Carrito de compras
+  const [showCartMessage, setShowCartMessage] = useState(false); // Notificación de carrito
+  const [showFavoriteMessage, setShowFavoriteMessage] = useState(false); // Notificación de favoritos
 
+  /**
+   * Productos destacados mostrados en la página principal
+   * En producción, estos datos vendrían de una API
+   */
   const featuredProducts = [
     {
       id: "p1",
@@ -61,6 +92,10 @@ const HomePage = () => {
     },
   ];
 
+  /**
+   * Categorías disponibles en la tienda
+   * Utilizadas para la navegación y filtrado
+   */
   const categories = [
     { id: "todos", name: "Todos" },
     { id: "flores-naturales", name: "Arreglos con flores naturales" },
@@ -70,54 +105,75 @@ const HomePage = () => {
     { id: "tarjetas", name: "Tarjetas" },
   ];
 
-  // Función para mostrar mensajes temporales
+  /**
+   * Función auxiliar para mostrar notificaciones temporales
+   * @param {Function} setter - Función para cambiar el estado de la notificación
+   */
   const showTemporaryMessage = (setter) => {
     setter(true);
     setTimeout(() => setter(false), 2000);
   };
 
-  // Manejo de navegación de categorías
+  /**
+   * Maneja el cambio de categoría en la navegación
+   * Redirige a la página correspondiente según la selección
+   * @param {string} newCategoryId - ID de la categoría seleccionada
+   */
   const handleCategoryChange = (newCategoryId) => {
     if (newCategoryId === 'todos') {
-      navigate('/categoryProducts');
+      navigate('/categoryProducts'); // Vista de todas las categorías
     } else {
-      navigate(`/categoria/${newCategoryId}`);
+      navigate(`/categoria/${newCategoryId}`); // Vista de categoría específica
     }
   };
 
-  // Manejo de favoritos
+  /**
+   * Maneja la funcionalidad de favoritos
+   * Alterna el estado de favorito de un producto y muestra notificación
+   * @param {string} productId - ID del producto a marcar/desmarcar como favorito
+   */
   const handleToggleFavorite = (productId) => {
     const newFavorites = new Set(favorites);
     if (newFavorites.has(productId)) {
-      newFavorites.delete(productId);
+      newFavorites.delete(productId); // Remover de favoritos
     } else {
-      newFavorites.add(productId);
+      newFavorites.add(productId); // Añadir a favoritos
       showTemporaryMessage(setShowFavoriteMessage);
     }
     setFavorites(newFavorites);
   };
 
-  // Manejo del carrito
+  /**
+   * Maneja la adición de productos al carrito
+   * Actualiza cantidades si el producto ya existe, o lo añade como nuevo
+   * @param {Object} product - Objeto del producto a añadir
+   */
   const handleAddToCart = (product) => {
     const existingItem = cart.find(item => item.id === product.id);
     if (existingItem) {
+      // Incrementar cantidad si ya existe
       setCart(cart.map(item =>
         item.id === product.id
           ? { ...item, quantity: item.quantity + 1 }
           : item
       ));
     } else {
+      // Añadir como nuevo producto
       setCart([...cart, { ...product, quantity: 1 }]);
     }
     showTemporaryMessage(setShowCartMessage);
   };
 
-  // Navegación a ver todos los productos
+  /**
+   * Maneja la navegación a la página de todos los productos
+   */
   const handleViewAll = () => {
     navigate('/categoria/flores-naturales');
   };
 
-  // Navegación desde el botón "Comprar ahora"
+  /**
+   * Maneja el scroll suave hacia la sección de productos desde el hero
+   */
   const handleShopNow = () => {
     const productsSection = document.getElementById('productos-destacados');
     if (productsSection) {
@@ -125,13 +181,20 @@ const HomePage = () => {
     }
   };
 
-  // Componente de notificación
+  /**
+   * Componente de notificación temporal
+   * @param {Object} props - Propiedades del componente
+   * @param {boolean} props.show - Si mostrar la notificación
+   * @param {string} props.message - Mensaje a mostrar
+   * @param {string} props.type - Tipo de notificación (success, favorite)
+   */
   const Notification = ({ show, message, type = 'success' }) => {
     if (!show) return null;
 
     return (
-      <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transition-all duration-300 ${type === 'success' ? 'bg-green-500 text-white' : 'bg-pink-500 text-white'
-        }`}>
+      <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transition-all duration-300 ${
+        type === 'success' ? 'bg-green-500 text-white' : 'bg-pink-500 text-white'
+      }`}>
         <div className="flex items-center">
           {type === 'success' ? (
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -150,10 +213,10 @@ const HomePage = () => {
 
   return (
     <div className="bg-pink-50">
-      {/* ACTUALIZADO - Usar el nuevo componente ChatButton */}
+      {/* Botón de chat flotante para soporte al cliente */}
       <ChatButton />
 
-      {/* Notificaciones */}
+      {/* Sistema de notificaciones */}
       <Notification
         show={showCartMessage}
         message="¡Producto añadido al carrito!"
@@ -165,11 +228,12 @@ const HomePage = () => {
         type="favorite"
       />
 
+      {/* Header principal de la página */}
       <div className="bg-white">
         <Header />
       </div>
 
-      {/* Navegación de categorías arriba del todo */}
+      {/* Navegación de categorías - Sticky en la parte superior */}
       <section className="bg-white pt-4 pb-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <CategoryNavigation
@@ -180,10 +244,10 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Hero Section */}
+      {/* Hero Section - Sección principal con call-to-action */}
       <section className="bg-pink-50 py-8 sm:py-14 -mt-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col-reverse md:flex-row items-center gap-8 lg:gap-12">
-          {/* Texto */}
+          {/* Contenido textual del hero */}
           <div className="md:w-1/2 text-center md:text-left">
             <h1
               className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 leading-tight"
@@ -201,7 +265,8 @@ const HomePage = () => {
               Comprar ahora 🡢
             </button>
           </div>
-          {/* Imagen con overlay de texto */}
+
+          {/* Imagen hero con overlay responsivo */}
           <div className="md:w-1/2 relative w-full">
             <img
               src={heroImage}
@@ -212,7 +277,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Categorías visuales */}
+      {/* Sección de categorías visuales */}
       <section className="bg-white py-8 sm:py-14">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2
@@ -225,6 +290,7 @@ const HomePage = () => {
             Explora nuestra selección de productos cuidadosamente curados para cada ocasión.
           </p>
 
+          {/* Grid responsivo de imágenes de categorías */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
             {[cat1, cat2, cat3, cat4, cat5].map((categoryImg, index) => (
               <div key={index} className="rounded-lg overflow-hidden shadow-sm group cursor-pointer">
@@ -239,7 +305,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Productos destacados */}
+      {/* Sección de productos destacados con interactividad */}
       <section id="productos-destacados" className="bg-pink-50 py-8 sm:py-14">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2
@@ -253,6 +319,7 @@ const HomePage = () => {
             Descubre nuestros productos más populares y mejor valorados.
           </p>
 
+          {/* Grid de productos destacados con funcionalidad completa */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8" style={{ cursor: 'pointer' }}>
             {featuredProducts.map((product) => (
               <div
@@ -261,11 +328,13 @@ const HomePage = () => {
                 onClick={() => navigate(`/categoria/${product.category}`)}
               >
                 <div className="relative">
+                  {/* Imagen del producto */}
                   <img
                     src={product.image}
                     alt={product.name}
                     className="w-full h-48 sm:h-64 lg:h-85 object-cover rounded-t-lg"
                   />
+                  
                   {/* Badge de precio */}
                   <div className="absolute top-3 right-3 bg-white bg-opacity-90 rounded-full px-3 py-1 shadow-md">
                     <span className="text-sm font-bold text-gray-800">
@@ -274,6 +343,7 @@ const HomePage = () => {
                   </div>
                 </div>
 
+                {/* Información y controles del producto */}
                 <div className="p-4">
                   <h3 className="text-lg font-semibold mb-1" style={{ fontFamily: "Poppins" }}>
                     {product.name}
@@ -281,34 +351,42 @@ const HomePage = () => {
                   <p className="text-sm text-gray-600 mb-2" style={{ fontFamily: "Poppins" }}>
                     {product.description}
                   </p>
+                  
+                  {/* Fila de precio y botón de favoritos */}
                   <div className="flex items-center justify-between mb-3">
                     <span className="font-bold text-gray-800">
                       {product.price.toFixed(2)}$
                     </span>
+                    
+                    {/* Botón de favoritos con estado visual */}
                     <button
                       style={{ cursor: 'pointer' }}
                       onClick={(e) => {
-                        e.stopPropagation();
+                        e.stopPropagation(); // Evitar navegación al hacer clic en favoritos
                         handleToggleFavorite(product.id);
                       }}
-                      className={`p-1 rounded-full transition-all duration-200 transform hover:scale-110 ${favorites.has(product.id)
-                        ? 'bg-red-100 hover:bg-red-200'
-                        : 'hover:bg-gray-100'
-                        }`}
+                      className={`p-1 rounded-full transition-all duration-200 transform hover:scale-110 ${
+                        favorites.has(product.id)
+                          ? 'bg-red-100 hover:bg-red-200'
+                          : 'hover:bg-gray-100'
+                      }`}
                     >
                       <img
                         src={iconFavorites}
                         alt="Agregar a favoritos"
-                        className={`w-5 h-6 transition-all duration-200 ${favorites.has(product.id) ? 'filter-red' : ''
-                          }`}
+                        className={`w-5 h-6 transition-all duration-200 ${
+                          favorites.has(product.id) ? 'filter-red' : ''
+                        }`}
                         style={favorites.has(product.id) ? { filter: 'hue-rotate(320deg) saturate(2)' } : {}}
                       />
                     </button>
                   </div>
+
+                  {/* Botón de añadir al carrito */}
                   <button
                     style={{ cursor: 'pointer' }}
                     onClick={(e) => {
-                      e.stopPropagation();
+                      e.stopPropagation(); // Evitar navegación al añadir al carrito
                       handleAddToCart(product);
                     }}
                     className="bg-[#E8ACD2] hover:bg-[#E096C8] text-white py-2 px-4 rounded-lg text-sm font-medium w-full transition-all duration-200 hover:scale-105"
@@ -320,6 +398,7 @@ const HomePage = () => {
             ))}
           </div>
 
+          {/* Botón para ver todos los productos */}
           <div className="flex justify-center mt-8 sm:mt-10">
             <button
               style={{ cursor: 'pointer' }}
@@ -332,7 +411,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* ¿Por qué elegirnos? */}
+      {/* Sección "¿Por qué elegirnos?" */}
       <section className="bg-white py-8 sm:py-14">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Título y subtítulo */}
@@ -351,8 +430,9 @@ const HomePage = () => {
             </p>
           </div>
 
-          {/* Tarjetas de características */}
+          {/* Tarjetas de características con efectos hover */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+            
             {/* Calidad Garantizada */}
             <div className="bg-white border border-gray-200 rounded-lg p-6 sm:p-8 text-center hover:shadow-lg transition-shadow duration-300 group" style={{ cursor: 'pointer' }}>
               <div className="flex justify-center mb-4 sm:mb-6">
@@ -426,7 +506,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Testimonios de clientes */}
+      {/* Sección de testimonios de clientes */}
       <section className="bg-pink-50 py-8 sm:py-14">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Título y subtítulo */}
@@ -445,11 +525,12 @@ const HomePage = () => {
             </p>
           </div>
 
-          {/* Grid de testimonios */}
+          {/* Grid de testimonios con información real de clientes */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            {/* Testimonio 1 */}
+            
+            {/* Testimonio 1 - María González */}
             <div className="bg-white rounded-lg p-6 sm:p-8 shadow-md hover:shadow-lg transition-shadow duration-300">
-              {/* Estrellas */}
+              {/* Sistema de calificación con estrellas */}
               <div className="flex mb-4">
                 {[...Array(5)].map((_, i) => (
                   <svg key={i} className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 fill-current" viewBox="0 0 20 20">
@@ -458,7 +539,7 @@ const HomePage = () => {
                 ))}
               </div>
 
-              {/* Comentario */}
+              {/* Comentario del cliente */}
               <p
                 className="text-gray-600 mb-4 sm:mb-6 leading-relaxed text-sm sm:text-base"
                 style={{ fontFamily: "Poppins" }}
@@ -466,7 +547,7 @@ const HomePage = () => {
                 "El arreglo floral que compré para el cumpleaños de mi madre superó todas mis expectativas. La calidad y frescura de las flores fue excepcional."
               </p>
 
-              {/* Información del cliente */}
+              {/* Información del cliente con foto */}
               <div className="flex items-center">
                 <img
                   src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
@@ -490,9 +571,8 @@ const HomePage = () => {
               </div>
             </div>
 
-            {/* Testimonio 2 */}
+            {/* Testimonio 2 - Carlos Rodríguez */}
             <div className="bg-white rounded-lg p-6 sm:p-8 shadow-md hover:shadow-lg transition-shadow duration-300">
-              {/* Estrellas */}
               <div className="flex mb-4">
                 {[...Array(5)].map((_, i) => (
                   <svg key={i} className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 fill-current" viewBox="0 0 20 20">
@@ -501,7 +581,6 @@ const HomePage = () => {
                 ))}
               </div>
 
-              {/* Comentario */}
               <p
                 className="text-gray-600 mb-4 sm:mb-6 leading-relaxed text-sm sm:text-base"
                 style={{ fontFamily: "Poppins" }}
@@ -509,7 +588,6 @@ const HomePage = () => {
                 "La Giftbox personalizada que pedí para mi aniversario fue perfecta. El servicio al cliente fue excelente y me ayudaron a crear algo realmente especial."
               </p>
 
-              {/* Información del cliente */}
               <div className="flex items-center">
                 <img
                   src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
@@ -533,9 +611,8 @@ const HomePage = () => {
               </div>
             </div>
 
-            {/* Testimonio 3 */}
+            {/* Testimonio 3 - Laura Martínez */}
             <div className="bg-white rounded-lg p-6 sm:p-8 shadow-md hover:shadow-lg transition-shadow duration-300 md:col-span-2 lg:col-span-1">
-              {/* Estrellas */}
               <div className="flex mb-4">
                 {[...Array(5)].map((_, i) => (
                   <svg key={i} className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 fill-current" viewBox="0 0 20 20">
@@ -544,7 +621,6 @@ const HomePage = () => {
                 ))}
               </div>
 
-              {/* Comentario */}
               <p
                 className="text-gray-600 mb-4 sm:mb-6 leading-relaxed text-sm sm:text-base"
                 style={{ fontFamily: "Poppins" }}
@@ -552,7 +628,6 @@ const HomePage = () => {
                 "Los cuadros decorativos que compré para mi nueva casa son preciosos. La calidad es excelente y el envío fue rápido y seguro."
               </p>
 
-              {/* Información del cliente */}
               <div className="flex items-center">
                 <img
                   src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
@@ -578,6 +653,8 @@ const HomePage = () => {
           </div>
         </div>
       </section>
+
+      {/* Footer de la página */}
       <Footer />
     </div>
   );

@@ -1,4 +1,8 @@
-// frontend/src/pages/MediaDetailPage.jsx
+/**
+ * Página de detalle de un artículo del blog/media
+ * Muestra el contenido completo de un artículo con imagen/video,
+ * información detallada y artículos relacionados
+ */
 import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Header from "../components/Header/Header";
@@ -8,20 +12,28 @@ import useMedia from "../components/Media/Hooks/useMedia";
 import calendarIcon from "../assets/calendar.png";
 import playIcon from "../assets/playIcon.png";
 
-// Página de detalle de un artículo del blog
 const MediaDetailPage = () => {
-    const { id } = useParams();
+    const { id } = useParams(); // Obtener ID del artículo desde la URL
     const navigate = useNavigate();
-    const { allMediaItems } = useMedia();
-    const [isPlaying, setIsPlaying] = useState(false);
+    const { allMediaItems } = useMedia(); // Hook para obtener todos los artículos
+    const [isPlaying, setIsPlaying] = useState(false); // Estado para controlar reproducción de video
 
-    // Función directa para obtener elemento por ID - SIN HOOKS
+    /**
+     * Función directa para obtener elemento por ID - SIN HOOKS
+     * @param {string} itemId - ID del artículo a buscar
+     * @returns {Object|null} Artículo encontrado o null
+     */
     const getCurrentItem = (itemId) => {
         const numericId = parseInt(itemId, 10);
         return allMediaItems.find((item) => item.id === numericId) || null;
     };
 
-    // Función directa para obtener elementos relacionados - SIN HOOKS
+    /**
+     * Función directa para obtener elementos relacionados - SIN HOOKS
+     * @param {string} currentId - ID del artículo actual
+     * @param {string} currentType - Tipo del artículo actual
+     * @returns {Array} Array de artículos relacionados (máximo 2)
+     */
     const getRelated = (currentId, currentType) => {
         const numericId = parseInt(currentId, 10);
         return allMediaItems
@@ -50,17 +62,21 @@ const MediaDetailPage = () => {
         }
     }, [currentItem, id, navigate]);
 
-    // Función para manejar la reproducción y pausa del video
+    /**
+     * Función para manejar la reproducción y pausa del video
+     */
     const handlePlayPause = () => {
         setIsPlaying(!isPlaying);
     };
 
-    // Función para navegar de vuelta al blog
+    /**
+     * Función para navegar de vuelta al blog
+     */
     const handleBackToBlog = () => {
         navigate('/mediaPage');
     };
 
-    // Si no hay elemento actual, mostrar error
+    // Si no hay elemento actual, mostrar página de error
     if (!currentItem) {
         return (
             <>
@@ -100,7 +116,7 @@ const MediaDetailPage = () => {
                 {/* Hero Section with Media */}
                 <section className="relative pt-8 sm:pt-12 pb-8 sm:pb-12">
                     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-                        {/* Media Container */}
+                        {/* Contenedor de media */}
                         <div className="relative rounded-lg overflow-hidden shadow-xl bg-white mb-8">
                             <div className="relative aspect-video bg-gray-100">
                                 <img
@@ -112,7 +128,7 @@ const MediaDetailPage = () => {
                                     }}
                                 />
                                 
-                                {/* Video Controls Overlay (if it's a video) */}
+                                {/* Controles de video overlay (si es un video) */}
                                 {currentItem.isVideo && (
                                     <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
                                         <button
@@ -130,35 +146,35 @@ const MediaDetailPage = () => {
                             </div>
                         </div>
 
-                        {/* Article Content */}
+                        {/* Contenido del artículo */}
                         <div className="bg-white rounded-lg shadow-lg p-6 sm:p-8 lg:p-10">
-                            {/* Date */}
+                            {/* Fecha de publicación */}
                             <div className="flex items-center text-gray-500 text-sm mb-6">
                                 <img src={calendarIcon} alt="Calendar" className="w-4 h-4 mr-2" />
                                 <span>Fecha de publicación: {currentItem.date}</span>
                             </div>
 
-                            {/* Category Badge */}
+                            {/* Badge de categoría */}
                             <div className="mb-6">
                                 <span className="inline-block px-3 py-1 text-sm font-medium rounded-full bg-pink-100 text-pink-800 border border-pink-200">
                                     {currentItem.category}
                                 </span>
                             </div>
 
-                            {/* Title */}
+                            {/* Título del artículo */}
                             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-800 mb-8 leading-tight"
                                 style={{ fontFamily: 'Poppins, sans-serif' }}>
                                 {currentItem.title}
                             </h1>
 
-                            {/* Content */}
+                            {/* Contenido principal */}
                             <div className="prose prose-gray max-w-none">
                                 <div className="text-gray-700 leading-relaxed text-base sm:text-lg mb-8"
                                      style={{ fontFamily: 'Poppins, sans-serif' }}>
                                     {currentItem.content}
                                 </div>
 
-                                {/* Sample content paragraphs */}
+                                {/* Párrafos de contenido de ejemplo */}
                                 <div className="space-y-6 text-gray-700 leading-relaxed"
                                      style={{ fontFamily: 'Poppins, sans-serif' }}>
                                     <p>
@@ -176,7 +192,7 @@ const MediaDetailPage = () => {
                                 </div>
                             </div>
 
-                            {/* Article Info */}
+                            {/* Información adicional del artículo */}
                             <div className="mt-12 pt-8 border-t border-gray-200">
                                 <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
                                     <span className="flex items-center gap-2">
@@ -204,7 +220,7 @@ const MediaDetailPage = () => {
                     </div>
                 </section>
 
-                {/* Related Content Section */}
+                {/* Sección de contenido relacionado */}
                 {relatedItems.length > 0 && (
                     <section className="py-12 sm:py-16 bg-white">
                         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -222,7 +238,7 @@ const MediaDetailPage = () => {
                     </section>
                 )}
 
-                {/* Navigation Footer */}
+                {/* Footer de navegación */}
                 <section className="py-8 bg-gray-50">
                     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -249,7 +265,7 @@ const MediaDetailPage = () => {
                             </button>
                         </div>
 
-                        {/* Debug info - remover en producción */}
+                        {/* Información de debug - remover en producción */}
                         <div className="mt-4 text-xs text-gray-400">
                             Artículo ID: {id} | Total artículos: {allMediaItems.length}
                         </div>

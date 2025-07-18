@@ -1,3 +1,8 @@
+/**
+ * Página de la ruleta de descuentos para clientes
+ * Permite a los usuarios girar una ruleta para obtener códigos de descuento
+ * Muestra los códigos obtenidos y permite navegar de vuelta a la tienda
+ */
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header/Header';
@@ -8,29 +13,34 @@ import { useRuleta } from '../components/Ruleta/Hooks/useRuleta';
 
 const RuletaPage = () => {
     const navigate = useNavigate();
+    
+    // Hook personalizado para manejar la lógica de la ruleta
     const {
-        isSpinning,
-        selectedCode,
-        showResult,
-        hasSpun,
-        spinRuleta,
-        resetRuleta,
-        closeResult,
-        copyToClipboard
+        isSpinning, // Estado de si la ruleta está girando
+        selectedCode, // Código seleccionado después del giro
+        showResult, // Si mostrar el modal de resultado
+        hasSpun, // Si el usuario ya ha girado la ruleta
+        spinRuleta, // Función para girar la ruleta
+        resetRuleta, // Función para resetear la ruleta
+        closeResult, // Función para cerrar el modal de resultado
+        copyToClipboard // Función para copiar código al portapapeles
     } = useRuleta();
 
+    /**
+     * Maneja la navegación para comenzar a comprar
+     */
     const handleStartShopping = () => {
         navigate('/');
     };
 
     return (
-        <div >
-            {/* Header */}
+        <div>
+            {/* Header de la página */}
             <Header />
 
             {/* Contenido principal */}
             <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
-                {/* Título principal */}
+                {/* Título principal de la página */}
                 <div className="text-center mb-6 sm:mb-8">
                     <h1 
                         className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-800 mb-2 sm:mb-4"
@@ -43,7 +53,7 @@ const RuletaPage = () => {
                 {/* Layout principal - Imagen a la izquierda, códigos a la derecha */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 items-start">
                     
-                    {/* Sección izquierda - Ruleta */}
+                    {/* Sección izquierda - Componente de la ruleta */}
                     <div className="flex flex-col items-center order-1 lg:order-1">
                         <RuletaAnimation 
                             isSpinning={isSpinning}
@@ -51,7 +61,7 @@ const RuletaPage = () => {
                             hasSpun={hasSpun}
                         />
                         
-                        {/* Mensaje debajo de la ruleta */}
+                        {/* Mensajes dinámicos debajo de la ruleta */}
                         <div className="text-center mt-4 sm:mt-6 px-2">
                             {!hasSpun && !isSpinning && (
                                 <p 
@@ -89,7 +99,7 @@ const RuletaPage = () => {
                         </div>
                     </div>
 
-                    {/* Sección derecha - Códigos obtenidos */}
+                    {/* Sección derecha - Lista de códigos obtenidos */}
                     <div className="bg-white rounded-2xl sm:rounded-3xl shadow-sm p-4 sm:p-6 lg:p-8 border border-gray-200 order-2 lg:order-2">
                         <h2 
                             className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6 text-center"
@@ -208,7 +218,7 @@ const RuletaPage = () => {
                             </div>
                         </div>
 
-                        {/* Botón de acción */}
+                        {/* Botón de acción para ir a comprar */}
                         <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">
                             <button
                                 onClick={handleStartShopping}
@@ -226,7 +236,7 @@ const RuletaPage = () => {
                 </div>
             </main>
 
-            {/* Modal de resultado */}
+            {/* Modal de resultado que aparece después de girar la ruleta */}
             <ResultModal 
                 isOpen={showResult}
                 selectedCode={selectedCode}
@@ -234,7 +244,7 @@ const RuletaPage = () => {
                 onCopyCode={copyToClipboard}
             />
 
-            {/* Footer */}
+            {/* Footer de la página */}
             <Footer />
         </div>
     );

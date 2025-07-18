@@ -1,3 +1,28 @@
+/**
+ * Componente Login - Página de inicio de sesión
+ * 
+ * Funcionalidades principales:
+ * - Autenticación de usuarios con email y contraseña
+ * - Validación de formularios en tiempo real
+ * - Redirección automática según el tipo de usuario (admin/customer)
+ * - Manejo de errores específicos del servidor
+ * - Integración con Google (preparado para futuro)
+ * - Links de navegación a registro y recuperación de contraseña
+ * 
+ * Estados manejados:
+ * - Validación de campos de entrada
+ * - Estados de carga durante el proceso de login
+ * - Manejo de errores del servidor y validación
+ * - Visibilidad de contraseña
+ * 
+ * Flujo de autenticación:
+ * 1. Usuario ingresa credenciales
+ * 2. Validación del lado del cliente
+ * 3. Envío de datos al servidor
+ * 4. Procesamiento de respuesta y token
+ * 5. Redirección según tipo de usuario
+ */
+
 import React, { useState } from "react";
 import PageContainer from "../components/PageContainer";
 import Form from "../components/Form";
@@ -14,18 +39,22 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
+    // Estado para controlar la visibilidad de la contraseña
     const [showPassword, setShowPassword] = useState(false);
-    const { login } = useAuth();
-    const navigate = useNavigate();
+    
+    // Hooks principales para autenticación y navegación
+    const { login } = useAuth(); // Hook del contexto de autenticación
+    const navigate = useNavigate(); // Hook para navegación programática
 
+    // Configuración del formulario con react-hook-form
     const {
-        register,
-        handleSubmit,
-        formState: { errors, isSubmitting },
-        setError,
-        clearErrors
+        register, // Función para registrar inputs
+        handleSubmit, // Función para manejar el envío del formulario
+        formState: { errors, isSubmitting }, // Estados del formulario
+        setError, // Función para establecer errores manualmente
+        clearErrors // Función para limpiar errores
     } = useForm({
-        mode: 'onChange',
+        mode: 'onChange', // Validar en tiempo real al cambiar
         defaultValues: {
             email: '',
             password: '',
@@ -33,6 +62,10 @@ const Login = () => {
         }
     });
 
+    /**
+     * Reglas de validación para los campos del formulario
+     * Utiliza patrones regex y validaciones de longitud
+     */
     const validationRules = {
         email: {
             required: 'El correo electrónico es requerido',
@@ -50,47 +83,63 @@ const Login = () => {
         }
     };
 
+    /**
+     * Función principal para manejar el envío del formulario de login
+     * 
+     * Proceso:
+     * 1. Limpia errores previos
+     * 2. Llama al servicio de login del contexto
+     * 3. Procesa la respuesta del servidor
+     * 4. Redirige según el tipo de usuario
+     * 5. Maneja errores específicos
+     * 
+     * @param {Object} data - Datos del formulario (email, password)
+     */
     const onSubmit = async (data) => {
         try {
-            clearErrors();
+            clearErrors(); // Limpiar errores previos
             console.log('=== INICIANDO LOGIN ===');
 
+            // Llamada al servicio de login
             const result = await login(data.email, data.password);
             console.log('Resultado del login:', result);
 
             if (result.success) {
                 console.log('✅ Login exitoso! Redirigiendo inmediatamente...');
                 
-                // USAR USERTYPE DEL RESULTADO O RESPONSE
+                // Obtener tipo de usuario para redirección
                 const userType = result.user?.userType || result.userType;
                 console.log('UserType para redirección:', userType);
                 
-                // REDIRECCIÓN INMEDIATA Y FORZADA
+                // Redirección inmediata y forzada según tipo de usuario
                 if (userType === 'admin') {
                     console.log('Redirigiendo a dashboard...');
-                    window.location.replace('/dashboard');
+                    window.location.replace('/dashboard'); // Admin -> Dashboard
                 } else {
                     console.log('Redirigiendo a home...');
-                    window.location.replace('/home');
+                    window.location.replace('/home'); // Cliente -> Home
                 }
                 
             } else {
                 console.log('❌ Login falló:', result.message);
                 
-                // Manejar errores específicos
+                // Manejo de errores específicos del servidor
                 const errorMessage = result.message || 'Error en la autenticación';
                 
                 if (errorMessage === 'user not found') {
+                    // Error específico para usuario no encontrado
                     setError('email', {
                         type: 'server',
                         message: 'Usuario no encontrado'
                     });
                 } else if (errorMessage === 'Invalid password') {
+                    // Error específico para contraseña incorrecta
                     setError('password', {
                         type: 'server',
                         message: 'Contraseña incorrecta'
                     });
                 } else {
+                    // Error genérico del servidor
                     setError('root.serverError', {
                         type: 'server',
                         message: errorMessage
@@ -99,6 +148,7 @@ const Login = () => {
             }
 
         } catch (error) {
+            // Manejo de errores inesperados
             console.error('💥 Error durante el login:', error);
             setError('root.serverError', {
                 type: 'server',
@@ -107,11 +157,19 @@ const Login = () => {
         }
     };
 
+    /**
+     * Maneja la navegación al formulario de registro
+     * @param {Event} e - Evento del click
+     */
     const handleRegisterClick = (e) => {
         e.preventDefault();
         navigate('/register');
     };
 
+    /**
+     * Maneja la navegación al formulario de recuperación de contraseña
+     * @param {Event} e - Evento del click
+     */
     const handleRecuperarContrasenaClick = (e) => {
         e.preventDefault();
         navigate('/recover-password');
@@ -120,14 +178,17 @@ const Login = () => {
     return (
         <PageContainer>
             <Form onSubmit={handleSubmit(onSubmit)}>
+                {/* Mensaje de error global del servidor */}
                 {errors.root?.serverError && (
                     <div className="auth-error-message">
                         <span>{errors.root.serverError.message}</span>
                     </div>
                 )}
 
+                {/* Título principal del formulario */}
                 <Title>Inicia sesión</Title>
 
+                {/* Campo de email con validación */}
                 <Input
                     name="email" 
                     type="email"
@@ -139,6 +200,7 @@ const Login = () => {
                     disabled={isSubmitting}
                 />
 
+                {/* Campo de contraseña con toggle de visibilidad */}
                 <Input
                     name="password" 
                     type="password"
@@ -152,6 +214,7 @@ const Login = () => {
                     disabled={isSubmitting}
                 />
 
+                {/* Link para recuperar contraseña */}
                 <div className="text-left mb-4">
                     <button 
                         type="button" 
@@ -169,6 +232,7 @@ const Login = () => {
                     </button>
                 </div>
 
+                {/* Botón principal de login con estado de carga */}
                 <Button
                     text={isSubmitting ? "Iniciando sesión..." : "Iniciar Sesión"}
                     variant="primary"
@@ -176,14 +240,17 @@ const Login = () => {
                     disabled={isSubmitting}
                 />
 
+                {/* Link para ir al registro */}
                 <QuestionText
                     question="¿No tienes una cuenta aún?"
                     linkText="Regístrate"
                     onLinkClick={handleRegisterClick} 
                 />
 
+                {/* Separador visual */}
                 <Separator text="o" />
 
+                {/* Botón de Google (preparado para implementación futura) */}
                 <GoogleButton />
             </Form>
         </PageContainer>

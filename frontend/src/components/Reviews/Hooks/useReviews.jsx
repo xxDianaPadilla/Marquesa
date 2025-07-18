@@ -1,21 +1,41 @@
 // frontend/src/components/Reviews/Hooks/useReviews.jsx
 import { useState, useEffect } from "react";
 
-// Hook para manejar las reseñas
-// Realiza solicitudes a la API y maneja el estado de carga, error y reseñas
+/**
+ * Hook personalizado para manejar todas las operaciones relacionadas con reseñas
+ * 
+ * Gestiona la obtención, filtrado, ordenamiento y manipulación de reseñas.
+ * Proporciona funciones para eliminar, responder y moderar reseñas, así como
+ * funciones utilitarias para análisis y presentación de datos.
+ * 
+ * @returns {Object} Objeto con reseñas, estado, funciones CRUD y utilidades
+ */
 export const useReviews = () => {
+    // Estados principales del hook
     const [reviews, setReviews] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Función helper para obtener el nombre del cliente
+    /**
+     * Función helper para obtener el nombre del cliente de forma segura
+     * Maneja diferentes estructuras de datos del cliente
+     * 
+     * @param {Object} review - Objeto de la reseña
+     * @returns {string} Nombre del cliente o texto por defecto
+     */
     const getClientName = (review) => {
         if (!review.clientId) return 'Cliente no disponible';
         if (typeof review.clientId === 'string') return 'Cliente';
         return review.clientId.fullName || review.clientId.name || 'Cliente sin nombre';
     };
 
-    // Función para obtener el nombre del producto
+    /**
+     * Función para obtener el nombre del producto asociado a la reseña
+     * Maneja productos estándar y personalizados
+     * 
+     * @param {Object} review - Objeto de la reseña
+     * @returns {string} Nombre del producto o texto por defecto
+     */
     const getProductName = (review) => {
         if (!review.products || review.products.length === 0) {
             return review.productName || 'Sin producto';
@@ -29,6 +49,10 @@ export const useReviews = () => {
         }
     };
 
+    /**
+     * Efecto para cargar reseñas al montar el componente
+     * Realiza la petición inicial a la API de reseñas
+     */
     useEffect(() => {
         const fetchReviews = async () => {
             try {
@@ -83,7 +107,13 @@ export const useReviews = () => {
         fetchReviews();
     }, []);
 
-    // Función para eliminar una reseña
+    /**
+     * Función para eliminar una reseña por ID
+     * Realiza la petición DELETE a la API y actualiza el estado local
+     * 
+     * @param {string} reviewId - ID de la reseña a eliminar
+     * @returns {Promise<Object>} Respuesta de la API
+     */
     const deleteReview = async (reviewId) => {
         try {
             console.log('=== FRONTEND deleteReview DEBUG ===');
@@ -132,7 +162,14 @@ export const useReviews = () => {
         }
     };
 
-    // Función para responder a una reseña
+    /**
+     * Función para responder a una reseña
+     * Envía la respuesta a la API y actualiza el estado local
+     * 
+     * @param {string} reviewId - ID de la reseña a responder
+     * @param {string} replyText - Texto de la respuesta
+     * @returns {Promise<Object>} Respuesta de la API
+     */
     const replyToReview = async (reviewId, replyText) => {
         try {
             console.log('=== FRONTEND replyToReview DEBUG ===');
@@ -202,7 +239,14 @@ export const useReviews = () => {
         }
     };
 
-    // Función para moderar una reseña
+    /**
+     * Función para moderar una reseña (aprobar o rechazar)
+     * Envía la acción de moderación a la API y actualiza el estado local
+     * 
+     * @param {string} reviewId - ID de la reseña a moderar
+     * @param {string} action - Acción a realizar: 'approve' o 'reject'
+     * @returns {Promise<Object>} Respuesta de la API
+     */
     const moderateReview = async (reviewId, action) => {
         try {
             console.log('=== FRONTEND moderateReview DEBUG ===');
@@ -273,7 +317,13 @@ export const useReviews = () => {
         }
     };
 
-    // Función para actualizar una reseña específica
+    /**
+     * Función para actualizar una reseña específica en el estado local
+     * Útil para actualizaciones optimistas de la UI
+     * 
+     * @param {string} reviewId - ID de la reseña a actualizar
+     * @param {Object} updates - Objeto con los campos a actualizar
+     */
     const updateReview = (reviewId, updates) => {
         setReviews(prev => prev.map(review =>
             review._id === reviewId
@@ -282,7 +332,12 @@ export const useReviews = () => {
         ));
     };
 
-    // Función para obtener estadísticas completas de las reseñas
+    /**
+     * Función para obtener estadísticas completas de las reseñas
+     * Calcula métricas como promedios, distribuciones y conteos
+     * 
+     * @returns {Object} Objeto con todas las estadísticas calculadas
+     */
     const getReviewStats = () => {
         if (!reviews || reviews.length === 0) {
             return {
@@ -352,7 +407,13 @@ export const useReviews = () => {
         };
     };
 
-    // Función para filtrar reseñas por múltiples criterios
+    /**
+     * Función para filtrar reseñas por múltiples criterios
+     * Permite filtrar por texto, calificación, estado, producto y fechas
+     * 
+     * @param {Object} filters - Objeto con los criterios de filtrado
+     * @returns {Array} Array de reseñas filtradas
+     */
     const filterReviews = (filters) => {
         if (!reviews || reviews.length === 0) return [];
 
@@ -411,7 +472,15 @@ export const useReviews = () => {
         return filtered;
     };
 
-    // Función para ordenar reseñas
+    /**
+     * Función para ordenar reseñas según diferentes criterios
+     * Permite ordenamiento por fecha, calificación, producto y estado
+     * 
+     * @param {Array} reviewsToSort - Array de reseñas a ordenar
+     * @param {string} sortBy - Campo por el cual ordenar
+     * @param {string} sortOrder - Dirección del ordenamiento ('asc' o 'desc')
+     * @returns {Array} Array de reseñas ordenadas
+     */
     const sortReviews = (reviewsToSort, sortBy, sortOrder) => {
         const sorted = [...reviewsToSort];
 
@@ -454,7 +523,12 @@ export const useReviews = () => {
         return sorted;
     };
 
-    // Función para obtener productos únicos de las reseñas
+    /**
+     * Función para obtener una lista única de productos de las reseñas
+     * Útil para popular filtros y selects
+     * 
+     * @returns {Array} Array de nombres de productos únicos
+     */
     const getUniqueProducts = () => {
         const products = new Set();
         
@@ -468,6 +542,7 @@ export const useReviews = () => {
         return Array.from(products).sort();
     };
 
+    // Retornar todas las funciones y estados del hook
     return {
         reviews,
         loading,

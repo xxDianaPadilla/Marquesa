@@ -1,5 +1,19 @@
 import React from 'react';
 
+/**
+ * Componente ReviewsPagination - Sistema de paginación para las reseñas
+ * 
+ * Proporciona controles de navegación entre páginas con información detallada
+ * del estado actual. Incluye botones anterior/siguiente y números de página.
+ * Responsive y accesible con estados disabled apropiados.
+ * 
+ * @param {Object} props - Props del componente
+ * @param {Object} props.paginationInfo - Información de paginación
+ * @param {Function} props.onPageChange - Función para cambiar a una página específica
+ * @param {Function} props.onNextPage - Función para ir a la página siguiente
+ * @param {Function} props.onPreviousPage - Función para ir a la página anterior
+ * @param {Function} props.getPageNumbers - Función para obtener números de página a mostrar
+ */
 const ReviewsPagination = ({ 
     paginationInfo, 
     onPageChange, 
@@ -7,26 +21,40 @@ const ReviewsPagination = ({
     onPreviousPage, 
     getPageNumbers 
 }) => {
+    
+    /**
+     * Extracción de información de paginación
+     * Destructuring para obtener todos los datos necesarios
+     */
     const { 
-        startItem, 
-        endItem, 
-        totalItems, 
-        currentPage, 
-        totalPages, 
-        hasNextPage, 
-        hasPreviousPage 
+        startItem,       // Primer elemento mostrado en la página actual
+        endItem,         // Último elemento mostrado en la página actual
+        totalItems,      // Total de elementos en toda la colección
+        currentPage,     // Página actual
+        totalPages,      // Total de páginas disponibles
+        hasNextPage,     // Si existe una página siguiente
+        hasPreviousPage  // Si existe una página anterior
     } = paginationInfo;
 
+    /**
+     * No mostrar paginación si solo hay una página
+     * Evita renderizar controles innecesarios
+     */
     if (totalPages <= 1) {
-        return null; // No mostrar paginación si solo hay una página
+        return null;
     }
 
+    /**
+     * Obtener números de página a mostrar
+     * Limita a 5 páginas visibles para no saturar la interfaz
+     */
     const pageNumbers = getPageNumbers(5);
 
     return (
         <div className="bg-white border-t border-gray-200 px-4 py-3 sm:px-6">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                {/* Información de elementos */}
+                
+                {/* Información de elementos mostrados */}
                 <div className="text-sm text-gray-700" style={{ fontFamily: 'Poppins, sans-serif' }}>
                     Mostrando{' '}
                     <span className="font-medium">{startItem}</span>
@@ -37,9 +65,10 @@ const ReviewsPagination = ({
                     {' '}reseñas
                 </div>
 
-                {/* Controles de paginación */}
+                {/* Controles de navegación */}
                 <div className="flex items-center space-x-2">
-                    {/* Botón anterior */}
+                    
+                    {/* Botón página anterior */}
                     <button
                         onClick={onPreviousPage}
                         disabled={!hasPreviousPage}
@@ -49,8 +78,10 @@ const ReviewsPagination = ({
                                 : 'border-gray-300 bg-gray-100 text-gray-300 cursor-not-allowed'
                         }`}
                         style={{ fontFamily: 'Poppins, sans-serif' }}
+                        aria-label="Página anterior"
                     >
                         <span className="sr-only">Anterior</span>
+                        {/* Ícono flecha izquierda */}
                         <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
@@ -68,13 +99,15 @@ const ReviewsPagination = ({
                                         : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 cursor-pointer'
                                 }`}
                                 style={{ fontFamily: 'Poppins, sans-serif' }}
+                                aria-label={`Página ${pageNum}`}
+                                aria-current={pageNum === currentPage ? 'page' : undefined}
                             >
                                 {pageNum}
                             </button>
                         ))}
                     </div>
 
-                    {/* Botón siguiente */}
+                    {/* Botón página siguiente */}
                     <button
                         onClick={onNextPage}
                         disabled={!hasNextPage}
@@ -84,8 +117,10 @@ const ReviewsPagination = ({
                                 : 'border-gray-300 bg-gray-100 text-gray-300 cursor-not-allowed'
                         }`}
                         style={{ fontFamily: 'Poppins, sans-serif' }}
+                        aria-label="Página siguiente"
                     >
                         <span className="sr-only">Siguiente</span>
+                        {/* Ícono flecha derecha */}
                         <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                         </svg>

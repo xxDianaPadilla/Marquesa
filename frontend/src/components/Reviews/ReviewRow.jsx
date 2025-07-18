@@ -1,8 +1,21 @@
 // frontend/src/components/Reviews/Components/ReviewRow.jsx
 import React, { useState } from 'react';
 
-// Componente para una fila de reseña
-// Permite mostrar detalles de la reseña, responder, moderar o eliminar
+/**
+ * Componente ReviewRow - Fila de reseña para vista de tabla (desktop)
+ * 
+ * Renderiza una fila de la tabla de reseñas con toda la información necesaria:
+ * cliente, producto, calificación, comentario, estado, fecha y acciones.
+ * Optimizado para pantallas grandes con layout de tabla.
+ * 
+ * @param {Object} props - Props del componente
+ * @param {Object} props.review - Objeto con los datos de la reseña
+ * @param {Function} props.onReply - Función callback para responder a la reseña
+ * @param {Function} props.onModerate - Función callback para moderar la reseña
+ * @param {Function} props.onDelete - Función callback para eliminar la reseña
+ * @param {Set} props.expandedReviews - Set con IDs de reseñas expandidas
+ * @param {Function} props.onToggleExpand - Función para expandir/contraer reseñas
+ */
 const ReviewRow = ({ 
     review, 
     onReply, 
@@ -11,8 +24,13 @@ const ReviewRow = ({
     expandedReviews, 
     onToggleExpand 
 }) => {
-    // Formatea la fecha de creación y respuesta
-    // Utiliza el formato de fecha local para mostrar la fecha de manera legible
+    /**
+     * Formatea una fecha para mostrarla en formato legible
+     * Convierte timestamp a formato local español con hora
+     * 
+     * @param {string} dateString - String con la fecha en formato ISO
+     * @returns {string} Fecha formateada en español
+     */
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleDateString('es-ES', {
             year: 'numeric',
@@ -22,8 +40,14 @@ const ReviewRow = ({
             minute: '2-digit'
         });
     };
-// Renderiza las estrellas de calificación
-    // Utiliza un bucle para crear 5 estrellas, llenas o vacías según la calificación
+
+    /**
+     * Renderiza las estrellas de calificación
+     * Crea íconos de estrella llenos o vacíos según la calificación
+     * 
+     * @param {number} rating - Calificación de 1 a 5 estrellas
+     * @returns {Array} Array de elementos JSX con las estrellas
+     */
     const renderStars = (rating) => {
         const stars = [];
         for (let i = 1; i <= 5; i++) {
@@ -41,11 +65,21 @@ const ReviewRow = ({
         return stars;
     };
 
+    /**
+     * Genera el badge de estado de la reseña
+     * Determina el color, texto e ícono según el estado
+     * 
+     * @param {string} status - Estado de la reseña
+     * @param {boolean} hasResponse - Si la reseña tiene respuesta
+     * @returns {JSX.Element} Badge con el estado de la reseña
+     */
     const getStatusBadge = (status, hasResponse) => {
+        // Si tiene respuesta pero el estado no es 'replied', cambiar estado
         if (hasResponse && status !== 'replied') {
             status = 'replied';
         }
 
+        // Configuración de estilos para cada estado
         const statusConfig = {
             'pending': { color: 'bg-yellow-100 text-yellow-800 border-yellow-300', text: 'Pendiente', icon: '⏳' },
             'approved': { color: 'bg-green-100 text-green-800 border-green-300', text: 'Aprobada', icon: '✅' },
@@ -63,10 +97,24 @@ const ReviewRow = ({
         );
     };
 
+    /**
+     * Verifica si la reseña tiene respuesta
+     * Comprueba que existe el campo response y no está vacío
+     * 
+     * @param {Object} review - Objeto de la reseña
+     * @returns {boolean} True si tiene respuesta, false si no
+     */
     const isReviewReplied = (review) => {
         return review.response && review.response.trim() !== '';
     };
 
+    /**
+     * Obtiene información del producto asociado a la reseña
+     * Maneja productos estándar y personalizados
+     * 
+     * @param {Object} review - Objeto de la reseña
+     * @returns {Object} Objeto con name e image del producto
+     */
     const getProductInfo = (review) => {
         if (!review.products || review.products.length === 0) {
             return { name: 'Sin producto', image: null };
@@ -87,6 +135,13 @@ const ReviewRow = ({
         }
     };
 
+    /**
+     * Obtiene información del cliente que dejó la reseña
+     * Extrae nombre y foto de perfil con valores por defecto
+     * 
+     * @param {Object} review - Objeto de la reseña
+     * @returns {Object} Objeto con name y profilePicture del cliente
+     */
     const getClientInfo = (review) => {
         return {
             name: review.clientId?.fullName || 'Usuario Anónimo',
@@ -94,12 +149,21 @@ const ReviewRow = ({
         };
     };
 
+    /**
+     * Trunca el texto para mostrar vista previa
+     * Limita la longitud del texto y añade "..." si es necesario
+     * 
+     * @param {string} text - Texto a truncar
+     * @param {number} maxLength - Longitud máxima (default: 100)
+     * @returns {string} Texto truncado con "..." si excede la longitud
+     */
     const truncateText = (text, maxLength = 100) => {
         if (!text) return '';
         if (text.length <= maxLength) return text;
         return text.substring(0, maxLength) + '...';
     };
 
+    // Extraer información necesaria para el renderizado
     const productInfo = getProductInfo(review);
     const clientInfo = getClientInfo(review);
     const isReplied = isReviewReplied(review);
@@ -108,9 +172,11 @@ const ReviewRow = ({
 
     return (
         <tr className="hover:bg-gray-50 transition-colors">
-            {/* Cliente */}
+            
+            {/* Columna: Cliente */}
             <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex items-center">
+                    {/* Avatar del cliente */}
                     <div className="flex-shrink-0 h-10 w-10 mr-3">
                         {clientInfo.profilePicture ? (
                             <img
@@ -123,6 +189,7 @@ const ReviewRow = ({
                                 }}
                             />
                         ) : null}
+                        {/* Avatar por defecto con inicial */}
                         <div className={`h-10 w-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center ${clientInfo.profilePicture ? 'hidden' : ''}`}>
                             <span className="text-sm font-medium text-white" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                 {clientInfo.name.charAt(0)?.toUpperCase() || 'U'}
@@ -130,13 +197,16 @@ const ReviewRow = ({
                         </div>
                     </div>
                     <div>
+                        {/* Nombre del cliente con badges */}
                         <div className="text-sm font-medium text-gray-900 flex items-center mb-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
                             {clientInfo.name}
+                            {/* Badge de verificado */}
                             {review.verified && (
                                 <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
                                     ✓ Verificado
                                 </span>
                             )}
+                            {/* Badge de respondida */}
                             {isReplied && (
                                 <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
                                     💬 Respondida
@@ -147,9 +217,10 @@ const ReviewRow = ({
                 </div>
             </td>
 
-            {/* Producto */}
+            {/* Columna: Producto */}
             <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex items-center">
+                    {/* Imagen del producto */}
                     <div className="flex-shrink-0 h-12 w-12 mr-3">
                         {productInfo.image ? (
                             <img
@@ -162,6 +233,7 @@ const ReviewRow = ({
                                 }}
                             />
                         ) : null}
+                        {/* Ícono por defecto para producto sin imagen */}
                         <div className={`h-12 w-12 rounded-lg bg-gray-100 flex items-center justify-center border border-gray-200 ${productInfo.image ? 'hidden' : ''}`}>
                             <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -169,6 +241,7 @@ const ReviewRow = ({
                         </div>
                     </div>
                     <div>
+                        {/* Nombre y tipo del producto */}
                         <div className="text-sm font-medium text-gray-900" style={{ fontFamily: 'Poppins, sans-serif' }}>
                             {productInfo.name}
                         </div>
@@ -179,7 +252,7 @@ const ReviewRow = ({
                 </div>
             </td>
 
-            {/* Calificación */}
+            {/* Columna: Calificación */}
             <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex items-center">
                     {renderStars(review.rating)}
@@ -189,12 +262,15 @@ const ReviewRow = ({
                 </div>
             </td>
 
-            {/* Comentario */}
+            {/* Columna: Comentario */}
             <td className="px-6 py-4">
                 <div className="text-sm text-gray-900 max-w-xs" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                    {/* Mensaje principal */}
                     <p className={`${!isExpanded ? 'line-clamp-2' : ''}`}>
                         {messageToShow}
                     </p>
+                    
+                    {/* Botón para expandir/contraer texto largo */}
                     {review.message && review.message.length > 80 && (
                         <button
                             onClick={() => onToggleExpand(review._id)}
@@ -216,9 +292,10 @@ const ReviewRow = ({
                         </div>
                     )}
 
-                    {/* Mostrar imágenes si las hay */}
+                    {/* Galería de imágenes en miniatura */}
                     {review.images && review.images.length > 0 && (
                         <div className="mt-2 flex gap-1">
+                            {/* Mostrar máximo 3 imágenes */}
                             {review.images.slice(0, 3).map((image, index) => (
                                 <img
                                     key={index}
@@ -227,6 +304,7 @@ const ReviewRow = ({
                                     className="h-8 w-8 object-cover rounded border"
                                 />
                             ))}
+                            {/* Indicador de imágenes adicionales */}
                             {review.images.length > 3 && (
                                 <div className="h-8 w-8 bg-gray-100 rounded border flex items-center justify-center">
                                     <span className="text-xs text-gray-600">
@@ -239,15 +317,17 @@ const ReviewRow = ({
                 </div>
             </td>
 
-            {/* Estado */}
+            {/* Columna: Estado */}
             <td className="px-6 py-4 whitespace-nowrap">
                 {getStatusBadge(review.status || 'pending', isReplied)}
             </td>
 
-            {/* Fecha */}
+            {/* Columna: Fecha */}
             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500" style={{ fontFamily: 'Poppins, sans-serif' }}>
                 <div className="flex flex-col">
+                    {/* Fecha de creación */}
                     <span>{formatDate(review.createdAt)}</span>
+                    {/* Fecha de respuesta si existe */}
                     {review.responseDate && (
                         <span className="text-xs text-blue-600">
                             Resp: {formatDate(review.responseDate)}
@@ -256,10 +336,10 @@ const ReviewRow = ({
                 </div>
             </td>
 
-            {/* Acciones */}
+            {/* Columna: Acciones */}
             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <div className="flex items-center justify-end space-x-1">
-                    {/* Botón de responder */}
+                    {/* Botón de responder - Cambia color si ya está respondida */}
                     <button
                         onClick={() => onReply(review)}
                         className={`transition-colors p-2 rounded-full ${isReplied

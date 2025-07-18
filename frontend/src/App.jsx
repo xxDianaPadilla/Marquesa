@@ -34,6 +34,8 @@ import PrivacyPolicies from './pages/PrivacyPolicies.JSX';
 import TermsandConditions from './pages/TermsandConditions';
 import MediaDetailPage from './pages/MediaDetailPage';
 
+// NUEVA LÍNEA - Importar ChatManager
+import ChatManager from './pages/ChatManager';
 
 function App() {
   return (
@@ -155,6 +157,15 @@ function App() {
             element={
               <ProtectedRoutes requiredUserType="admin">
                 <ReviewsManager />
+              </ProtectedRoutes>
+            }
+          />
+
+          {/* NUEVA LÍNEA - Ruta para el chat manager */}
+          <Route path="/chat"
+            element={
+              <ProtectedRoutes requiredUserType="admin">
+                <ChatManager />
               </ProtectedRoutes>
             }
           />

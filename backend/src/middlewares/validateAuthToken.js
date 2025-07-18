@@ -1,115 +1,101 @@
 import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
 
-// Middleware principal para verificar token
+// Middleware para verificar token de autenticación
 const verifyToken = (req, res, next) => {
-    const token = req.cookies.authToken;
-    
-    if (!token) {
-        return res.status(401).json({ 
-            success: false,
-            message: 'Token de acceso requerido' 
-        });
-    }
-    
     try {
+        // Obtener token de las cookies
+        const token = req.cookies.authToken;
+        
+        // Verificar si existe el token
+        if (!token) {
+            return res.status(401).json({ 
+                success: false,
+                message: 'Token de acceso requerido'
+            });
+        }
+        
+        // Verificar y decodificar el token
         const decoded = jwt.verify(token, config.JWT.secret);
-        req.user = decoded;
+        
+        // Validar que el token contenga la información necesaria
+        if (!decoded || !decoded.id || !decoded.userType) {
+            res.clearCookie("authToken");
+            return res.status(401).json({ 
+                success: false,
+                message: 'Token inválido: datos incompletos'
+            });
+        }
+        
+        // Agregar información del usuario a la request
+        req.user = {
+            id: decoded.id,
+            userType: decoded.userType,
+            email: decoded.email || null
+        };
+        
         next();
+        
     } catch (error) {
-        // Limpiar cookie si el token es inválido
+        // Limpiar cookie en caso de error
         res.clearCookie("authToken");
-        return res.status(401).json({ 
-            success: false,
-            message: 'Token inválido o expirado' 
-        });
+        
+        // Manejar diferentes tipos de errores de JWT
+        if (error.name === 'TokenExpiredError') {
+            return res.status(401).json({ 
+                success: false,
+                message: 'Token expirado'
+            });
+        } else if (error.name === 'JsonWebTokenError') {
+            return res.status(401).json({ 
+                success: false,
+                message: 'Token inválido'
+            });
+        } else {
+            console.error('Error en autenticación:', error);
+            return res.status(500).json({ 
+                success: false,
+                message: 'Error interno del servidor en autenticación'
+            });
+        }
     }
 };
 
-// Middleware para verificar si el usuario es administrador
+// Middleware para verificar permisos de administrador
 const verifyAdmin = (req, res, next) => {
-    const token = req.cookies.authToken;
-    
-    if (!token) {
-        return res.status(401).json({ 
-            success: false,
-            message: 'Token de acceso requerido' 
-        });
-    }
-    
-    try {
-        const decoded = jwt.verify(token, config.JWT.secret);
+    // Primero verificar el token
+    verifyToken(req, res, (err) => {
+        if (err) return;
         
-        if (decoded.userType !== 'admin') {
+        // Verificar que el usuario sea administrador
+        if (req.user.userType !== 'admin') {
             return res.status(403).json({
                 success: false,
                 message: 'Acceso denegado. Se requieren permisos de administrador'
             });
         }
         
-        req.user = decoded;
         next();
-    } catch (error) {
-        res.clearCookie("authToken");
-        return res.status(401).json({ 
-            success: false,
-            message: 'Token inválido o expirado' 
-        });
-    }
+    });
 };
 
-// Middleware para verificar si el usuario es cliente
+// Middleware para verificar permisos de cliente
 const verifyCustomer = (req, res, next) => {
-    const token = req.cookies.authToken;
-    
-    if (!token) {
-        return res.status(401).json({ 
-            success: false,
-            message: 'Token de acceso requerido' 
-        });
-    }
-    
-    try {
-        const decoded = jwt.verify(token, config.JWT.secret);
+    // Primero verificar el token
+    verifyToken(req, res, (err) => {
+        if (err) return;
         
-        if (decoded.userType !== 'Customer') {
+        // Verificar que el usuario sea cliente
+        if (req.user.userType !== 'Customer') {
             return res.status(403).json({
                 success: false,
                 message: 'Acceso denegado. Se requieren permisos de cliente'
             });
         }
         
-        req.user = decoded;
         next();
-    } catch (error) {
-        res.clearCookie("authToken");
-        return res.status(401).json({ 
-            success: false,
-            message: 'Token inválido o expirado' 
-        });
-    }
-};
-
-// Middleware opcional - no requiere autenticación pero si hay token lo valida
-const optionalAuth = (req, res, next) => {
-    const token = req.cookies.authToken;
-    
-    if (!token) {
-        req.user = null;
-        return next();
-    }
-    
-    try {
-        const decoded = jwt.verify(token, config.JWT.secret);
-        req.user = decoded;
-        next();
-    } catch (error) {
-        // Si hay error en el token, limpiar cookie y continuar sin usuario
-        res.clearCookie("authToken");
-        req.user = null;
-        next();
-    }
+    });
 };
 
 export default verifyToken;
-export { verifyAdmin, verifyCustomer, optionalAuth };
+export { verifyAdmin, verifyCustomer };

@@ -19,40 +19,33 @@ import salesRoutes from './src/routes/sales.js';
 import clientsRoutes from './src/routes/clients.js';
 import reviewsRoutes from './src/routes/reviews.js';
 import categoriesRoutes from './src/routes/categories.js';
-
-// NUEVA LÍNEA - Importar rutas de recuperación de contraseña
 import passwordResetRoutes from './src/routes/passwordReset.js';
-
-// NUEVA LÍNEA - Importar rutas de verificación de email
 import emailVerificationRoutes from './src/routes/emailVerification.js';
+import chatRoutes from './src/routes/chat.js';
 
 // Crea la instancia de la aplicación Express
 const app = express();
 
-// Middleware para parsear JSON con límite de 50MB
-app.use(express.json({ limit: '50mb' }));
+// ===== CONFIGURACIÓN DE MIDDLEWARE =====
 
-// Middleware para parsear datos URL-encoded con límite de 50MB
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-
-// Middleware para parsear texto plano con límite de 50MB
-app.use(express.text({ limit: '50mb' }));
-
-// Middleware para parsear datos raw con límite de 50MB
-app.use(express.raw({ limit: '50mb' }));
-
-// Middleware para parsear cookies
-app.use(cookieParser());
-
-// CORS - Configura CORS para permitir peticiones desde localhost:5173
+// 1. CORS - Debe ir primero para manejar cookies correctamente
 app.use(
    cors({
        origin: "http://localhost:5173",
-       credentials: true,
+       credentials: true,  // Habilita el envío de cookies
    })
 );
 
-// RUTAS - Configuración de todas las rutas de la API
+// 2. Middleware de parsing de datos
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.text({ limit: '50mb' }));
+app.use(express.raw({ limit: '50mb' }));
+
+// 3. Cookie parser para manejar cookies de autenticación
+app.use(cookieParser());
+
+// ===== CONFIGURACIÓN DE RUTAS =====
 app.use('/api/products', productsRoutes);
 app.use('/api/media', mediaRoutes);
 app.use("/api/registerCustomers", registerClientsRoutes);
@@ -64,12 +57,8 @@ app.use("/api/sales", salesRoutes);
 app.use("/api/clients", clientsRoutes);
 app.use("/api/reviews", reviewsRoutes);
 app.use("/api/categories", categoriesRoutes);
-
-// NUEVA LÍNEA - Usar rutas de recuperación de contraseña
 app.use('/api/passwordReset', passwordResetRoutes);
-
-// NUEVA LÍNEA - Usar rutas de verificación de email (después de las otras rutas)
 app.use('/api/emailVerification', emailVerificationRoutes);
+app.use('/api/chat', chatRoutes);
 
-// Exporta la aplicación para ser utilizada en otros módulos
 export default app;

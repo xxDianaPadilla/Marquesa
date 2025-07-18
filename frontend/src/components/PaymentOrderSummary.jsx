@@ -1,7 +1,14 @@
+// frontend/src/components/PaymentOrderSummary.jsx
+
 /**
  * Componente PaymentOrderSummary - Resumen del pedido en la página de pago
- * Muestra el desglose de precios y los productos del pedido de forma estática
- * Componente de solo lectura para confirmación final
+ * 
+ * Componente de solo lectura que muestra el desglose final de precios y productos
+ * en la página de pago para confirmación del usuario. Incluye subtotales, envío,
+ * total final y resumen de productos seleccionados.
+ * 
+ * Nota: Actualmente usa datos hardcodeados. En una implementación real,
+ * estos datos vendrían de props o contexto global del carrito.
  */
 const PaymentOrderSummary = () => {
   return (
@@ -11,7 +18,7 @@ const PaymentOrderSummary = () => {
       
       {/* Sección de desglose de precios */}
       <div className="space-y-3 mb-6">
-        {/* Subtotal */}
+        {/* Subtotal de productos */}
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Sub Total</span>
           <span className="font-medium">134,00$</span>
@@ -36,7 +43,7 @@ const PaymentOrderSummary = () => {
       <div className="bg-gray-50 p-4 rounded-lg">
         <p className="text-sm font-medium mb-3 text-gray-700">Resumen de productos</p>
         
-        {/* Lista de productos con precios */}
+        {/* Lista de productos con cantidades y precios */}
         <div className="space-y-2 text-sm">
           {/* Producto 1: Ramo de flores secas */}
           <div className="flex justify-between">

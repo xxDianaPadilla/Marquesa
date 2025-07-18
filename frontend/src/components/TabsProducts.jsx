@@ -1,18 +1,39 @@
+// frontend/src/components/TabsProducts.jsx
+
+// Importa React y el hook useState para manejar el estado local
 import React, { useState } from 'react';
 
-// Componente Tabs que gestiona tres secciones: Descripción, Detalles, y Envío.
+/**
+ * Componente Tabs - Sistema de pestañas para información de productos
+ * 
+ * Componente que gestiona tres secciones principales de información del producto:
+ * - Descripción: Información general del producto
+ * - Detalles: Especificaciones técnicas o detalladas
+ * - Envío: Información sobre políticas de envío
+ * 
+ * @param {string} description - Contenido de la pestaña de descripción
+ * @param {string} details - Contenido de la pestaña de detalles
+ * @param {string} shipping - Contenido de la pestaña de envío
+ */
 const Tabs = ({ description, details, shipping }) => {
   // Estado local para gestionar la pestaña activa (por defecto es 'description')
   const [tab, setTab] = useState('description');
 
-  // Función que renderiza el contenido según la pestaña activa
+  /**
+   * Función que renderiza el contenido según la pestaña activa
+   * @returns {JSX.Element|null} Contenido correspondiente a la pestaña seleccionada
+   */
   const renderContent = () => {
-    // Verifica el valor de la pestaña activa ('description', 'details', 'shipping') y renderiza el contenido correspondiente
+    // Verifica el valor de la pestaña activa y renderiza el contenido correspondiente
     switch (tab) {
-      case 'description': return <p>{description}</p>;  // Muestra el contenido de 'description'
-      case 'details': return <p>{details}</p>;          // Muestra el contenido de 'details'
-      case 'shipping': return <p>{shipping}</p>;        // Muestra el contenido de 'shipping'
-      default: return null;                              // Si no hay pestaña seleccionada, no se muestra nada
+      case 'description': 
+        return <p>{description}</p>;  // Muestra el contenido de descripción
+      case 'details': 
+        return <p>{details}</p>;      // Muestra el contenido de detalles
+      case 'shipping': 
+        return <p>{shipping}</p>;     // Muestra el contenido de envío
+      default: 
+        return null;                  // Si no hay pestaña válida, no se muestra nada
     }
   };
 

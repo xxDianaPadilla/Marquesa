@@ -1,6 +1,22 @@
 // frontend/src/components/NotificationToast.jsx
+
+// Importa React y el hook useEffect para manejar efectos secundarios
 import React, { useEffect } from 'react';
 
+/**
+ * Componente NotificationToast - Notificación temporal tipo toast
+ * 
+ * Muestra notificaciones temporales en la esquina superior derecha de la pantalla
+ * con diferentes tipos visuales (éxito, error, advertencia, información, favorito)
+ * y desaparición automática configurable.
+ * 
+ * @param {boolean} show - Si la notificación debe mostrarse
+ * @param {string} message - Mensaje a mostrar en la notificación
+ * @param {string} type - Tipo de notificación ('success', 'error', 'warning', 'info', 'favorite')
+ * @param {number} duration - Duración en milisegundos antes de auto-cerrar (0 = no auto-cerrar)
+ * @param {function} onClose - Función a ejecutar al cerrar la notificación
+ * @param {string} className - Clases CSS adicionales
+ */
 const NotificationToast = ({ 
     show, 
     message, 
@@ -9,6 +25,7 @@ const NotificationToast = ({
     onClose,
     className = '' 
 }) => {
+    // Definición de tipos con colores de fondo e iconos específicos
     const types = {
         success: {
             bg: 'bg-green-500',
@@ -52,27 +69,36 @@ const NotificationToast = ({
         }
     };
 
+    // Efecto para auto-cerrar la notificación después de la duración especificada
     useEffect(() => {
         if (show && duration > 0) {
             const timer = setTimeout(() => {
                 if (onClose) onClose();
             }, duration);
 
+            // Cleanup: cancela el timer si el componente se desmonta o cambian las dependencias
             return () => clearTimeout(timer);
         }
     }, [show, duration, onClose]);
 
+    // No renderiza nada si show es false
     if (!show) return null;
 
+    // Obtiene la configuración del tipo actual o usa 'info' por defecto
     const { bg, icon } = types[type] || types.info;
 
     return (
         <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transition-all duration-300 ${bg} text-white ${className}`}>
             <div className="flex items-center">
+                {/* Icono del tipo de notificación */}
                 {icon}
+                
+                {/* Mensaje de la notificación */}
                 <span style={{ fontFamily: 'Poppins, sans-serif' }}>
                     {message}
                 </span>
+                
+                {/* Botón de cerrar (opcional) */}
                 {onClose && (
                     <button
                         onClick={onClose}

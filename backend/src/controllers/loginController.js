@@ -40,8 +40,8 @@ const validatePassword = (password) => {
         return { isValid: false, error: "Contraseña no puede estar vacía" };
     }
     
-    if (password.length < 6) {
-        return { isValid: false, error: "Contraseña debe tener al menos 6 caracteres" };
+    if (password.length < 8) {
+        return { isValid: false, error: "Contraseña debe tener al menos 8 caracteres" };
     }
     
     if (password.length > 128) {

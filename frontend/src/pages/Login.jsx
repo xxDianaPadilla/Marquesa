@@ -1,29 +1,5 @@
-/**
- * Componente Login - Página de inicio de sesión
- * 
- * Funcionalidades principales:
- * - Autenticación de usuarios con email y contraseña
- * - Validación de formularios en tiempo real
- * - Redirección automática según el tipo de usuario (admin/customer)
- * - Manejo de errores específicos del servidor
- * - Integración con Google (preparado para futuro)
- * - Links de navegación a registro y recuperación de contraseña
- * 
- * Estados manejados:
- * - Validación de campos de entrada
- * - Estados de carga durante el proceso de login
- * - Manejo de errores del servidor y validación
- * - Visibilidad de contraseña
- * 
- * Flujo de autenticación:
- * 1. Usuario ingresa credenciales
- * 2. Validación del lado del cliente
- * 3. Envío de datos al servidor
- * 4. Procesamiento de respuesta y token
- * 5. Redirección según tipo de usuario
- */
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from 'react-router-dom';
 import PageContainer from "../components/PageContainer";
 import Form from "../components/Form";
 import Title from "../components/Title";
@@ -36,159 +12,261 @@ import Separator from "../components/Separator";
 import GoogleButton from "../components/GoogleButton";
 import { useForm } from 'react-hook-form';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+
+/**
+ * Validaciones básicas
+ */
+const validateEmail = (email) => {
+    if (!email || typeof email !== 'string') return false;
+    const emailRegex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
+    return emailRegex.test(email.trim());
+};
+
+const validatePassword = (password) => {
+    if (!password || typeof password !== 'string') return false;
+    return password.length >= 8; // Reducido a 8 caracteres para que sea menos restrictivo
+};
+
+const sanitizeInput = (input) => {
+    if (!input || typeof input !== 'string') return '';
+    return input.trim();
+};
+
+/**
+ * Mapeo de errores más simple
+ */
+const ERROR_MESSAGES = {
+    'user not found': 'No se encontró una cuenta con este correo electrónico',
+    'usuario no encontrado': 'No se encontró una cuenta con este correo electrónico',
+    'invalid password': 'La contraseña ingresada es incorrecta',
+    'contraseña inválida': 'La contraseña ingresada es incorrecta',
+    'invalid credentials': 'Correo electrónico o contraseña incorrectos',
+    'credenciales inválidas': 'Correo electrónico o contraseña incorrectos',
+    'network error': 'Error de conexión. Verifica tu internet.',
+    'server error': 'Error del servidor. Inténtalo más tarde.',
+    'timeout': 'La conexión tardó demasiado. Inténtalo nuevamente.'
+};
 
 const Login = () => {
-    // Estado para controlar la visibilidad de la contraseña
     const [showPassword, setShowPassword] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [formError, setFormError] = useState(null); // Error visible para el usuario
     
-    // Hooks principales para autenticación y navegación
-    const { login } = useAuth(); // Hook del contexto de autenticación
-    const navigate = useNavigate(); // Hook para navegación programática
+    const { login, isAuthenticated, user, authError, clearAuthError } = useAuth();
+    const navigate = useNavigate();
+    const location = useLocation();
 
-    // Configuración del formulario con react-hook-form
     const {
-        register, // Función para registrar inputs
-        handleSubmit, // Función para manejar el envío del formulario
-        formState: { errors, isSubmitting }, // Estados del formulario
-        setError, // Función para establecer errores manualmente
-        clearErrors // Función para limpiar errores
+        register,
+        handleSubmit,
+        formState: { errors },
+        setError,
+        clearErrors,
+        watch
     } = useForm({
-        mode: 'onChange', // Validar en tiempo real al cambiar
+        mode: 'onChange',
         defaultValues: {
             email: '',
-            password: '',
-            rememberMe: false
+            password: ''
         }
     });
 
+    const emailValue = watch('email');
+    const passwordValue = watch('password');
+
     /**
-     * Reglas de validación para los campos del formulario
-     * Utiliza patrones regex y validaciones de longitud
+     * Reglas de validación simplificadas
      */
     const validationRules = {
         email: {
-            required: 'El correo electrónico es requerido',
-            pattern: {
-                value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                message: 'El correo electrónico no es válido'
+            required: 'El correo electrónico es obligatorio',
+            validate: {
+                format: (value) => {
+                    if (!value) return true;
+                    return validateEmail(value) || 'El formato del correo electrónico no es válido';
+                }
             }
         },
         password: {
-            required: 'La contraseña es requerida',
-            minLength: {
-                value: 8,
-                message: 'La contraseña debe tener al menos 8 caracteres'
+            required: 'La contraseña es obligatoria',
+            validate: {
+                minLength: (value) => {
+                    if (!value) return true;
+                    return validatePassword(value) || 'La contraseña debe tener al menos 8 caracteres';
+                }
             }
         }
     };
 
     /**
-     * Función principal para manejar el envío del formulario de login
-     * 
-     * Proceso:
-     * 1. Limpia errores previos
-     * 2. Llama al servicio de login del contexto
-     * 3. Procesa la respuesta del servidor
-     * 4. Redirige según el tipo de usuario
-     * 5. Maneja errores específicos
-     * 
-     * @param {Object} data - Datos del formulario (email, password)
+     * Redirección automática si ya está autenticado
+     */
+    useEffect(() => {
+        if (isAuthenticated && user) {
+            const redirectPath = location.state?.from || (user.userType === 'admin' ? '/dashboard' : '/home');
+            navigate(redirectPath, { replace: true });
+        }
+    }, [isAuthenticated, user, navigate, location.state]);
+
+    /**
+     * Limpiar errores cuando cambian los valores
+     */
+    useEffect(() => {
+        if (emailValue || passwordValue) {
+            clearErrors(['root.serverError']);
+            setFormError(null);
+            if (authError) {
+                clearAuthError();
+            }
+        }
+    }, [emailValue, passwordValue, clearErrors, authError, clearAuthError]);
+
+    /**
+     * Mostrar error del AuthContext
+     */
+    useEffect(() => {
+        if (authError) {
+            setFormError(authError);
+        }
+    }, [authError]);
+
+    /**
+     * Obtener mensaje de error amigable
+     */
+    const getFriendlyErrorMessage = (serverMessage) => {
+        if (!serverMessage) return 'Ha ocurrido un error inesperado';
+        
+        const lowerMessage = serverMessage.toLowerCase();
+        
+        for (const [key, friendlyMessage] of Object.entries(ERROR_MESSAGES)) {
+            if (lowerMessage.includes(key.toLowerCase())) {
+                return friendlyMessage;
+            }
+        }
+        
+        return serverMessage;
+    };
+
+    /**
+     * Función de envío del formulario
      */
     const onSubmit = async (data) => {
         try {
-            clearErrors(); // Limpiar errores previos
+            setIsSubmitting(true);
+            setFormError(null);
+            clearErrors();
+            
+            if (authError) {
+                clearAuthError();
+            }
+            
             console.log('=== INICIANDO LOGIN ===');
 
-            // Llamada al servicio de login
-            const result = await login(data.email, data.password);
+            const sanitizedEmail = sanitizeInput(data.email);
+            const sanitizedPassword = data.password;
+
+            // Validación básica
+            if (!validateEmail(sanitizedEmail)) {
+                const errorMsg = 'El formato del correo electrónico no es válido';
+                setFormError(errorMsg);
+                setError('email', { type: 'validation', message: errorMsg });
+                return;
+            }
+
+            if (!validatePassword(sanitizedPassword)) {
+                const errorMsg = 'La contraseña debe tener al menos 8 caracteres';
+                setFormError(errorMsg);
+                setError('password', { type: 'validation', message: errorMsg });
+                return;
+            }
+
+            // Llamada al login
+            const result = await login(sanitizedEmail, sanitizedPassword);
             console.log('Resultado del login:', result);
 
             if (result.success) {
-                console.log('✅ Login exitoso! Redirigiendo inmediatamente...');
+                console.log('✅ Login exitoso! Redirigiendo...');
                 
-                // Obtener tipo de usuario para redirección
                 const userType = result.user?.userType || result.userType;
                 console.log('UserType para redirección:', userType);
                 
-                // Redirección inmediata y forzada según tipo de usuario
-                if (userType === 'admin') {
-                    console.log('Redirigiendo a dashboard...');
-                    window.location.replace('/dashboard'); // Admin -> Dashboard
-                } else {
-                    console.log('Redirigiendo a home...');
-                    window.location.replace('/home'); // Cliente -> Home
-                }
+                const redirectPath = location.state?.from || (userType === 'admin' ? '/dashboard' : '/home');
+                navigate(redirectPath, { replace: true });
                 
             } else {
                 console.log('❌ Login falló:', result.message);
                 
-                // Manejo de errores específicos del servidor
-                const errorMessage = result.message || 'Error en la autenticación';
+                const errorMessage = getFriendlyErrorMessage(result.message);
+                setFormError(errorMessage);
                 
-                if (errorMessage === 'user not found') {
-                    // Error específico para usuario no encontrado
-                    setError('email', {
-                        type: 'server',
-                        message: 'Usuario no encontrado'
-                    });
-                } else if (errorMessage === 'Invalid password') {
-                    // Error específico para contraseña incorrecta
-                    setError('password', {
-                        type: 'server',
-                        message: 'Contraseña incorrecta'
-                    });
+                // Mostrar error en campo específico si es posible
+                const lowerMessage = (result.message || '').toLowerCase();
+                
+                if (lowerMessage.includes('usuario no encontrado') || 
+                    lowerMessage.includes('user not found')) {
+                    setError('email', { type: 'server', message: errorMessage });
+                } else if (lowerMessage.includes('contraseña') || 
+                          lowerMessage.includes('password')) {
+                    setError('password', { type: 'server', message: errorMessage });
                 } else {
-                    // Error genérico del servidor
-                    setError('root.serverError', {
-                        type: 'server',
-                        message: errorMessage
-                    });
+                    setError('root.serverError', { type: 'server', message: errorMessage });
                 }
             }
 
         } catch (error) {
-            // Manejo de errores inesperados
             console.error('💥 Error durante el login:', error);
-            setError('root.serverError', {
-                type: 'server',
-                message: 'Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo.'
-            });
+            
+            const errorMessage = 'Ha ocurrido un error inesperado. Inténtalo nuevamente.';
+            setFormError(errorMessage);
+            setError('root.serverError', { type: 'network', message: errorMessage });
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
-    /**
-     * Maneja la navegación al formulario de registro
-     * @param {Event} e - Evento del click
-     */
     const handleRegisterClick = (e) => {
         e.preventDefault();
-        navigate('/register');
+        if (!isSubmitting) {
+            navigate('/register');
+        }
     };
 
-    /**
-     * Maneja la navegación al formulario de recuperación de contraseña
-     * @param {Event} e - Evento del click
-     */
     const handleRecuperarContrasenaClick = (e) => {
         e.preventDefault();
-        navigate('/recover-password');
+        if (!isSubmitting) {
+            navigate('/recover-password');
+        }
     };
 
     return (
         <PageContainer>
             <Form onSubmit={handleSubmit(onSubmit)}>
-                {/* Mensaje de error global del servidor */}
-                {errors.root?.serverError && (
+                {/* Error principal visible */}
+                {(formError || errors.root?.serverError) && (
                     <div className="auth-error-message">
-                        <span>{errors.root.serverError.message}</span>
+                        <div className="flex items-start">
+                            <svg className="w-5 h-5 text-red-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>{formError || errors.root?.serverError?.message}</span>
+                        </div>
                     </div>
                 )}
 
-                {/* Título principal del formulario */}
+                {/* Error del AuthContext separado */}
+                {authError && !formError && !errors.root?.serverError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                        <div className="flex items-center">
+                            <svg className="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="text-red-700 text-sm">{authError}</span>
+                        </div>
+                    </div>
+                )}
+
                 <Title>Inicia sesión</Title>
 
-                {/* Campo de email con validación */}
                 <Input
                     name="email" 
                     type="email"
@@ -198,9 +276,9 @@ const Login = () => {
                     validationRules={validationRules.email}
                     error={errors.email?.message}
                     disabled={isSubmitting}
+                    autoComplete="email"
                 />
 
-                {/* Campo de contraseña con toggle de visibilidad */}
                 <Input
                     name="password" 
                     type="password"
@@ -212,27 +290,27 @@ const Login = () => {
                     validationRules={validationRules.password}
                     error={errors.password?.message}
                     disabled={isSubmitting}
+                    autoComplete="current-password"
                 />
 
-                {/* Link para recuperar contraseña */}
                 <div className="text-left mb-4">
                     <button 
                         type="button" 
-                        className="text-sm hover:text-pink-600 transition-colors" 
+                        className="text-sm hover:text-pink-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
                         style={{ 
                             color: '#FF6A5F', 
                             fontWeight: '600', 
                             fontFamily: 'Poppins, sans-serif', 
                             fontStyle: 'italic', 
-                            cursor: 'pointer'
+                            cursor: isSubmitting ? 'not-allowed' : 'pointer'
                         }} 
                         onClick={handleRecuperarContrasenaClick}
+                        disabled={isSubmitting}
                     >
                         ¿Olvidaste tu contraseña?
                     </button>
                 </div>
 
-                {/* Botón principal de login con estado de carga */}
                 <Button
                     text={isSubmitting ? "Iniciando sesión..." : "Iniciar Sesión"}
                     variant="primary"
@@ -240,18 +318,47 @@ const Login = () => {
                     disabled={isSubmitting}
                 />
 
-                {/* Link para ir al registro */}
+                {isSubmitting && (
+                    <div className="text-center mt-2">
+                        <p className="text-xs text-gray-500" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                            Verificando credenciales...
+                        </p>
+                    </div>
+                )}
+
                 <QuestionText
                     question="¿No tienes una cuenta aún?"
                     linkText="Regístrate"
                     onLinkClick={handleRegisterClick} 
+                    disabled={isSubmitting}
                 />
 
-                {/* Separador visual */}
                 <Separator text="o" />
 
-                {/* Botón de Google (preparado para implementación futura) */}
-                <GoogleButton />
+                <GoogleButton disabled={isSubmitting} />
+
+                <div className="text-center mt-4">
+                    <p className="text-xs text-gray-500" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                        Al iniciar sesión, aceptas nuestros{" "}
+                        <button
+                            type="button"
+                            className="text-pink-500 hover:text-pink-600 underline disabled:opacity-50"
+                            onClick={() => navigate('/terms-and-conditions')}
+                            disabled={isSubmitting}
+                        >
+                            Términos y Condiciones
+                        </button>
+                        {" "}y{" "}
+                        <button
+                            type="button"
+                            className="text-pink-500 hover:text-pink-600 underline disabled:opacity-50"
+                            onClick={() => navigate('/privacy-policies')}
+                            disabled={isSubmitting}
+                        >
+                            Política de Privacidad
+                        </button>
+                    </p>
+                </div>
             </Form>
         </PageContainer>
     );

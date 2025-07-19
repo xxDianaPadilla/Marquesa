@@ -92,9 +92,9 @@ const useLoginForm = () => {
         // ---- Validación de la contraseña ----
         if(!formData.password.trim()){
             newErrors.password = 'La contraseña es requerida';
-        } else if(formData.password.length < 6){ 
+        } else if(formData.password.length < 8){ 
             // Validar longitud mínima de contraseña
-            newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
+            newErrors.password = 'La contraseña debe tener al menos 8 caracteres';
         }
 
         // Actualizar estado de errores

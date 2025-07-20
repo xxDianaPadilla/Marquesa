@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, memo } from "react";
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-// Componentes generales
+// Componentes generales optimizados
 import PageContainer from "../components/PageContainer";
 import Form from "../components/Form";
 import Title from "../components/Title";
@@ -12,17 +12,17 @@ import Separator from "../components/Separator";
 import GoogleButton from "../components/GoogleButton";
 import BackButton from "../components/BackButton";
 
-// Componentes específicos del registro
+// Componentes específicos del registro optimizados
 import RegisterInput from "../components/Register/RegisterInput";
 import TermsCheckbox from "../components/Register/TermsCheckbox";
 
-// NUEVO - Componente de verificación de email
+// Componente de verificación de email
 import EmailVerificationModal from "../components/EmailVerification/EmailVerificationModal";
 
-// Hook personalizado
+// Hook personalizado optimizado
 import useRegisterForm from "../components/Clients/Hooks/useRegisterForm";
 
-// NUEVO - Importar estilos de requisitos de contraseña
+// Estilos para requisitos de contraseña
 import '../styles/PasswordRequirements.css';
 
 // Iconos
@@ -34,290 +34,171 @@ import locationIcon from "../assets/location.png";
 import lockIcon from "../assets/lockIcon.png";
 
 /**
- * VALIDACIONES - Ahora bloquean el envío cuando son inválidas
+ * Página de registro de usuarios completamente optimizada
+ * CARACTERÍSTICAS PRINCIPALES:
+ * - Validación en tiempo real con feedback visual inmediato
+ * - Formateo automático de campos (teléfono, nombre, email)
+ * - Validaciones específicas para datos salvadoreños
+ * - Prevención de envíos duplicados con sistema robusto
+ * - Integración completa con modal de verificación de email
+ * - Indicadores visuales de progreso y seguridad de contraseña
+ * - Manejo de errores específicos y mensajes amigables
+ * - Optimización de rendimiento con memo y callbacks
+ * - Accesibilidad mejorada con ARIA labels y roles
  */
-const validateEmail = (email) => {
-    if (!email) return { isValid: false, error: 'El correo electrónico es requerido' };
-    const emailRegex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
-    if (!emailRegex.test(email.trim())) {
-        return { isValid: false, error: 'El formato del correo electrónico no es válido' };
-    }
-    return { isValid: true, error: null };
-};
-
-const validateSalvadoranPhone = (phone) => {
-    if (!phone) return { isValid: false, error: 'El teléfono es requerido' };
-    // Formato esperado: 7XXX-XXXX
-    const phoneRegex = /^7\d{3}-\d{4}$/;
-    if (!phoneRegex.test(phone.trim())) {
-        return { isValid: false, error: 'Formato: 7XXX-XXXX (ej: 7123-4567)' };
-    }
-    return { isValid: true, error: null };
-};
-
-const validateFullName = (name) => {
-    if (!name) return { isValid: false, error: 'El nombre completo es requerido' };
-    const trimmedName = name.trim();
-    if (trimmedName.length < 3) {
-        return { isValid: false, error: 'El nombre debe tener al menos 3 caracteres' };
-    }
-    if (!trimmedName.includes(' ')) {
-        return { isValid: false, error: 'Ingresa tu nombre completo (nombre y apellido)' };
-    }
-    return { isValid: true, error: null };
-};
-
-const validatePassword = (password) => {
-    if (!password) return { isValid: false, error: 'La contraseña es requerida' };
-    if (password.length < 8) {
-        return { isValid: false, error: 'La contraseña debe tener al menos 8 caracteres' };
-    }
-    return { isValid: true, error: null };
-};
-
-const validateBirthDate = (dateString) => {
-    if (!dateString) return { isValid: false, error: 'La fecha de nacimiento es requerida' };
-    const date = new Date(dateString);
-    const today = new Date();
-    const age = today.getFullYear() - date.getFullYear();
-    if (age < 13) {
-        return { isValid: false, error: 'Debes ser mayor de 13 años' };
-    }
-    if (age > 120) {
-        return { isValid: false, error: 'Fecha de nacimiento inválida' };
-    }
-    return { isValid: true, error: null };
-};
-
-const validateAddress = (address) => {
-    if (!address) return { isValid: false, error: 'La dirección es requerida' };
-    if (address.trim().length < 10) {
-        return { isValid: false, error: 'La dirección debe tener al menos 10 caracteres' };
-    }
-    return { isValid: true, error: null };
-};
-
-/**
- * Página de registro de usuarios
- * ACTUALIZADA: Ahora bloquea el envío si hay errores de validación
- */
-const Register = () => {
-    // Estado para mostrar/ocultar contraseña
-    const [showPassword, setShowPassword] = useState(false);
-    const [validationErrors, setValidationErrors] = useState({}); // NUEVO - Errores de validación
-    const [formError, setFormError] = useState(null); // NUEVO - Error principal
+const Register = memo(() => {
+    // ============ HOOKS Y NAVEGACIÓN ============
     
-    // Navegación y autenticación
     const navigate = useNavigate();
     const { isAuthenticated, user } = useAuth();
 
-    // Hook personalizado para el formulario de registro - FUNCIONALIDAD ORIGINAL INTACTA
+    // Hook personalizado que maneja toda la lógica compleja del formulario
     const {
+        // Estados principales
         formData,
         errors,
         isLoading,
+        showPassword,
         showEmailVerificationModal,
+        
+        // Estados computados
+        isFormValid,
+        isPasswordStrong,
+        passwordStrength,
+        
+        // Manejadores principales
         handleInputChange,
-        handleSubmit: originalHandleSubmit,
+        handleSubmit,
+        togglePasswordVisibility,
+        
+        // Manejadores del modal
         handleEmailVerificationSuccess,
         closeEmailVerificationModal,
+        
+        // Funciones de utilidad
         clearErrors,
-        getUserDataForRegistration
+        resetForm,
+        getUserDataForRegistration,
+        getFormProgress
     } = useRegisterForm();
 
+    // ============ EFECTOS ============
+    
     /**
-     * Redirigir si ya está autenticado
+     * Redirección automática si ya está autenticado
+     * Evita que usuarios autenticados accedan al registro
      */
     useEffect(() => {
         if (isAuthenticated && user) {
-            if (user.userType === 'admin') {
-                navigate('/dashboard');
-            } else {
-                navigate('/home');
-            }
+            console.log('👤 Usuario ya autenticado, redirigiendo desde registro...', user);
+            
+            const redirectPath = user.userType === 'admin' ? '/dashboard' : '/home';
+            console.log('🔄 Redirigiendo a:', redirectPath);
+            
+            navigate(redirectPath, { replace: true });
         }
     }, [isAuthenticated, user, navigate]);
 
     /**
-     * NUEVA FUNCIÓN - Validar todos los campos antes del envío
+     * Limpiar formulario cuando se monta el componente
+     * Asegura un estado limpio al entrar a la página
      */
-    const validateAllFields = () => {
-        const errors = {};
+    useEffect(() => {
+        console.log('🔄 Inicializando página de registro');
+        clearErrors();
         
-        // Validar cada campo
-        const nameValidation = validateFullName(formData.fullName);
-        if (!nameValidation.isValid) errors.fullName = nameValidation.error;
-        
-        const phoneValidation = validateSalvadoranPhone(formData.phone);
-        if (!phoneValidation.isValid) errors.phone = phoneValidation.error;
-        
-        const emailValidation = validateEmail(formData.email);
-        if (!emailValidation.isValid) errors.email = emailValidation.error;
-        
-        const birthDateValidation = validateBirthDate(formData.birthDate);
-        if (!birthDateValidation.isValid) errors.birthDate = birthDateValidation.error;
-        
-        const addressValidation = validateAddress(formData.address);
-        if (!addressValidation.isValid) errors.address = addressValidation.error;
-        
-        const passwordValidation = validatePassword(formData.password);
-        if (!passwordValidation.isValid) errors.password = passwordValidation.error;
-        
-        if (!formData.acceptTerms) {
-            errors.acceptTerms = 'Debes aceptar los términos y condiciones';
-        }
-        
-        return errors;
-    };
+        return () => {
+            console.log('🧹 Limpiando componente de registro');
+        };
+    }, [clearErrors]);
 
-    /**
-     * NUEVA FUNCIÓN - Manejar envío con validación previa
-     */
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        
-        // Limpiar errores previos
-        setFormError(null);
-        setValidationErrors({});
-        
-        // Validar todos los campos
-        const errors = validateAllFields();
-        
-        // Si hay errores, no enviar el formulario
-        if (Object.keys(errors).length > 0) {
-            setValidationErrors(errors);
-            setFormError('Por favor corrige los errores en el formulario antes de continuar');
-            
-            // Scroll al primer error
-            const firstErrorField = Object.keys(errors)[0];
-            const element = document.querySelector(`[name="${firstErrorField}"]`);
-            if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-            
-            return; // BLOQUEAR EL ENVÍO
-        }
-        
-        // Si no hay errores, proceder con el envío original
-        try {
-            await originalHandleSubmit(e);
-        } catch (error) {
-            console.error('Error en el registro:', error);
-            setFormError('Error al crear la cuenta. Inténtalo nuevamente.');
-        }
-    };
-
-    /**
-     * NUEVA FUNCIÓN - Solo para mostrar errores en tiempo real (no bloquea escritura)
-     */
-    const getDisplayErrors = () => {
-        const displayErrors = {};
-        
-        // Solo mostrar errores si hay contenido en los campos
-        if (formData.fullName && !validateFullName(formData.fullName).isValid) {
-            displayErrors.fullName = validateFullName(formData.fullName).error;
-        }
-        
-        if (formData.phone && !validateSalvadoranPhone(formData.phone).isValid) {
-            displayErrors.phone = validateSalvadoranPhone(formData.phone).error;
-        }
-        
-        if (formData.email && !validateEmail(formData.email).isValid) {
-            displayErrors.email = validateEmail(formData.email).error;
-        }
-        
-        if (formData.birthDate && !validateBirthDate(formData.birthDate).isValid) {
-            displayErrors.birthDate = validateBirthDate(formData.birthDate).error;
-        }
-        
-        if (formData.address && !validateAddress(formData.address).isValid) {
-            displayErrors.address = validateAddress(formData.address).error;
-        }
-        
-        if (formData.password && !validatePassword(formData.password).isValid) {
-            displayErrors.password = validatePassword(formData.password).error;
-        }
-        
-        return displayErrors;
-    };
-
-    const displayErrors = getDisplayErrors();
-
-    /**
-     * Función auxiliar para validar si la contraseña cumple requisitos básicos
-     * Se usa para mostrar feedback visual en tiempo real
-     */
-    const isPasswordStrong = (password) => {
-        if (!password) return false;
-        
-        const hasMinLength = password.length >= 8;
-        const hasUppercase = /[A-Z]/.test(password);
-        const hasLowercase = /[a-z]/.test(password);
-        const hasNumber = /\d/.test(password);
-        const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-        
-        return hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecialChar;
-    };
-
-    /**
-     * NUEVA FUNCIÓN - Verificar si el formulario está listo para envío
-     */
-    const isFormValid = () => {
-        const errors = validateAllFields();
-        return Object.keys(errors).length === 0;
-    };
-
+    // ============ MANEJADORES DE EVENTOS ============
+    
     /**
      * Maneja la navegación al login
+     * Limpia el formulario antes de navegar para seguridad
      */
     const handleLoginClick = (e) => {
         e.preventDefault();
-        navigate('/login');
+        if (!isLoading) {
+            console.log('🔑 Navegando a login');
+            resetForm();
+            navigate('/login');
+        }
     };
 
     /**
-     * Maneja el click en Google (placeholder)
+     * Maneja el registro con Google (placeholder)
+     * TODO: Implementar integración real con Google OAuth
      */
     const handleGoogleRegister = () => {
-        console.log('Registro con Google - Por implementar');
-        // TODO: Implementar registro con Google
+        if (!isLoading) {
+            console.log('🌐 Registro con Google - Por implementar');
+            // TODO: Implementar registro con Google OAuth
+            alert('Funcionalidad de Google en desarrollo');
+        }
     };
 
+    // ============ FUNCIONES DE RENDERIZADO ============
+    
+    /**
+     * Renderiza el mensaje de error principal del formulario
+     * Muestra errores generales o del servidor
+     */
+    const renderErrorMessage = () => {
+        if (!errors.general) return null;
+
+        return (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 animate-slideDown">
+                <div className="flex items-start">
+                    <svg className="w-5 h-5 text-red-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                        <p className="text-red-700 text-sm font-medium" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                            Error en el registro
+                        </p>
+                        <p className="text-red-600 text-sm mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                            {errors.general}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // ============ RENDERIZADO DEL COMPONENTE ============
+    
     return (
         <PageContainer>
-            {/* Botón de regresar */}
-            <BackButton onClick={handleLoginClick} />
+            {/* Botón de regresar al login */}
+            <BackButton onClick={handleLoginClick} disabled={isLoading} />
             
             <Form onSubmit={handleSubmit}>
-                {/* NUEVO - Error principal del formulario */}
-                {(formError || errors.general) && (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-                        <div className="flex items-center">
-                            <svg className="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span className="text-red-700 text-sm" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                {formError || errors.general}
-                            </span>
-                        </div>
-                    </div>
-                )}
+                
+                {/* Mensaje de error principal */}
+                {renderErrorMessage()}
 
+                {/* Título principal */}
                 <Title>Regístrate</Title>
 
-                {/* Campo de nombre completo - FUNCIONALIDAD ORIGINAL */}
+                {/* Campo de nombre completo */}
                 <RegisterInput
                     name="fullName"
                     type="text"
-                    placeholder="Nombre completo"
+                    placeholder="Nombre completo (ej: Juan Pérez)"
                     icon={userIcon}
                     value={formData.fullName}
                     onChange={handleInputChange}
-                    error={validationErrors.fullName || displayErrors.fullName || errors.fullName}
+                    error={errors.fullName}
                     disabled={isLoading}
+                    maxLength={50}
+                    autoComplete="name"
+                    required
                 />
 
-                {/* Campo de teléfono - FUNCIONALIDAD ORIGINAL */}
+                {/* Campo de teléfono con formateo automático */}
                 <RegisterInput
                     name="phone"
                     type="tel"
@@ -325,11 +206,14 @@ const Register = () => {
                     icon={phoneIcon}
                     value={formData.phone}
                     onChange={handleInputChange}
-                    error={validationErrors.phone || displayErrors.phone || errors.phone}
+                    error={errors.phone}
                     disabled={isLoading}
+                    maxLength={9}
+                    autoComplete="tel"
+                    required
                 />
 
-                {/* Campo de email - FUNCIONALIDAD ORIGINAL */}
+                {/* Campo de email */}
                 <RegisterInput
                     name="email"
                     type="email"
@@ -337,11 +221,13 @@ const Register = () => {
                     icon={emailIcon}
                     value={formData.email}
                     onChange={handleInputChange}
-                    error={validationErrors.email || displayErrors.email || errors.email}
+                    error={errors.email}
                     disabled={isLoading}
+                    autoComplete="email"
+                    required
                 />
 
-                {/* Campo de fecha de nacimiento - FUNCIONALIDAD ORIGINAL */}
+                {/* Campo de fecha de nacimiento */}
                 <RegisterInput
                     name="birthDate"
                     type="date"
@@ -349,11 +235,14 @@ const Register = () => {
                     icon={calendarIcon}
                     value={formData.birthDate}
                     onChange={handleInputChange}
-                    error={validationErrors.birthDate || displayErrors.birthDate || errors.birthDate}
+                    error={errors.birthDate}
                     disabled={isLoading}
+                    max={new Date(Date.now() - 13 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]} // Mínimo 13 años
+                    autoComplete="bday"
+                    required
                 />
 
-                {/* Campo de dirección - FUNCIONALIDAD ORIGINAL */}
+                {/* Campo de dirección */}
                 <RegisterInput
                     name="address"
                     type="text"
@@ -361,79 +250,114 @@ const Register = () => {
                     icon={locationIcon}
                     value={formData.address}
                     onChange={handleInputChange}
-                    error={validationErrors.address || displayErrors.address || errors.address}
+                    error={errors.address}
                     disabled={isLoading}
+                    maxLength={100}
+                    autoComplete="street-address"
+                    required
                 />
 
-                {/* Campo de contraseña - ACTUALIZADO con validación visual */}
+                {/* Campo de contraseña con indicadores */}
                 <div className="relative">
+
                     <RegisterInput
                         name="password"
                         type="password"
-                        placeholder="Contraseña"
+                        placeholder="Contraseña segura"
                         icon={lockIcon}
                         showPassword={showPassword}
-                        onTogglePassword={() => setShowPassword(!showPassword)}
+                        onTogglePassword={togglePasswordVisibility}
                         value={formData.password}
                         onChange={handleInputChange}
-                        error={validationErrors.password || displayErrors.password || errors.password}
+                        error={errors.password}
                         disabled={isLoading}
+                        autoComplete="new-password"
+                        required
                     />
                     
-                    {/* Indicador visual de fortaleza de contraseña */}
+                    {/* Indicador visual de contraseña segura */}
                     {formData.password && (
-                        <div className="absolute right-2 top-3 z-10">
-                            <div className={`w-3 h-3 rounded-full ${
-                                isPasswordStrong(formData.password) 
-                                    ? 'bg-green-500 shadow-lg shadow-green-200' 
-                                    : 'bg-orange-400 shadow-lg shadow-orange-200'
-                            } transition-all duration-300`}>
-                                {isPasswordStrong(formData.password) && (
-                                    <div className="w-full h-full rounded-full bg-green-500 animate-pulse" />
+                        <div className="absolute right-3 top-8 z-10">
+                            <div className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                                isPasswordStrong 
+                                    ? 'bg-green-500 shadow-lg shadow-green-200 animate-pulse' 
+                                    : passwordStrength >= 3
+                                        ? 'bg-yellow-500 shadow-lg shadow-yellow-200'
+                                        : 'bg-red-500 shadow-lg shadow-red-200'
+                            }`} title={isPasswordStrong ? 'Contraseña segura' : 'Contraseña débil'}>
+                                {isPasswordStrong && (
+                                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
                                 )}
                             </div>
                         </div>
                     )}
                 </div>
 
-                {/* Checkbox de términos y condiciones - FUNCIONALIDAD ORIGINAL */}
+                {/* Checkbox de términos y condiciones */}
                 <TermsCheckbox
                     checked={formData.acceptTerms}
                     onChange={handleInputChange}
-                    error={validationErrors.acceptTerms || errors.acceptTerms}
+                    error={errors.acceptTerms}
                     disabled={isLoading}
                 />
 
-                <br />
+                {/* Espaciado adicional */}
+                <div className="mt-6" />
 
-                {/* NUEVO - Mostrar estado del formulario */}
-                {!isFormValid() && Object.keys(displayErrors).length > 0 && (
+                {/* Indicador de estado del formulario */}
+                {!isFormValid && Object.keys(errors).length === 0 && (
                     <div className="text-center mb-4">
-                        <p className="text-xs text-orange-600" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                            Complete todos los campos correctamente para continuar
+                        <p className="text-xs text-gray-500" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                            Complete todos los campos para continuar
                         </p>
                     </div>
                 )}
 
-                {/* Botón de registro - ACTUALIZADO con validación */}
+                {/* Botón de registro principal */}
                 <Button
                     text={isLoading ? "Verificando..." : "Crear cuenta"}
                     variant="primary"
                     type="submit"
-                    disabled={isLoading || !formData.acceptTerms}
+                    disabled={isLoading || !isFormValid}
                 />
 
-                {/* Link para ir al login */}
+                {/* Indicador de carga detallado */}
+                {isLoading && (
+                    <div className="text-center mt-2">
+                        <div className="inline-flex items-center">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-pink-500 mr-2"></div>
+                            <p className="text-xs text-gray-500" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                Verificando disponibilidad del correo...
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Pregunta para ir al login */}
                 <QuestionText
                     question="¿Ya tienes una cuenta?"
                     linkText="Inicia sesión"
                     onLinkClick={handleLoginClick}
                 />
 
+                {/* Separador */}
                 <Separator text="o" />
 
                 {/* Botón de Google */}
-                <GoogleButton onClick={handleGoogleRegister} />
+                <GoogleButton 
+                    onClick={handleGoogleRegister} 
+                    disabled={isLoading}
+                    text="Registrarse con Google"
+                />
+
+                {/* Información adicional */}
+                <div className="text-center mt-4">
+                    <p className="text-xs text-gray-500" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                        Al registrarte, recibirás un código de verificación en tu correo electrónico
+                    </p>
+                </div>
             </Form>
 
             {/* Modal de verificación de email */}
@@ -447,6 +371,5 @@ const Register = () => {
             />
         </PageContainer>
     );
-};
-
+});
 export default Register;

@@ -1,279 +1,280 @@
-import React, { useState } from "react";
-import qrIcon from "../assets/qrIcon.png";
-import attentionIcon from "../assets/attentionIcon.png";
+import React from "react";
+import { useForm } from 'react-hook-form';
 
 /**
- * Componente PaymentMethodSelection - Selección de método de pago
- * Permite al usuario elegir entre tarjeta de crédito/débito, PayPal o transferencia bancaria
- * @param {function} onNext - Callback para avanzar al siguiente paso
- * @param {function} onBack - Callback para regresar al paso anterior
+ * Validaciones para métodos de pago
  */
-const PaymentMethodSelection = ({ onNext, onBack }) => {
-    // Estado para almacenar el método de pago seleccionado
-    const [selectedMethod, setSelectedMethod] = useState('');
+const validateCardNumber = (cardNumber) => {
+    if (!cardNumber) return false;
+    const cardNumberClean = cardNumber.replace(/\s/g, '');
+    return /^\d{16}$/.test(cardNumberClean);
+};
+
+const validateExpiryDate = (expiryDate) => {
+    if (!expiryDate) return false;
+    const [month, year] = expiryDate.split('/');
+    if (!month || !year || month < 1 || month > 12) return false;
     
-    // Estado para controlar la pestaña activa en transferencia bancaria (datos o QR)
-    const [transferTab, setTransferTab] = useState('datos');
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear() % 100;
+    const currentMonth = currentDate.getMonth() + 1;
+    
+    return !(parseInt(year) < currentYear || 
+            (parseInt(year) === currentYear && parseInt(month) < currentMonth));
+};
+
+const validateCVV = (cvv) => {
+    if (!cvv) return false;
+    return /^\d{3,4}$/.test(cvv);
+};
+
+const PaymentMethodSelection = ({ onNext, onBack }) => {
+    const {
+        register,
+        handleSubmit,
+        formState: { errors },
+        watch,
+        setValue
+    } = useForm({
+        mode: 'onChange'
+    });
+
+    const selectedMethod = watch('method');
 
     /**
-     * Maneja la confirmación del pago
-     * Valida que se haya seleccionado un método antes de proceder
+     * Reglas de validación para cada campo
      */
-    const handleConfirmPayment = () => {
-        if (selectedMethod) {
-            // Aquí podremos agregar validaciones adicionales
-            onNext(); 
-        } else {
-            alert('Por favor selecciona un método de pago');
+    const validationRules = {
+        method: {
+            required: 'Debes seleccionar un método de pago'
+        },
+        cardNumber: {
+            required: selectedMethod === 'card' ? 'El número de tarjeta es requerido' : false,
+            validate: {
+                format: (value) => selectedMethod === 'card' ? (validateCardNumber(value) || 'El número de tarjeta debe tener 16 dígitos') : true
+            }
+        },
+        cardName: {
+            required: selectedMethod === 'card' ? 'El nombre en la tarjeta es requerido' : false,
+            minLength: {
+                value: 3,
+                message: 'El nombre debe tener al menos 3 caracteres'
+            }
+        },
+        expiryDate: {
+            required: selectedMethod === 'card' ? 'La fecha de expiración es requerida' : false,
+            validate: {
+                format: (value) => selectedMethod === 'card' ? (validateExpiryDate(value) || 'Fecha inválida o tarjeta expirada') : true
+            }
+        },
+        cvv: {
+            required: selectedMethod === 'card' ? 'El CVV es requerido' : false,
+            validate: {
+                format: (value) => selectedMethod === 'card' ? (validateCVV(value) || 'El CVV debe tener 3 o 4 dígitos') : true
+            }
         }
     };
 
-    // Array con los métodos de pago disponibles
-    const paymentMethods = [
-        { id: 'card', name: 'Tarjeta de Crédito/Débito', icon: '💳' },
-        { id: 'paypal', name: 'PayPal', icon: '🅿️' },
-        { id: 'transfer', name: 'Transferencia Bancaria', icon: '🏦' }
-    ];
+    /**
+     * Formatear número de tarjeta
+     */
+    const handleCardNumberChange = (e) => {
+        const value = e.target.value.replace(/\D/g, '').replace(/(\d{4})(?=\d)/g, '$1 ').slice(0, 19);
+        setValue('cardNumber', value);
+    };
 
     /**
-     * Renderiza el formulario de PayPal
-     * Muestra información y botón para redireccionar a PayPal
+     * Formatear fecha de expiración
      */
-    const renderPayPalForm = () => (
-        <div className="mt-6 space-y-4 p-4 bg-gray-50 rounded-lg">
-            <div className="text-sm text-gray-600 mb-4">
-                Serás redirigido a PayPal para completar tu pago de forma segura. Una vez completado, volverás a nuestra tienda para finalizar tu pedido.
-            </div>
-            <button className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors">
-                Pay Pal
-            </button>
-        </div>
-    );
+    const handleExpiryDateChange = (e) => {
+        const value = e.target.value.replace(/\D/g, '').replace(/(\d{2})(\d)/, '$1/$2').slice(0, 5);
+        setValue('expiryDate', value);
+    };
 
     /**
-     * Renderiza el formulario de transferencia bancaria
-     * Incluye pestañas para datos bancarios y código QR, más sección de comprobante
+     * Formatear CVV
      */
-    const renderTransferForm = () => (
-        <div className="mt-6 space-y-4 p-4 bg-gray-50 rounded-lg">
-            {/* Mensaje informativo sobre el proceso de transferencia */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                <div className="flex items-start">
-                    <div className="w-5 h-5 rounded-fullflex items-center justify-center mr-3 mt-0.5">
-                        <img src={attentionIcon} alt="" />
-                    </div>
-                    <div className="text-sm text-blue-800">
-                        Realiza una transferencia bancaria a la siguiente cuenta y adjunta el comprobante de pago. Tu pedido será procesado una vez que se verifique el pago.
-                    </div>
-                </div>
-            </div>
+    const handleCVVChange = (e) => {
+        const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+        setValue('cvv', value);
+    };
 
-            {/* Pestañas para alternar entre datos bancarios y código QR */}
-            <div className="flex border-b">
-                <button
-                    onClick={() => setTransferTab('datos')}
-                    className={`px-4 py-2 text-sm font-medium border-b-2 ${transferTab === 'datos'
-                        ? 'border-pink-400 text-pink-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700'
-                        }`}
-                >
-                    Datos bancarios
-                </button>
-                <button
-                    onClick={() => setTransferTab('qr')}
-                    className={`px-4 py-2 text-sm font-medium border-b-2 ${transferTab === 'qr'
-                        ? 'border-pink-400 text-pink-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700'
-                        }`}
-                >
-                    Código QR
-                </button>
-            </div>
-
-            {/* Contenido condicional según la pestaña seleccionada */}
-            {transferTab === 'datos' ? (
-                <div className="space-y-4">
-                    {/* Sección de datos bancarios */}
-                    <div className="bg-white p-4 rounded-lg border">
-                        <h4 className="font-medium mb-3">Datos bancarios</h4>
-                        <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Banco:</span>
-                                <span className="font-medium">Banco agrícola</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Titular:</span>
-                                <span className="font-medium">Marquesa</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Número de cuenta:</span>
-                                <span className="font-medium">8798 0123 4567 8801</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Tipo de cuenta:</span>
-                                <span className="font-medium">Ahorro</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Concepto:</span>
-                                <span className="font-medium">Tu nombre + dirección</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Sección para subir comprobante de transferencia */}
-                    <div className="bg-white p-4 rounded-lg border">
-                        <h4 className="font-medium mb-3">Comprobante de transferencia</h4>
-                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                            <div className="text-4xl mb-2">📄</div>
-                            <div className="text-sm text-gray-600 mb-2">Haz clic para subir o arrastra y suelta</div>
-                            <div className="text-xs text-gray-500">JPG, PNG o PDF (máx. 5MB)</div>
-                        </div>
-                    </div>
-                </div>
-            ) : (
-                <div className="space-y-4">
-                    {/* Sección de código QR */}
-                    <div className="bg-white p-4 rounded-lg border">
-                        <h4 className="font-medium mb-3">Datos bancarios</h4>
-                        <div className="flex justify-center mb-4">
-                            <div className="w-48 h-48 bg-white border-2 border-gray-200 rounded-lg flex items-center justify-center">
-                                <div className="text-center">
-                                    <div className="w-48 h-48 bg-white border-2 border-gray-200 rounded-lg flex items-center justify-center">
-                                        <img src={qrIcon} alt="" className="w-full h-full object-cover rounded-lg" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="text-center text-sm text-gray-600 mb-4">
-                            Escanea este código QR con la app de tu banco para realizar la transferencia automáticamente
-                        </div>
-                    </div>
-
-                    {/* Sección para subir comprobante de transferencia (repetida en pestaña QR) */}
-                    <div className="bg-white p-4 rounded-lg border">
-                        <h4 className="font-medium mb-3">Comprobante de transferencia</h4>
-                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                            <div className="text-4xl mb-2">📄</div>
-                            <div className="text-sm text-gray-600 mb-2">Haz clic para subir o arrastra y suelta</div>
-                            <div className="text-xs text-gray-500">JPG, PNG o PDF (máx. 5MB)</div>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
+    /**
+     * Función que se ejecuta al enviar el formulario
+     */
+    const onSubmit = (data) => {
+        onNext(); // Solo procede al siguiente paso si todas las validaciones pasan
+    };
 
     return (
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-            <h3 className="text-lg font-semibold mb-6">Método de pago</h3>
-            <div className="space-y-4">
-                {/* Mapeo de métodos de pago disponibles */}
-                {paymentMethods.map((method) => (
-                    <label
-                        key={method.id}
-                        className={`flex items-center p-4 border rounded-lg cursor-pointer transition-colors ${selectedMethod === method.id
-                            ? 'border-pink-400 bg-pink-50'
-                            : 'border-gray-300 hover:border-gray-400'
-                            }`}
-                    >
-                        {/* Input radio oculto para selección */}
-                        <input
-                            type="radio"
-                            name="paymentMethod"
-                            value={method.id}
-                            checked={selectedMethod === method.id}
-                            onChange={(e) => setSelectedMethod(e.target.value)}
-                            className="sr-only"
-                        />
-                        {/* Icono y nombre del método de pago */}
-                        <span className="text-2xl mr-4">{method.icon}</span>
-                        <span className="text-sm font-medium">{method.name}</span>
-                        {/* Indicador visual personalizado de selección */}
-                        <div className={`ml-auto w-4 h-4 rounded-full border-2 ${selectedMethod === method.id
-                            ? 'border-pink-400 bg-pink-400'
-                            : 'border-gray-300'
-                            }`}>
-                            {selectedMethod === method.id && (
-                                <div className="w-full h-full rounded-full bg-white border-2 border-pink-400"></div>
+        <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="text-xl font-semibold mb-6" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                Método de Pago
+            </h2>
+            
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                {/* Selección de método */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                        Selecciona tu método de pago
+                    </label>
+                    <div className="space-y-2">
+                        <label className="flex items-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
+                            <input
+                                type="radio"
+                                value="card"
+                                {...register('method', validationRules.method)}
+                                className="mr-3"
+                            />
+                            <span style={{ fontFamily: 'Poppins, sans-serif' }}>💳 Tarjeta de Crédito/Débito</span>
+                        </label>
+                        <label className="flex items-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
+                            <input
+                                type="radio"
+                                value="paypal"
+                                {...register('method', validationRules.method)}
+                                className="mr-3"
+                            />
+                            <span style={{ fontFamily: 'Poppins, sans-serif' }}>💰 PayPal</span>
+                        </label>
+                        <label className="flex items-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
+                            <input
+                                type="radio"
+                                value="cash"
+                                {...register('method', validationRules.method)}
+                                className="mr-3"
+                            />
+                            <span style={{ fontFamily: 'Poppins, sans-serif' }}>💵 Pago contra entrega</span>
+                        </label>
+                    </div>
+                    {errors.method && (
+                        <p className="text-red-500 text-sm mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                            {errors.method.message}
+                        </p>
+                    )}
+                </div>
+
+                {/* Campos de tarjeta (solo si se selecciona tarjeta) */}
+                {selectedMethod === 'card' && (
+                    <div className="space-y-4 border-t pt-4">
+                        <h3 className="text-lg font-medium" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                            Información de la Tarjeta
+                        </h3>
+                        
+                        {/* Número de tarjeta */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Número de tarjeta
+                            </label>
+                            <input
+                                type="text"
+                                {...register('cardNumber', validationRules.cardNumber)}
+                                onChange={handleCardNumberChange}
+                                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent ${
+                                    errors.cardNumber ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                                placeholder="1234 5678 9012 3456"
+                                style={{ fontFamily: 'Poppins, sans-serif' }}
+                            />
+                            {errors.cardNumber && (
+                                <p className="text-red-500 text-sm mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                    {errors.cardNumber.message}
+                                </p>
                             )}
                         </div>
-                    </label>
-                ))}
 
-                {/* Formulario de tarjeta de crédito/débito - se muestra cuando está seleccionado */}
-                {selectedMethod === 'card' && (
-                    <div className="mt-6 space-y-4 p-4 bg-gray-50 rounded-lg">
-                        {/* Campo número de tarjeta */}
+                        {/* Nombre en la tarjeta */}
                         <div>
-                            <label className="block text-sm font-medium mb-2">Número de la tarjeta</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Nombre en la tarjeta
+                            </label>
                             <input
                                 type="text"
-                                placeholder="1234 5678 9012 3456"
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-300 text-sm"
+                                {...register('cardName', validationRules.cardName)}
+                                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent ${
+                                    errors.cardName ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                                placeholder="Como aparece en la tarjeta"
+                                style={{ fontFamily: 'Poppins, sans-serif' }}
                             />
+                            {errors.cardName && (
+                                <p className="text-red-500 text-sm mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                    {errors.cardName.message}
+                                </p>
+                            )}
                         </div>
-                        {/* Campo nombre del titular */}
-                        <div>
-                            <label className="block text-sm font-medium mb-2">Nombre del titular</label>
-                            <input
-                                type="text"
-                                placeholder="Nombre completo"
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-300 text-sm"
-                            />
-                        </div>
-                        {/* Campos fecha de expiración y CVV en grid */}
+
                         <div className="grid grid-cols-2 gap-4">
+                            {/* Fecha de expiración */}
                             <div>
-                                <label className="block text-sm font-medium mb-2">Fecha de expiración</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Fecha de expiración
+                                </label>
                                 <input
                                     type="text"
-                                    placeholder="MM/AA"
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-300 text-sm"
+                                    {...register('expiryDate', validationRules.expiryDate)}
+                                    onChange={handleExpiryDateChange}
+                                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent ${
+                                        errors.expiryDate ? 'border-red-500' : 'border-gray-300'
+                                    }`}
+                                    placeholder="MM/YY"
+                                    style={{ fontFamily: 'Poppins, sans-serif' }}
                                 />
+                                {errors.expiryDate && (
+                                    <p className="text-red-500 text-sm mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                        {errors.expiryDate.message}
+                                    </p>
+                                )}
                             </div>
+
+                            {/* CVV */}
                             <div>
-                                <label className="block text-sm font-medium mb-2">CVV</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    CVV
+                                </label>
                                 <input
                                     type="text"
+                                    {...register('cvv', validationRules.cvv)}
+                                    onChange={handleCVVChange}
+                                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent ${
+                                        errors.cvv ? 'border-red-500' : 'border-gray-300'
+                                    }`}
                                     placeholder="123"
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-300 text-sm"
+                                    style={{ fontFamily: 'Poppins, sans-serif' }}
                                 />
+                                {errors.cvv && (
+                                    <p className="text-red-500 text-sm mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                        {errors.cvv.message}
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </div>
                 )}
 
-                {/* Renderizado condicional del formulario de PayPal */}
-                {selectedMethod === 'paypal' && renderPayPalForm()}
-
-                {/* Renderizado condicional del formulario de transferencia bancaria */}
-                {selectedMethod === 'transfer' && renderTransferForm()}
-
-                {/* Botones de navegación */}
-                <div className="flex gap-4 pt-4">
-                    {/* Botón para regresar */}
+                {/* Botones */}
+                <div className="flex space-x-4 pt-4">
                     <button
-                        style={{ cursor: 'pointer' }}
+                        type="button"
                         onClick={onBack}
-                        className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                        className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-3 px-4 rounded-lg font-medium transition-colors duration-200"
+                        style={{ fontFamily: 'Poppins, sans-serif', cursor: 'pointer' }}
                     >
                         Volver
                     </button>
-                    {/* Botón para confirmar/pagar - deshabilitado si no hay método seleccionado */}
                     <button
-                        style={{ cursor: 'pointer' }}
-                        onClick={handleConfirmPayment}
-                        disabled={!selectedMethod}
-                        className={`flex-1 py-3 rounded-lg font-medium transition-colors ${selectedMethod
-                            ? 'bg-pink-400 text-white hover:bg-pink-500'
-                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                            }`}
+                        type="submit"
+                        className="flex-1 text-white py-3 px-4 rounded-lg font-medium transition-colors duration-200"
+                        style={{ 
+                            backgroundColor: '#E8ACD2',
+                            fontFamily: 'Poppins, sans-serif',
+                            cursor: 'pointer'
+                        }}
                     >
-                        {/* Texto del botón cambia según el método seleccionado */}
-                        {selectedMethod === 'transfer' ? 'Confirmar pedido' : 'Pagar ahora'}
+                        Revisar Pedido
                     </button>
                 </div>
-            </div>
+            </form>
         </div>
     );
 };

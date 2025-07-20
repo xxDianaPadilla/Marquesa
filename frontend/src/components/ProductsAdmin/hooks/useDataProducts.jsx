@@ -1,17 +1,18 @@
+// Ruta: frontend/src/components/ProductsAdmin/hooks/useDataProducts.jsx
 import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 
 /**
- * Hook personalizado para manejar toda la lógica relacionada con productos
- * Proporciona funcionalidades CRUD completas para productos:
- * - Crear, editar, eliminar productos
- * - Manejo de imágenes y archivos
- * - Validaciones del lado cliente
- * - Integración con categorías
- * - Control de pestañas y estado de formulario
- * - Manejo de errores y respuestas del servidor
+ * Hook personalizado mejorado para manejar toda la lógica relacionada con productos
  * 
- * @returns {Object} Objeto con estados y funciones para gestión de productos
+ * Funcionalidades principales:
+ * - Gestión completa del estado de productos y categorías
+ * - Operaciones CRUD con validaciones exhaustivas
+ * - Manejo de errores detallado y user-friendly
+ * - Integración optimizada con react-hook-form
+ * - Control de estados de carga y UI
+ * 
+ * @returns {Object} Estados y funciones para gestión completa de productos
  */
 const useDataProducts = () => {
   // ============ ESTADOS DE NAVEGACIÓN ============
@@ -47,6 +48,11 @@ const useDataProducts = () => {
   const [loading, setLoading] = useState(true); // Estado de carga general
   const [categories, setCategories] = useState([]); // Lista de categorías disponibles
 
+  // ============ ESTADOS DE VALIDACIÓN ============
+  
+  const [validationErrors, setValidationErrors] = useState({}); // Errores de validación
+  const [isSubmitting, setIsSubmitting] = useState(false); // Estado de envío
+
   // ============ FUNCIONES DE UTILIDAD ============
   
   /**
@@ -78,6 +84,94 @@ const useDataProducts = () => {
     }
 
     return data;
+  };
+
+  /**
+   * Valida los datos del producto antes de enviar al servidor
+   * Realiza validaciones exhaustivas del lado cliente
+   * 
+   * @param {Object} productData - Datos del producto a validar
+   * @returns {Object} { isValid: boolean, errors: Object }
+   */
+  const validateProductData = (productData) => {
+    const errors = {};
+
+    // Validación de nombre (obligatorio, longitud mínima)
+    if (!productData.name || !productData.name.trim()) {
+      errors.name = "El nombre del producto es obligatorio";
+    } else if (productData.name.trim().length < 2) {
+      errors.name = "El nombre debe tener al menos 2 caracteres";
+    } else if (productData.name.trim().length > 100) {
+      errors.name = "El nombre no puede exceder 100 caracteres";
+    }
+
+    // Validación de descripción (obligatorio, longitud mínima)
+    if (!productData.description || !productData.description.trim()) {
+      errors.description = "La descripción del producto es obligatoria";
+    } else if (productData.description.trim().length < 10) {
+      errors.description = "La descripción debe tener al menos 10 caracteres";
+    } else if (productData.description.trim().length > 500) {
+      errors.description = "La descripción no puede exceder 500 caracteres";
+    }
+
+    // Validación de precio (obligatorio, numérico, positivo)
+    if (!productData.price) {
+      errors.price = "El precio es obligatorio";
+    } else {
+      const priceValue = parseFloat(productData.price);
+      if (isNaN(priceValue)) {
+        errors.price = "El precio debe ser un número válido";
+      } else if (priceValue <= 0) {
+        errors.price = "El precio debe ser mayor a 0";
+      } else if (priceValue > 999999.99) {
+        errors.price = "El precio no puede exceder $999,999.99";
+      }
+    }
+
+    // Validación de stock (obligatorio, entero, no negativo)
+    if (productData.stock === undefined || productData.stock === null || productData.stock === '') {
+      errors.stock = "El stock es obligatorio";
+    } else {
+      const stockValue = parseInt(productData.stock);
+      if (isNaN(stockValue)) {
+        errors.stock = "El stock debe ser un número entero";
+      } else if (stockValue < 0) {
+        errors.stock = "El stock no puede ser negativo";
+      } else if (stockValue > 999999) {
+        errors.stock = "El stock no puede exceder 999,999 unidades";
+      }
+    }
+
+    // Validación de categoría (obligatorio)
+    if (!productData.categoryId || !productData.categoryId.trim()) {
+      errors.categoryId = "Debe seleccionar una categoría";
+    }
+
+    // Validación de imagen (obligatorio para productos nuevos)
+    if (!id && !productData.image) {
+      errors.image = "La imagen del producto es obligatoria";
+    } else if (productData.image && productData.image instanceof File) {
+      // Validar tamaño de archivo (máximo 5MB)
+      if (productData.image.size > 5 * 1024 * 1024) {
+        errors.image = "La imagen no puede exceder 5MB";
+      }
+      
+      // Validar tipo de archivo
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+      if (!validTypes.includes(productData.image.type)) {
+        errors.image = "La imagen debe ser JPG, PNG, WebP o GIF";
+      }
+    }
+
+    // Validación de detalles (opcional, pero con límite de caracteres)
+    if (productData.details && productData.details.length > 1000) {
+      errors.details = "Los detalles no pueden exceder 1000 caracteres";
+    }
+
+    return {
+      isValid: Object.keys(errors).length === 0,
+      errors
+    };
   };
 
   // ============ FUNCIONES DE CARGA DE DATOS ============
@@ -173,6 +267,7 @@ const useDataProducts = () => {
     setIsPersonalizable(false);
     setDetails("");
     setImage(null);
+    setValidationErrors({});
   };
 
   // ============ FUNCIÓN PARA CREAR PRODUCTO ============
@@ -186,59 +281,34 @@ const useDataProducts = () => {
   const createProduct = async (productData) => {
     console.log('➕ Iniciando creación de producto...');
 
-    // ---- Validaciones del lado cliente ----
-    
-    // Validar nombre
-    if (!productData.name?.trim()) {
-      toast.error("El nombre es requerido");
+    // ---- Validar datos antes de enviar ----
+    const validation = validateProductData(productData);
+    if (!validation.isValid) {
+      console.log('❌ Validación fallida:', validation.errors);
+      setValidationErrors(validation.errors);
+      toast.error("Por favor corrige los errores en el formulario");
       return;
-    }
-
-    // Validar descripción
-    if (!productData.description?.trim()) {
-      toast.error("La descripción es requerida");
-      return;
-    }
-
-    // Validar precio
-    if (!productData.price || isNaN(parseFloat(productData.price))) {
-      toast.error("El precio debe ser un número válido");
-      return;
-    }
-
-    if (parseFloat(productData.price) <= 0) {
-      toast.error("El precio debe ser mayor a 0");
-      return;
-    }
-
-    // Validar categoría
-    if (!productData.categoryId) {
-      toast.error("La categoría es requerida");
-      return;
-    }
-
-    // Validar stock
-    if (productData.stock && (isNaN(parseInt(productData.stock)) || parseInt(productData.stock) < 0)) {
-      toast.error("El stock debe ser un número mayor o igual a 0");
-      return;
-    }
-
-    // ---- Preparar datos para envío ----
-    const formData = new FormData();
-    formData.append("name", productData.name.trim());
-    formData.append("description", productData.description.trim());
-    formData.append("price", parseFloat(productData.price));
-    formData.append("stock", parseInt(productData.stock) || 0);
-    formData.append("categoryId", productData.categoryId);
-    formData.append("isPersonalizable", productData.isPersonalizable ? "true" : "false");
-    formData.append("details", productData.details || "");
-
-    // Agregar imagen si existe
-    if (productData.image) {
-      formData.append("images", productData.image);
     }
 
     try {
+      setIsSubmitting(true);
+      setValidationErrors({});
+      
+      // ---- Preparar datos para envío ----
+      const formData = new FormData();
+      formData.append("name", productData.name.trim());
+      formData.append("description", productData.description.trim());
+      formData.append("price", parseFloat(productData.price));
+      formData.append("stock", parseInt(productData.stock) || 0);
+      formData.append("categoryId", productData.categoryId);
+      formData.append("isPersonalizable", productData.isPersonalizable ? "true" : "false");
+      formData.append("details", productData.details || "");
+
+      // Agregar imagen si existe
+      if (productData.image) {
+        formData.append("images", productData.image);
+      }
+
       console.log('📤 Enviando producto al servidor...');
       
       // ---- Enviar petición POST ----
@@ -274,6 +344,8 @@ const useDataProducts = () => {
     } catch (error) {
       console.error("❌ Error completo:", error);
       toast.error(error.message || "Error inesperado");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -330,6 +402,7 @@ const useDataProducts = () => {
     setIsPersonalizable(product.isPersonalizable || false);
     setDetails(product.details || "");
     setImage(null); // Resetear imagen (se mostrará la actual en el preview)
+    setValidationErrors({}); // Limpiar errores de validación
     
     // Cambiar a la pestaña de formulario
     setActiveTab("form");
@@ -348,34 +421,12 @@ const useDataProducts = () => {
   const handleEdit = async (productData) => {
     console.log(`💾 Guardando cambios en producto ID: ${id}`);
 
-    // ---- Validaciones (mismas que en crear) ----
-    if (!productData.name?.trim()) {
-      toast.error("El nombre es requerido");
-      return;
-    }
-
-    if (!productData.description?.trim()) {
-      toast.error("La descripción es requerida");
-      return;
-    }
-
-    if (!productData.price || isNaN(parseFloat(productData.price))) {
-      toast.error("El precio debe ser un número válido");
-      return;
-    }
-
-    if (parseFloat(productData.price) <= 0) {
-      toast.error("El precio debe ser mayor a 0");
-      return;
-    }
-
-    if (!productData.categoryId) {
-      toast.error("La categoría es requerida");
-      return;
-    }
-
-    if (productData.stock && (isNaN(parseInt(productData.stock)) || parseInt(productData.stock) < 0)) {
-      toast.error("El stock debe ser un número mayor o igual a 0");
+    // ---- Validar datos antes de enviar ----
+    const validation = validateProductData(productData);
+    if (!validation.isValid) {
+      console.log('❌ Validación fallida:', validation.errors);
+      setValidationErrors(validation.errors);
+      toast.error("Por favor corrige los errores en el formulario");
       return;
     }
 
@@ -389,6 +440,9 @@ const useDataProducts = () => {
     console.log(`📤 Actualizando producto en: ${API}/${id}`);
 
     try {
+      setIsSubmitting(true);
+      setValidationErrors({});
+      
       let res;
 
       // ---- Determinar tipo de actualización ----
@@ -450,6 +504,8 @@ const useDataProducts = () => {
     } catch (error) {
       console.error("❌ Error completo:", error);
       toast.error(error.message || "Error al editar producto");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -488,6 +544,11 @@ const useDataProducts = () => {
     loading,                // Estado de carga booleano
     categories,             // Array de categorías disponibles
 
+    // ---- Estados de validación ----
+    validationErrors,       // Errores de validación actuales
+    setValidationErrors,    // Función para establecer errores
+    isSubmitting,           // Estado de envío del formulario
+
     // ---- Funciones de operaciones CRUD ----
     createProduct,          // Crear nuevo producto
     deleteProduct,          // Eliminar producto existente
@@ -496,6 +557,7 @@ const useDataProducts = () => {
 
     // ---- Función de utilidad ----
     resetForm,              // Limpiar formulario manualmente
+    validateProductData,    // Función de validación externa
   };
 };
 

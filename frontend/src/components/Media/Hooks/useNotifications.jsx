@@ -14,7 +14,7 @@ export const useNotifications = () => {
    * @param {number} duration - La duración en milisegundos antes de que se oculte, por defecto 5000ms.
    */
   const showNotification = useCallback(
-    (message, type = "success", duration = 5000) => {
+    (message, type = "success", duration = 1500) => {
       // Genera un ID único para la notificación combinando el timestamp y un número aleatorio.
       const id = Date.now() + Math.random();
       // Crea el objeto de la notificación con todos sus datos.

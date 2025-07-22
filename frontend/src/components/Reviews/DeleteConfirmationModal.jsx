@@ -1,12 +1,14 @@
-// frontend/src/components/Reviews/Components/DeleteConfirmationModal.jsx
-import React from 'react';
+// frontend/src/components/Reviews/DeleteConfirmationModal.jsx
+import React, { useState, useEffect } from 'react';
+import { useReviewValidation } from './Hooks/useReviewValidation';
 
 /**
- * Modal de confirmación para eliminar reseñas
+ * Modal de confirmación para eliminar reseñas con validaciones
  * 
  * Muestra los detalles de la reseña que se va a eliminar y solicita confirmación
  * del usuario antes de proceder con la eliminación. Incluye información del cliente,
- * calificación y mensaje de la reseña.
+ * calificación y mensaje de la reseña. Implementa validaciones antes de permitir
+ * la eliminación.
  * 
  * @param {Object} props - Props del componente
  * @param {boolean} props.isOpen - Controla si el modal está visible
@@ -20,6 +22,104 @@ const DeleteConfirmationModal = ({
     onConfirm, 
     reviewToDelete 
 }) => {
+    // Estado para controlar la confirmación explícita del usuario
+    const [isConfirmed, setIsConfirmed] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    
+    // Hook de validaciones
+    const {
+        validateDeleteSubmission,
+        getFieldError,
+        hasFieldError,
+        clearValidationErrors,
+        clearFieldError
+    } = useReviewValidation();
+
+    /**
+     * Efecto para limpiar el estado cuando se abre/cierra el modal
+     */
+    useEffect(() => {
+        if (isOpen) {
+            // Limpiar estado cuando se abre el modal
+            setIsConfirmed(false);
+            setIsDeleting(false);
+            clearValidationErrors();
+        }
+    }, [isOpen, clearValidationErrors]);
+
+    /**
+     * Maneja el cambio del checkbox de confirmación
+     * Limpia errores cuando el usuario confirma
+     * 
+     * @param {Event} e - Evento del checkbox
+     */
+    const handleConfirmationChange = (e) => {
+        const confirmed = e.target.checked;
+        setIsConfirmed(confirmed);
+        
+        // Limpiar error de confirmación si existe
+        if (confirmed && hasFieldError('deleteConfirmation')) {
+            clearFieldError('deleteConfirmation');
+        }
+    };
+
+    /**
+     * Maneja la confirmación de eliminación con validaciones
+     * Valida antes de proceder con la eliminación
+     */
+    const handleConfirmDelete = async () => {
+        // Validar la operación de eliminación
+        const validation = validateDeleteSubmission(reviewToDelete?._id, isConfirmed);
+        
+        if (!validation.isValid) {
+            console.warn('Validación de eliminación falló:', validation.error);
+            return; // No continuar si hay errores de validación
+        }
+
+        // Validaciones adicionales
+        if (!reviewToDelete || !reviewToDelete._id) {
+            console.error('No hay reseña para eliminar o falta ID');
+            return;
+        }
+
+        if (typeof onConfirm !== 'function') {
+            console.error('onConfirm no es una función');
+            return;
+        }
+
+        setIsDeleting(true);
+
+        try {
+            console.log('=== CONFIRMING DELETE WITH VALIDATION ===');
+            console.log('Review ID:', reviewToDelete._id);
+            console.log('Confirmed:', isConfirmed);
+
+            await onConfirm();
+            
+            console.log('Review deleted successfully');
+            
+            // Limpiar estado después de la eliminación exitosa
+            setIsConfirmed(false);
+            setIsDeleting(false);
+
+        } catch (error) {
+            console.error('Error al eliminar reseña:', error);
+            setIsDeleting(false);
+            alert('Error al eliminar la reseña: ' + error.message);
+        }
+    };
+
+    /**
+     * Maneja la cancelación del modal
+     * Limpia el estado y cierra el modal
+     */
+    const handleCancel = () => {
+        setIsConfirmed(false);
+        setIsDeleting(false);
+        clearValidationErrors();
+        onClose();
+    };
+
     /**
      * Renderiza las estrellas de calificación
      * Crea 5 íconos de estrella, pintando de amarillo las que corresponden a la calificación
@@ -72,6 +172,10 @@ const DeleteConfirmationModal = ({
         return text.substring(0, maxLength) + '...';
     };
 
+    // Obtener errores de validación
+    const deleteConfirmationError = getFieldError('deleteConfirmation');
+    const hasConfirmationError = hasFieldError('deleteConfirmation');
+
     // No renderizar nada si el modal no está abierto
     if (!isOpen) return null;
 
@@ -123,12 +227,44 @@ const DeleteConfirmationModal = ({
                     )}
                 </div>
 
+                {/* Checkbox de confirmación explícita */}
+                <div className="mb-4">
+                    <label className="flex items-start space-x-3">
+                        <input
+                            type="checkbox"
+                            checked={isConfirmed}
+                            onChange={handleConfirmationChange}
+                            disabled={isDeleting}
+                            className={`mt-1 h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded ${
+                                hasConfirmationError ? 'border-red-300' : 'border-gray-300'
+                            }`}
+                            style={{ cursor: 'pointer' }}
+                        />
+                        <span className="text-sm text-gray-700" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                            Confirmo que deseo eliminar permanentemente esta reseña. Entiendo que esta acción no se puede deshacer.
+                        </span>
+                    </label>
+                    
+                    {/* Error de validación para confirmación */}
+                    {deleteConfirmationError && (
+                        <div className="mt-2 flex items-center text-red-600">
+                            <svg className="w-4 h-4 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                            <span className="text-sm" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                {deleteConfirmationError}
+                            </span>
+                        </div>
+                    )}
+                </div>
+
                 {/* Botones de acción */}
                 <div className="flex justify-end space-x-3">
                     {/* Botón cancelar */}
                     <button
-                        onClick={onClose}
-                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+                        onClick={handleCancel}
+                        disabled={isDeleting}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         style={{ fontFamily: 'Poppins, sans-serif', cursor: 'pointer' }}
                     >
                         Cancelar
@@ -136,11 +272,26 @@ const DeleteConfirmationModal = ({
                     
                     {/* Botón confirmar eliminación */}
                     <button
-                        onClick={onConfirm}
-                        className="px-4 py-2 text-sm font-medium text-white bg-pink-200 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                        onClick={handleConfirmDelete}
+                        disabled={isDeleting || !isConfirmed}
+                        className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                         style={{ fontFamily: 'Poppins, sans-serif', cursor: 'pointer' }}
                     >
-                        Eliminar
+                        {isDeleting ? (
+                            <>
+                                {/* Spinner de carga */}
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                Eliminando...
+                            </>
+                        ) : (
+                            <>
+                                {/* Ícono de eliminación */}
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Eliminar
+                            </>
+                        )}
                     </button>
                 </div>
             </div>

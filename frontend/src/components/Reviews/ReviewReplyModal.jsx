@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import OverlayBackdrop from '../OverlayBackdrop';
+import { useReviewValidation } from './Hooks/useReviewValidation';
 
 /**
- * Modal para responder a reseñas de clientes
+ * Modal para responder a reseñas de clientes con validaciones integradas
  * 
  * Permite a los administradores escribir y enviar respuestas a las reseñas.
  * Muestra la información completa de la reseña y proporciona un formulario
- * para escribir la respuesta. Incluye consejos y validaciones.
+ * para escribir la respuesta. Incluye consejos, validaciones en tiempo real
+ * y validaciones antes del envío.
  * 
  * @param {Object} props - Props del componente
  * @param {boolean} props.isOpen - Controla si el modal está visible
@@ -19,6 +21,16 @@ const ReviewReplyModal = ({ isOpen, onClose, review, onSubmit }) => {
     const [reply, setReply] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
+    
+    // Hook de validaciones
+    const {
+        validateReplyText,
+        validateReplySubmission,
+        getFieldError,
+        hasFieldError,
+        clearValidationErrors,
+        clearFieldError
+    } = useReviewValidation();
 
     /**
      * Efecto para detectar el tamaño de pantalla y evitar errores de SSR
@@ -44,11 +56,44 @@ const ReviewReplyModal = ({ isOpen, onClose, review, onSubmit }) => {
         if (isOpen && review) {
             // Si la reseña ya tiene una respuesta, mostrarla para edición
             setReply(review.response || '');
+            // Limpiar errores de validación al abrir el modal
+            clearValidationErrors();
         }
-    }, [isOpen, review]);
+    }, [isOpen, review, clearValidationErrors]);
 
     /**
-     * Maneja el envío del formulario de respuesta
+     * Maneja el cambio del texto de respuesta con validación en tiempo real
+     * Valida el contenido mientras el usuario escribe
+     * 
+     * @param {Event} e - Evento del input
+     */
+    const handleReplyChange = (e) => {
+        const newReply = e.target.value;
+        setReply(newReply);
+
+        // Limpiar error del campo si había uno previo
+        if (hasFieldError('replyText')) {
+            clearFieldError('replyText');
+        }
+
+        // Validar en tiempo real solo si hay contenido
+        if (newReply.trim().length > 0) {
+            validateReplyText(newReply, true);
+        }
+    };
+
+    /**
+     * Maneja el blur del textarea para validación completa
+     * Ejecuta validación completa cuando el usuario sale del campo
+     */
+    const handleReplyBlur = () => {
+        if (reply.trim().length > 0) {
+            validateReplyText(reply, false);
+        }
+    };
+
+    /**
+     * Maneja el envío del formulario de respuesta con validaciones
      * Valida los datos y llama a la función onSubmit del componente padre
      * 
      * @param {Event} e - Evento del formulario
@@ -63,12 +108,15 @@ const ReviewReplyModal = ({ isOpen, onClose, review, onSubmit }) => {
         console.log('Selected review ID:', review?._id);
         console.log('onSubmit function:', typeof onSubmit);
 
-        // Validaciones básicas
-        if (!reply.trim()) {
-            console.log('Reply is empty, returning');
-            return;
+        // Validación completa antes del envío
+        const validation = validateReplySubmission(review?._id, reply);
+        
+        if (!validation.isValid) {
+            console.log('Validation failed:', validation.error);
+            return; // No continuar si hay errores de validación
         }
 
+        // Validaciones adicionales específicas del formulario
         if (!review?._id) {
             console.error('No review ID found');
             alert('Error: No se encontró el ID de la reseña');
@@ -163,6 +211,10 @@ const ReviewReplyModal = ({ isOpen, onClose, review, onSubmit }) => {
             };
         }
     };
+
+    // Obtener errores de validación para mostrar
+    const replyTextError = getFieldError('replyText');
+    const hasReplyTextError = hasFieldError('replyText');
 
     // No renderizar nada si el modal no está abierto o no hay reseña
     if (!isOpen || !review) return null;
@@ -288,18 +340,36 @@ const ReviewReplyModal = ({ isOpen, onClose, review, onSubmit }) => {
                                 {/* Textarea para escribir la respuesta */}
                                 <textarea
                                     value={reply}
-                                    onChange={(e) => setReply(e.target.value)}
+                                    onChange={handleReplyChange}
+                                    onBlur={handleReplyBlur}
                                     disabled={isSubmitting}
                                     rows={isMobile ? 3 : 4}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent resize-none text-xs sm:text-sm"
+                                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent resize-none text-xs sm:text-sm ${
+                                        hasReplyTextError ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                                    }`}
                                     placeholder="Escribe tu respuesta a esta reseña..."
                                     style={{ fontFamily: 'Poppins, sans-serif' }}
                                     required
                                     maxLength={500}
                                 />
+                                
+                                {/* Mensaje de error de validación */}
+                                {replyTextError && (
+                                    <div className="mt-1 flex items-center text-red-600">
+                                        <svg className="w-4 h-4 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                        </svg>
+                                        <span className="text-xs" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                            {replyTextError}
+                                        </span>
+                                    </div>
+                                )}
+                                
                                 {/* Contador de caracteres */}
                                 <div className="mt-1 text-xs text-gray-500 flex justify-between" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                    <span>{reply.length}/500 caracteres</span>
+                                    <span className={reply.length > 500 ? 'text-red-600' : ''}>
+                                        {reply.length}/500 caracteres
+                                    </span>
                                     <span className="hidden sm:inline">Máximo 500 caracteres</span>
                                 </div>
                             </div>
@@ -338,7 +408,7 @@ const ReviewReplyModal = ({ isOpen, onClose, review, onSubmit }) => {
                             <button
                                 type="submit"
                                 onClick={handleSubmit}
-                                disabled={isSubmitting || !reply.trim()}
+                                disabled={isSubmitting || !reply.trim() || hasReplyTextError}
                                 className="w-full sm:w-auto px-3 sm:px-4 py-2 text-white rounded-lg hover:bg-pink-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
                                 style={{ fontFamily: 'Poppins, sans-serif', backgroundColor: '#FDB4B7', cursor: 'pointer' }}
                             >

@@ -1,8 +1,12 @@
 // Ruta: frontend/src/components/Reviews/ReviewsFilters.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useReviewValidation } from './Hooks/useReviewValidation';
 
-// Componente para los filtros de reseñas
-// Permite filtrar por calificación, estado, fecha y producto
+/**
+ * Componente para los filtros de reseñas con validaciones integradas
+ * Permite filtrar por calificación, estado, fecha y producto
+ * Incluye validaciones en tiempo real y antes de aplicar filtros
+ */
 const ReviewsFilters = ({ 
     filters, 
     onFiltersChange, 
@@ -17,21 +21,138 @@ const ReviewsFilters = ({
     // Estado local para manejar los filtros
     // Esto permite que los cambios se reflejen inmediatamente en la UI
     const [localFilters, setLocalFilters] = useState(filters);
-// Inicializa los filtros locales con los valores recibidos
-    // Maneja el cambio de filtros
+    
+    // Hook de validaciones
+    const {
+        validateDateFilters,
+        validateRatingFilter,
+        getFieldError,
+        hasFieldError,
+        clearValidationErrors,
+        clearFieldError
+    } = useReviewValidation();
+
+    /**
+     * Efecto para sincronizar filtros locales con props
+     * Actualiza el estado local cuando cambian los filtros externos
+     */
+    useEffect(() => {
+        setLocalFilters(filters);
+    }, [filters]);
+
+    /**
+     * Maneja el cambio de filtros con validación
+     * Valida el valor antes de aplicar el cambio
+     * 
+     * @param {string} key - Clave del filtro
+     * @param {string} value - Nuevo valor del filtro
+     */
     const handleFilterChange = (key, value) => {
-        const newFilters = { ...localFilters, [key]: value };
-        setLocalFilters(newFilters);
-        onFiltersChange(newFilters);
+        // Limpiar errores previos del campo
+        clearFieldError(key);
+
+        let isValid = true;
+        let errorMessage = null;
+
+        // Validar según el tipo de filtro
+        switch (key) {
+            case 'rating':
+                const ratingValidation = validateRatingFilter(value);
+                isValid = ratingValidation.isValid;
+                errorMessage = ratingValidation.error;
+                break;
+            case 'dateFrom':
+            case 'dateTo':
+                // Para fechas, necesitamos validar con ambos valores
+                const newDateFilters = { ...localFilters, [key]: value };
+                const dateValidation = validateDateFilters(newDateFilters.dateFrom, newDateFilters.dateTo);
+                isValid = dateValidation.isValid;
+                errorMessage = dateValidation.error;
+                break;
+            default:
+                // Para otros filtros (status, product), asumir válidos
+                isValid = true;
+                break;
+        }
+
+        // Solo aplicar el cambio si es válido
+        if (isValid) {
+            const newFilters = { ...localFilters, [key]: value };
+            setLocalFilters(newFilters);
+            onFiltersChange(newFilters);
+        } else if (errorMessage) {
+            // Mostrar error si la validación falló
+            console.warn(`Filtro inválido para ${key}:`, errorMessage);
+        }
     };
-// Maneja el cambio de ordenamiento
-// Permite alternar entre ascendente y descendente
+
+    /**
+     * Maneja el cambio de fecha desde con validación en tiempo real
+     * 
+     * @param {Event} e - Evento del input
+     */
+    const handleDateFromChange = (e) => {
+        const value = e.target.value;
+        
+        // Limpiar error previo
+        clearFieldError('dateFilters');
+        
+        // Actualizar estado local inmediatamente
+        const newFilters = { ...localFilters, dateFrom: value };
+        setLocalFilters(newFilters);
+        
+        // Validar y aplicar si es válido
+        const validation = validateDateFilters(value, localFilters.dateTo);
+        if (validation.isValid) {
+            onFiltersChange(newFilters);
+        }
+    };
+
+    /**
+     * Maneja el cambio de fecha hasta con validación en tiempo real
+     * 
+     * @param {Event} e - Evento del input
+     */
+    const handleDateToChange = (e) => {
+        const value = e.target.value;
+        
+        // Limpiar error previo
+        clearFieldError('dateFilters');
+        
+        // Actualizar estado local inmediatamente
+        const newFilters = { ...localFilters, dateTo: value };
+        setLocalFilters(newFilters);
+        
+        // Validar y aplicar si es válido
+        const validation = validateDateFilters(localFilters.dateFrom, value);
+        if (validation.isValid) {
+            onFiltersChange(newFilters);
+        }
+    };
+
+    /**
+     * Maneja el blur de los campos de fecha para validación completa
+     * Ejecuta validación completa cuando el usuario sale del campo
+     */
+    const handleDateBlur = () => {
+        validateDateFilters(localFilters.dateFrom, localFilters.dateTo);
+    };
+
+    /**
+     * Maneja el cambio de ordenamiento
+     * Permite alternar entre ascendente y descendente
+     * 
+     * @param {string} field - Campo por el cual ordenar
+     */
     const handleSortChange = (field) => {
         const newOrder = sortBy === field && sortOrder === 'desc' ? 'asc' : 'desc';
         onSortChange(field, newOrder);
     };
-// Maneja el borrado de todos los filtros
-// Resetea los filtros a sus valores por defecto
+
+    /**
+     * Maneja el borrado de todos los filtros
+     * Resetea los filtros a sus valores por defecto y limpia errores
+     */
     const handleClearAll = () => {
         const clearedFilters = {
             rating: 'todos',
@@ -43,9 +164,15 @@ const ReviewsFilters = ({
         setLocalFilters(clearedFilters);
         onFiltersChange(clearedFilters);
         onClearFilters();
+        
+        // Limpiar errores de validación
+        clearValidationErrors();
     };
-// Verifica si hay filtros activos
-// Esto se usa para mostrar un indicador visual si hay filtros aplicados    
+
+    /**
+     * Verifica si hay filtros activos
+     * Esto se usa para mostrar un indicador visual si hay filtros aplicados
+     */
     const hasActiveFilters = localFilters.rating !== 'todos' || 
                             localFilters.status !== 'todos' ||
                             localFilters.product !== 'todos' ||
@@ -53,6 +180,12 @@ const ReviewsFilters = ({
                             localFilters.dateTo || 
                             sortBy !== 'fecha' || 
                             sortOrder !== 'desc';
+
+    // Obtener errores de validación
+    const dateFiltersError = getFieldError('dateFilters');
+    const ratingFilterError = getFieldError('ratingFilter');
+    const hasDateError = hasFieldError('dateFilters');
+    const hasRatingError = hasFieldError('ratingFilter');
 
     // Opciones de calificación
     const ratingOptions = [
@@ -149,7 +282,9 @@ const ReviewsFilters = ({
                             <select
                                 value={localFilters.rating || 'todos'}
                                 onChange={(e) => handleFilterChange('rating', e.target.value)}
-                                className="w-full px-2 sm:px-3 py-2 border border-gray-300 rounded-md text-xs sm:text-sm focus:ring-2 focus:ring-[#FF7260] focus:border-transparent"
+                                className={`w-full px-2 sm:px-3 py-2 border rounded-md text-xs sm:text-sm focus:ring-2 focus:ring-[#FF7260] focus:border-transparent ${
+                                    hasRatingError ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                                }`}
                                 style={{ fontFamily: 'Poppins, sans-serif', cursor: 'pointer' }}
                             >
                                 {ratingOptions.map((option) => (
@@ -158,6 +293,17 @@ const ReviewsFilters = ({
                                     </option>
                                 ))}
                             </select>
+                            {/* Error de validación para calificación */}
+                            {ratingFilterError && (
+                                <div className="mt-1 flex items-center text-red-600">
+                                    <svg className="w-3 h-3 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                    <span className="text-xs" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                        {ratingFilterError}
+                                    </span>
+                                </div>
+                            )}
                         </div>
 
                         {/* Filtro por estado */}
@@ -246,8 +392,11 @@ const ReviewsFilters = ({
                             <input
                                 type="date"
                                 value={localFilters.dateFrom || ''}
-                                onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
-                                className="w-full px-2 sm:px-3 py-2 border border-gray-300 rounded-md text-xs sm:text-sm focus:ring-2 focus:ring-[#FF7260] focus:border-transparent"
+                                onChange={handleDateFromChange}
+                                onBlur={handleDateBlur}
+                                className={`w-full px-2 sm:px-3 py-2 border rounded-md text-xs sm:text-sm focus:ring-2 focus:ring-[#FF7260] focus:border-transparent ${
+                                    hasDateError ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                                }`}
                                 style={{ fontFamily: 'Poppins, sans-serif' }}
                             />
                         </div>
@@ -260,12 +409,27 @@ const ReviewsFilters = ({
                             <input
                                 type="date"
                                 value={localFilters.dateTo || ''}
-                                onChange={(e) => handleFilterChange('dateTo', e.target.value)}
-                                className="w-full px-2 sm:px-3 py-2 border border-gray-300 rounded-md text-xs sm:text-sm focus:ring-2 focus:ring-[#FF7260] focus:border-transparent"
+                                onChange={handleDateToChange}
+                                onBlur={handleDateBlur}
+                                className={`w-full px-2 sm:px-3 py-2 border rounded-md text-xs sm:text-sm focus:ring-2 focus:ring-[#FF7260] focus:border-transparent ${
+                                    hasDateError ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                                }`}
                                 style={{ fontFamily: 'Poppins, sans-serif' }}
                             />
                         </div>
                     </div>
+
+                    {/* Error de validación para fechas */}
+                    {dateFiltersError && (
+                        <div className="mt-2 flex items-center text-red-600">
+                            <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                            <span className="text-sm" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                {dateFiltersError}
+                            </span>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

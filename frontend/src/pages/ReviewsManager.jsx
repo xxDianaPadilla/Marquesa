@@ -7,8 +7,14 @@ import ReviewsContent from "../components/Reviews/ReviewsContent";
 import ReviewsPagination from "../components/Reviews/ReviewsPagination";
 import { useReviews } from "../components/Reviews/Hooks/useReviews";
 
+/**
+ * Componente principal para la gestión de reseñas
+ * 
+ * Gestiona la vista completa del sistema de reseñas, incluyendo filtros,
+ * búsqueda, paginación y acciones CRUD sobre las reseñas.
+ */
 const ReviewsManager = () => {
-  // Usar el hook useReviews actualizado
+  // Usar el hook useReviews para operaciones CRUD
   const { 
     reviews, 
     loading: reviewsLoading, 
@@ -44,32 +50,79 @@ const ReviewsManager = () => {
     hasImages: false
   });
 
-  // Obtener productos únicos para el filtro
+  /**
+   * Función para mostrar notificaciones (simplificada)
+   * 
+   * @param {string} message - Mensaje de la notificación
+   * @param {string} type - Tipo de notificación ('success', 'error', 'warning', 'info')
+   */
+  const showNotification = (message, type = 'info') => {
+    console.log(`[${type.toUpperCase()}]: ${message}`);
+    
+    // Implementación básica con alert para errores críticos
+    if (type === 'error') {
+      alert(`Error: ${message}`);
+    }
+  };
+
+  /**
+   * Obtener productos únicos para el filtro
+   */
   const availableProducts = useMemo(() => {
-    return getUniqueProducts();
-  }, [reviews]);
+    try {
+      return getUniqueProducts();
+    } catch (error) {
+      console.error('Error al obtener productos únicos:', error);
+      return [];
+    }
+  }, [getUniqueProducts]);
 
-  // Obtener reseñas filtradas y ordenadas usando el hook
+  /**
+   * Obtener reseñas filtradas y ordenadas usando el hook
+   */
   const filteredAndSortedReviews = useMemo(() => {
-    // Combinar filtros de búsqueda con otros filtros
-    const allFilters = {
-      ...filters,
-      searchTerm: searchTerm.trim()
-    };
+    try {
+      // Combinar filtros de búsqueda con otros filtros
+      const allFilters = {
+        ...filters,
+        searchTerm: searchTerm.trim()
+      };
 
-    // Aplicar filtros
-    const filtered = filterReviews(allFilters);
-    
-    // Aplicar ordenamiento
-    const sorted = sortReviews(filtered, sortBy, sortOrder);
-    
-    return sorted;
+      // Aplicar filtros
+      const filtered = filterReviews(allFilters);
+      
+      // Aplicar ordenamiento
+      const sorted = sortReviews(filtered, sortBy, sortOrder);
+      
+      return sorted;
+    } catch (error) {
+      console.error('Error al filtrar y ordenar reseñas:', error);
+      return reviews || [];
+    }
   }, [reviews, filters, searchTerm, sortBy, sortOrder, filterReviews, sortReviews]);
 
-  // Obtener estadísticas actualizadas
+  /**
+   * Obtener estadísticas actualizadas
+   */
   const stats = useMemo(() => {
-    return getReviewStats();
-  }, [reviews, getReviewStats]);
+    try {
+      return getReviewStats();
+    } catch (error) {
+      console.error('Error al obtener estadísticas:', error);
+      return {
+        total: 0,
+        pending: 0,
+        approved: 0,
+        rejected: 0,
+        replied: 0,
+        unanswered: 0,
+        averageRating: 0,
+        positiveReviews: 0,
+        neutralReviews: 0,
+        negativeReviews: 0
+      };
+    }
+  }, [getReviewStats]);
 
   // Paginación
   const totalItems = filteredAndSortedReviews.length;
@@ -88,23 +141,41 @@ const ReviewsManager = () => {
     hasPreviousPage: currentPage > 1
   };
 
-  // Handlers de eventos
+  /**
+   * Maneja el cambio de búsqueda
+   * 
+   * @param {string} term - Nuevo término de búsqueda
+   */
   const handleSearchChange = (term) => {
     setSearchTerm(term);
     setCurrentPage(1);
   };
 
+  /**
+   * Maneja el cambio de ordenamiento
+   * 
+   * @param {string} field - Campo por el cual ordenar
+   * @param {string} order - Dirección del ordenamiento
+   */
   const handleSortChange = (field, order) => {
     setSortBy(field);
     setSortOrder(order);
     setCurrentPage(1);
   };
 
+  /**
+   * Maneja el cambio de filtros
+   * 
+   * @param {Object} newFilters - Nuevos filtros a aplicar
+   */
   const handleFiltersChange = (newFilters) => {
     setFilters(newFilters);
     setCurrentPage(1);
   };
 
+  /**
+   * Maneja la limpieza de filtros
+   */
   const handleClearFilters = () => {
     setSearchTerm('');
     setSortBy('fecha');
@@ -121,23 +192,40 @@ const ReviewsManager = () => {
     setCurrentPage(1);
   };
 
+  /**
+   * Maneja el cambio de página
+   * 
+   * @param {number} page - Número de página
+   */
   const handlePageChange = (page) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  /**
+   * Maneja la navegación a la página siguiente
+   */
   const handleNextPage = () => {
     if (paginationInfo.hasNextPage) {
       handlePageChange(currentPage + 1);
     }
   };
 
+  /**
+   * Maneja la navegación a la página anterior
+   */
   const handlePreviousPage = () => {
     if (paginationInfo.hasPreviousPage) {
       handlePageChange(currentPage - 1);
     }
   };
 
+  /**
+   * Obtiene números de página para mostrar en la paginación
+   * 
+   * @param {number} maxVisible - Máximo número de páginas visibles
+   * @returns {Array} Array de números de página
+   */
   const getPageNumbers = (maxVisible = 5) => {
     const pages = [];
     const half = Math.floor(maxVisible / 2);
@@ -156,17 +244,26 @@ const ReviewsManager = () => {
     return pages;
   };
 
-  // Funciones para responder y moderar reseñas
+  /**
+   * Maneja la respuesta a una reseña
+   * 
+   * @param {string} reviewId - ID de la reseña
+   * @param {string} reply - Texto de la respuesta
+   */
   const handleReplyReview = async (reviewId, reply) => {
     try {
       console.log('=== ReviewsManager: Respondiendo reseña ===');
       console.log('Review ID:', reviewId);
       console.log('Reply:', reply);
-      
+
+      // Validaciones básicas
+      if (!reviewId || !reply || reply.trim().length === 0) {
+        showNotification('Datos inválidos para responder', 'error');
+        return;
+      }
+
       await replyToReview(reviewId, reply);
       console.log('Respuesta enviada exitosamente');
-      
-      // Mostrar notificación de éxito (opcional)
       showNotification('Respuesta enviada exitosamente', 'success');
       
     } catch (error) {
@@ -175,11 +272,23 @@ const ReviewsManager = () => {
     }
   };
 
+  /**
+   * Maneja la moderación de una reseña
+   * 
+   * @param {string} reviewId - ID de la reseña
+   * @param {string} action - Acción a realizar ('approve' o 'reject')
+   */
   const handleModerateReview = async (reviewId, action) => {
     try {
       console.log('=== ReviewsManager: Moderando reseña ===');
       console.log('Review ID:', reviewId);
       console.log('Action:', action);
+
+      // Validaciones básicas
+      if (!reviewId || !action) {
+        showNotification('Datos inválidos para moderar', 'error');
+        return;
+      }
       
       await moderateReview(reviewId, action);
       console.log('Reseña moderada exitosamente');
@@ -193,14 +302,24 @@ const ReviewsManager = () => {
     }
   };
 
+  /**
+   * Maneja la eliminación de una reseña
+   * 
+   * @param {string} reviewId - ID de la reseña a eliminar
+   */
   const handleDeleteReview = async (reviewId) => {
     try {
       console.log('=== ReviewsManager: Eliminando reseña ===');
       console.log('Review ID:', reviewId);
+
+      // Validaciones básicas
+      if (!reviewId) {
+        showNotification('ID de reseña inválido', 'error');
+        return;
+      }
       
       await deleteReview(reviewId);
       console.log('Reseña eliminada exitosamente');
-      
       showNotification('Reseña eliminada exitosamente', 'success');
       
       // Si estamos en la última página y se elimina el último elemento, volver a la página anterior
@@ -211,17 +330,6 @@ const ReviewsManager = () => {
     } catch (error) {
       console.error('Error al eliminar reseña:', error);
       showNotification('Error al eliminar la reseña: ' + error.message, 'error');
-    }
-  };
-
-  // Función para mostrar notificaciones (simplificada, podrías usar react-toast o similar)
-  const showNotification = (message, type) => {
-    // Por ahora solo console.log, pero podrías implementar un sistema de notificaciones real
-    console.log(`[${type.toUpperCase()}]: ${message}`);
-    
-    // Implementación básica con alert (reemplazar por un sistema de toast mejor)
-    if (type === 'error') {
-      alert(`Error: ${message}`);
     }
   };
 

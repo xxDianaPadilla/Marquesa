@@ -1,8 +1,11 @@
 // Ruta: frontend/src/components/Reviews/ReviewsHeader.jsx
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useReviewValidation } from './Hooks/useReviewValidation';
 
-// Componente para el encabezado de reseñas
-// Incluye título, descripción, buscador y estadísticas responsivas
+/**
+ * Componente para el encabezado de reseñas con validaciones
+ * Incluye título, descripción, buscador con validación y estadísticas responsivas
+ */
 const ReviewsHeader = ({ 
     searchTerm, 
     onSearchChange, 
@@ -10,6 +13,116 @@ const ReviewsHeader = ({
     loading,
     error
 }) => {
+    // Estado local para el término de búsqueda
+    const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm || '');
+    
+    // Hook de validaciones
+    const {
+        validateSearchTerm,
+        getFieldError,
+        hasFieldError,
+        clearFieldError
+    } = useReviewValidation();
+
+    /**
+     * Efecto para sincronizar el término de búsqueda local con props
+     */
+    useEffect(() => {
+        setLocalSearchTerm(searchTerm || '');
+    }, [searchTerm]);
+
+    /**
+     * Debounce función para retrasar la búsqueda
+     * Evita hacer búsquedas en cada keystroke
+     */
+    const debounce = useCallback((func, delay) => {
+        let timeoutId;
+        return (...args) => {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => func.apply(null, args), delay);
+        };
+    }, []);
+
+    /**
+     * Función debounceda para ejecutar la búsqueda
+     * Se ejecuta 300ms después del último cambio
+     */
+    const debouncedSearch = useCallback(
+        debounce((term) => {
+            // Validar el término antes de enviarlo
+            const validation = validateSearchTerm(term, false);
+            if (validation.isValid) {
+                onSearchChange(term);
+            }
+        }, 300),
+        [onSearchChange, validateSearchTerm]
+    );
+
+    /**
+     * Maneja el cambio del término de búsqueda con validación en tiempo real
+     * 
+     * @param {Event} e - Evento del input
+     */
+    const handleSearchChange = (e) => {
+        const newTerm = e.target.value;
+        
+        // Actualizar estado local inmediatamente
+        setLocalSearchTerm(newTerm);
+        
+        // Limpiar error previo si existe
+        if (hasFieldError('searchTerm')) {
+            clearFieldError('searchTerm');
+        }
+
+        // Validar en tiempo real
+        const validation = validateSearchTerm(newTerm, true);
+        
+        // Si es válido o está vacío, proceder con la búsqueda debounceda
+        if (validation.isValid || newTerm.trim() === '') {
+            debouncedSearch(newTerm);
+        }
+    };
+
+    /**
+     * Maneja el blur del campo de búsqueda
+     * Ejecuta validación completa cuando el usuario sale del campo
+     */
+    const handleSearchBlur = () => {
+        if (localSearchTerm.trim().length > 0) {
+            validateSearchTerm(localSearchTerm, false);
+        }
+    };
+
+    /**
+     * Maneja la limpieza del campo de búsqueda
+     * Limpia el término y los errores de validación
+     */
+    const handleClearSearch = () => {
+        setLocalSearchTerm('');
+        clearFieldError('searchTerm');
+        onSearchChange('');
+    };
+
+    /**
+     * Maneja el envío del formulario de búsqueda
+     * Valida antes de ejecutar la búsqueda
+     * 
+     * @param {Event} e - Evento del formulario
+     */
+    const handleSearchSubmit = (e) => {
+        e.preventDefault();
+        
+        // Validar antes de enviar
+        const validation = validateSearchTerm(localSearchTerm, false);
+        if (validation.isValid) {
+            onSearchChange(localSearchTerm);
+        }
+    };
+
+    // Obtener errores de validación
+    const searchTermError = getFieldError('searchTerm');
+    const hasSearchError = hasFieldError('searchTerm');
+
     return (
         <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 lg:p-6 mb-4 sm:mb-6">
             {/* Título, descripción y búsqueda responsivos */}
@@ -23,32 +136,63 @@ const ReviewsHeader = ({
                     </p>
                 </div>
                 
-                {/* Buscador optimizado para responsive */}
+                {/* Buscador optimizado para responsive con validación */}
                 <div className="w-full lg:w-auto lg:min-w-[280px] xl:min-w-[320px]">
-                    <div className="relative">
-                        <input
-                            type="text"
-                            placeholder="Buscar por cliente, producto o comentario..."
-                            value={searchTerm}
-                            onChange={(e) => onSearchChange(e.target.value)}
-                            className="w-full pl-8 sm:pl-10 pr-10 sm:pr-12 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent text-xs sm:text-sm lg:text-base"
-                            style={{ fontFamily: 'Poppins, sans-serif' }}
-                        />
-                        <svg className="absolute left-2 sm:left-3 top-2.5 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        {searchTerm && (
-                            <button
-                                onClick={() => onSearchChange('')}
-                                className="absolute right-2 sm:right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors"
-                                style={{ cursor: 'pointer' }}
-                            >
-                                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        )}
-                    </div>
+                    <form onSubmit={handleSearchSubmit}>
+                        <div className="relative">
+                            <input
+                                type="text"
+                                placeholder="Buscar por cliente, producto o comentario..."
+                                value={localSearchTerm}
+                                onChange={handleSearchChange}
+                                onBlur={handleSearchBlur}
+                                className={`w-full pl-8 sm:pl-10 pr-10 sm:pr-12 py-2 border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent text-xs sm:text-sm lg:text-base ${
+                                    hasSearchError ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                                }`}
+                                style={{ fontFamily: 'Poppins, sans-serif' }}
+                                maxLength={100}
+                            />
+                            {/* Ícono de búsqueda */}
+                            <svg className="absolute left-2 sm:left-3 top-2.5 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            {/* Botón limpiar búsqueda */}
+                            {localSearchTerm && (
+                                <button
+                                    type="button"
+                                    onClick={handleClearSearch}
+                                    className="absolute right-2 sm:right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors"
+                                    style={{ cursor: 'pointer' }}
+                                    title="Limpiar búsqueda"
+                                >
+                                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            )}
+                        </div>
+                    </form>
+                    
+                    {/* Error de validación para búsqueda */}
+                    {searchTermError && (
+                        <div className="mt-1 flex items-center text-red-600">
+                            <svg className="w-3 h-3 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                            <span className="text-xs" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                {searchTermError}
+                            </span>
+                        </div>
+                    )}
+                    
+                    {/* Contador de caracteres si se está escribiendo */}
+                    {localSearchTerm && (
+                        <div className="mt-1 text-right">
+                            <span className={`text-xs ${localSearchTerm.length > 90 ? 'text-orange-600' : 'text-gray-500'}`} style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                {localSearchTerm.length}/100
+                            </span>
+                        </div>
+                    )}
                 </div>
             </div>
 

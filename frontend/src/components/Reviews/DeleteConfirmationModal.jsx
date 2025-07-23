@@ -1,14 +1,12 @@
 // frontend/src/components/Reviews/DeleteConfirmationModal.jsx
 import React, { useState, useEffect } from 'react';
-import { useReviewValidation } from './Hooks/useReviewValidation';
 
 /**
- * Modal de confirmación para eliminar reseñas con validaciones
+ * Modal de confirmación para eliminar reseñas con validación de ID
  * 
  * Muestra los detalles de la reseña que se va a eliminar y solicita confirmación
  * del usuario antes de proceder con la eliminación. Incluye información del cliente,
- * calificación y mensaje de la reseña. Implementa validaciones antes de permitir
- * la eliminación.
+ * calificación y mensaje de la reseña con validaciones mejoradas.
  * 
  * @param {Object} props - Props del componente
  * @param {boolean} props.isOpen - Controla si el modal está visible
@@ -25,15 +23,7 @@ const DeleteConfirmationModal = ({
     // Estado para controlar la confirmación explícita del usuario
     const [isConfirmed, setIsConfirmed] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
-    
-    // Hook de validaciones
-    const {
-        validateDeleteSubmission,
-        getFieldError,
-        hasFieldError,
-        clearValidationErrors,
-        clearFieldError
-    } = useReviewValidation();
+    const [error, setError] = useState('');
 
     /**
      * Efecto para limpiar el estado cuando se abre/cierra el modal
@@ -43,13 +33,53 @@ const DeleteConfirmationModal = ({
             // Limpiar estado cuando se abre el modal
             setIsConfirmed(false);
             setIsDeleting(false);
-            clearValidationErrors();
+            setError('');
         }
-    }, [isOpen, clearValidationErrors]);
+    }, [isOpen]);
+
+    /**
+     * Valida el ID de la reseña antes de proceder
+     * 
+     * @param {Object} review - Objeto de la reseña
+     * @returns {Object} Resultado de validación
+     */
+    const validateReviewForDeletion = (review) => {
+        console.log('=== VALIDATING REVIEW FOR DELETION ===');
+        console.log('Review object:', review);
+        console.log('Review ID:', review?._id);
+        console.log('Review ID type:', typeof review?._id);
+
+        if (!review) {
+            return { isValid: false, error: 'No hay reseña para eliminar' };
+        }
+
+        if (!review._id) {
+            return { isValid: false, error: 'La reseña no tiene un ID válido' };
+        }
+
+        // Validar formato de ObjectId de MongoDB (24 caracteres hexadecimales)
+        const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+        const reviewId = String(review._id).trim();
+        
+        if (!objectIdRegex.test(reviewId)) {
+            console.log('ID format validation failed:', reviewId);
+            return { 
+                isValid: false, 
+                error: `ID de reseña con formato inválido: ${reviewId.substring(0, 10)}...` 
+            };
+        }
+
+        // Validar que tenga datos mínimos
+        if (!review.message && !review.rating) {
+            return { isValid: false, error: 'La reseña no tiene datos válidos' };
+        }
+
+        console.log('Review validation passed for ID:', reviewId);
+        return { isValid: true, error: null };
+    };
 
     /**
      * Maneja el cambio del checkbox de confirmación
-     * Limpia errores cuando el usuario confirma
      * 
      * @param {Event} e - Evento del checkbox
      */
@@ -57,72 +87,86 @@ const DeleteConfirmationModal = ({
         const confirmed = e.target.checked;
         setIsConfirmed(confirmed);
         
-        // Limpiar error de confirmación si existe
-        if (confirmed && hasFieldError('deleteConfirmation')) {
-            clearFieldError('deleteConfirmation');
+        // Limpiar error cuando el usuario confirma
+        if (confirmed && error) {
+            setError('');
         }
     };
 
     /**
-     * Maneja la confirmación de eliminación con validaciones
-     * Valida antes de proceder con la eliminación
+     * Maneja la confirmación de eliminación con validaciones mejoradas
      */
     const handleConfirmDelete = async () => {
-        // Validar la operación de eliminación
-        const validation = validateDeleteSubmission(reviewToDelete?._id, isConfirmed);
+        console.log('=== CONFIRMING DELETE WITH IMPROVED VALIDATION ===');
         
-        if (!validation.isValid) {
-            console.warn('Validación de eliminación falló:', validation.error);
-            return; // No continuar si hay errores de validación
-        }
-
-        // Validaciones adicionales
-        if (!reviewToDelete || !reviewToDelete._id) {
-            console.error('No hay reseña para eliminar o falta ID');
+        // Validar confirmación del usuario
+        if (!isConfirmed) {
+            setError('Debes confirmar que deseas eliminar la reseña');
             return;
         }
 
-        if (typeof onConfirm !== 'function') {
-            console.error('onConfirm no es una función');
+        // Validar la reseña antes de proceder
+        const validation = validateReviewForDeletion(reviewToDelete);
+        if (!validation.isValid) {
+            console.error('Validation failed:', validation.error);
+            setError(validation.error);
+            return;
+        }
+
+        // Validar función callback
+        if (!onConfirm || typeof onConfirm !== 'function') {
+            setError('Error interno: función de eliminación no disponible');
             return;
         }
 
         setIsDeleting(true);
+        setError('');
 
         try {
-            console.log('=== CONFIRMING DELETE WITH VALIDATION ===');
-            console.log('Review ID:', reviewToDelete._id);
-            console.log('Confirmed:', isConfirmed);
-
+            console.log('Proceeding with deletion for review ID:', reviewToDelete._id);
+            
             await onConfirm();
             
             console.log('Review deleted successfully');
             
-            // Limpiar estado después de la eliminación exitosa
+            // Limpiar estado después de eliminación exitosa
             setIsConfirmed(false);
             setIsDeleting(false);
-
+            setError('');
+            
         } catch (error) {
             console.error('Error al eliminar reseña:', error);
             setIsDeleting(false);
-            alert('Error al eliminar la reseña: ' + error.message);
+            
+            // Mostrar error específico del servidor
+            let errorMessage = 'Error desconocido al eliminar la reseña';
+            
+            if (error.message) {
+                errorMessage = error.message;
+            } else if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (typeof error === 'string') {
+                errorMessage = error;
+            }
+            
+            setError(errorMessage);
         }
     };
 
     /**
      * Maneja la cancelación del modal
-     * Limpia el estado y cierra el modal
      */
     const handleCancel = () => {
-        setIsConfirmed(false);
-        setIsDeleting(false);
-        clearValidationErrors();
-        onClose();
+        if (!isDeleting) {
+            setIsConfirmed(false);
+            setIsDeleting(false);
+            setError('');
+            onClose();
+        }
     };
 
     /**
      * Renderiza las estrellas de calificación
-     * Crea 5 íconos de estrella, pintando de amarillo las que corresponden a la calificación
      * 
      * @param {number} rating - Calificación de 1 a 5 estrellas
      * @returns {Array} Array de elementos JSX con las estrellas
@@ -146,25 +190,23 @@ const DeleteConfirmationModal = ({
 
     /**
      * Obtiene la información del cliente que dejó la reseña
-     * Extrae el nombre y foto de perfil del cliente, con valores por defecto
      * 
      * @param {Object} review - Objeto de la reseña
      * @returns {Object} Objeto con name y profilePicture del cliente
      */
     const getClientInfo = (review) => {
         return {
-            name: review.clientId?.fullName || 'Usuario Anónimo',
-            profilePicture: review.clientId?.profilePicture || null
+            name: review?.clientId?.fullName || 'Usuario Anónimo',
+            profilePicture: review?.clientId?.profilePicture || null
         };
     };
 
     /**
      * Trunca el texto del mensaje para mostrar una vista previa
-     * Limita la longitud del texto y añade "..." si es necesario
      * 
      * @param {string} text - Texto a truncar
-     * @param {number} maxLength - Longitud máxima permitida (default: 100)
-     * @returns {string} Texto truncado con "..." si excede la longitud máxima
+     * @param {number} maxLength - Longitud máxima permitida
+     * @returns {string} Texto truncado
      */
     const truncateText = (text, maxLength = 100) => {
         if (!text) return '';
@@ -172,12 +214,38 @@ const DeleteConfirmationModal = ({
         return text.substring(0, maxLength) + '...';
     };
 
-    // Obtener errores de validación
-    const deleteConfirmationError = getFieldError('deleteConfirmation');
-    const hasConfirmationError = hasFieldError('deleteConfirmation');
-
     // No renderizar nada si el modal no está abierto
     if (!isOpen) return null;
+
+    // Validar que hay una reseña para mostrar
+    if (!reviewToDelete) {
+        return (
+            <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.15)' }}>
+                <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 border border-gray-200 shadow-xl">
+                    <div className="text-center">
+                        <div className="text-red-500 mb-4">
+                            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                            Error
+                        </h3>
+                        <p className="text-gray-600 mb-4" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                            No se pudo cargar la información de la reseña
+                        </p>
+                        <button
+                            onClick={onClose}
+                            className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+                            style={{ fontFamily: 'Poppins, sans-serif', cursor: 'pointer' }}
+                        >
+                            Cerrar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.15)' }}>
@@ -204,27 +272,36 @@ const DeleteConfirmationModal = ({
                     </p>
                     
                     {/* Vista previa de la reseña a eliminar */}
-                    {reviewToDelete && (
-                        <div className="p-3 bg-gray-50 rounded-lg border">
-                            {/* Calificación con estrellas */}
+                    <div className="p-3 bg-gray-50 rounded-lg border">
+                        {/* Información de debug (solo en desarrollo) */}
+                        {process.env.NODE_ENV === 'development' && (
+                            <div className="text-xs text-gray-500 mb-2 font-mono">
+                                ID: {reviewToDelete._id}
+                            </div>
+                        )}
+                        
+                        {/* Calificación con estrellas */}
+                        {reviewToDelete.rating && (
                             <div className="flex items-center mb-2">
                                 {renderStars(reviewToDelete.rating)}
                                 <span className="ml-2 text-xs text-gray-600">
                                     {reviewToDelete.rating}/5
                                 </span>
                             </div>
-                            
-                            {/* Mensaje de la reseña truncado */}
-                            <p className="text-sm text-gray-800" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                        )}
+                        
+                        {/* Mensaje de la reseña truncado */}
+                        {reviewToDelete.message && (
+                            <p className="text-sm text-gray-800 mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                 "{truncateText(reviewToDelete.message, 100)}"
                             </p>
-                            
-                            {/* Autor de la reseña */}
-                            <p className="text-xs text-gray-600 mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                Por: {getClientInfo(reviewToDelete).name}
-                            </p>
-                        </div>
-                    )}
+                        )}
+                        
+                        {/* Autor de la reseña */}
+                        <p className="text-xs text-gray-600" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                            Por: {getClientInfo(reviewToDelete).name}
+                        </p>
+                    </div>
                 </div>
 
                 {/* Checkbox de confirmación explícita */}
@@ -235,28 +312,28 @@ const DeleteConfirmationModal = ({
                             checked={isConfirmed}
                             onChange={handleConfirmationChange}
                             disabled={isDeleting}
-                            className={`mt-1 h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded ${
-                                hasConfirmationError ? 'border-red-300' : 'border-gray-300'
-                            }`}
+                            className="mt-1 h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
                             style={{ cursor: 'pointer' }}
                         />
                         <span className="text-sm text-gray-700" style={{ fontFamily: 'Poppins, sans-serif' }}>
                             Confirmo que deseo eliminar permanentemente esta reseña. Entiendo que esta acción no se puede deshacer.
                         </span>
                     </label>
-                    
-                    {/* Error de validación para confirmación */}
-                    {deleteConfirmationError && (
-                        <div className="mt-2 flex items-center text-red-600">
-                            <svg className="w-4 h-4 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                </div>
+
+                {/* Mensaje de error si existe */}
+                {error && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="flex items-center">
+                            <svg className="w-4 h-4 text-red-400 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                             </svg>
-                            <span className="text-sm" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                {deleteConfirmationError}
+                            <span className="text-sm text-red-800" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                {error}
                             </span>
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
 
                 {/* Botones de acción */}
                 <div className="flex justify-end space-x-3">

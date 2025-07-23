@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { useReviewValidation } from './useReviewValidation';
 
 /**
- * Hook personalizado para manejar acciones de reseñas con validaciones integradas
+ * Hook personalizado para manejar acciones de reseñas con validación de ID mejorada
  * 
  * Gestiona todos los estados y funciones relacionadas con las acciones que se pueden
  * realizar sobre las reseñas: responder, moderar, eliminar y expandir/contraer.
@@ -28,18 +27,72 @@ export const useReviewActions = ({ onReply, onModerate, onDelete, onReviewUpdate
     // Estado para manejar qué reseñas están expandidas (para texto largo)
     const [expandedReviews, setExpandedReviews] = useState(new Set());
 
-    // Hook de validaciones
-    const {
-        validateReplySubmission,
-        validateModerationSubmission,
-        validateDeleteSubmission,
-        clearValidationErrors,
-        hasValidationErrors
-    } = useReviewValidation();
+    /**
+     * Valida el ID de una reseña de forma más robusta
+     * 
+     * @param {*} reviewId - ID a validar
+     * @returns {Object} Resultado de validación
+     */
+    const validateReviewId = (reviewId) => {
+        console.log('=== VALIDATING REVIEW ID ===');
+        console.log('Review ID:', reviewId);
+        console.log('Type:', typeof reviewId);
+
+        if (!reviewId) {
+            return { isValid: false, error: 'ID de reseña requerido' };
+        }
+
+        // Convertir a string si no lo es
+        const idString = String(reviewId).trim();
+        
+        if (idString.length === 0) {
+            return { isValid: false, error: 'ID de reseña vacío' };
+        }
+
+        // Validar formato de ObjectId de MongoDB (24 caracteres hexadecimales)
+        const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+        if (!objectIdRegex.test(idString)) {
+            console.log('ID format validation failed for:', idString);
+            return { 
+                isValid: false, 
+                error: `ID de reseña con formato inválido: ${idString.substring(0, 10)}...` 
+            };
+        }
+
+        console.log('ID validation passed:', idString);
+        return { isValid: true, error: null };
+    };
 
     /**
-     * Maneja el clic en el botón "Responder" con validación previa
-     * Valida el ID de la reseña antes de abrir el modal
+     * Valida un objeto de reseña completo
+     * 
+     * @param {Object} review - Objeto de reseña a validar
+     * @returns {Object} Resultado de validación
+     */
+    const validateReviewObject = (review) => {
+        console.log('=== VALIDATING REVIEW OBJECT ===');
+        console.log('Review:', review);
+
+        if (!review || typeof review !== 'object') {
+            return { isValid: false, error: 'Objeto de reseña inválido' };
+        }
+
+        // Validar ID
+        const idValidation = validateReviewId(review._id);
+        if (!idValidation.isValid) {
+            return idValidation;
+        }
+
+        // Validar que tenga datos básicos
+        if (!review.message && !review.rating) {
+            return { isValid: false, error: 'La reseña no tiene contenido válido' };
+        }
+
+        return { isValid: true, error: null };
+    };
+
+    /**
+     * Maneja el clic en el botón "Responder" con validación mejorada
      * 
      * @param {Object} review - Objeto de la reseña a responder
      */
@@ -47,15 +100,13 @@ export const useReviewActions = ({ onReply, onModerate, onDelete, onReviewUpdate
         console.log('=== REPLY CLICK ===');
         console.log('Review:', review);
 
-        // Validar que la reseña tenga un ID válido
-        if (!review || !review._id) {
-            console.error('Reseña inválida o sin ID');
-            alert('Error: No se puede responder a esta reseña. ID inválido.');
+        // Validar el objeto de reseña
+        const validation = validateReviewObject(review);
+        if (!validation.isValid) {
+            console.error('Validation failed:', validation.error);
+            alert('Error: ' + validation.error);
             return;
         }
-
-        // Limpiar errores de validación anteriores
-        clearValidationErrors();
 
         // Establecer la reseña seleccionada y abrir modal
         setSelectedReview(review);
@@ -63,8 +114,7 @@ export const useReviewActions = ({ onReply, onModerate, onDelete, onReviewUpdate
     };
 
     /**
-     * Maneja el envío de una respuesta a una reseña con validaciones completas
-     * Procesa la respuesta, actualiza el estado local y cierra el modal
+     * Maneja el envío de una respuesta a una reseña
      * 
      * @param {string} reply - Texto de la respuesta
      */
@@ -80,16 +130,18 @@ export const useReviewActions = ({ onReply, onModerate, onDelete, onReviewUpdate
         console.log('Reply:', reply);
 
         try {
-            // Validar la operación de respuesta completa
-            const validation = validateReplySubmission(selectedReview._id, reply);
-            
-            if (!validation.isValid) {
-                console.error('Validación falló:', validation.error);
-                alert('Error de validación: ' + validation.error);
+            // Validar respuesta
+            if (!reply || typeof reply !== 'string' || reply.trim().length === 0) {
+                alert('Error: La respuesta no puede estar vacía');
                 return;
             }
 
-            // Verificar que existe la función callback
+            if (reply.trim().length < 10) {
+                alert('Error: La respuesta debe tener al menos 10 caracteres');
+                return;
+            }
+
+            // Validar función callback
             if (!onReply || typeof onReply !== 'function') {
                 console.error('onReply function is not available');
                 alert('Error: Función de respuesta no disponible');
@@ -111,7 +163,6 @@ export const useReviewActions = ({ onReply, onModerate, onDelete, onReviewUpdate
             // Cerrar modal y limpiar estado
             setReplyModalOpen(false);
             setSelectedReview(null);
-            clearValidationErrors();
 
             console.log('Reply submitted successfully');
 
@@ -119,14 +170,22 @@ export const useReviewActions = ({ onReply, onModerate, onDelete, onReviewUpdate
             console.error('Error al enviar respuesta:', error);
             
             // Mostrar error específico al usuario
-            const errorMessage = error.message || 'Error desconocido al enviar la respuesta';
+            let errorMessage = 'Error desconocido al enviar la respuesta';
+            
+            if (error.message) {
+                errorMessage = error.message;
+            } else if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (typeof error === 'string') {
+                errorMessage = error;
+            }
+            
             alert('Error al enviar la respuesta: ' + errorMessage);
         }
     };
 
     /**
-     * Maneja el clic en el botón "Eliminar" con validación previa
-     * Valida el ID de la reseña antes de abrir el modal de confirmación
+     * Maneja el clic en el botón "Eliminar" con validación mejorada
      * 
      * @param {Object} review - Objeto de la reseña a eliminar
      */
@@ -134,15 +193,13 @@ export const useReviewActions = ({ onReply, onModerate, onDelete, onReviewUpdate
         console.log('=== DELETE CLICK ===');
         console.log('Review:', review);
 
-        // Validar que la reseña tenga un ID válido
-        if (!review || !review._id) {
-            console.error('Reseña inválida o sin ID');
-            alert('Error: No se puede eliminar esta reseña. ID inválido.');
+        // Validar el objeto de reseña
+        const validation = validateReviewObject(review);
+        if (!validation.isValid) {
+            console.error('Validation failed:', validation.error);
+            alert('Error: ' + validation.error);
             return;
         }
-
-        // Limpiar errores de validación anteriores
-        clearValidationErrors();
 
         // Establecer la reseña a eliminar y abrir modal de confirmación
         setReviewToDelete(review);
@@ -150,8 +207,7 @@ export const useReviewActions = ({ onReply, onModerate, onDelete, onReviewUpdate
     };
 
     /**
-     * Maneja la confirmación de eliminación de una reseña con validaciones
-     * Ejecuta la eliminación después de validar todos los requisitos
+     * Maneja la confirmación de eliminación de una reseña
      */
     const handleDeleteConfirm = async () => {
         if (!reviewToDelete) {
@@ -164,16 +220,7 @@ export const useReviewActions = ({ onReply, onModerate, onDelete, onReviewUpdate
         console.log('Review ID:', reviewToDelete._id);
 
         try {
-            // Validar la operación de eliminación (la confirmación se valida en el modal)
-            const validation = validateDeleteSubmission(reviewToDelete._id, true);
-            
-            if (!validation.isValid) {
-                console.error('Validación de eliminación falló:', validation.error);
-                alert('Error de validación: ' + validation.error);
-                return;
-            }
-
-            // Verificar que existe la función callback
+            // Validar función callback
             if (!onDelete || typeof onDelete !== 'function') {
                 console.error('onDelete function is not available');
                 alert('Error: Función de eliminación no disponible');
@@ -186,7 +233,6 @@ export const useReviewActions = ({ onReply, onModerate, onDelete, onReviewUpdate
             // Cerrar modal y limpiar estado
             setDeleteConfirmModal(false);
             setReviewToDelete(null);
-            clearValidationErrors();
 
             console.log('Review deleted successfully');
 
@@ -194,34 +240,40 @@ export const useReviewActions = ({ onReply, onModerate, onDelete, onReviewUpdate
             console.error('Error al eliminar reseña:', error);
             
             // Mostrar error específico al usuario
-            const errorMessage = error.message || 'Error desconocido al eliminar la reseña';
+            let errorMessage = 'Error desconocido al eliminar la reseña';
+            
+            if (error.message) {
+                errorMessage = error.message;
+            } else if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (typeof error === 'string') {
+                errorMessage = error;
+            }
+            
             alert('Error al eliminar la reseña: ' + errorMessage);
+            
+            // No cerrar el modal en caso de error para que el usuario pueda reintentar
         }
     };
 
     /**
      * Maneja la cancelación del modal de eliminación
-     * Cierra el modal sin eliminar nada y limpia errores
      */
     const handleDeleteCancel = () => {
         setDeleteConfirmModal(false);
         setReviewToDelete(null);
-        clearValidationErrors();
     };
 
     /**
      * Maneja la cancelación del modal de respuesta
-     * Cierra el modal sin enviar respuesta y limpia errores
      */
     const handleReplyCancel = () => {
         setReplyModalOpen(false);
         setSelectedReview(null);
-        clearValidationErrors();
     };
 
     /**
-     * Maneja acciones de moderación con validaciones
-     * Valida antes de ejecutar la acción de moderación
+     * Maneja acciones de moderación
      * 
      * @param {Object} review - Reseña a moderar
      * @param {string} action - Acción a realizar ('approve' o 'reject')
@@ -232,16 +284,22 @@ export const useReviewActions = ({ onReply, onModerate, onDelete, onReviewUpdate
         console.log('Action:', action);
 
         try {
-            // Validar la operación de moderación
-            const validation = validateModerationSubmission(review?._id, action);
-            
-            if (!validation.isValid) {
-                console.error('Validación de moderación falló:', validation.error);
-                alert('Error de validación: ' + validation.error);
+            // Validar el objeto de reseña
+            const reviewValidation = validateReviewObject(review);
+            if (!reviewValidation.isValid) {
+                console.error('Review validation failed:', reviewValidation.error);
+                alert('Error: ' + reviewValidation.error);
                 return;
             }
 
-            // Verificar que existe la función callback
+            // Validar acción
+            const validActions = ['approve', 'reject'];
+            if (!action || !validActions.includes(action)) {
+                alert('Error: Acción de moderación inválida');
+                return;
+            }
+
+            // Validar función callback
             if (!onModerate || typeof onModerate !== 'function') {
                 console.error('onModerate function is not available');
                 alert('Error: Función de moderación no disponible');
@@ -266,21 +324,30 @@ export const useReviewActions = ({ onReply, onModerate, onDelete, onReviewUpdate
             console.error('Error al moderar reseña:', error);
             
             // Mostrar error específico al usuario
-            const errorMessage = error.message || 'Error desconocido al moderar la reseña';
+            let errorMessage = 'Error desconocido al moderar la reseña';
+            
+            if (error.message) {
+                errorMessage = error.message;
+            } else if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (typeof error === 'string') {
+                errorMessage = error;
+            }
+            
             alert('Error al moderar la reseña: ' + errorMessage);
         }
     };
 
     /**
      * Alterna el estado expandido/contraído de una reseña
-     * Utilizado para mostrar texto completo o truncado en reseñas largas
      * 
      * @param {string} reviewId - ID de la reseña a expandir/contraer
      */
     const toggleExpandReview = (reviewId) => {
         // Validar que el ID sea válido antes de proceder
-        if (!reviewId || typeof reviewId !== 'string') {
-            console.warn('ID de reseña inválido para expandir/contraer');
+        const validation = validateReviewId(reviewId);
+        if (!validation.isValid) {
+            console.warn('ID de reseña inválido para expandir/contraer:', reviewId);
             return;
         }
 
@@ -296,18 +363,7 @@ export const useReviewActions = ({ onReply, onModerate, onDelete, onReviewUpdate
     };
 
     /**
-     * Función utilitaria para verificar si hay errores de validación activos
-     * Útil para deshabilitar acciones cuando hay errores
-     * 
-     * @returns {boolean} True si hay errores de validación
-     */
-    const hasActiveValidationErrors = () => {
-        return hasValidationErrors();
-    };
-
-    /**
-     * Función para limpiar todos los estados y errores
-     * Útil para resetear el hook a su estado inicial
+     * Función para limpiar todos los estados
      */
     const resetHookState = () => {
         setReplyModalOpen(false);
@@ -315,7 +371,6 @@ export const useReviewActions = ({ onReply, onModerate, onDelete, onReviewUpdate
         setDeleteConfirmModal(false);
         setReviewToDelete(null);
         setExpandedReviews(new Set());
-        clearValidationErrors();
     };
 
     // Retornar todos los estados y handlers para uso en componentes
@@ -338,8 +393,8 @@ export const useReviewActions = ({ onReply, onModerate, onDelete, onReviewUpdate
         toggleExpandReview,
 
         // Funciones utilitarias
-        hasActiveValidationErrors,
         resetHookState,
-        clearValidationErrors
+        validateReviewId,
+        validateReviewObject
     };
 };

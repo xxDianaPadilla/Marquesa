@@ -15,10 +15,10 @@ import ProductActions from "./ProductActions";
  */
 const ProductTable = ({ products, loading, onEdit, onDelete }) => {
   // ============ VALIDACIÓN DE DATOS ============
-  
+
   // Asegurar que products sea un array válido para evitar errores
   const safeProducts = Array.isArray(products) ? products : [];
-  
+
   // ============ ESTADO DE CARGA ============
   // Si 'loading' es verdadero, muestra un indicador de carga y no renderiza el resto del componente
   if (loading) {
@@ -67,7 +67,7 @@ const ProductTable = ({ products, loading, onEdit, onDelete }) => {
   }
 
   // ============ FUNCIONES DE UTILIDAD ============
-  
+
   /**
    * Maneja errores al mostrar información del producto de forma segura
    * Evita errores cuando los datos están incompletos
@@ -76,6 +76,24 @@ const ProductTable = ({ products, loading, onEdit, onDelete }) => {
    * @returns {Object} Producto con datos seguros
    */
   const getSafeProductData = (product) => {
+    // Función auxiliar para manejar categoryId de forma segura
+    const getCategoryDisplay = (categoryId) => {
+      if (!categoryId) return 'Sin categoría';
+
+      // Si es un objeto con nombre, devolver el nombre
+      if (typeof categoryId === 'object' && categoryId.name) {
+        return categoryId.name;
+      }
+
+      // Si es un string (ID), devolverlo
+      if (typeof categoryId === 'string') {
+        return categoryId;
+      }
+
+      // Fallback
+      return 'Sin categoría';
+    };
+
     return {
       _id: product._id || '',
       name: product.name || 'Sin nombre',
@@ -83,6 +101,7 @@ const ProductTable = ({ products, loading, onEdit, onDelete }) => {
       price: typeof product.price === 'number' ? product.price : 0,
       stock: typeof product.stock === 'number' ? product.stock : 0,
       categoryId: product.categoryId || {},
+      categoryDisplay: getCategoryDisplay(product.categoryId), // ← NUEVA PROPIEDAD SEGURA
       images: Array.isArray(product.images) ? product.images : [],
       isPersonalizable: Boolean(product.isPersonalizable),
       details: product.details || ''
@@ -105,7 +124,7 @@ const ProductTable = ({ products, loading, onEdit, onDelete }) => {
             </span>
           </div>
         </div>
-        
+
         {/* ============ CONTENEDOR CON SCROLL HORIZONTAL (DISEÑO ORIGINAL) ============ */}
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -138,14 +157,14 @@ const ProductTable = ({ products, loading, onEdit, onDelete }) => {
                 </th>
               </tr>
             </thead>
-            
+
             {/* ============ CUERPO DE LA TABLA (DISEÑO ORIGINAL MEJORADO) ============ */}
             <tbody className="bg-white divide-y divide-gray-200">
               {/* Itera sobre el array de productos para crear una fila por cada uno */}
               {safeProducts.map((product) => {
                 // Obtener datos seguros del producto para evitar errores
                 const safeProduct = getSafeProductData(product);
-                
+
                 return (
                   // Se usa product._id como 'key' única para cada fila
                   <tr
@@ -164,14 +183,14 @@ const ProductTable = ({ products, loading, onEdit, onDelete }) => {
                         </div>
                       )}
                     </td>
-                    
+
                     {/* ============ COLUMNA: DESCRIPCIÓN ============ */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-poppins">
                       <div className="max-w-xs truncate" title={safeProduct.description}>
                         {safeProduct.description}
                       </div>
                     </td>
-                    
+
                     {/* ============ COLUMNA: PRECIO ============ */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-poppins">
                       <div className="text-sm font-medium text-gray-900">
@@ -182,7 +201,7 @@ const ProductTable = ({ products, loading, onEdit, onDelete }) => {
                         Total: ${(safeProduct.price * safeProduct.stock).toFixed(2)}
                       </div>
                     </td>
-                    
+
                     {/* ============ COLUMNA: STOCK ============ */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-poppins">
                       <div className="flex flex-col">
@@ -190,31 +209,30 @@ const ProductTable = ({ products, loading, onEdit, onDelete }) => {
                           {safeProduct.stock}
                         </span>
                         {/* Indicador visual del estado del stock */}
-                        <span className={`text-xs px-2 py-1 rounded-full text-center ${
-                          safeProduct.stock === 0 
-                            ? 'bg-red-100 text-red-800' 
-                            : safeProduct.stock < 10 
+                        <span className={`text-xs px-2 py-1 rounded-full text-center ${safeProduct.stock === 0
+                          ? 'bg-red-100 text-red-800'
+                          : safeProduct.stock < 10
                             ? 'bg-yellow-100 text-yellow-800'
                             : 'bg-green-100 text-green-800'
-                        }`}>
-                          {safeProduct.stock === 0 
-                            ? 'Sin stock' 
-                            : safeProduct.stock < 10 
-                            ? 'Stock bajo'
-                            : 'Disponible'
+                          }`}>
+                          {safeProduct.stock === 0
+                            ? 'Sin stock'
+                            : safeProduct.stock < 10
+                              ? 'Stock bajo'
+                              : 'Disponible'
                           }
                         </span>
                       </div>
                     </td>
-                    
+
                     {/* ============ COLUMNA: CATEGORÍA ============ */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-poppins">
                       <div className="text-sm text-gray-900">
                         {/* Muestra el nombre de la categoría si existe, sino, muestra el ID o mensaje por defecto */}
-                        {safeProduct.categoryId?.name || safeProduct.categoryId || 'Sin categoría'}
+                        {safeProduct.categoryDisplay}
                       </div>
                     </td>
-                    
+
                     {/* ============ COLUMNA: IMAGEN ============ */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-poppins">
                       {/* Muestra la primera imagen del producto si existe, para evitar errores */}
@@ -238,7 +256,7 @@ const ProductTable = ({ products, loading, onEdit, onDelete }) => {
                         </div>
                       )}
                     </td>
-                    
+
                     {/* ============ COLUMNA: PERSONALIZABLE ============ */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-poppins">
                       <div className="flex items-center">
@@ -254,7 +272,7 @@ const ProductTable = ({ products, loading, onEdit, onDelete }) => {
                         )}
                       </div>
                     </td>
-                    
+
                     {/* ============ COLUMNA: ACCIONES ============ */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       {/* Renderiza el componente de acciones y le pasa el producto y las funciones */}
@@ -277,7 +295,7 @@ const ProductTable = ({ products, loading, onEdit, onDelete }) => {
         {safeProducts.map(product => {
           // Obtener datos seguros del producto para la vista móvil
           const safeProduct = getSafeProductData(product);
-          
+
           return (
             <div key={safeProduct._id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4">
               <div className="flex items-start gap-3">
@@ -323,18 +341,17 @@ const ProductTable = ({ products, loading, onEdit, onDelete }) => {
                           <span className="text-gray-600 font-poppins">Stock:</span>
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-gray-900 font-poppins">{safeProduct.stock}</span>
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${
-                              safeProduct.stock === 0 
-                                ? 'bg-red-100 text-red-800' 
-                                : safeProduct.stock < 10 
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${safeProduct.stock === 0
+                              ? 'bg-red-100 text-red-800'
+                              : safeProduct.stock < 10
                                 ? 'bg-yellow-100 text-yellow-800'
                                 : 'bg-green-100 text-green-800'
-                            }`}>
-                              {safeProduct.stock === 0 
-                                ? 'Sin stock' 
-                                : safeProduct.stock < 10 
-                                ? 'Bajo'
-                                : 'OK'
+                              }`}>
+                              {safeProduct.stock === 0
+                                ? 'Sin stock'
+                                : safeProduct.stock < 10
+                                  ? 'Bajo'
+                                  : 'OK'
                               }
                             </span>
                           </div>
@@ -342,7 +359,7 @@ const ProductTable = ({ products, loading, onEdit, onDelete }) => {
                         <div className="flex items-center justify-between text-xs sm:text-sm">
                           <span className="text-gray-600 font-poppins">Categoría:</span>
                           <span className="font-medium text-gray-900 font-poppins truncate max-w-32">
-                            {safeProduct.categoryId?.name || safeProduct.categoryId || 'Sin categoría'}
+                            {safeProduct.categoryDisplay}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-xs sm:text-sm">
@@ -359,7 +376,7 @@ const ProductTable = ({ products, loading, onEdit, onDelete }) => {
                             )}
                           </span>
                         </div>
-                        
+
                         {/* Valor total del inventario */}
                         <div className="flex items-center justify-between text-xs sm:text-sm">
                           <span className="text-gray-600 font-poppins">Valor total:</span>
@@ -367,7 +384,7 @@ const ProductTable = ({ products, loading, onEdit, onDelete }) => {
                             ${(safeProduct.price * safeProduct.stock).toFixed(2)}
                           </span>
                         </div>
-                        
+
                         {/* Detalles si existen */}
                         {safeProduct.details && (
                           <div className="mt-2 pt-2 border-t border-gray-100">

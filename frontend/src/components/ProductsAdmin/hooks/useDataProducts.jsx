@@ -16,21 +16,21 @@ import { toast } from "react-hot-toast";
  */
 const useDataProducts = () => {
   // ============ ESTADOS DE NAVEGACIÓN ============
-  
+
   /**
    * Controla qué pestaña está activa en la interfaz de administración
    * - "list": Vista de tabla con todos los productos
    * - "form": Vista de formulario para crear/editar productos
    */
   const [activeTab, setActiveTab] = useState("list");
-  
+
   // ============ CONFIGURACIÓN DE API ============
-  
+
   // URL base para todas las operaciones de productos
   const API = "http://localhost:4000/api/products";
 
   // ============ ESTADOS DEL FORMULARIO ============
-  
+
   // Estados para todos los campos del formulario de productos
   const [id, setId] = useState(""); // ID del producto (para edición)
   const [name, setName] = useState(""); // Nombre del producto
@@ -43,18 +43,18 @@ const useDataProducts = () => {
   const [image, setImage] = useState(null); // Archivo de imagen seleccionado
 
   // ============ ESTADOS DE DATOS ============
-  
+
   const [products, setProducts] = useState([]); // Lista de todos los productos
   const [loading, setLoading] = useState(true); // Estado de carga general
   const [categories, setCategories] = useState([]); // Lista de categorías disponibles
 
   // ============ ESTADOS DE VALIDACIÓN ============
-  
+
   const [validationErrors, setValidationErrors] = useState({}); // Errores de validación
   const [isSubmitting, setIsSubmitting] = useState(false); // Estado de envío
 
   // ============ FUNCIONES DE UTILIDAD ============
-  
+
   /**
    * Función auxiliar para manejar respuestas HTTP del servidor
    * Maneja tanto respuestas JSON como HTML (errores del servidor)
@@ -155,7 +155,7 @@ const useDataProducts = () => {
       if (productData.image.size > 5 * 1024 * 1024) {
         errors.image = "La imagen no puede exceder 5MB";
       }
-      
+
       // Validar tipo de archivo
       const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
       if (!validTypes.includes(productData.image.type)) {
@@ -175,7 +175,7 @@ const useDataProducts = () => {
   };
 
   // ============ FUNCIONES DE CARGA DE DATOS ============
-  
+
   /**
    * Carga todas las categorías disponibles desde el servidor
    * Maneja tanto la nueva estructura de respuesta como la anterior
@@ -185,7 +185,7 @@ const useDataProducts = () => {
       console.log('📂 Cargando categorías...');
       const response = await fetch("http://localhost:4000/api/categories");
       const data = await handleResponse(response);
-      
+
       // Manejar nueva estructura de respuesta { success, data, message }
       if (data.success && Array.isArray(data.data)) {
         console.log(`✅ ${data.data.length} categorías cargadas`);
@@ -213,10 +213,10 @@ const useDataProducts = () => {
     try {
       setLoading(true);
       console.log('📦 Cargando productos...');
-      
+
       const response = await fetch(API);
       const data = await handleResponse(response);
-      
+
       // Manejar nueva estructura de respuesta del controlador
       if (data.success && Array.isArray(data.data)) {
         setProducts(data.data);
@@ -239,7 +239,7 @@ const useDataProducts = () => {
   };
 
   // ============ EFECTO DE INICIALIZACIÓN ============
-  
+
   /**
    * Efecto que se ejecuta una vez al montar el componente
    * Carga datos iniciales de productos y categorías
@@ -251,7 +251,7 @@ const useDataProducts = () => {
   }, []);
 
   // ============ FUNCIONES DE UTILIDAD DEL FORMULARIO ============
-  
+
   /**
    * Limpia todos los campos del formulario y resetea el estado
    * Se usa después de crear/editar productos exitosamente
@@ -271,7 +271,7 @@ const useDataProducts = () => {
   };
 
   // ============ FUNCIÓN PARA CREAR PRODUCTO ============
-  
+
   /**
    * Crea un nuevo producto en el servidor
    * Incluye validaciones exhaustivas y manejo de archivos
@@ -293,7 +293,7 @@ const useDataProducts = () => {
     try {
       setIsSubmitting(true);
       setValidationErrors({});
-      
+
       // ---- Preparar datos para envío ----
       const formData = new FormData();
       formData.append("name", productData.name.trim());
@@ -310,7 +310,7 @@ const useDataProducts = () => {
       }
 
       console.log('📤 Enviando producto al servidor...');
-      
+
       // ---- Enviar petición POST ----
       const res = await fetch("http://localhost:4000/api/products", {
         method: "POST",
@@ -326,20 +326,23 @@ const useDataProducts = () => {
       const categoryInfo = categories.find(cat => cat._id === productData.categoryId);
       const enrichedProduct = {
         ...newProduct,
-        categoryId: categoryInfo ? categoryInfo : newProduct.categoryId
+        categoryId: categoryInfo ? {
+          _id: categoryInfo._id,
+          name: categoryInfo.name
+        } : newProduct.categoryId
       };
 
       // Actualizar lista local de productos
       setProducts((prev) => [...prev, enrichedProduct]);
-      
+
       // Mostrar mensaje de éxito
       const successMessage = data.success ? data.message : "Producto creado exitosamente";
       toast.success(successMessage);
-      
+
       // Limpiar formulario y volver a la lista
       resetForm();
       setActiveTab("list");
-      
+
       console.log('✅ Producto creado exitosamente');
     } catch (error) {
       console.error("❌ Error completo:", error);
@@ -350,7 +353,7 @@ const useDataProducts = () => {
   };
 
   // ============ FUNCIÓN PARA ELIMINAR PRODUCTO ============
-  
+
   /**
    * Elimina un producto específico del servidor
    * 
@@ -359,7 +362,7 @@ const useDataProducts = () => {
   const deleteProduct = async (id) => {
     try {
       console.log(`🗑️ Eliminando producto ID: ${id}`);
-      
+
       const res = await fetch(`${API}/${id}`, {
         method: "DELETE"
       });
@@ -369,10 +372,10 @@ const useDataProducts = () => {
       // Mostrar mensaje de éxito
       const successMessage = data.success ? data.message : "Producto eliminado";
       toast.success(successMessage);
-      
+
       // Recargar lista de productos
       fetchProducts();
-      
+
       console.log('✅ Producto eliminado exitosamente');
     } catch (error) {
       toast.error(error.message || "Error al eliminar producto");
@@ -381,7 +384,7 @@ const useDataProducts = () => {
   };
 
   // ============ FUNCIÓN PARA PREPARAR EDICIÓN ============
-  
+
   /**
    * Prepara el formulario para editar un producto existente
    * Llena todos los campos con los datos actuales del producto
@@ -403,15 +406,15 @@ const useDataProducts = () => {
     setDetails(product.details || "");
     setImage(null); // Resetear imagen (se mostrará la actual en el preview)
     setValidationErrors({}); // Limpiar errores de validación
-    
+
     // Cambiar a la pestaña de formulario
     setActiveTab("form");
-    
+
     console.log('✅ Formulario preparado para edición');
   };
 
   // ============ FUNCIÓN PARA GUARDAR EDICIÓN ============
-  
+
   /**
    * Guarda los cambios de un producto editado en el servidor
    * Maneja tanto actualizaciones con nuevas imágenes como solo texto
@@ -442,14 +445,14 @@ const useDataProducts = () => {
     try {
       setIsSubmitting(true);
       setValidationErrors({});
-      
+
       let res;
 
       // ---- Determinar tipo de actualización ----
       if (productData.image instanceof File) {
         // Caso 1: Nueva imagen seleccionada - usar FormData
         console.log('📁 Actualizando con nueva imagen');
-        
+
         const formData = new FormData();
         formData.append("name", productData.name.trim());
         formData.append("description", productData.description.trim());
@@ -467,7 +470,7 @@ const useDataProducts = () => {
       } else {
         // Caso 2: Solo actualización de texto - usar JSON
         console.log('📝 Actualizando solo datos de texto');
-        
+
         const body = {
           name: productData.name.trim(),
           description: productData.description.trim(),
@@ -494,12 +497,12 @@ const useDataProducts = () => {
       // ---- Manejar éxito ----
       const successMessage = data.success ? data.message : "Producto actualizado";
       toast.success(successMessage);
-      
+
       // Limpiar formulario y volver a la lista
       resetForm();
       setActiveTab("list");
       fetchProducts(); // Recargar lista
-      
+
       console.log('✅ Producto actualizado exitosamente');
     } catch (error) {
       console.error("❌ Error completo:", error);
@@ -510,7 +513,7 @@ const useDataProducts = () => {
   };
 
   // ============ RETORNO DEL HOOK ============
-  
+
   /**
    * Retorna todos los estados y funciones necesarias para manejar productos
    * Los componentes que usen este hook tendrán acceso completo a la funcionalidad

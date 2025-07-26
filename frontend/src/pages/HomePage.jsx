@@ -249,16 +249,23 @@ const HomePage = () => {
         <Header />
       </div>
 
-      {/* Navegación de categorías */}
-      <section className="bg-white pt-2 sm:pt-4 pb-4 sm:pb-6">
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
-          <CategoryNavigation
-            categories={categories}
-            activeCategory="todos"
-            onCategoryChange={handleCategoryChange}
-          />
-        </div>
-      </section>
+      {/* Navegación de categorías funcionales debajo del Header */}
+<section className="bg-white pt-2 sm:pt-4 pb-4 sm:pb-6">
+  <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+    <CategoryNavigation
+      categories={[
+        { _id: 'todos', name: 'Todos' },
+        { _id: '688175a69579a7cde1657aaa', name: 'Arreglos con flores naturales' },
+        { _id: '688175d89579a7cde1657ac2', name: 'Arreglos con flores secas' },
+        { _id: '688175fd9579a7cde1657aca', name: 'Cuadros decorativos' },
+        { _id: '688176179579a7cde1657ace', name: 'Giftboxes' },
+        { _id: '688175e79579a7cde1657ac6', name: 'Tarjetas' }
+      ]}
+      activeCategory="todos"
+      onCategoryChange={handleCategoryChange}
+    />
+  </div>
+</section>
 
       {/* Hero Section */}
       <section className="bg-pink-50 py-8 sm:py-14 -mt-12">

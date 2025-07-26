@@ -19,6 +19,9 @@ const upload = multer({
     }
 });
 
+// Nueva ruta para obtener productos por categoría
+router.get('/by-category/:categoryId', productsController.getProductsByCategory);
+
 router.route("/")
     .get(productsController.getProducts)
     .post(upload.array("images", 5), productsController.createProducts); 

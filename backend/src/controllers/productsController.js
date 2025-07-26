@@ -742,4 +742,26 @@ productsController.getProduct = async (req, res) => {
     }
 };
 
+// Obtener productos filtrados por categoría
+productsController.getProductsByCategory = async (req, res) => {
+    try {
+        const categoryId = req.params.categoryId;
+
+        const products = await productsModel.find({ categoryId }).populate('categoryId');
+
+        res.status(200).json({
+            success: true,
+            products
+        });
+    } catch (error) {
+        console.error('Error al obtener productos por categoría:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error al obtener productos por categoría',
+            error: error.message
+        });
+    }
+};
+
+
 export default productsController;

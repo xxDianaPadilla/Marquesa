@@ -14,7 +14,7 @@ const CategorySection = ({
      */
     const handleProductClick = (product) => {
         if (onProductClick) {
-            onProductClick(product, categoryId);
+            onProductClick(product.id); // Simplificado para solo pasar el ID
         }
     };
 
@@ -33,7 +33,25 @@ const CategorySection = ({
      * @returns {string} Precio formateado
      */
     const formatPrice = (price) => {
-        return `${price.toFixed(2)}$`;
+        return `$${price.toFixed(2)}`;
+    };
+
+    /**
+     * Maneja el click en favoritos
+     */
+    const handleFavoriteClick = (e, productId) => {
+        e.stopPropagation();
+        // Aquí iría la lógica para añadir a favoritos
+        // Removido el console.log
+    };
+
+    /**
+     * Maneja el click en añadir al carrito
+     */
+    const handleAddToCart = (e, productId) => {
+        e.stopPropagation();
+        // Aquí iría la lógica para añadir al carrito
+        // Removido el console.log
     };
 
     return (
@@ -83,13 +101,13 @@ const CategorySection = ({
 
             {/* Scroll horizontal de productos */}
             <div className="relative">
-                {/* Contenedor con scroll horizontal */}
-                <div className="flex space-x-3 sm:space-x-6 overflow-x-auto scrollbar-hide pb-2 sm:pb-4 px-1">
+                {/* Contenedor con grid responsive */}
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-6">
                     {products.map((product) => (
                         <div
                             key={product.id}
                             onClick={() => handleProductClick(product)}
-                            className="flex-shrink-0 w-56 sm:w-72 bg-white rounded-lg shadow-md overflow-hidden 
+                            className="bg-white rounded-lg shadow-md overflow-hidden 
                                      hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:scale-105"
                         >
                             {/* Imagen del producto */}
@@ -97,7 +115,7 @@ const CategorySection = ({
                                 <img
                                     src={product.image}
                                     alt={product.name}
-                                    className="w-full h-36 sm:h-48 object-cover"
+                                    className="w-full h-32 sm:h-48 object-cover"
                                 />
                                 
                                 {/* Badge de precio */}
@@ -113,10 +131,7 @@ const CategorySection = ({
 
                                 {/* Botón de favorito en la esquina superior izquierda */}
                                 <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        console.log('Añadir a favoritos:', product.id);
-                                    }}
+                                    onClick={(e) => handleFavoriteClick(e, product.id)}
                                     className="absolute top-2 sm:top-3 left-2 sm:left-3 bg-white bg-opacity-80 hover:bg-opacity-100 
                                              rounded-full p-1.5 sm:p-2 transition-all duration-200 shadow-md
                                              hover:shadow-lg transform hover:scale-105 cursor-pointer"
@@ -139,16 +154,16 @@ const CategorySection = ({
                             </div>
 
                             {/* Información del producto */}
-                            <div className="p-3 sm:p-4">
+                            <div className="p-2 sm:p-4">
                                 <h3 
-                                    className="text-base sm:text-lg font-semibold text-gray-800 mb-1 sm:mb-2 line-clamp-2"
+                                    className="text-sm sm:text-lg font-semibold text-gray-800 mb-1 sm:mb-2 line-clamp-2"
                                     style={{ fontFamily: 'Poppins, sans-serif' }}
                                 >
                                     {product.name}
                                 </h3>
                                 
                                 <p 
-                                    className="text-xs sm:text-sm text-gray-600 line-clamp-2 mb-2 sm:mb-3"
+                                    className="text-xs sm:text-sm text-gray-600 line-clamp-2 mb-2 sm:mb-3 hidden sm:block"
                                     style={{ fontFamily: 'Poppins, sans-serif' }}
                                 >
                                     {product.description}
@@ -156,25 +171,19 @@ const CategorySection = ({
 
                                 {/* Botón de acción */}
                                 <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        console.log('Añadir al carrito:', product.id);
-                                    }}
-                                    className="w-full bg-[#E8ACD2] hover:bg-[#E096C8] text-white py-1.5 sm:py-2 px-3 sm:px-4 
+                                    onClick={(e) => handleAddToCart(e, product.id)}
+                                    className="w-full bg-[#E8ACD2] hover:bg-[#E096C8] text-white py-1.5 sm:py-2 px-2 sm:px-4 
                                              rounded-lg transition-colors duration-200 text-xs sm:text-sm font-medium
                                              cursor-pointer hover:scale-105"
                                     style={{ fontFamily: 'Poppins, sans-serif' }}
                                 >
-                                    Añadir al carrito
+                                    <span className="hidden sm:inline">Añadir al carrito</span>
+                                    <span className="sm:hidden">Añadir</span>
                                 </button>
                             </div>
                         </div>
                     ))}
                 </div>
-
-                {/* Indicadores de scroll (gradientes en los bordes) - solo en desktop */}
-                <div className="hidden sm:block absolute top-0 left-0 w-8 h-full bg-gradient-to-r from-gray-50 to-transparent pointer-events-none"></div>
-                <div className="hidden sm:block absolute top-0 right-0 w-8 h-full bg-gradient-to-l from-gray-50 to-transparent pointer-events-none"></div>
             </div>
 
             {/* Mensaje si no hay productos */}

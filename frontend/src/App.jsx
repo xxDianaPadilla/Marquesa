@@ -116,6 +116,7 @@ function App() {
           <Route path="/categoryProducts" element={<CategoryProducts />} />
           <Route path="/categoria/:categoryId" element={<CategoryProductsPage />} />
           <Route path="/ProductDetail" element={<ProductDetail />} />
+          <Route path="/ProductDetail/:id" element={<ProductDetail />} />
           <Route path="/mediaPage" element={<MediaPage />} />
           <Route path="/MediaDetailPage/:id" element={<MediaDetailPage />} />
           

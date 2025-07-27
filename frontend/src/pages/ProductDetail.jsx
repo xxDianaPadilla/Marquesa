@@ -1,110 +1,202 @@
-import React, { useState } from 'react';
-import ramoFlores from '../assets/ramoFolores.png'; // Imagen por defecto del ramo de flores
-import Header from '../components/Header/Header'; // Componente que renderiza el encabezado
-import Footer from '../components/Footer'; // Componente para el pie de página
-import CategoryNavigation from "../components/CategoryNavigation"; // Barra de navegación de categorías de productos
-import ProductImages from '../components/ProductDetail/ProductImages'; // Componente que maneja las imágenes del producto
-import ProductInfo from '../components/ProductDetail/ProductInfo'; // Muestra la información básica del producto
-import ProductTabs from '../components/ProductDetail/ProductTabs'; // Componente para manejar las pestañas (Descripción, Detalles, Envío)
-import ProductReviews from '../components/ProductDetail/ProductReviews'; // Muestra las opiniones del producto
-import { useNavigate } from 'react-router-dom'; // Hook de React Router para la navegación
-import RecommendedProducts from '../components/RecommendedProducts '; // Muestra los productos recomendados
+// Importa React y hooks necesarios desde React
+import React, { useState, useEffect } from 'react';
+// Importa funciones de React Router para obtener parámetros de la URL y navegar entre rutas
+import { useParams, useNavigate } from 'react-router-dom';
+// Importa el encabezado del sitio
+import Header from '../components/Header/Header';
+// Importa el pie de página
+import Footer from '../components/Footer';
+// Importa el componente de navegación por categorías
+import CategoryNavigation from "../components/CategoryNavigation";
+// Importa el componente de imágenes del producto
+import ProductImages from '../components/ProductDetail/ProductImages';
+// Importa la información básica del producto (nombre, precio, etc.)
+import ProductInfo from '../components/ProductDetail/ProductInfo';
+// Importa las pestañas con descripción, detalles, envío
+import ProductTabs from '../components/ProductDetail/ProductTabs';
+// Importa el componente de reseñas del producto
+import ProductReviews from '../components/ProductDetail/ProductReviews';
+// Importa el componente de productos recomendados
+import RecommendedProducts from '../components/RecommendedProducts ';
+// Importa el hook personalizado que obtiene los detalles del producto
+import useDataBaseProductsDetail from '../components/ProductDetail/hooks/useDataProductDetail';
 
 const ProductDetail = () => {
-  // Estado para controlar la imagen seleccionada del producto
-  const [selectedImage, setSelectedImage] = useState(ramoFlores);
-
-  // Estado para controlar la cantidad del producto a comprar
-  const [quantity, setQuantity] = useState(1);
-
-  // Estado para controlar la pestaña activa (Descripción, Detalles, Envío)
-  const [tab, setTab] = useState('description');
-
-  // Hook para navegar entre las páginas
+  // Obtiene el parámetro "id" de la URL (el ID del producto)
+  const { id } = useParams();
+  // Hook para navegar entre rutas del sitio
   const navigate = useNavigate();
 
-  // Estado para manejar la categoría activa
+  // Debug: muestra el ID recibido y la URL actual
+  console.log('=== COMPONENT RENDER ===');
+  console.log('ID from useParams:', id);
+  console.log('Type of ID:', typeof id);
+  console.log('URL actual:', window.location.href);
+
+  // Estado para la imagen seleccionada del producto
+  const [selectedImage, setSelectedImage] = useState(null);
+  // Estado para la cantidad seleccionada del producto
+  const [quantity, setQuantity] = useState(1);
+  // Estado para la pestaña activa (descripción, detalles, envío)
+  const [tab, setTab] = useState('description');
+  // Estado para la categoría activa en el componente de navegación
   const [activeCategory, setActiveCategory] = useState('todos');
 
-  // Lista de imágenes del producto (en este caso solo tiene la misma imagen repetida)
-  const sampleImages = [ramoFlores, ramoFlores, ramoFlores];
+  // Hook personalizado que obtiene los datos del producto usando el ID
+  const { product, loading, error } = useDataBaseProductsDetail(id);
 
-  // Información del producto
-  const product = {
-    name: 'Ramo de Rosas Frescas',
-    price: '23,00$',
-    category: 'Arreglos con flores naturales',
-    description: 'Nuestro ramo de rosas frescas...',
-    details: 'Las flores incluidas...',
-    shipping: 'Envío disponible...',
+  // Debug: muestra el estado general del componente (producto, carga y error)
+  console.log('🏗️ Estado del componente:', { product, loading, error });
+
+  // Si hay producto y no está cargando, mostrar algunos datos en consola
+  if (product && !loading) {
+    console.log('🎯 PRODUCTO RECIBIDO EN COMPONENTE:', product);
+    console.log('🔍 Nombre en componente:', product.name);
+    console.log('🔍 Precio en componente:', product.price);
+    console.log('🔍 Descripción en componente:', product.description);
+  }
+
+  // useEffect para establecer la primera imagen como imagen seleccionada
+  useEffect(() => {
+    if (product && product.images && product.images.length > 0 && !selectedImage) {
+      setSelectedImage(product.images[0]);
+    }
+  }, [product, selectedImage]);
+
+  // Función que cambia la categoría activa y navega según el ID
+  const handleCategoryChange = (newCategoryId) => {
+    setActiveCategory(newCategoryId);
+    if (newCategoryId === 'todos') {
+      navigate('/categoryProducts'); // Si es "todos", va a la vista general
+    } else {
+      navigate(`/categoria/${newCategoryId}`); // Si es específica, va a la ruta con ID
+    }
   };
 
-  // Reseñas del producto, con una calificación promedio y los comentarios de los usuarios
-  const reviews = {
-    average: 4.7,
-    count: 3,
-    comments: [
-      { name: 'María González', year: 2024, comment: 'El arreglo floral fue excepcional.' },
-      { name: 'Carlos Rodríguez', year: 2023, comment: 'Giftbox personalizada perfecta.' },
-      { name: 'Laura Martínez', year: 2025, comment: 'Cuadros decorativos hermosos.' }
-    ]
-  };
-
-  // Categorías de productos disponibles
-  const categories = [
-    { id: 'todos', name: 'Todos' },
-    { id: 'flores-naturales', name: 'Arreglos con flores naturales' },
-    { id: 'flores-secas', name: 'Arreglos con flores secas' },
-    { id: 'cuadros-decorativos', name: 'Cuadros decorativos' },
-    { id: 'giftboxes', name: 'Giftboxes' },
-    { id: 'tarjetas', name: 'Tarjetas' }
-  ];
-
-  // Función para cambiar la categoría activa y navegar a la nueva categoría
-  const handleCategoryChange = (categoryId) => {
-    setActiveCategory(categoryId);
-    // Si se selecciona la categoría 'todos', se realiza un desplazamiento hacia arriba de la página
-    if (categoryId === 'todos') window.scrollTo({ top: 0, behavior: 'smooth' });
-    // Si se selecciona otra categoría, navega a la página de la categoría
-    else navigate(`/categoria/${categoryId}`);
-  };
-
-  // Función para manejar el clic en el botón "Producto personalizado"
+  // Función que maneja el clic en el botón de producto personalizado
   const handleCustomProductClick = (e) => {
-    e.preventDefault();
-    navigate('/customProducts'); // Redirige a la página de productos personalizados
+    e.preventDefault(); // Previene comportamiento por defecto
+    navigate('/customProducts'); // Navega a la página de productos personalizados
   };
 
-  return (
-    <>
-      <Header /> {/* Componente que muestra el encabezado de la página */}
-      
-      {/* Componente de navegación de categorías */}
-      <CategoryNavigation 
-        categories={categories} 
-        activeCategory={activeCategory} 
-        onCategoryChange={handleCategoryChange} 
-      />
+  // Debug del renderizado del componente
+  console.log('🎬 RENDERIZANDO COMPONENTE CON:', { 
+    hasProduct: !!product, 
+    productName: product?.name,
+    loading, 
+    error 
+  });
 
+  // Muestra el producto en consola si está disponible
+  if (product) {
+    console.log('✅ PRODUCTO PARA RENDERIZAR:', product);
+  }
+
+  // Si está cargando, muestra pantalla de carga con animación
+  if (loading) {
+    return (
+      <div className="min-h-screen">
+        <Header />
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-pink-500 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Cargando producto...</p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  // Si hay error, muestra pantalla de error con mensaje y botón para regresar
+  if (error) {
+    return (
+      <div className="min-h-screen">
+        <Header />
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <div className="text-red-500 text-6xl mb-4">⚠️</div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Error al cargar el producto</h2>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <button
+              onClick={() => navigate(-1)} // Navega una página atrás
+              className="bg-pink-500 hover:bg-pink-600 text-white px-6 py-2 rounded-md transition-colors"
+            >
+              Regresar
+            </button>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  // Si no hay producto (producto no existe), muestra mensaje de "no encontrado"
+  if (!product) {
+    return (
+      <div className="min-h-screen">
+        <Header />
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <div className="text-gray-400 text-6xl mb-4">📦</div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Producto no encontrado</h2>
+            <p className="text-gray-600 mb-4">El producto que buscas no existe o ha sido eliminado.</p>
+            <button
+              onClick={() => navigate('/categoryProducts')} // Regresa a la lista general
+              className="bg-pink-500 hover:bg-pink-600 text-white px-6 py-2 rounded-md transition-colors"
+            >
+              Ver todos los productos
+            </button>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  // Render principal del producto cuando todo está cargado correctamente
+  return (
+    <div>
+      <Header />
+      
+      {/* Navegación de categorías arriba del producto */}
+      <section className="bg-white pt-2 sm:pt-4 pb-4 sm:pb-6">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+          <CategoryNavigation
+            categories={[
+              { _id: 'todos', name: 'Todos' },
+              { _id: '688175a69579a7cde1657aaa', name: 'Arreglos con flores naturales' },
+              { _id: '688175d89579a7cde1657ac2', name: 'Arreglos con flores secas' },
+              { _id: '688175fd9579a7cde1657aca', name: 'Cuadros decorativos' },
+              { _id: '688176179579a7cde1657ace', name: 'Giftboxes' },
+              { _id: '688175e79579a7cde1657ac6', name: 'Tarjetas' }
+            ]}
+            activeCategory={product.categoryId || "todos"} // Marca la categoría actual
+            onCategoryChange={handleCategoryChange} // Maneja cambios de categoría
+          />
+        </div>
+      </section>
+
+      {/* Contenedor principal del detalle del producto */}
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Diseño en dos columnas: una para las imágenes del producto y otra para la información */}
+        {/* Layout en dos columnas: imágenes e info */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-          {/* Componente de imágenes del producto */}
+          {/* Muestra las imágenes del producto con posibilidad de selección */}
           <ProductImages 
-            sampleImages={sampleImages} 
+            sampleImages={product.images || []}
             selectedImage={selectedImage} 
             setSelectedImage={setSelectedImage} 
           />
           
           <div>
-            {/* Componente que muestra la información básica del producto */}
+            {/* Información del producto: nombre, precio, stock, botón, etc. */}
             <ProductInfo 
               product={product} 
               quantity={quantity} 
               setQuantity={setQuantity} 
               handleCustomProductClick={handleCustomProductClick} 
             />
-            {/* Componente de pestañas para cambiar entre Descripción, Detalles y Envío */}
+            {/* Pestañas de descripción, detalles y envío */}
             <ProductTabs 
               tab={tab} 
               setTab={setTab} 
@@ -113,16 +205,18 @@ const ProductDetail = () => {
           </div>
         </div>
 
-        {/* Componente que muestra las reseñas de los usuarios sobre el producto */}
-        <ProductReviews reviews={reviews} />
+        {/* Reseñas del producto: promedio, cantidad y comentarios */}
+        <ProductReviews reviews={product.reviews || { average: 0, count: 0, comments: [] }} />
       </div>
 
-      {/* Componente que muestra productos recomendados */}
+      {/* Muestra productos recomendados al final */}
       <RecommendedProducts />
 
-      <Footer /> {/* Pie de página */}
-    </>
+      {/* Pie de página del sitio */}
+      <Footer />
+    </div>
   );
 };
 
+// Exporta el componente para que pueda ser utilizado en las rutas
 export default ProductDetail;

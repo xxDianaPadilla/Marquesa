@@ -20,10 +20,11 @@ const CategoryProductsPage = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [categoryName, setCategoryName] = useState('');
     
-    const handleProductDetailClick = (e) => {
-        e.preventDefault();
-        navigate('/ProductDetail');
-    };
+    // Cambia esta función en CategoryProductsPage
+const handleProductDetailClick = (e, productId) => {
+    e.preventDefault();
+    navigate(`/ProductDetail/${productId}`);
+};
 
     /**
      * Configuración de categorías disponibles
@@ -210,93 +211,97 @@ const CategoryProductsPage = () => {
 
                             return (
                                 <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-6">
-                                    {formattedProducts.map((product) => (
-                                        <div
-                                            key={product._id}
-                                            onClick={handleProductDetailClick}
-                                            className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg 
-                                                     transition-all duration-300 cursor-pointer transform hover:scale-105"
-                                        >
-                                            {/* Imagen del producto */}
-                                            <div className="relative">
-                                                <img
-                                                    src={product.image}
-                                                    alt={product.name}
-                                                    className="w-full h-32 sm:h-48 object-cover"
-                                                />
+    {formattedProducts.map((product) => (
+        <div
+            key={product._id}
+            onClick={(e) => handleProductDetailClick(e, product._id)} // ✅ Pasar el ID aquí
+            className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg 
+                     transition-all duration-300 cursor-pointer transform hover:scale-105"
+        >
+            {/* Imagen del producto */}
+            <div className="relative">
+                <img
+                    src={product.image}
+                    alt={product.name}
+                    className="w-full h-32 sm:h-48 object-cover"
+                />
 
-                                                {/* Badge de precio */}
-                                                <div className="absolute top-2 sm:top-3 right-2 sm:right-3 bg-white bg-opacity-90 
-                                                              rounded-full px-2 sm:px-3 py-1 shadow-md">
-                                                    <span 
-                                                        className="text-xs sm:text-sm font-bold text-gray-800"
-                                                        style={{ fontFamily: 'Poppins, sans-serif' }}
-                                                    >
-                                                        {formatPrice(product.price)}
-                                                    </span>
-                                                </div>
+                {/* Badge de precio */}
+                <div className="absolute top-2 sm:top-3 right-2 sm:right-3 bg-white bg-opacity-90 
+                              rounded-full px-2 sm:px-3 py-1 shadow-md">
+                    <span 
+                        className="text-xs sm:text-sm font-bold text-gray-800"
+                        style={{ fontFamily: 'Poppins, sans-serif' }}
+                    >
+                        {formatPrice(product.price)}
+                    </span>
+                </div>
 
-                                                {/* Botón de favorito */}
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        // Removido console.log
-                                                    }}
-                                                    className="absolute top-2 sm:top-3 left-2 sm:left-3 bg-white bg-opacity-80 hover:bg-opacity-100 
-                                                             rounded-full p-1.5 sm:p-2 transition-all duration-200 shadow-md
-                                                             hover:shadow-lg transform hover:scale-105 cursor-pointer"
-                                                    aria-label="Añadir a favoritos"
-                                                >
-                                                    <svg 
-                                                        className="w-3 h-3 sm:w-4 sm:h-4 text-gray-600 hover:text-red-500" 
-                                                        fill="none" 
-                                                        stroke="currentColor" 
-                                                        viewBox="0 0 24 24"
-                                                    >
-                                                        <path 
-                                                            strokeLinecap="round" 
-                                                            strokeLinejoin="round" 
-                                                            strokeWidth={2} 
-                                                            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" 
-                                                        />
-                                                    </svg>
-                                                </button>
-                                            </div>
+                {/* Botón de favorito */}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        // Lógica de favoritos aquí
+                    }}
+                    className="absolute top-2 sm:top-3 left-2 sm:left-3 bg-white bg-opacity-80 hover:bg-opacity-100 
+                             rounded-full p-1.5 sm:p-2 transition-all duration-200 shadow-md
+                             hover:shadow-lg transform hover:scale-105 cursor-pointer"
+                    aria-label="Añadir a favoritos"
+                >
+                    <svg 
+                        className="w-3 h-3 sm:w-4 sm:h-4 text-gray-600 hover:text-red-500" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                    >
+                        <path 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            strokeWidth={2} 
+                            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" 
+                        />
+                    </svg>
+                </button>
+            </div>
 
-                                            {/* Información del producto */}
-                                            <div className="p-2 sm:p-4">
-                                                <h3 
-                                                    className="text-sm sm:text-lg font-semibold text-gray-800 mb-1 sm:mb-2 line-clamp-2"
-                                                    style={{ fontFamily: 'Poppins, sans-serif' }}
-                                                >
-                                                    {product.name}
-                                                </h3>
+            {/* Información del producto */}
+            <div className="p-2 sm:p-4">
+                <h3 
+                    className="text-sm sm:text-lg font-semibold text-gray-800 mb-1 sm:mb-2 line-clamp-2"
+                    style={{ fontFamily: 'Poppins, sans-serif' }}
+                >
+                    {product.name}
+                </h3>
 
-                                                <p 
-                                                    className="text-xs sm:text-sm text-gray-600 line-clamp-2 mb-2 sm:mb-3 hidden sm:block"
-                                                    style={{ fontFamily: 'Poppins, sans-serif' }}
-                                                >
-                                                    {product.description}
-                                                </p>
+                <p 
+                    className="text-xs sm:text-sm text-gray-600 line-clamp-2 mb-2 sm:mb-3 hidden sm:block"
+                    style={{ fontFamily: 'Poppins, sans-serif' }}
+                >
+                    {product.description}
+                </p>
 
-                                                {/* Botón de acción */}
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        // Removido console.log
-                                                    }}
-                                                    className="w-full bg-[#E8ACD2] hover:bg-[#E096C8] text-white py-1.5 sm:py-2 px-2 sm:px-4 
-                                                             rounded-lg transition-colors duration-200 text-xs sm:text-sm font-medium
-                                                             cursor-pointer hover:scale-105"
-                                                    style={{ fontFamily: 'Poppins, sans-serif' }}
-                                                >
-                                                    <span className="hidden sm:inline">Añadir al carrito</span>
-                                                    <span className="sm:hidden">Añadir</span>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                {/* Botón de acción - Opcional: también puede ir al detalle */}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        // Opción 1: Añadir al carrito (funcionalidad futura)
+                        console.log('Añadir al carrito:', product._id);
+                        
+                        // Opción 2: O también ir al detalle del producto
+                        // handleProductDetailClick(e, product._id);
+                    }}
+                    className="w-full bg-[#E8ACD2] hover:bg-[#E096C8] text-white py-1.5 sm:py-2 px-2 sm:px-4 
+                             rounded-lg transition-colors duration-200 text-xs sm:text-sm font-medium
+                             cursor-pointer hover:scale-105"
+                    style={{ fontFamily: 'Poppins, sans-serif' }}
+                >
+                    <span className="hidden sm:inline">Añadir al carrito</span>
+                    <span className="sm:hidden">Añadir</span>
+                </button>
+            </div>
+        </div>
+    ))}
+</div>
                             );
                         })()
                     )}

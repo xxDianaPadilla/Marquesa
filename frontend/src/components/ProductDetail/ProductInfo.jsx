@@ -47,14 +47,6 @@ const ProductInfo = ({ product, quantity, setQuantity, handleCustomProductClick 
         <img src={guardar} alt="Guardar" className="w-5 h-5" />
         Añadir a favoritos
       </button>
-      <button
-        className="bg-[#BEF7FF] hover:bg-cyan-200 text-black px-4 py-2 rounded-md text-sm flex items-center gap-2
-                   transition-transform duration-200 ease-in-out hover:scale-105  cursor-pointer"
-        onClick={handleCustomProductClick}
-      >
-        <img src={editar} alt="Editar" className="w-5 h-5" />
-        Personalizar
-      </button>
     </div>
   </div>
 );

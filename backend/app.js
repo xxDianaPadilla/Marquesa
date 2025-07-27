@@ -22,6 +22,7 @@ import categoriesRoutes from './src/routes/categories.js';
 import passwordResetRoutes from './src/routes/passwordReset.js';
 import emailVerificationRoutes from './src/routes/emailVerification.js';
 import chatRoutes from './src/routes/chat.js';
+import customProductsMaterialsRoutes from './src/routes/customProductsMaterials.js';
 
 // Crea la instancia de la aplicación Express
 const app = express();
@@ -60,5 +61,6 @@ app.use("/api/categories", categoriesRoutes);
 app.use('/api/passwordReset', passwordResetRoutes);
 app.use('/api/emailVerification', emailVerificationRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/customProductsMaterials', customProductsMaterialsRoutes);
 
 export default app;

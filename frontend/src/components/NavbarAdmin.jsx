@@ -9,6 +9,7 @@ import mediaIcon from "../assets/mediaIcon.png";
 import reviewsIcon from "../assets/reviewsIcon.png";
 import categoriesIcon from "../assets/categoriesIcon.png";
 import logoutIcon from "../assets/logout.png";
+import customIcon from "../assets/customIcon.png";
 
 // Componente para la barra de navegación del administrador
 // Permite navegar entre diferentes secciones del panel de administración
@@ -51,6 +52,7 @@ const NavbarAdmin = ({ isExpanded, setIsExpanded }) => {
     { path: "/media", icon: mediaIcon, label: "Media" },
     { path: "/reviews", icon: reviewsIcon, label: "Reseñas" },
     { path: "/categories", icon: categoriesIcon, label: "Categorías" },
+    { path: "/customProductsMaterials", icon: customIcon, label: "Personalizables" }
   ];
 
   return (
@@ -66,8 +68,8 @@ const NavbarAdmin = ({ isExpanded, setIsExpanded }) => {
             const activeClass = isToggle
               ? ""
               : isActive(path)
-              ? "bg-white/30 shadow-inner"
-              : "";
+                ? "bg-white/30 shadow-inner"
+                : "";
             return (
               <button
                 key={label}
@@ -79,13 +81,11 @@ const NavbarAdmin = ({ isExpanded, setIsExpanded }) => {
                 <img
                   src={icon}
                   alt={label}
-                  className={`object-contain transition-transform duration-200 ${
-                    isToggle
+                  className={`object-contain transition-transform duration-200 ${isToggle
                       ? "w-7 h-7"
-                      : `w-5 h-5 filter brightness-0 invert ${
-                          isActive(path) ? "scale-110" : "group-hover:scale-110"
-                        }`
-                  }`}
+                      : `w-5 h-5 filter brightness-0 invert ${isActive(path) ? "scale-110" : "group-hover:scale-110"
+                      }`
+                    }`}
                 />
                 {isExpanded && (
                   <span className="text-white text-sm">{label}</span>

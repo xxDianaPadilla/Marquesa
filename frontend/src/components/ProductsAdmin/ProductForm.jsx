@@ -1,12 +1,11 @@
 // Ruta: frontend/src/components/ProductsAdmin/ProductForm.jsx
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
-import { AlertCircle, CheckCircle, X } from 'lucide-react';
+import { AlertCircle, CheckCircle, X, Upload, Trash2, Image as ImageIcon } from 'lucide-react';
 
 /**
- * Componente para el formulario de productos mejorado
- * Mantiene el diseño original pero añade validaciones exhaustivas
- * Permite crear o editar productos con validación en tiempo real y manejo de imágenes
+ * Componente para el formulario de productos mejorado con múltiples imágenes
+ * Permite crear o editar productos con validación en tiempo real y manejo de hasta 5 imágenes
  * 
  * @param {Object} props - Propiedades del componente
  * @param {boolean} props.isOpen - Si el modal está abierto
@@ -29,9 +28,11 @@ const ProductForm = ({
   isSubmitting = false
 }) => {
   const fileInputRef = useRef(null);
+  const [selectedImages, setSelectedImages] = useState([]);
+  const [imagePreviewUrls, setImagePreviewUrls] = useState([]);
 
   // ============ CONFIGURACIÓN DEL FORMULARIO CON REACT-HOOK-FORM ============
-  
+
   const {
     control,
     handleSubmit,
@@ -48,19 +49,15 @@ const ProductForm = ({
       price: '',
       stock: '',
       categoryId: '',
-      image: null,
+      images: [],
       isPersonalizable: false,
       details: ''
     },
-    mode: 'onChange' // Validación en tiempo real
+    mode: 'onChange'
   });
 
   // ============ REGLAS DE VALIDACIÓN MEJORADAS ============
-  
-  /**
-   * Reglas de validación específicas para cada campo
-   * Incluye validaciones exhaustivas con mensajes personalizados
-   */
+
   const validationRules = {
     name: {
       required: "El nombre es obligatorio",
@@ -79,7 +76,7 @@ const ProductForm = ({
         return true;
       }
     },
-    
+
     description: {
       required: "La descripción es obligatoria",
       minLength: {
@@ -97,7 +94,7 @@ const ProductForm = ({
         return true;
       }
     },
-    
+
     price: {
       required: "El precio es obligatorio",
       validate: (value) => {
@@ -114,7 +111,7 @@ const ProductForm = ({
         return true;
       }
     },
-    
+
     stock: {
       required: "El stock es obligatorio",
       validate: (value) => {
@@ -131,36 +128,43 @@ const ProductForm = ({
         return true;
       }
     },
-    
+
     categoryId: {
       required: "Selecciona una categoría"
     },
-    
-    image: {
+
+    images: {
       validate: (value) => {
-        // Para productos nuevos, la imagen es obligatoria
-        if (!isEditing && !value) {
-          return "La imagen es obligatoria";
+        // Para productos nuevos, al menos una imagen es obligatoria
+        if (!isEditing && selectedImages.length === 0) {
+          return "Debes seleccionar al menos una imagen";
         }
-        
-        // Si hay una imagen seleccionada, validar el archivo
-        if (value instanceof File) {
-          // Validar tamaño (máximo 5MB)
-          if (value.size > 5 * 1024 * 1024) {
-            return "Máximo 5MB";
-          }
-          
-          // Validar tipo de archivo
-          const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
-          if (!validTypes.includes(value.type)) {
-            return "Debe ser una imagen";
+
+        // Validar que no exceda el máximo de 5 imágenes
+        if (selectedImages.length > 5) {
+          return "Máximo 5 imágenes permitidas";
+        }
+
+        // Validar cada archivo seleccionado
+        for (let file of selectedImages) {
+          if (file instanceof File) {
+            // Validar tamaño (máximo 5MB por imagen)
+            if (file.size > 5 * 1024 * 1024) {
+              return `La imagen "${file.name}" excede el tamaño máximo de 5MB`;
+            }
+
+            // Validar tipo de archivo
+            const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+            if (!validTypes.includes(file.type)) {
+              return `"${file.name}" no es un formato de imagen válido`;
+            }
           }
         }
-        
+
         return true;
       }
     },
-    
+
     details: {
       maxLength: {
         value: 1000,
@@ -169,42 +173,171 @@ const ProductForm = ({
     }
   };
 
+  // ============ FUNCIONES PARA MANEJO DE IMÁGENES ============
+
+  /**
+   * Convierte archivos a URLs de preview
+   * @param {Array} files - Array de archivos File
+   * @returns {Array} Array de URLs de preview
+   */
+  const createPreviewUrls = (files) => {
+    return files.map(file => {
+      if (file instanceof File) {
+        return URL.createObjectURL(file);
+      }
+      return file; // Si ya es una URL (caso de edición)
+    });
+  };
+
+  /**
+   * Maneja la selección de múltiples imágenes
+   * @param {Event} e - Evento del input file
+   */
+  const handleImageSelection = (e) => {
+    const files = Array.from(e.target.files);
+
+    if (files.length === 0) return;
+
+    // Validar que no exceda el límite total (existentes + nuevas)
+    const totalImages = selectedImages.length + files.length;
+    if (totalImages > 5) {
+      setError('images', {
+        type: 'manual',
+        message: `Solo puedes seleccionar ${5 - selectedImages.length} imágenes más (máximo 5 total)`
+      });
+      return;
+    }
+
+    // Validar cada archivo
+    for (let file of files) {
+      if (file.size > 5 * 1024 * 1024) {
+        setError('images', {
+          type: 'manual',
+          message: `La imagen "${file.name}" excede el tamaño máximo de 5MB`
+        });
+        return;
+      }
+
+      if (!file.type.startsWith('image/')) {
+        setError('images', {
+          type: 'manual',
+          message: `"${file.name}" no es un archivo de imagen válido`
+        });
+        return;
+      }
+    }
+
+    // Agregar nuevas imágenes
+    const updatedImages = [...selectedImages, ...files];
+    const updatedPreviews = [...imagePreviewUrls, ...createPreviewUrls(files)];
+
+    setSelectedImages(updatedImages);
+    setImagePreviewUrls(updatedPreviews);
+    setValue('images', updatedImages);
+    clearErrors('images');
+
+    // Limpiar el input
+    e.target.value = '';
+  };
+
+  /**
+   * Elimina una imagen específica
+   * @param {number} index - Índice de la imagen a eliminar
+   */
+  const removeImage = (index) => {
+    const updatedImages = selectedImages.filter((_, i) => i !== index);
+    const updatedPreviews = imagePreviewUrls.filter((_, i) => i !== index);
+
+    // Liberar memoria de URLs creadas
+    if (imagePreviewUrls[index] && imagePreviewUrls[index].startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreviewUrls[index]);
+    }
+
+    setSelectedImages(updatedImages);
+    setImagePreviewUrls(updatedPreviews);
+    setValue('images', updatedImages);
+    clearErrors('images');
+  };
+
+  /**
+   * Abre el selector de archivos
+   */
+  const openFileSelector = () => {
+    if (selectedImages.length >= 5) {
+      setError('images', {
+        type: 'manual',
+        message: 'Ya has alcanzado el máximo de 5 imágenes'
+      });
+      return;
+    }
+    fileInputRef.current?.click();
+  };
+
   // ============ EFECTOS PARA MANEJO DE DATOS ============
-  
+
   /**
    * Efecto para llenar el formulario cuando se abre en modo edición
-   * Se ejecuta cuando cambia el estado de apertura o los datos del producto
    */
   useEffect(() => {
     if (isOpen) {
       if (productData && isEditing) {
-        // Modo edición: llenar con datos existentes
-        console.log('📝 Llenando formulario para edición:', productData);
-        
+        console.log('Llenando formulario para edición:', productData);
+        console.log('isPersonalizable original:', productData.isPersonalizable);
+        console.log('Tipo de isPersonalizable:', typeof productData.isPersonalizable);
+
         setValue('name', productData.name || '');
         setValue('description', productData.description || '');
         setValue('price', productData.price || '');
         setValue('stock', productData.stock || '');
         setValue('categoryId', productData.categoryId?._id || '');
-        setValue('image', productData.images?.[0]?.image || null);
-        setValue('isPersonalizable', productData.isPersonalizable || false);
+
+        // Esto preserva el valor false cuando existe
+        setValue('isPersonalizable', productData.isPersonalizable ?? false);
+
         setValue('details', productData.details || '');
+
+        console.log('isPersonalizable después de setValue:', productData.isPersonalizable ?? false);
+
+        // Manejar imágenes existentes
+        if (productData.images && productData.images.length > 0) {
+          const existingImages = productData.images.map(img => img.image || img);
+          setSelectedImages(existingImages);
+          setImagePreviewUrls(existingImages);
+          setValue('images', existingImages);
+        } else {
+          setSelectedImages([]);
+          setImagePreviewUrls([]);
+          setValue('images', []);
+        }
       } else {
-        // Modo creación: resetear formulario
-        console.log('✨ Inicializando formulario para nuevo producto');
+        console.log('Inicializando formulario para nuevo producto');
         reset();
+        setSelectedImages([]);
+        setImagePreviewUrls([]);
       }
     }
   }, [isOpen, productData, setValue, reset, isEditing]);
+  /**
+   * Efecto para limpiar URLs de preview al cerrar
+   */
+  useEffect(() => {
+    return () => {
+      // Limpiar URLs de memoria al desmontar el componente
+      imagePreviewUrls.forEach(url => {
+        if (url && url.startsWith('blob:')) {
+          URL.revokeObjectURL(url);
+        }
+      });
+    };
+  }, [imagePreviewUrls]);
 
   /**
-   * Efecto para sincronizar errores externos con react-hook-form
-   * Permite que el hook establezca errores de validación del servidor
+   * Efecto para sincronizar errores externos
    */
   useEffect(() => {
     if (validationErrors && Object.keys(validationErrors).length > 0) {
       console.log('⚠️ Aplicando errores externos al formulario:', validationErrors);
-      
+
       Object.entries(validationErrors).forEach(([field, message]) => {
         setError(field, {
           type: 'server',
@@ -215,81 +348,43 @@ const ProductForm = ({
   }, [validationErrors, setError]);
 
   // ============ FUNCIONES DE MANEJO DE EVENTOS ============
-  
-  /**
-   * Valida imagen seleccionada
-   * Verifica que la imagen sea válida y cumpla con los requisitos
-   * 
-   * @param {File} value - Archivo de imagen
-   * @returns {boolean|string} true si es válido, mensaje de error si no
-   */
-  const validateImage = (value) => {
-    if (!value) return 'La imagen es obligatoria';
-    if (value instanceof File) {
-      if (value.size > 5 * 1024 * 1024) return 'Máximo 5MB';
-      if (!value.type.startsWith('image/')) return 'Debe ser una imagen';
-      return true;
-    }
-    return true;
-  };
-
-  /**
-   * Maneja el cambio de imagen seleccionada
-   * Actualiza el estado del formulario con la imagen seleccionada
-   * 
-   * @param {Event} e - Evento de cambio del input file
-   */
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const validation = validateImage(file);
-      if (validation === true) {
-        setValue('image', file);
-        clearErrors('image');
-      } else {
-        setError('image', { type: 'manual', message: validation });
-      }
-    }
-  };
-
-  /**
-   * Maneja el clic en la imagen para abrir selector de archivos
-   */
-  const handleImageClick = () => {
-    fileInputRef.current?.click();
-  };
 
   /**
    * Maneja el envío del formulario
-   * Procesa los datos y los envía al componente padre
-   * 
-   * @param {Object} data - Datos del formulario validados
    */
   const handleFormSubmit = (data) => {
     console.log('📤 Enviando formulario con datos:', data);
-    onSubmit(data);
+
+    // Preparar datos con imágenes
+    const formDataWithImages = {
+      ...data,
+      images: selectedImages // Array de archivos File o URLs existentes
+    };
+
+    onSubmit(formDataWithImages);
   };
 
   /**
    * Maneja el cierre del formulario
-   * Limpia el estado y cierra el modal
    */
   const handleClose = () => {
     console.log('❌ Cerrando formulario de productos');
+
+    // Limpiar URLs de preview
+    imagePreviewUrls.forEach(url => {
+      if (url && url.startsWith('blob:')) {
+        URL.revokeObjectURL(url);
+      }
+    });
+
+    setSelectedImages([]);
+    setImagePreviewUrls([]);
     reset();
     onClose();
   };
 
-  // ============ COMPONENTE DE ALERTA PARA MENSAJES ============
-  
-  /**
-   * Componente de alerta para mostrar mensajes de error o éxito
-   * Mantiene el diseño original del proyecto
-   * 
-   * @param {Object} props - Propiedades de la alerta
-   * @param {string} props.type - Tipo de alerta (error, success)
-   * @param {string} props.message - Mensaje a mostrar
-   */
+  // ============ COMPONENTE DE ALERTA ============
+
   const Alert = ({ type, message }) => {
     const styles = {
       error: {
@@ -318,27 +413,26 @@ const ProductForm = ({
     );
   };
 
-  // Validar que categories sea un array
   const categoriesArray = Array.isArray(categories) ? categories : [];
 
   if (!isOpen) return null;
 
   return (
-    <div className="bg-white rounded-lg shadow-xl max-w-sm sm:max-w-xl w-full mx-2 sm:mx-4 max-h-[95vh] sm:max-h-[90vh] overflow-y-auto relative">
-      
-      {/* Header responsivo */}
+    <div className="bg-white rounded-lg shadow-xl max-w-sm sm:max-w-2xl w-full mx-2 sm:mx-4 max-h-[95vh] sm:max-h-[90vh] overflow-y-auto relative">
+
+      {/* Header */}
       <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
         <h2 className="text-lg sm:text-xl font-semibold text-gray-900 pr-2 font-poppins">
           {isEditing ? 'Editar Producto' : 'Nuevo Producto'}
         </h2>
-        <button onClick={handleClose} className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors duration-150 flex-shrink-0">
+        <button style={{ cursor: 'pointer' }} onClick={handleClose} className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors duration-150 flex-shrink-0">
           <X className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
         </button>
       </div>
 
-      {/* Formulario responsivo */}
+      {/* Formulario */}
       <form onSubmit={handleSubmit(handleFormSubmit)} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-        
+
         {/* Nombre */}
         <div>
           <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2 font-poppins">Nombre *</label>
@@ -350,9 +444,8 @@ const ProductForm = ({
               <input
                 {...field}
                 disabled={isSubmitting}
-                className={`w-full px-3 sm:px-4 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] ${
-                  errors.name ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`w-full px-3 sm:px-4 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] ${errors.name ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                  } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
                 placeholder="Nombre del producto"
               />
             )}
@@ -372,9 +465,8 @@ const ProductForm = ({
                 {...field}
                 rows="3"
                 disabled={isSubmitting}
-                className={`w-full px-3 sm:px-4 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] resize-none ${
-                  errors.description ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`w-full px-3 sm:px-4 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] resize-none ${errors.description ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                  } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
                 placeholder="Descripción del producto"
               />
             )}
@@ -396,9 +488,8 @@ const ProductForm = ({
                   step="0.01"
                   {...field}
                   disabled={isSubmitting}
-                  className={`w-full px-3 sm:px-4 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] ${
-                    errors.price ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                  } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`w-full px-3 sm:px-4 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] ${errors.price ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                    } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
                   placeholder="0.00"
                 />
               )}
@@ -417,9 +508,8 @@ const ProductForm = ({
                   type="number"
                   {...field}
                   disabled={isSubmitting}
-                  className={`w-full px-3 sm:px-4 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] ${
-                    errors.stock ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                  } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`w-full px-3 sm:px-4 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] ${errors.stock ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                    } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
                   placeholder="0"
                 />
               )}
@@ -439,9 +529,8 @@ const ProductForm = ({
               <select
                 {...field}
                 disabled={isSubmitting}
-                className={`w-full px-3 sm:px-4 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] ${
-                  errors.categoryId ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`w-full px-3 sm:px-4 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-[#FF7260] ${errors.categoryId ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                  } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <option value="">Selecciona una categoría</option>
                 {categoriesArray.map(cat => (
@@ -453,57 +542,76 @@ const ProductForm = ({
           {errors.categoryId && <Alert type="error" message={errors.categoryId.message} />}
         </div>
 
-        {/* Imagen */}
+        {/* Sección de Imágenes - NUEVO DISEÑO MEJORADO */}
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2 font-poppins">Imagen *</label>
-          <Controller
-            name="image"
-            control={control}
-            rules={validationRules.image}
-            render={({ field }) => (
-              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                <div className="flex-shrink-0 mx-auto sm:mx-0">
-                  {field.value ? (
-                    <img
-                      src={field.value instanceof File ? URL.createObjectURL(field.value) : field.value}
-                      alt="Preview"
-                      className="w-14 h-14 sm:w-16 sm:h-16 object-cover rounded-lg border border-gray-200"
-                    />
-                  ) : (
-                    <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200">
-                      <svg className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1 w-full">
-                  <button
-                    type="button"
-                    onClick={handleImageClick}
-                    disabled={isSubmitting}
-                    className={`w-full px-3 sm:px-4 py-2 text-xs sm:text-sm border rounded-lg transition-colors duration-150 ${
-                      errors.image
-                        ? 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100'
-                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                    } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    {field.value ? 'Cambiar imagen' : 'Seleccionar imagen'}
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    disabled={isSubmitting}
-                    className="hidden"
+          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2 font-poppins">
+            Imágenes * (máximo 5)
+          </label>
+
+          {/* Grid de imágenes */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-3">
+            {/* Imágenes seleccionadas */}
+            {imagePreviewUrls.map((url, index) => (
+              <div key={index} className="relative group">
+                <div className="aspect-square rounded-lg overflow-hidden border-2 border-gray-200 bg-gray-100">
+                  <img
+                    src={url}
+                    alt={`Preview ${index + 1}`}
+                    className="w-full h-full object-cover"
                   />
                 </div>
+                <button
+                  type="button"
+                  onClick={() => removeImage(index)}
+                  disabled={isSubmitting}
+                  className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 disabled:opacity-50"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+                <div className="absolute bottom-1 left-1 bg-black bg-opacity-50 text-white text-xs px-1.5 py-0.5 rounded">
+                  {index + 1}
+                </div>
               </div>
+            ))}
+
+            {/* Botón para agregar más imágenes */}
+            {selectedImages.length < 5 && (
+              <button
+                type="button"
+                onClick={openFileSelector}
+                disabled={isSubmitting}
+                className="aspect-square rounded-lg border-2 border-dashed border-gray-300 hover:border-[#FF7260] flex flex-col items-center justify-center text-gray-500 hover:text-[#FF7260] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Upload className="w-6 h-6 mb-1" />
+                <span className="text-xs text-center font-poppins">
+                  Agregar
+                </span>
+              </button>
             )}
+          </div>
+
+          {/* Input file oculto */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImageSelection}
+            disabled={isSubmitting}
+            className="hidden"
           />
-          {errors.image && <Alert type="error" message={errors.image.message} />}
-          <p className="text-xs text-gray-500 mt-1 sm:mt-2 font-poppins">Máximo 5MB. Formatos: JPG, PNG, WebP, GIF</p>
+
+          {/* Información y errores */}
+          <div className="space-y-2">
+            <p className="text-xs text-gray-500 font-poppins">
+              • Máximo 5 imágenes • Hasta 5MB cada una • Formatos: JPG, PNG, WebP, GIF
+            </p>
+            <p className="text-xs text-gray-600 font-poppins">
+              {selectedImages.length}/5 imágenes seleccionadas
+            </p>
+          </div>
+
+          {errors.images && <Alert type="error" message={errors.images.message} />}
         </div>
 
         {/* ¿Es personalizable? */}
@@ -544,7 +652,7 @@ const ProductForm = ({
           {errors.details && <Alert type="error" message={errors.details.message} />}
         </div>
 
-        {/* Botones responsivos */}
+        {/* Botones */}
         <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-3 sm:pt-4 border-t border-gray-200">
           <button
             type="button"
@@ -559,8 +667,8 @@ const ProductForm = ({
             disabled={isSubmitting || Object.keys(errors).length > 0}
             className="w-full sm:w-auto px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-white bg-[#FF7260] hover:bg-[#FF6B5A] rounded-lg transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting 
-              ? (isEditing ? 'Actualizando...' : 'Creando...') 
+            {isSubmitting
+              ? (isEditing ? 'Actualizando...' : 'Creando...')
               : (isEditing ? 'Actualizar' : 'Crear')} Producto
           </button>
         </div>

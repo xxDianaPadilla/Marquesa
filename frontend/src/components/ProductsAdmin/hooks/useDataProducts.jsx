@@ -40,7 +40,7 @@ const useDataProducts = () => {
   const [categoryId, setCategoryId] = useState(""); // ID de la categoría asociada
   const [isPersonalizable, setIsPersonalizable] = useState(false); // Si se puede personalizar
   const [details, setDetails] = useState(""); // Detalles adicionales del producto
-  const [image, setImage] = useState(null); // Archivo de imagen seleccionado
+  const [images, setImages] = useState(null); // Archivo de imagen seleccionado
 
   // ============ ESTADOS DE DATOS ============
 
@@ -93,7 +93,7 @@ const useDataProducts = () => {
    * @param {Object} productData - Datos del producto a validar
    * @returns {Object} { isValid: boolean, errors: Object }
    */
-  const validateProductData = (productData) => {
+  const validateProductData = (productData, isEditing = false) => {
     const errors = {};
 
     // Validación de nombre (obligatorio, longitud mínima)
@@ -147,19 +147,62 @@ const useDataProducts = () => {
       errors.categoryId = "Debe seleccionar una categoría";
     }
 
-    // Validación de imagen (obligatorio para productos nuevos)
-    if (!id && !productData.image) {
-      errors.image = "La imagen del producto es obligatoria";
-    } else if (productData.image && productData.image instanceof File) {
-      // Validar tamaño de archivo (máximo 5MB)
-      if (productData.image.size > 5 * 1024 * 1024) {
-        errors.image = "La imagen no puede exceder 5MB";
+    // ========== VALIDACIÓN DE IMÁGENES CORREGIDA ==========
+    if (productData.images && Array.isArray(productData.images)) {
+      // Separar imágenes existentes (strings) de archivos nuevos (File objects)
+      const existingImages = productData.images.filter(img => typeof img === 'string');
+      const newImageFiles = productData.images.filter(img => img instanceof File);
+      const totalImages = existingImages.length + newImageFiles.length;
+
+      console.log('Validación de imágenes:', {
+        existingImages: existingImages.length,
+        newImageFiles: newImageFiles.length,
+        totalImages: totalImages,
+        isEditing: isEditing
+      });
+
+      // Para productos nuevos: debe tener al menos una imagen
+      if (!isEditing && totalImages === 0) {
+        errors.images = "Debe seleccionar al menos una imagen";
       }
 
-      // Validar tipo de archivo
-      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
-      if (!validTypes.includes(productData.image.type)) {
-        errors.image = "La imagen debe ser JPG, PNG, WebP o GIF";
+      // Para productos editados: debe tener al menos una imagen (existente o nueva)
+      if (isEditing && totalImages === 0) {
+        errors.images = "Debe tener al menos una imagen";
+      }
+
+      // Validar máximo de imágenes
+      if (totalImages > 5) {
+        errors.images = "Máximo 5 imágenes permitidas";
+      }
+
+      // Validar solo los archivos nuevos (File objects)
+      if (newImageFiles.length > 0) {
+        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+        const maxSize = 5 * 1024 * 1024; // 5MB
+
+        for (let i = 0; i < newImageFiles.length; i++) {
+          const image = newImageFiles[i];
+
+          // Validar tamaño de archivo
+          if (image.size > maxSize) {
+            errors.images = `La imagen "${image.name}" excede el tamaño máximo de 5MB`;
+            break;
+          }
+
+          // Validar tipo de archivo
+          if (!validTypes.includes(image.type)) {
+            errors.images = `La imagen "${image.name}" debe ser JPG, PNG, WebP o GIF`;
+            break;
+          }
+        }
+      }
+    } else {
+      // Si no hay array de imágenes
+      if (!isEditing) {
+        errors.images = "Debe seleccionar al menos una imagen";
+      } else {
+        errors.images = "Debe tener al menos una imagen";
       }
     }
 
@@ -266,7 +309,7 @@ const useDataProducts = () => {
     setCategoryId("");
     setIsPersonalizable(false);
     setDetails("");
-    setImage(null);
+    setImages(null);
     setValidationErrors({});
   };
 
@@ -279,14 +322,30 @@ const useDataProducts = () => {
    * @param {Object} productData - Datos del producto a crear
    */
   const createProduct = async (productData) => {
-    console.log('➕ Iniciando creación de producto...');
+    console.log('=== FRONTEND: INICIANDO CREACIÓN ===');
+    console.log('Datos del producto:', productData);
+    console.log('Número de imágenes a subir:', productData.images?.length || 0);
 
     // ---- Validar datos antes de enviar ----
-    const validation = validateProductData(productData);
+    const validation = validateProductData(productData, false);
     if (!validation.isValid) {
-      console.log('❌ Validación fallida:', validation.errors);
+      console.log('Validación fallida:', validation.errors);
       setValidationErrors(validation.errors);
       toast.error("Por favor corrige los errores en el formulario");
+      return;
+    }
+
+    // ---- Validar que haya al menos una imagen ----
+    if (!productData.images || productData.images.length === 0) {
+      setValidationErrors({ images: "Debes seleccionar al menos una imagen" });
+      toast.error("Debes seleccionar al menos una imagen");
+      return;
+    }
+
+    // ---- Validar máximo de imágenes ----
+    if (productData.images.length > 5) {
+      setValidationErrors({ images: "Máximo 5 imágenes permitidas" });
+      toast.error("Máximo 5 imágenes permitidas");
       return;
     }
 
@@ -294,8 +353,10 @@ const useDataProducts = () => {
       setIsSubmitting(true);
       setValidationErrors({});
 
-      // ---- Preparar datos para envío ----
+      // ---- Preparar FormData para múltiples imágenes ----
       const formData = new FormData();
+
+      // Agregar datos del producto
       formData.append("name", productData.name.trim());
       formData.append("description", productData.description.trim());
       formData.append("price", parseFloat(productData.price));
@@ -304,12 +365,32 @@ const useDataProducts = () => {
       formData.append("isPersonalizable", productData.isPersonalizable ? "true" : "false");
       formData.append("details", productData.details || "");
 
-      // Agregar imagen si existe
-      if (productData.image) {
-        formData.append("images", productData.image);
+      // ---- Agregar todas las imágenes al FormData ----
+      console.log('=== PROCESANDO IMÁGENES ===');
+      productData.images.forEach((image, index) => {
+        if (image instanceof File) {
+          console.log(`Agregando imagen ${index + 1}:`);
+          console.log(`- Nombre: ${image.name}`);
+          console.log(`- Tipo: ${image.type}`);
+          console.log(`- Tamaño: ${(image.size / 1024 / 1024).toFixed(2)}MB`);
+
+          formData.append("images", image);
+        } else {
+          console.error(`Imagen ${index + 1} no es un File:`, typeof image, image);
+        }
+      });
+
+      // Debug: Mostrar contenido del FormData
+      console.log('=== CONTENIDO DEL FORMDATA ===');
+      for (let [key, value] of formData.entries()) {
+        if (value instanceof File) {
+          console.log(`${key}: File(${value.name}, ${value.type}, ${(value.size / 1024 / 1024).toFixed(2)}MB)`);
+        } else {
+          console.log(`${key}: ${value}`);
+        }
       }
 
-      console.log('📤 Enviando producto al servidor...');
+      console.log('Enviando petición al servidor...');
 
       // ---- Enviar petición POST ----
       const res = await fetch("http://localhost:4000/api/products", {
@@ -317,7 +398,10 @@ const useDataProducts = () => {
         body: formData // FormData maneja automáticamente el Content-Type
       });
 
+      console.log('Respuesta recibida:', res.status, res.statusText);
+
       const data = await handleResponse(res);
+      console.log('Datos de respuesta:', data);
 
       // ---- Procesar respuesta exitosa ----
       const newProduct = data.success ? data.data : data;
@@ -343,9 +427,16 @@ const useDataProducts = () => {
       resetForm();
       setActiveTab("list");
 
-      console.log('✅ Producto creado exitosamente');
+      console.log('=== PRODUCTO CREADO EXITOSAMENTE ===');
+      console.log('ID:', newProduct._id);
+      console.log('Imágenes:', newProduct.images?.length || 0);
+
     } catch (error) {
-      console.error("❌ Error completo:", error);
+      console.error("=== ERROR EN FRONTEND ===");
+      console.error("Error completo:", error);
+      console.error("Mensaje:", error.message);
+      console.error("Stack:", error.stack);
+
       toast.error(error.message || "Error inesperado");
     } finally {
       setIsSubmitting(false);
@@ -399,18 +490,43 @@ const useDataProducts = () => {
     setId(product._id);
     setName(product.name);
     setDescription(product.description);
-    setPrice(product.price.toString()); // Convertir a string para inputs
+    setPrice(product.price.toString());
     setStock(product.stock || 0);
     setCategoryId(product.categoryId._id || product.categoryId || "");
-    setIsPersonalizable(product.isPersonalizable || false);
+    setIsPersonalizable(product.isPersonalizable ?? false);
     setDetails(product.details || "");
-    setImage(null); // Resetear imagen (se mostrará la actual en el preview)
-    setValidationErrors({}); // Limpiar errores de validación
+
+    // CAMBIO: Usar el estado correcto para múltiples imágenes
+    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+      // Si las imágenes están como objetos con propiedades
+      const imageUrls = product.images.map(img => {
+        if (typeof img === 'object' && img.image) {
+          return img.image; // { image: "url", _id: "..." }
+        }
+        return img; // Si ya es una URL directa
+      });
+
+      // CAMBIO: Usar setImages en lugar de setImage (plural)
+      setImages(imageUrls); // Debe coincidir con el estado que usas en otras funciones
+      console.log('📸 Imágenes cargadas para edición:', imageUrls.length);
+      console.log('📸 URLs de imágenes:', imageUrls);
+    } else {
+      // CAMBIO: Usar setImages en lugar de setImage
+      setImages([]); // Resetear imágenes
+      console.log('📸 No hay imágenes para cargar');
+    }
+
+    setValidationErrors({});
 
     // Cambiar a la pestaña de formulario
     setActiveTab("form");
 
     console.log('✅ Formulario preparado para edición');
+    console.log('📊 Estado actual después de cargar:', {
+      id: product._id,
+      name: product.name,
+      imagesCount: product.images?.length || 0
+    });
   };
 
   // ============ FUNCIÓN PARA GUARDAR EDICIÓN ============
@@ -422,12 +538,13 @@ const useDataProducts = () => {
    * @param {Object} productData - Datos actualizados del producto
    */
   const handleEdit = async (productData) => {
-    console.log(`💾 Guardando cambios en producto ID: ${id}`);
+    console.log(`Guardando cambios en producto ID: ${id}`);
+    console.log('Imágenes a procesar:', productData.images?.length || 0);
 
-    // ---- Validar datos antes de enviar ----
-    const validation = validateProductData(productData);
+    // ---- CAMBIO: Usar true para indicar que es edición ----
+    const validation = validateProductData(productData, true);
     if (!validation.isValid) {
-      console.log('❌ Validación fallida:', validation.errors);
+      console.log('Validación fallida:', validation.errors);
       setValidationErrors(validation.errors);
       toast.error("Por favor corrige los errores en el formulario");
       return;
@@ -435,25 +552,49 @@ const useDataProducts = () => {
 
     // ---- Verificar que existe el ID ----
     if (!id) {
-      console.error("❌ ID del producto no encontrado. ID actual:", id);
+      console.error("ID del producto no encontrado. ID actual:", id);
       toast.error("ID del producto no encontrado");
       return;
     }
 
-    console.log(`📤 Actualizando producto en: ${API}/${id}`);
+    console.log(`Actualizando producto en: ${API}/${id}`);
 
     try {
       setIsSubmitting(true);
       setValidationErrors({});
 
+      // ---- Separar imágenes nuevas de las existentes ----
+      const newImages = productData.images?.filter(img => img instanceof File) || [];
+      const existingImages = productData.images?.filter(img => typeof img === 'string') || [];
+
+      console.log('Imágenes nuevas a subir:', newImages.length);
+      console.log('Imágenes existentes a mantener:', existingImages.length);
+      console.log('Total de imágenes:', newImages.length + existingImages.length);
+
+      // ---- Validar que hay al menos una imagen (nueva o existente) ----
+      if (newImages.length === 0 && existingImages.length === 0) {
+        setValidationErrors({ images: "Debe tener al menos una imagen" });
+        toast.error("Debe tener al menos una imagen");
+        return;
+      }
+
+      // ---- Validar máximo total de imágenes ----
+      if (newImages.length + existingImages.length > 5) {
+        setValidationErrors({ images: "Máximo 5 imágenes en total" });
+        toast.error("Máximo 5 imágenes en total");
+        return;
+      }
+
       let res;
 
       // ---- Determinar tipo de actualización ----
-      if (productData.image instanceof File) {
-        // Caso 1: Nueva imagen seleccionada - usar FormData
-        console.log('📁 Actualizando con nueva imagen');
+      if (newImages.length > 0) {
+        // Caso 1: Hay nuevas imágenes - usar FormData
+        console.log('Actualizando con nuevas imágenes');
 
         const formData = new FormData();
+
+        // Agregar datos del producto
         formData.append("name", productData.name.trim());
         formData.append("description", productData.description.trim());
         formData.append("price", parseFloat(productData.price));
@@ -461,15 +602,36 @@ const useDataProducts = () => {
         formData.append("categoryId", productData.categoryId);
         formData.append("isPersonalizable", productData.isPersonalizable ? "true" : "false");
         formData.append("details", productData.details || "");
-        formData.append("images", productData.image);
+
+        // Agregar imágenes existentes como JSON para que el backend las mantenga
+        if (existingImages.length > 0) {
+          formData.append("existingImages", JSON.stringify(existingImages));
+          console.log('Imágenes existentes a mantener:', existingImages);
+        }
+
+        // Agregar nuevas imágenes
+        newImages.forEach((image, index) => {
+          formData.append("images", image);
+          console.log(`Nueva imagen ${index + 1}: ${image.name} (${(image.size / 1024 / 1024).toFixed(2)}MB)`);
+        });
+
+        // Debug FormData
+        console.log('=== CONTENIDO DEL FORMDATA (EDICIÓN) ===');
+        for (let [key, value] of formData.entries()) {
+          if (value instanceof File) {
+            console.log(`${key}: File(${value.name}, ${value.type}, ${(value.size / 1024 / 1024).toFixed(2)}MB)`);
+          } else {
+            console.log(`${key}:`, value);
+          }
+        }
 
         res = await fetch(`${API}/${id}`, {
           method: "PUT",
           body: formData,
         });
       } else {
-        // Caso 2: Solo actualización de texto - usar JSON
-        console.log('📝 Actualizando solo datos de texto');
+        // Caso 2: Solo actualización de texto y/o mantenimiento de imágenes existentes
+        console.log('Actualizando solo datos de texto');
 
         const body = {
           name: productData.name.trim(),
@@ -479,7 +641,10 @@ const useDataProducts = () => {
           categoryId: productData.categoryId,
           isPersonalizable: productData.isPersonalizable,
           details: productData.details || "",
+          existingImages: existingImages
         };
+
+        console.log('Body JSON para actualización:', body);
 
         res = await fetch(`${API}/${id}`, {
           method: "PUT",
@@ -489,24 +654,49 @@ const useDataProducts = () => {
       }
 
       // ---- Logging de debugging ----
-      console.log("📊 Response status:", res.status);
-      console.log("📋 Response URL:", res.url);
+      console.log("Response status:", res.status);
+      console.log("Response URL:", res.url);
 
-      const data = await handleResponse(res);
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Error response:", errorText);
+        throw new Error(`Error ${res.status}: ${errorText}`);
+      }
+
+      const data = await res.json();
+      console.log("Datos de respuesta:", data);
 
       // ---- Manejar éxito ----
       const successMessage = data.success ? data.message : "Producto actualizado";
       toast.success(successMessage);
 
+      // Actualizar producto en la lista local
+      if (data.success && data.data) {
+        setProducts(prev => prev.map(p =>
+          p._id === id ? data.data : p
+        ));
+      }
+
       // Limpiar formulario y volver a la lista
       resetForm();
       setActiveTab("list");
-      fetchProducts(); // Recargar lista
 
-      console.log('✅ Producto actualizado exitosamente');
+      console.log('Producto actualizado exitosamente');
     } catch (error) {
-      console.error("❌ Error completo:", error);
-      toast.error(error.message || "Error al editar producto");
+      console.error("=== ERROR EN EDICIÓN ===");
+      console.error("Error completo:", error);
+      console.error("Mensaje:", error.message);
+
+      // Manejar errores específicos
+      if (error.message.includes('400')) {
+        toast.error("Error de validación. Revisa los datos del formulario.");
+      } else if (error.message.includes('404')) {
+        toast.error("Producto no encontrado.");
+      } else if (error.message.includes('409')) {
+        toast.error("Ya existe un producto con ese nombre.");
+      } else {
+        toast.error(error.message || "Error al editar producto");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -539,8 +729,8 @@ const useDataProducts = () => {
     setIsPersonalizable,    // Función para toggle personalizable
     details,                // Detalles adicionales del producto
     setDetails,             // Función para actualizar detalles
-    image,                  // Imagen seleccionada (File o URL)
-    setImage,               // Función para actualizar imagen
+    images,                  // Imagen seleccionada (File o URL)              
+    setImages,
 
     // ---- Estados de datos ----
     products,               // Array de todos los productos

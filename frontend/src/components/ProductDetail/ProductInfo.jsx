@@ -11,9 +11,6 @@ const ProductInfo = ({ product, quantity, setQuantity, handleCustomProductClick 
     { /* Aquí podrías agregar una imagen del producto si es necesario */ }
     <h1 className="text-2xl font-bold">{product.name}</h1>
     <p className="text-lg font-semibold">{product.price}</p>
-    <p className="text-sm text-gray-700">
-      Hermoso ramo de rosas frescas en tonos amarillos y blancos, perfecto para regalar en ocasiones especiales.
-    </p>
 { /* Aquí podrías agregar más detalles del producto si es necesario */ }
     <div>
       <label className="text-sm font-medium text-gray-700">Cantidad</label>

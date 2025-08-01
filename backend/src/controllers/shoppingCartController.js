@@ -1,4 +1,5 @@
 import shoppingCartModel from "../models/ShoppingCart.js";
+import mongoose from "mongoose";
 
 const shoppingCartController = {};
 
@@ -193,182 +194,129 @@ shoppingCartController.addItemToCart = async (req, res) => {
         const { clientId } = req.params;
         const { itemType, itemId, itemTypeRef, quantity, subtotal } = req.body;
 
-        // Validación: clientId es requerido
+        // Validaciones
         if (!clientId) {
             return res.status(400).json({
-                message: "El ID del cliente es requerido",
-                error: "clientId is required"
+                success: false,
+                message: "El ID del cliente es requerido"
             });
         }
 
-        // Validación: itemType es requerido
-        if (!itemType) {
-            return res.status(400).json({
-                message: "El tipo de item es requerido",
-                error: "itemType is required"
-            });
-        }
-
-        // Validación: itemId es requerido
-        if (!itemId) {
-            return res.status(400).json({
-                message: "El ID del item es requerido",
-                error: "itemId is required"
-            });
-        }
-
-        // Validación: itemTypeRef es requerido
-        if (!itemTypeRef) {
-            return res.status(400).json({
-                message: "La referencia del tipo de item es requerida",
-                error: "itemTypeRef is required"
-            });
-        }
-
-        // Validación: subtotal es requerido
-        if (subtotal === undefined || subtotal === null) {
-            return res.status(400).json({
-                message: "El subtotal es requerido",
-                error: "subtotal is required"
-            });
-        }
-
-        // Validación: subtotal debe ser un número válido y no negativo
-        if (typeof subtotal !== 'number' || isNaN(subtotal)) {
-            return res.status(400).json({
-                message: "El subtotal debe ser un número válido",
-                error: "subtotal must be a valid number"
-            });
-        }
-
-        if (subtotal < 0) {
-            return res.status(400).json({
-                message: "El subtotal no puede ser negativo",
-                error: "subtotal cannot be negative"
-            });
-        }
-
-        // Validación: quantity debe ser un número entero positivo si se proporciona
-        if (quantity !== undefined) {
-            if (typeof quantity !== 'number' || isNaN(quantity)) {
-                return res.status(400).json({
-                    message: "La cantidad debe ser un número válido",
-                    error: "quantity must be a valid number"
-                });
-            }
-
-            if (quantity <= 0) {
-                return res.status(400).json({
-                    message: "La cantidad debe ser mayor a 0",
-                    error: "quantity must be greater than 0"
-                });
-            }
-
-            if (!Number.isInteger(quantity)) {
-                return res.status(400).json({
-                    message: "La cantidad debe ser un número entero",
-                    error: "quantity must be an integer"
-                });
-            }
-        }
-
-        // Validación: verificar formato de ObjectId para clientId e itemId
-        const mongoose = require('mongoose');
         if (!mongoose.Types.ObjectId.isValid(clientId)) {
             return res.status(400).json({
-                message: "El ID del cliente no tiene un formato válido",
-                error: "Invalid clientId format"
+                success: false,
+                message: "El ID del cliente no tiene un formato válido"
+            });
+        }
+
+        if (!itemType || !["product", "custom"].includes(itemType)) {
+            return res.status(400).json({
+                success: false,
+                message: "El tipo de item debe ser 'product' o 'custom'"
+            });
+        }
+
+        if (!itemId) {
+            return res.status(400).json({
+                success: false,
+                message: "El ID del item es requerido"
             });
         }
 
         if (!mongoose.Types.ObjectId.isValid(itemId)) {
             return res.status(400).json({
-                message: "El ID del item no tiene un formato válido",
-                error: "Invalid itemId format"
+                success: false,
+                message: "El ID del item no tiene un formato válido"
             });
         }
 
+        if (!itemTypeRef || !["products", "CustomProducts"].includes(itemTypeRef)) {
+            return res.status(400).json({
+                success: false,
+                message: "La referencia del tipo de item debe ser 'products' o 'CustomProducts'"
+            });
+        }
+
+        if (subtotal === undefined || subtotal === null || typeof subtotal !== 'number' || subtotal < 0) {
+            return res.status(400).json({
+                success: false,
+                message: "El subtotal debe ser un número mayor o igual a 0"
+            });
+        }
+
+        // Para productos normales, la cantidad es requerida
+        if (itemType === "product" && (!quantity || typeof quantity !== 'number' || quantity <= 0)) {
+            return res.status(400).json({
+                success: false,
+                message: "La cantidad debe ser un número mayor a 0 para productos normales"
+            });
+        }
+
+        // Buscar carrito existente del cliente
         let cart = await shoppingCartModel.findOne({ clientId });
 
-        if (!cart) {
+        const newItem = {
+            itemType,
+            itemId,
+            itemTypeRef,
+            quantity: quantity || 1, // Default 1 para productos personalizados
+            subtotal
+        };
+
+        if (cart) {
+            // Si el carrito existe, agregar el item
+            cart.items.push(newItem);
+            
+            // Recalcular el total
+            cart.total = cart.items.reduce((total, item) => total + item.subtotal, 0);
+            
+            await cart.save();
+        } else {
             // Si no existe carrito, crear uno nuevo
             cart = new shoppingCartModel({
                 clientId,
-                items: [],
-                total: 0
+                items: [newItem],
+                total: subtotal
             });
+            
+            await cart.save();
         }
 
-        // Verificamos si el item ya existe en el carrito
-        const existingItemIndex = cart.items.findIndex(
-            item => item.itemId.toString() === itemId && item.itemType === itemType
-        );
-
-        if (existingItemIndex > -1) {
-            // Si existe, actualizar cantidad y subtotal
-            const currentQuantity = cart.items[existingItemIndex].quantity || 0;
-            const newQuantity = currentQuantity + (quantity || 1);
-
-            cart.items[existingItemIndex].quantity = newQuantity;
-            cart.items[existingItemIndex].subtotal += subtotal;
-        } else {
-            // Si no existe, agregar nuevo item
-            cart.items.push({
-                itemType,
-                itemId,
-                itemTypeRef,
-                quantity: quantity || 1,
-                subtotal
+        // Popular el carrito con los datos relacionados
+        const populatedCart = await shoppingCartModel.findById(cart._id)
+            .populate('clientId')
+            .populate({
+                path: 'items.itemId',
+                refPath: 'items.itemTypeRef'
             });
-        }
 
-        // Validación: verificar que todos los items tienen subtotal válido antes de recalcular
-        const hasInvalidSubtotal = cart.items.some(item =>
-            typeof item.subtotal !== 'number' || isNaN(item.subtotal) || item.subtotal < 0
-        );
-
-        if (hasInvalidSubtotal) {
-            return res.status(400).json({
-                message: "Algunos items del carrito tienen subtotales inválidos",
-                error: "Invalid subtotal values in cart items"
-            });
-        }
-
-        // Recalculamos total
-        const newTotal = cart.items.reduce((sum, item) => sum + item.subtotal, 0);
-        cart.total = newTotal;
-
-        await cart.save();
         res.status(200).json({
+            success: true,
             message: "Item agregado al carrito exitosamente",
-            cart
+            cart: populatedCart
         });
 
     } catch (error) {
-        // Manejo de errores específicos de MongoDB/Mongoose
+        console.error('Error en addItemToCart:', error);
+
         if (error.name === 'ValidationError') {
             return res.status(400).json({
-                message: "Error de validación en el modelo",
-                error: error.message
+                success: false,
+                message: "Error de validación de datos",
+                errors: Object.values(error.errors).map(err => err.message)
             });
         }
 
         if (error.name === 'CastError') {
             return res.status(400).json({
-                message: "ID proporcionado no es válido",
-                error: "Invalid ID format"
+                success: false,
+                message: "Error en el formato de datos",
+                error: "Uno o más IDs no tienen el formato correcto"
             });
         }
 
-        if (error.code === 11000) {
-            return res.status(409).json({
-                message: "Conflicto al agregar item al carrito",
-                error: "Duplicate key error"
-            });
-        }
-
-        // Error genérico del servidor
         res.status(500).json({
+            success: false,
             message: "Error interno del servidor al agregar item al carrito",
             error: error.message
         });

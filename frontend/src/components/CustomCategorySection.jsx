@@ -106,9 +106,8 @@ const ProductCard = ({
             className={cardClasses}
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
-        // REMOVIDO: onClick del div contenedor para evitar doble evento
         >
-            {/* Badge de seleccionado */}
+            {/* Badge de seleccionado - Z-INDEX REDUCIDO */}
             {isSelected && (
                 <div className="absolute top-2 right-2 z-10">
                     <div className="bg-pink-500 text-white rounded-full p-1">
@@ -119,7 +118,7 @@ const ProductCard = ({
                 </div>
             )}
 
-            {/* Badge de sin stock */}
+            {/* Badge de sin stock - Z-INDEX REDUCIDO */}
             {!product.inStock && (
                 <div className="absolute top-2 left-2 z-10">
                     <span className="bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
@@ -142,7 +141,7 @@ const ProductCard = ({
 
                 {/* Overlay con botones en hover */}
                 {isHovered && product.inStock && (
-                    <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300">
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -186,11 +185,12 @@ const ProductCard = ({
                     </div>
                 </div>
 
-                {/* Botón de personalizar - ÚNICO punto de clic */}
+                {/* Botón de personalizar */}
                 <button
                     onClick={product.inStock ? onCustomize : undefined}
                     disabled={!product.inStock}
                     className={buttonClasses}
+                    style={{cursor: 'pointer'}}
                 >
                     {isSelected ? (
                         <>

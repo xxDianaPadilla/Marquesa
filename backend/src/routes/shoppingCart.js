@@ -21,9 +21,13 @@ router.route("/:id")
 router.route("/client/:clientId")
     .get(shoppingCartController.getShoppingCartByClient); // Obtener carrito por ID del cliente
 
+// RUTA ACTUALIZADA: Agregar item al carrito (coincide con el hook)
+// POST /api/shoppingCart/:clientId/add-item
+router.route("/:clientId/add-item")
+    .post(shoppingCartController.addItemToCart); // Agregar un item al carrito
+
 // Rutas para gestión de items/productos dentro del carrito de un cliente
 router.route("/client/:clientId/items")
-    .post(shoppingCartController.addItemToCart) // Agregar un item al carrito
     .put(shoppingCartController.updateCartItem) // Actualizar un item del carrito
     .delete(shoppingCartController.removeItemFromCart); // Eliminar un item del carrito
 

@@ -85,7 +85,7 @@ const CustomProducts = () => {
                 const existingProduct = prev.find(p => p._id === product._id);
                 if (existingProduct) {
                     console.log('Producto ya seleccionado:', product.name);
-                    return prev; 
+                    return prev;
                 }
                 return [...prev, product];
             });
@@ -104,35 +104,30 @@ const CustomProducts = () => {
     /**
      * Maneja la finalización de la personalización
      */
-    const handleFinishCustomization = () => {
-        if (selectedProducts.length === 0) {
-            alert('Selecciona al menos un producto para personalizar');
-            return;
-        }
+    const handleFinishCustomization = (customizationData) => {
+        console.log('Personalización finalizada con datos:', customizationData);
 
-        console.log('Personalización finalizada con productos:', selectedProducts);
+        const { selectedProducts, productType, totalPrice, referenceImage, comments } = customizationData;
 
-        // Calcular precio total
-        const totalPrice = selectedProducts.reduce((total, product) => total + product.price, 0);
-
-        // Crear objeto de personalización
+        // Crear objeto de personalización completo
         const customizationOrder = {
             productType,
             selectedProducts,
             totalPrice,
-            timestamp: new Date().toISOString()
+            referenceImage,
+            comments,
+            timestamp: new Date().toISOString(),
+            id: `custom-${Date.now()}`
         };
 
         // Agregar al carrito
         setCart(prev => [...prev, customizationOrder]);
-
-        alert(`¡Personalización completada! Total: ${totalPrice.toFixed(2)}`);
-
+        
         // Limpiar selección
         setSelectedProducts([]);
 
-        // Opcional: navegar al carrito o checkout
-        // navigate('/cart');
+        // Log para debugging
+        console.log('Orden de personalización creada:', customizationOrder);
     };
 
     // Función para transformar los datos de la API al formato esperado por los componentes

@@ -119,7 +119,7 @@ const PersonalizableCard = ({ category, onPersonalizeClick }) => {
                 <div className={`absolute inset-0 ${category.gradientOverlay} opacity-30 group-hover:opacity-40 transition-opacity duration-300`}></div>
 
                 {/* Botón personalizar que aparece en hover */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 bg-black bg-opacity-10">
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
                     <button
                         style={{ cursor: 'pointer' }}
                         onClick={() => onPersonalizeClick(category)}

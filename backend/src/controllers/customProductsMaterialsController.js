@@ -54,6 +54,69 @@ customProductsMaterialsController.getCustomProductsMaterialById = async (req, re
     }
 };
 
+customProductsMaterialsController.getMaterialsByProduct = async (req, res) => {
+    try {
+        const {productType} = req.params;
+
+        const validProducts = ["Ramo de flores naturales", "Ramo de flores secas", "Giftbox"];
+        if(!validProducts.includes(productType)){
+            return res.status(400).json({
+                success: false,
+                message: "Tipo de producto no válido"
+            });
+        }
+
+        const materials = await customProductsMaterials.find({
+            productToPersonalize: productType
+        });
+
+        const materialsByCategory = materials.reduce((acc, material) => {
+            if(!acc[material.categoryToParticipate]){
+                acc[material.categoryToParticipate] = [];
+            }
+            acc[material.categoryToParticipate].push(material);
+            return acc;
+        }, {});
+
+        res.status(200).json({
+            success: true,
+            data: {
+                productType,
+                categories: materialsByCategory,
+                totalMaterials: materials.length
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error al obtener los materiales por producto",
+            error: error.message
+        });
+    }
+};
+
+customProductsMaterialsController.getMaterialsByCategory = async (req, res) => {
+    try {
+        const {productType, category} = req.params;
+
+        const materials = await customProductsMaterials.find({
+            productToPersonalize: productType,
+            categoryToParticipate: category
+        });
+
+        res.status(200).json({
+            success: true,
+            data: materials
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error al obtener los materiales por categoría",
+            error: error.message
+        });
+    }
+};
+
 // Crear un nuevo material con imagen en Cloudinary
 customProductsMaterialsController.createCustomProductsMaterial = async (req, res) => {
     try {

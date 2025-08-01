@@ -1,20 +1,10 @@
-/**
- * Componente CategoryProducts (Home) - Página principal de productos por categorías
- * CORREGIDO: Usa el mismo enfoque que CategoryProductsPage con endpoints específicos
- * 
- * Funcionalidades principales:
- * - Navegación por categorías con filtros
- * - Productos obtenidos desde API con endpoints específicos
- * - Sistema de carga y manejo de errores
- * - Navegación a páginas de detalle de productos
- */
-
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header/Header";
 import Footer from "../components/Footer";
 import CategoryNavigation from "../components/CategoryNavigation";
 import CategorySection from "../components/CategorySection";
+import PersonalizableSection from "../components/PersonalizableSection"; // Nuevo componente
 import LoadingSpinner from "../components/LoadingSpinner";
 import Container from "../components/Container";
 
@@ -183,6 +173,14 @@ const CategoryProducts = () => {
     };
 
     /**
+     * Maneja la navegación a la página de personalización por categoría
+     */
+    const handlePersonalizeClick = (categoryId) => {
+        console.log('🎨 Navigating to personalize category:', categoryId);
+        navigate(`/personalizar/${categoryId}`);
+    };
+
+    /**
      * Agrupa los productos por categoría para mostrar en secciones
      */
     const getProductsByCategory = () => {
@@ -238,34 +236,32 @@ const CategoryProducts = () => {
     /**
      * Formatea los productos para el componente CategorySection
      */
-   const formatProductForSection = (product) => {
-    console.log("🎨 Formateando producto:", product);
+    const formatProductForSection = (product) => {
+        console.log("🎨 Formateando producto:", product);
 
-    const fallbackImage = '/placeholder-image.jpg';
+        const fallbackImage = '/placeholder-image.jpg';
 
-    // Verificamos que haya al menos una imagen válida
-    let image = fallbackImage;
-    if (
-        product.images &&
-        Array.isArray(product.images) &&
-        product.images.length > 0 &&
-        product.images[0].image
-    ) {
-        image = product.images[0].image;
-    }
+        // Verificamos que haya al menos una imagen válida
+        let image = fallbackImage;
+        if (
+            product.images &&
+            Array.isArray(product.images) &&
+            product.images.length > 0 &&
+            product.images[0].image
+        ) {
+            image = product.images[0].image;
+        }
 
-    return {
-        id: product._id || product.id,
-        name: product.name,
-        description: product.description,
-        price: product.price,
-        image: image,
-        stock: product.stock,
-        isPersonalizable: product.isPersonalizable
+        return {
+            id: product._id || product.id,
+            name: product.name,
+            description: product.description,
+            price: product.price,
+            image: image,
+            stock: product.stock,
+            isPersonalizable: product.isPersonalizable
+        };
     };
-};
-
-
 
     /**
      * Función para reintentar la carga
@@ -328,6 +324,13 @@ const CategoryProducts = () => {
                         />
                     ) : (
                         <div className="space-y-6 sm:space-y-8">
+                            {/* Sección de productos personalizables - Solo mostrar en "todos" */}
+                            {activeCategory === 'todos' && (
+                                <PersonalizableSection
+                                    onPersonalizeClick={handlePersonalizeClick}
+                                />
+                            )}
+                            
                             {/* Renderizar secciones de productos */}
                             {Object.entries(getProductsByCategory()).map(([categoryId, categoryData]) => (
                                 <div key={categoryId} id={`section-${categoryId}`}>

@@ -15,15 +15,6 @@ router.route("/")
 router.route("/client/:clientId")
     .get(customProductsController.getCustomProductsByClient); // Obtener productos personalizados por cliente
 
-// Ruta para obtener productos personalizados por categoría
-router.route("/category/:categoryId")
-    .get(customProductsController.getCustomProductsByCategory); // Obtener productos personalizados por categoría
-
-// Ruta para obtener resumen de un producto personalizado específico
-// Nota: Esta ruta debe ir antes de /:id para evitar conflictos de enrutamiento
-router.route("/:id/summary")
-    .get(customProductsController.getProductsSummary); // Obtener resumen detallado de un producto
-
 // Rutas CRUD específicas para un producto personalizado por ID
 // Importante: estas rutas van al final porque /:id es genérico
 router.route("/:id")

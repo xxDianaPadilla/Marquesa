@@ -12,12 +12,21 @@ const router = express.Router();
 // Usa almacenamiento directo en carpeta local con configuración mínima
 const upload = multer({ dest: "customProductsMaterials/" });
 
+// IMPORTANTE: Las rutas más específicas deben ir ANTES que las más generales
+
+// Rutas específicas para filtrado por producto (MÁS ESPECÍFICAS PRIMERO)
+router.route("/product/:productType/category/:category")
+    .get(customProductsMaterialsController.getMaterialsByCategory); // Obtener materiales por producto y categoría
+
+router.route("/product/:productType")
+    .get(customProductsMaterialsController.getMaterialsByProduct); // Obtener materiales por tipo de producto
+
 // Rutas principales CRUD para materiales de productos personalizados
 router.route("/")
     .get(customProductsMaterialsController.getCustomProductsMaterials) // Obtener todos los materiales
     .post(upload.single("image"), customProductsMaterialsController.createCustomProductsMaterial); // Crear material con imagen
 
-// Rutas específicas para un material por ID
+// Rutas específicas para un material por ID (MÁS GENERAL AL FINAL)
 router.route("/:id")
     .get(customProductsMaterialsController.getCustomProductsMaterialById) // Obtener material específico por ID
     .put(upload.single("image"), customProductsMaterialsController.updateCustomProductsMaterial) // Actualizar material con nueva imagen

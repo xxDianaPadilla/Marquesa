@@ -9,26 +9,27 @@ const customProductsSchema = new Schema({
         ref: "Clients",
         required: true
     },
-    // Categoría del producto personalizado
-    categoryId: {
-        type: Schema.Types.ObjectId,
-        ref: "categories",
-        required: true
+    // Tipo de producto a personalizar (reemplaza categoryId)
+    productToPersonalize: {
+        type: String,
+        required: true,
+        enum: ["Ramo de flores naturales", "Ramo de flores secas", "Giftbox"]
     },
-    // Array de productos base seleccionados para la personalización
-    selectedItems: [
+    // Array de materiales seleccionados para la personalización
+    selectedMaterials: [
         {
-            // ID del producto base a personalizar
-            productId: {
+            // ID del material personalizado seleccionado
+            materialId: {
                 type: Schema.Types.ObjectId,
-                ref: "products",
+                ref: "CustomProductsMaterial",
                 required: true
             },
-            // Cantidad del producto (opcional, mínimo 1 si se especifica)
+            // Cantidad del material (opcional, mínimo 1 si se especifica)
             quantity: {
                 type: Number,
                 required: false,
-                min: 1
+                min: 1,
+                default: 1
             }
         }
     ],
@@ -48,7 +49,7 @@ const customProductsSchema = new Schema({
         type: Number,
         required: true,
         min: [0, "El total no puede ser negativo"]
-    }
+    },
 }, {
     // Agrega automáticamente campos createdAt y updatedAt
     timestamps: true,
@@ -56,5 +57,4 @@ const customProductsSchema = new Schema({
     strict: false
 });
 
-// Exportamos el modelo de productos personalizados
 export default model("CustomProducts", customProductsSchema);

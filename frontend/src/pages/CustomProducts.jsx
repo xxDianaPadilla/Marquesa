@@ -1,223 +1,198 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import Header from "../components/Header/Header";
-import CategoryNavigation from "../components/CategoryNavigation";
 import Footer from "../components/Footer";
 import CustomizationPanel from "../components/CustomizationPanel";
 import CustomCategorySection from "../components/CustomCategorySection";
-import cuadro1 from "../assets/cuadro1.png";
-import cuadro2 from "../assets/cuadro2.png";
-import cuadro3 from "../assets/cuadro3.png";
-import flor1 from "../assets/flor1.png";
-import flor2 from "../assets/flor2.png";
-import flor3 from "../assets/flor3.png";
-import papel1 from "../assets/papel1.png";
-import papel2 from "../assets/papel2.png";
-import papel3 from "../assets/papel3.png";
+import { useCustomProductsByType } from "../components/CustomProductsMaterials/hooks/useCustomProductsMaterialsUsers";
 
 const CustomProducts = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    
-    // Estado para la categoría activa en la navegación
+    const [searchParams] = useSearchParams();
+
+    // Obtener parámetros de la URL
+    const productType = searchParams.get('product');
+    const availableCategories = searchParams.get('categories') ? JSON.parse(searchParams.get('categories')) : [];
+
+    // Estados locales
     const [activeCategory, setActiveCategory] = useState('todos');
-    
-    // Estado para controlar la carga de datos
-    const [isLoading, setIsLoading] = useState(true);
-    
-    // Estado para productos seleccionados para personalización
     const [selectedProducts, setSelectedProducts] = useState([]);
-    
-    // Estado para el carrito de compras
     const [cart, setCart] = useState([]);
 
-     // Configuración de categorías disponibles
-     
-    const categories = [
-        { id: 'todos', name: 'Todos' },
-        { id: 'flores-naturales', name: 'Arreglos con flores naturales' },
-        { id: 'flores-secas', name: 'Arreglos con flores secas' },
-        { id: 'cuadros-decorativos', name: 'Cuadros decorativos' },
-        { id: 'giftboxes', name: 'Giftboxes' },
-        { id: 'tarjetas', name: 'Tarjetas' }
-    ];
+    // Hook para obtener datos del producto
+    const { productData, loading, error } = useCustomProductsByType(productType);
 
-    
-     // Datos de productos de ejemplo
-     
-    const sampleProducts = {
-        flores: [
-            {
-                id: 1,
-                name: "Rosas rojas",
-                description: "Disponible en stock",
-                price: 23.00,
-                image: flor1,
-                inStock: true,
-                category: "flores"
-            },
-            {
-                id: 2,
-                name: "Margaritas",
-                description: "Flores blancas naturales",
-                price: 18.00,
-                image: flor2,
-                inStock: true,
-                category: "flores"
-            },
-            {
-                id: 3,
-                name: "Flores silvestres",
-                description: "Arreglo natural variado",
-                price: 25.00,
-                image: flor3,
-                inStock: true,
-                category: "flores"
-            }
-        ],
-        envolturas: [
-            {
-                id: 4,
-                name: "Papel Kraft",
-                description: "Envoltura natural",
-                price: 5.00,
-                image: papel1,
-                inStock: true,
-                category: "envolturas"
-            },
-            {
-                id: 5,
-                name: "Papel Rosa",
-                description: "Envoltura elegante",
-                price: 7.00,
-                image: papel2,
-                inStock: true,
-                category: "envolturas"
-            },
-            {
-                id: 6,
-                name: "Papel Blanco",
-                description: "Clásico y elegante",
-                price: 6.00,
-                image: papel3,
-                inStock: true,
-                category: "envolturas"
-            }
-        ],
-        marcos: [
-            {
-                id: 7,
-                name: "Marco de Madera",
-                description: "Marco rústico natural",
-                price: 35.00,
-                image: cuadro1,
-                inStock: true,
-                category: "marcos"
-            },
-            {
-                id: 8,
-                name: "Marco con Girasoles",
-                description: "Diseño floral vibrante",
-                price: 42.00,
-                image: cuadro2,
-                inStock: true,
-                category: "marcos"
-            },
-            {
-                id: 9,
-                name: "Marco Decorativo",
-                description: "Estilo vintage",
-                price: 38.00,
-                image: cuadro3,
-                inStock: true,
-                category: "marcos"
-            }
-        ]
+    // Redirigir si no hay tipo de producto
+    useEffect(() => {
+        if (!productType) {
+            navigate('/');
+        }
+    }, [productType, navigate]);
+
+    // Configuración de categorías dinámicas basadas en el producto seleccionado
+    const getCategoriesForProduct = () => {
+        const baseCategories = [{ id: 'todos', name: 'Todos' }];
+
+        if (availableCategories.length > 0) {
+            return [
+                ...baseCategories,
+                ...availableCategories.map((cat, index) => ({
+                    id: cat.toLowerCase().replace(/\s+/g, '-'),
+                    name: cat
+                }))
+            ];
+        }
+
+        return baseCategories;
     };
 
-    
-     // useEffect para simular la carga inicial de datos
-    
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setIsLoading(false);
-        }, 1000);
-
-        return () => clearTimeout(timer);
-    }, []);
+    const categories = getCategoriesForProduct();
 
     /**
      * Maneja el cambio de categoría en la navegación
-     * @param {string} categoryId - ID de la categoría seleccionada
      */
-
     const handleCategoryChange = (categoryId) => {
         setActiveCategory(categoryId);
 
-        if (categoryId === 'todos') {
-            // Si selecciona "todos", mostrar todas las categorías en scroll horizontal
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (categoryId !== 'todos') {
+            // Scroll suave hacia la sección correspondiente
+            const element = document.getElementById(`category-${categoryId}`);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth' });
+            }
         } else {
-            // Si selecciona una categoría específica, navegar a la página individual
-            navigate(`/categoria/${categoryId}`);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     };
 
     /**
      * Maneja la adición de productos al carrito
-     * @param {Object} product - Producto a añadir al carrito
      */
-
     const handleAddToCart = (product) => {
         setCart(prev => [...prev, product]);
         console.log('Producto añadido al carrito:', product);
-        // Aquí podremos mostrar una notificación o actualizar un contador
+        // Aquí se puede mostrar una notificación
     };
 
     /**
      * Maneja la personalización de productos
-     * @param {Object} product - Producto a personalizar
-     * @param {boolean} isSelected - Si el producto está seleccionado
      */
-
     const handleCustomize = (product, isSelected) => {
         if (isSelected) {
-            setSelectedProducts(prev => [...prev, product]);
+            // Verificar si el producto ya está seleccionado antes de agregarlo
+            setSelectedProducts(prev => {
+                const existingProduct = prev.find(p => p._id === product._id);
+                if (existingProduct) {
+                    console.log('Producto ya seleccionado:', product.name);
+                    return prev; 
+                }
+                return [...prev, product];
+            });
         } else {
-            setSelectedProducts(prev => prev.filter(p => p.id !== product.id));
+            setSelectedProducts(prev => prev.filter(p => p._id !== product._id));
         }
     };
 
     /**
      * Maneja la eliminación de productos de la personalización
-     * @param {number} productId - ID del producto a eliminar
      */
-
     const handleRemoveProduct = (productId) => {
-        setSelectedProducts(prev => prev.filter(p => p.id !== productId));
+        setSelectedProducts(prev => prev.filter(p => p._id !== productId));
     };
 
-    
-     // Maneja la finalización de la personalización
-     
+    /**
+     * Maneja la finalización de la personalización
+     */
     const handleFinishCustomization = () => {
+        if (selectedProducts.length === 0) {
+            alert('Selecciona al menos un producto para personalizar');
+            return;
+        }
+
         console.log('Personalización finalizada con productos:', selectedProducts);
-        // Aquí podremos navegar a la página de checkout o mostrar un modal
-        alert(`¡Personalización completada! Total de productos: ${selectedProducts.length}`);
-        
-        setCart(prev => [...prev, ...selectedProducts]);
-        
-        // Limpiamos la selección después de finalizar
+
+        // Calcular precio total
+        const totalPrice = selectedProducts.reduce((total, product) => total + product.price, 0);
+
+        // Crear objeto de personalización
+        const customizationOrder = {
+            productType,
+            selectedProducts,
+            totalPrice,
+            timestamp: new Date().toISOString()
+        };
+
+        // Agregar al carrito
+        setCart(prev => [...prev, customizationOrder]);
+
+        alert(`¡Personalización completada! Total: ${totalPrice.toFixed(2)}`);
+
+        // Limpiar selección
         setSelectedProducts([]);
+
+        // Opcional: navegar al carrito o checkout
+        // navigate('/cart');
     };
 
-    // Mostramos loading mientras se cargan los datos
-    if (isLoading) {
+    // Función para transformar los datos de la API al formato esperado por los componentes
+    const transformMaterialsToProducts = (materials) => {
+        return materials.map(material => ({
+            _id: material._id,  // Solo usar _id como identificador único
+            name: material.name,
+            description: `Stock disponible: ${material.stock}`,
+            price: material.price,
+            image: material.image,
+            inStock: material.stock > 0,
+            category: material.categoryToParticipate,
+            stock: material.stock,
+            productToPersonalize: material.productToPersonalize
+        }));
+    };
+
+    // Mostrar loading
+    if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Cargando productos...</p>
+                    <p className="text-gray-600">Cargando productos personalizables...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Mostrar error
+    if (error) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <div className="text-red-500 text-xl mb-4">⚠️</div>
+                    <p className="text-gray-600 mb-4">{error}</p>
+                    <button
+                        onClick={() => navigate('/')}
+                        className="bg-pink-500 text-white px-4 py-2 rounded-lg hover:bg-pink-600 transition-colors"
+                    >
+                        Volver al inicio
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // Verificar si no hay datos
+    if (!productData || Object.keys(productData.categories).length === 0) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <div className="text-gray-400 text-xl mb-4">📦</div>
+                    <p className="text-gray-600 mb-4">No hay materiales disponibles para este producto</p>
+                    <button
+                        onClick={() => navigate('/')}
+                        className="bg-pink-500 text-white px-4 py-2 rounded-lg hover:bg-pink-600 transition-colors"
+                    >
+                        Volver al inicio
+                    </button>
                 </div>
             </div>
         );
@@ -226,56 +201,80 @@ const CustomProducts = () => {
     return (
         <>
             <Header />
-            
-            <CategoryNavigation
-                categories={categories}
-                activeCategory={activeCategory}
-                onCategoryChange={handleCategoryChange}
-            />
 
             <div className="max-w-7xl mx-auto px-4 py-8">
+                {/* Encabezado de la página */}
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                        Personalizar {productType}
+                    </h1>
+                    <p className="text-gray-600">
+                        Selecciona los materiales para crear tu producto personalizado único
+                    </p>
+                    <div className="mt-4 flex items-center space-x-4">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                            {productData.totalMaterials} materiales disponibles
+                        </span>
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                            {Object.keys(productData.categories).length} categorías
+                        </span>
+                    </div>
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     {/* Área de productos */}
                     <div className="lg:col-span-3">
-                        <CustomCategorySection 
-                            title="Escoge el estilo de flores"
-                            products={sampleProducts.flores}
-                            onAddToCart={handleAddToCart}
-                            onCustomize={handleCustomize}
-                        />
-                        
-                        <CustomCategorySection 
-                            title="Escoge el tipo de envoltura"
-                            products={sampleProducts.envolturas}
-                            onAddToCart={handleAddToCart}
-                            onCustomize={handleCustomize}
-                        />
-                        
-                        <CustomCategorySection 
-                            title="Escoge el marco"
-                            products={sampleProducts.marcos}
-                            onAddToCart={handleAddToCart}
-                            onCustomize={handleCustomize}
-                        />
+                        {Object.entries(productData.categories).map(([categoryName, materials]) => {
+                            const categoryId = categoryName.toLowerCase().replace(/\s+/g, '-');
+                            const transformedProducts = transformMaterialsToProducts(materials);
+
+                            return (
+                                <div key={categoryName} id={`category-${categoryId}`}>
+                                    <CustomCategorySection
+                                        title={`Escoge ${categoryName.toLowerCase()}`}
+                                        products={transformedProducts}
+                                        onAddToCart={handleAddToCart}
+                                        onCustomize={handleCustomize}
+                                        selectedProducts={selectedProducts}
+                                    />
+                                </div>
+                            );
+                        })}
                     </div>
-                    
+
                     {/* Panel de personalización */}
                     <div className="lg:col-span-1">
                         <div className="sticky top-4">
-                            <CustomizationPanel 
+                            <CustomizationPanel
                                 selectedProducts={selectedProducts}
                                 onRemoveProduct={handleRemoveProduct}
                                 onFinishCustomization={handleFinishCustomization}
+                                productType={productType}
                             />
-                            
-                            {/* Información adicional del carrito */}
+
+                            {/* Información del carrito */}
                             {cart.length > 0 && (
-                                <div className="mt-4 p-4 bg-green-50 rounded-lg">
-                                    <p className="text-sm text-green-700">
-                                        Productos en carrito: {cart.length}
-                                    </p>
+                                <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                                    <div className="flex items-center space-x-2">
+                                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                                        <p className="text-sm text-green-700 font-medium">
+                                            Productos en carrito: {cart.length}
+                                        </p>
+                                    </div>
                                 </div>
                             )}
+
+                            {/* Información adicional */}
+                            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                                <h3 className="text-sm font-semibold text-gray-700 mb-2">
+                                    💡 Consejos de personalización
+                                </h3>
+                                <ul className="text-xs text-gray-600 space-y-1">
+                                    <li>• Selecciona al menos un elemento de cada categoría</li>
+                                    <li>• Puedes cambiar tu selección en cualquier momento</li>
+                                    <li>• El precio final se calculará automáticamente</li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>

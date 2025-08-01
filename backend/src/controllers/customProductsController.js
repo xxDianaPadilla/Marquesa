@@ -8,6 +8,9 @@ const isValidObjectId = (id) => {
     return mongoose.Types.ObjectId.isValid(id);
 };
 
+// Tipos de productos válidos
+const VALID_PRODUCT_TYPES = ["Ramo de flores naturales", "Ramo de flores secas", "Giftbox"];
+
 // Función de ayuda para validar datos del producto personalizado
 const validateCustomProductData = (data, isUpdate = false) => {
     const errors = [];
@@ -19,33 +22,33 @@ const validateCustomProductData = (data, isUpdate = false) => {
         errors.push("El clientId debe ser un ObjectId válido");
     }
 
-    // Validamos categoryId
-    if (!isUpdate && !data.categoryId) {
-        errors.push("El categoryId es requerido");
-    } else if (data.categoryId && !isValidObjectId(data.categoryId)) {
-        errors.push("El categoryId debe ser un ObjectId válido");
+    // Validamos productToPersonalize
+    if (!isUpdate && !data.productToPersonalize) {
+        errors.push("El tipo de producto a personalizar es requerido");
+    } else if (data.productToPersonalize && !VALID_PRODUCT_TYPES.includes(data.productToPersonalize)) {
+        errors.push(`El tipo de producto debe ser uno de: ${VALID_PRODUCT_TYPES.join(", ")}`);
     }
 
-    // Validamos selectedItems
-    if (!isUpdate && (!data.selectedItems || data.selectedItems.length === 0)) {
-        errors.push("Se requiere al menos un producto seleccionado");
-    } else if (data.selectedItems && Array.isArray(data.selectedItems)) {
-        // Validar límite máximo de productos
-        if (data.selectedItems.length > 50) {
-            errors.push("No se pueden seleccionar más de 50 productos");
+    // Validamos selectedMaterials
+    if (!isUpdate && (!data.selectedMaterials || data.selectedMaterials.length === 0)) {
+        errors.push("Se requiere al menos un material seleccionado");
+    } else if (data.selectedMaterials && Array.isArray(data.selectedMaterials)) {
+        // Validar límite máximo de materiales
+        if (data.selectedMaterials.length > 50) {
+            errors.push("No se pueden seleccionar más de 50 materiales");
         }
         
-        data.selectedItems.forEach((item, index) => {
-            if (!item.productId) {
-                errors.push(`El producto en la posición ${index + 1} debe tener un productId válido`);
-            } else if (!isValidObjectId(item.productId)) {
-                errors.push(`El productId en la posición ${index + 1} debe ser un ObjectId válido`);
+        data.selectedMaterials.forEach((material, index) => {
+            if (!material.materialId) {
+                errors.push(`El material en la posición ${index + 1} debe tener un materialId válido`);
+            } else if (!isValidObjectId(material.materialId)) {
+                errors.push(`El materialId en la posición ${index + 1} debe ser un ObjectId válido`);
             }
             
             // Validamos quantity si está presente
-            if (item.quantity !== undefined && item.quantity !== null) {
-                if (typeof item.quantity !== 'number' || item.quantity < 0 || item.quantity > 1000) {
-                    errors.push(`La cantidad en la posición ${index + 1} debe ser un número entre 0 y 1000`);
+            if (material.quantity !== undefined && material.quantity !== null) {
+                if (typeof material.quantity !== 'number' || material.quantity < 1 || material.quantity > 1000) {
+                    errors.push(`La cantidad en la posición ${index + 1} debe ser un número entre 1 y 1000`);
                 }
             }
         });
@@ -55,8 +58,8 @@ const validateCustomProductData = (data, isUpdate = false) => {
     if (!isUpdate && (data.totalPrice === undefined || data.totalPrice === null)) {
         errors.push("El precio total es requerido");
     } else if (data.totalPrice !== undefined && data.totalPrice !== null) {
-        if (typeof data.totalPrice !== 'number' || data.totalPrice <= 0 || data.totalPrice > 999999) {
-            errors.push("El precio total debe ser un número entre 0.01 y 999999");
+        if (typeof data.totalPrice !== 'number' || data.totalPrice < 0 || data.totalPrice > 999999) {
+            errors.push("El precio total debe ser un número entre 0 y 999999");
         }
     }
 
@@ -70,6 +73,8 @@ const validateCustomProductData = (data, isUpdate = false) => {
     // Validamos extraComments si está presente
     if (data.extraComments && typeof data.extraComments !== 'string') {
         errors.push("Los comentarios extra deben ser una cadena de texto");
+    } else if (data.extraComments && data.extraComments.length < 10) {
+        errors.push("Los comentarios extra deben tener al menos 10 caracteres");
     } else if (data.extraComments && data.extraComments.length > 1000) {
         errors.push("Los comentarios extra no pueden exceder 1000 caracteres");
     }
@@ -82,8 +87,7 @@ customProductsController.getCustomProducts = async (req, res) => {
     try {
         const customProducts = await customProductsModel.find()
             .populate('clientId')
-            .populate('categoryId')
-            .populate('selectedItems.productId');
+            .populate('selectedMaterials.materialId');
         
         if (customProducts.length === 0) {
             return res.status(204).json({
@@ -133,8 +137,7 @@ customProductsController.getCustomProductsById = async (req, res) => {
 
         const customProduct = await customProductsModel.findById(id)
             .populate('clientId')
-            .populate('categoryId')
-            .populate('selectedItems.productId');
+            .populate('selectedMaterials.materialId');
         
         if (!customProduct) {
             return res.status(404).json({
@@ -161,7 +164,7 @@ customProductsController.getCustomProductsById = async (req, res) => {
 // Método para crear los custom products
 customProductsController.createCustomProducts = async (req, res) => {
     try {
-        const { clientId, categoryId, selectedItems, referenceImage, extraComments, totalPrice } = req.body;
+        const { clientId, productToPersonalize, selectedMaterials, referenceImage, extraComments, totalPrice } = req.body;
 
         // Validamos datos de entrada
         const validationErrors = validateCustomProductData(req.body);
@@ -175,8 +178,8 @@ customProductsController.createCustomProducts = async (req, res) => {
 
         const newCustomProduct = new customProductsModel({
             clientId,
-            categoryId,
-            selectedItems,
+            productToPersonalize,
+            selectedMaterials,
             referenceImage,
             extraComments,
             totalPrice
@@ -187,8 +190,7 @@ customProductsController.createCustomProducts = async (req, res) => {
         // Filtramos la respuesta
         const populatedProduct = await customProductsModel.findById(newCustomProduct._id)
             .populate('clientId')
-            .populate('categoryId')
-            .populate('selectedItems.productId');
+            .populate('selectedMaterials.materialId');
 
         res.status(201).json({
             success: true,
@@ -224,7 +226,7 @@ customProductsController.createCustomProducts = async (req, res) => {
 customProductsController.updateCustomProduct = async (req, res) => {
     try {
         const { id } = req.params;
-        const { clientId, categoryId, selectedItems, referenceImage, extraComments, totalPrice } = req.body;
+        const { clientId, productToPersonalize, selectedMaterials, referenceImage, extraComments, totalPrice } = req.body;
 
         // Validamos que el ID sea un ObjectId válido
         if (!isValidObjectId(id)) {
@@ -235,7 +237,7 @@ customProductsController.updateCustomProduct = async (req, res) => {
         }
 
         // Validamos que al menos un campo esté presente para actualizar
-        if (!clientId && !categoryId && !selectedItems && !referenceImage && !extraComments && totalPrice === undefined) {
+        if (!clientId && !productToPersonalize && !selectedMaterials && !referenceImage && !extraComments && totalPrice === undefined) {
             return res.status(400).json({
                 success: false,
                 message: "Se requiere al menos un campo para actualizar"
@@ -254,11 +256,10 @@ customProductsController.updateCustomProduct = async (req, res) => {
 
         const updatedCustomProduct = await customProductsModel.findByIdAndUpdate(
             id,
-            { clientId, categoryId, selectedItems, referenceImage, extraComments, totalPrice },
+            { clientId, productToPersonalize, selectedMaterials, referenceImage, extraComments, totalPrice },
             { new: true, runValidators: true }
         ).populate('clientId')
-         .populate('categoryId')
-         .populate('selectedItems.productId');
+         .populate('selectedMaterials.materialId');
 
         if (!updatedCustomProduct) {
             return res.status(404).json({
@@ -334,7 +335,7 @@ customProductsController.deleteCustomProducts = async (req, res) => {
     }
 };
 
-// Método adicional para obtener proyectos personalizados por cliente
+// Método adicional para obtener productos personalizados por cliente
 customProductsController.getCustomProductsByClient = async (req, res) => {
     try {
         const { clientId } = req.params;
@@ -349,8 +350,7 @@ customProductsController.getCustomProductsByClient = async (req, res) => {
 
         const customProducts = await customProductsModel.find({ clientId })
             .populate('clientId')
-            .populate('categoryId')
-            .populate('selectedItems.productId');
+            .populate('selectedMaterials.materialId');
         
         if (customProducts.length === 0) {
             return res.status(204).json({
@@ -376,50 +376,49 @@ customProductsController.getCustomProductsByClient = async (req, res) => {
     }
 };
 
-// Método adicional para obtener proyectos personalizados por categoría
-customProductsController.getCustomProductsByCategory = async (req, res) => {
+// Método adicional para obtener productos personalizados por tipo de producto
+customProductsController.getCustomProductsByType = async (req, res) => {
     try {
-        const { categoryId } = req.params;
+        const { productType } = req.params;
 
-        // Validamos que el categoryId sea un ObjectId válido
-        if (!isValidObjectId(categoryId)) {
+        // Validamos que el tipo de producto sea válido
+        if (!VALID_PRODUCT_TYPES.includes(productType)) {
             return res.status(400).json({
                 success: false,
-                message: "El categoryId proporcionado no es válido"
+                message: `El tipo de producto debe ser uno de: ${VALID_PRODUCT_TYPES.join(", ")}`
             });
         }
 
-        const customProducts = await customProductsModel.find({ categoryId })
+        const customProducts = await customProductsModel.find({ productToPersonalize: productType })
             .populate('clientId')
-            .populate('categoryId')
-            .populate('selectedItems.productId');
+            .populate('selectedMaterials.materialId');
         
         if (customProducts.length === 0) {
             return res.status(204).json({
                 success: true,
-                message: "No hay productos personalizados disponibles para esta categoría",
+                message: "No hay productos personalizados disponibles para este tipo de producto",
                 data: []
             });
         }
 
         res.status(200).json({
             success: true,
-            message: "Productos personalizados de la categoría obtenidos exitosamente",
+            message: "Productos personalizados por tipo obtenidos exitosamente",
             data: customProducts,
             count: customProducts.length
         });
     } catch (error) {
-        console.error('Error en getCustomProductsByCategory:', error);
+        console.error('Error en getCustomProductsByType:', error);
         res.status(500).json({
             success: false,
-            message: "Error interno del servidor al obtener los productos personalizados de la categoría",
+            message: "Error interno del servidor al obtener los productos personalizados por tipo",
             error: error.message
         });
     }
 };
 
-// Método para calcular el total de productos en un proyecto
-customProductsController.getProductsSummary = async (req, res) => {
+// Método para calcular el resumen de materiales en un producto
+customProductsController.getMaterialsSummary = async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -432,7 +431,7 @@ customProductsController.getProductsSummary = async (req, res) => {
         }
 
         const customProduct = await customProductsModel.findById(id)
-            .populate('selectedItems.productId');
+            .populate('selectedMaterials.materialId');
         
         if (!customProduct) {
             return res.status(404).json({
@@ -441,27 +440,72 @@ customProductsController.getProductsSummary = async (req, res) => {
             });
         }
 
-        const totalProducts = customProduct.selectedItems.reduce((total, item) => {
-            return total + (item.quantity || 0);
+        const totalMaterials = customProduct.selectedMaterials.reduce((total, material) => {
+            return total + (material.quantity || 1);
         }, 0);
-        const uniqueProducts = customProduct.selectedItems.length;
+        const uniqueMaterials = customProduct.selectedMaterials.length;
 
         res.status(200).json({
             success: true,
-            message: "Resumen del producto obtenido exitosamente",
+            message: "Resumen de materiales obtenido exitosamente",
             data: {
                 productId: customProduct._id,
-                totalProducts,
-                uniqueProducts,
+                productType: customProduct.productToPersonalize,
+                totalMaterials,
+                uniqueMaterials,
                 totalPrice: customProduct.totalPrice,
-                selectedItems: customProduct.selectedItems
+                selectedMaterials: customProduct.selectedMaterials
             }
         });
     } catch (error) {
-        console.error('Error en getProductsSummary:', error);
+        console.error('Error en getMaterialsSummary:', error);
         res.status(500).json({
             success: false,
-            message: "Error interno del servidor al obtener el resumen del producto",
+            message: "Error interno del servidor al obtener el resumen de materiales",
+            error: error.message
+        });
+    }
+};
+
+// Método para obtener estadísticas de productos personalizados
+customProductsController.getProductsStatistics = async (req, res) => {
+    try {
+        const totalProducts = await customProductsModel.countDocuments();
+        
+        const productTypeStats = await customProductsModel.aggregate([
+            {
+                $group: {
+                    _id: "$productToPersonalize",
+                    count: { $sum: 1 },
+                    avgPrice: { $avg: "$totalPrice" },
+                    totalRevenue: { $sum: "$totalPrice" }
+                }
+            },
+            {
+                $sort: { count: -1 }
+            }
+        ]);
+
+        const recentProducts = await customProductsModel.find()
+            .sort({ createdAt: -1 })
+            .limit(5)
+            .populate('clientId', 'name email')
+            .select('productToPersonalize totalPrice createdAt');
+
+        res.status(200).json({
+            success: true,
+            message: "Estadísticas obtenidas exitosamente",
+            data: {
+                totalProducts,
+                productTypeStats,
+                recentProducts
+            }
+        });
+    } catch (error) {
+        console.error('Error en getProductsStatistics:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor al obtener las estadísticas",
             error: error.message
         });
     }

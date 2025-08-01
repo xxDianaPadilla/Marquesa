@@ -6,6 +6,9 @@ import { Card } from '../components/Card';
 import { Button } from '../components/ButtonRosa';
 import { FaEdit } from 'react-icons/fa';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/Tabs';
+import { useState } from "react";
+import toast from 'react-hot-toast';
+import EditProfileModal from '../components/Profile/EditProfileModal';
 
 // Componentes nuevos para el perfil
 import UserInfo from '../components/Profile/UserInfo';
@@ -18,6 +21,7 @@ import calendario from '../assets/calendario.png';
 const Perfil = () => {
   const navigate = useNavigate();
   const { logout, userInfo, user, isAuthenticated, loading } = useAuth();
+  const [showEditModal, setShowEditModal] = useState(false);
   
   // DEBUG: Información del contexto de autenticación
   console.log('Profile - Estado del contexto:', {
@@ -47,6 +51,13 @@ const Perfil = () => {
   const handleSavesClick = (e) => {
     e.preventDefault();
     navigate('/orderdetails');
+  };
+
+  /**
+   * Maneja el éxito al actualizar el perfil
+   */
+  const handleEditSuccess = (message) => {
+    toast.success(message || 'Perfil actualizado exitosamente');
   };
 
   // Combinamos la información del usuario de ambas fuentes disponibles en AuthContext
@@ -87,7 +98,11 @@ const Perfil = () => {
             <h1 className="text-3xl md:text-4xl font-bold text-gray-800">Configuración</h1>
             <p className="text-sm text-gray-500 mt-2">Administra tu información personal y preferencias</p>
           </div>
-          <Button className="hover:bg-pink-400 text-white flex items-center text-sm px-4 py-2" style={{ backgroundColor: '#E8ACD2' }}>
+          <Button 
+            onClick={() => setShowEditModal(true)}
+            className="hover:bg-pink-400 text-white flex items-center text-sm px-4 py-2" 
+            style={{ backgroundColor: '#E8ACD2' }}
+          >
             <FaEdit className="mr-2" /> Editar perfil
           </Button>
         </div>
@@ -229,6 +244,13 @@ const Perfil = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal de edición de perfil */}
+      <EditProfileModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        onSuccess={handleEditSuccess}
+      />
     </>
   );
 };

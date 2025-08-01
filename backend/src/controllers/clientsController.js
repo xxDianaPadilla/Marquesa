@@ -1,6 +1,17 @@
 // Importé el modelo de clientes para trabajar con la base de datos
 import clientsModel from "../models/Clients.js";
 
+// Importé Cloudinary para manejar imágenes y configuraciones
+import { v2 as cloudinary } from "cloudinary";
+import { config } from "../config.js";
+
+// Configuración de Cloudinary con las credenciales del archivo de configuración
+cloudinary.config({
+    cloud_name: config.cloudinary.cloud_name,
+    api_key: config.cloudinary.cloudinary_api_key,
+    api_secret: config.cloudinary.cloudinary_api_secret
+});
+
 // Objeto que contendrá todas las funciones del controller
 const clientsController = {};
 
@@ -8,6 +19,201 @@ const clientsController = {};
 const validatePeriod = (period) => {
     const validPeriods = ['current', 'previous'];
     return validPeriods.includes(period);
+};
+
+/**
+ * Actualiza el perfil del cliente autenticado
+ * Permite actualizar teléfono, dirección y foto de perfil
+ */
+clientsController.updateProfile = async (req, res) => {
+    try {
+        console.log('=== INICIO updateProfile ===');
+        console.log('User ID del token:', req.user?.id);
+        console.log('Datos recibidos:', req.body);
+        console.log('Archivo recibido:', req.file);
+
+        const userId = req.user?.id;
+        
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Usuario no autenticado"
+            });
+        }
+
+        const { phone, address, fullName } = req.body;
+
+        // Validaciones
+        if (!phone || !phone.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: "El teléfono es requerido"
+            });
+        }
+
+        const phoneClean = phone.trim().replace(/\D/g, '');
+        if (phoneClean.length !== 8) {
+            return res.status(400).json({
+                success: false,
+                message: "El teléfono debe tener 8 dígitos"
+            });
+        }
+
+        // Formatear teléfono
+        const formattedPhone = phoneClean.slice(0, 4) + "-" + phoneClean.slice(4);
+
+        if (!address || !address.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: "La dirección es requerida"
+            });
+        }
+
+        // Validación del nombre si se proporciona
+        if (fullName) {
+            if (fullName.trim().length < 3) {
+                return res.status(400).json({
+                    success: false,
+                    message: "El nombre debe tener al menos 3 caracteres"
+                });
+            }
+
+            if (fullName.trim().length > 100) {
+                return res.status(400).json({
+                    success: false,
+                    message: "El nombre no puede exceder 100 caracteres"
+                });
+            }
+
+            const nameRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
+            if (!nameRegex.test(fullName.trim())) {
+                return res.status(400).json({
+                    success: false,
+                    message: "El nombre solo puede contener letras"
+                });
+            }
+        }
+
+        // Validar longitud de dirección
+        if (address.trim().length < 10) {
+            return res.status(400).json({
+                success: false,
+                message: "La dirección debe tener al menos 10 caracteres"
+            });
+        }
+
+        // Buscar el cliente
+        const client = await clientsModel.findById(userId);
+        if (!client) {
+            return res.status(404).json({
+                success: false,
+                message: "Usuario no encontrado"
+            });
+        }
+
+        // Preparar datos para actualizar
+        const updateData = {
+            phone: formattedPhone,
+            address: address.trim()
+        };
+
+        // Agregar el nombre a los datos de actualización si se proporcionó
+        if (fullName) {
+            updateData.fullName = fullName.trim();
+        }
+
+        // Manejar imagen de perfil si se proporciona
+        if (req.file) {
+            try {
+                console.log('Procesando imagen de perfil...');
+                
+                // Eliminar imagen anterior de Cloudinary si existe
+                if (client.profilePicture) {
+                    try {
+                        const urlParts = client.profilePicture.split('/');
+                        const publicIdWithExtension = urlParts[urlParts.length - 1];
+                        const publicId = publicIdWithExtension.split('.')[0];
+                        await cloudinary.uploader.destroy(`profiles/${publicId}`);
+                        console.log('Imagen anterior eliminada de Cloudinary');
+                    } catch (cloudError) {
+                        console.log('No se pudo eliminar la imagen anterior:', cloudError.message);
+                    }
+                }
+
+                // Subir nueva imagen
+                const result = await cloudinary.uploader.upload(req.file.path, {
+                    folder: "profiles",
+                    allowed_formats: ["jpg", "png", "jpeg", "webp"],
+                    transformation: [
+                        { width: 300, height: 300, crop: "fill", gravity: "face" },
+                        { quality: "auto" }
+                    ]
+                });
+
+                updateData.profilePicture = result.secure_url;
+                console.log('Nueva imagen subida a Cloudinary:', result.secure_url);
+            } catch (cloudinaryError) {
+                console.error('Error al procesar imagen:', cloudinaryError);
+                return res.status(502).json({
+                    success: false,
+                    message: "Error al procesar la imagen. Inténtalo con un archivo más pequeño."
+                });
+            }
+        }
+
+        // Actualizar cliente
+        const updatedClient = await clientsModel.findByIdAndUpdate(
+            userId,
+            updateData,
+            { new: true, runValidators: true }
+        ).select('-password'); // No devolver la contraseña
+
+        console.log('Cliente actualizado exitosamente');
+
+        res.status(200).json({
+            success: true,
+            message: "Perfil actualizado exitosamente",
+            user: {
+                id: updatedClient._id,
+                name: updatedClient.fullName,
+                email: updatedClient.email,
+                phone: updatedClient.phone,
+                address: updatedClient.address,
+                birthDate: updatedClient.birthDate,
+                profilePicture: updatedClient.profilePicture,
+                favorites: updatedClient.favorites,
+                discount: updatedClient.discount
+            }
+        });
+
+    } catch (error) {
+        console.error('Error en updateProfile:', error);
+        
+        // Manejar errores específicos de validación
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({
+                success: false,
+                message: 'Error de validación',
+                details: Object.values(error.errors).map(err => err.message)
+            });
+        }
+
+        // Manejar errores de duplicación
+        if (error.code === 11000) {
+            const field = Object.keys(error.keyPattern)[0];
+            return res.status(409).json({
+                success: false,
+                message: `Este ${field} ya está en uso por otro usuario`
+            });
+        }
+
+        // Error genérico del servidor
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor al actualizar perfil",
+            error: error.message
+        });
+    }
 };
 
 // Función helper para calcular fechas de trimestre

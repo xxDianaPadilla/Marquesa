@@ -6,21 +6,32 @@ import { Card } from '../components/Card';
 import { Button } from '../components/ButtonRosa';
 import { FaEdit } from 'react-icons/fa';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/Tabs';
-import SeparatorPerfil from '../components/SeparadorPerfil';
 
-// Imágenes
-import correo from '../assets/CorreoMarqueza.png';
-import telefono from '../assets/TelefonoMarqueza.png';
-import ubicacion from '../assets/ubicacion.png';
-import regalo from '../assets/Regalo.png';
-import relog from '../assets/relog.png';
+// Componentes nuevos para el perfil
+import UserInfo from '../components/Profile/UserInfo';
+import UserSummary from '../components/Profile/UserSummary';
+
+// Imágenes existentes para los tabs
 import calendario from '../assets/calendario.png';
-import cancelar from "../assets/cancelar.png";
+
 //Pantalla de perfil
 const Perfil = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
-  // Función para manejar el cierre de sesión
+  const { logout, userInfo, user, isAuthenticated, loading } = useAuth();
+  
+  // DEBUG: Información del contexto de autenticación
+  console.log('Profile - Estado del contexto:', {
+    isAuthenticated,
+    loading,
+    hasUser: !!user,
+    hasUserInfo: !!userInfo,
+    user,
+    userInfo
+  });
+  
+  /**
+   * Función para manejar el cierre de sesión
+   */
   const handleLogout = async () => {
     const result = await logout();
     if (result.success) {
@@ -30,10 +41,41 @@ const Perfil = () => {
     }
   };
 
+  /**
+   * Navegación a la página de detalles de pedidos
+   */
   const handleSavesClick = (e) => {
     e.preventDefault();
     navigate('/orderdetails');
   };
+
+  // Combinamos la información del usuario de ambas fuentes disponibles en AuthContext
+  // Priorizar userInfo sobre user ya que tiene más detalles
+  const userData = userInfo || user || {};
+  
+  console.log('Profile - Datos del usuario combinados:', userData);
+
+  // Si está cargando, mostrar indicador
+  if (loading) {
+    return (
+      <>
+        <Header />
+        <div className="p-4 md:p-10 bg-white min-h-screen font-poppins max-w-7xl mx-auto flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">Cargando información del usuario...</p>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Si no está autenticado, redirigir
+  if (!isAuthenticated) {
+    console.log('⚠️ Usuario no autenticado, redirigiendo...');
+    navigate('/login');
+    return null;
+  }
 
   return (
     <>
@@ -51,51 +93,15 @@ const Perfil = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Información personal */}
+          {/* Información personal - USANDO COMPONENTES NUEVOS */}
           <Card className="p-6">
             <h2 className="text-2xl md:text-4xl font-semibold mb-4">Información personal</h2>
-            <div className="flex flex-col items-center text-center">
-              <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gray-300 mb-3"></div>
-              <p className="font-bold">Bryan Miranda</p>
-              <p className="text-xs text-gray-500 mb-3">Miembro desde 2024</p>
-              <SeparatorPerfil />
-              <div className="text-sm text-left w-full space-y-4 mt-4">
-                <div className="flex items-start gap-2">
-                  <img src={correo} alt="correo" className="w-5 h-5 mt-1" />
-                  <p>bryanmiranda005@gmail.com</p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <img src={telefono} alt="telefono" className="w-5 h-5 mt-1" />
-                  <p>+503 1234-0795</p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <img src={ubicacion} alt="ubicacion" className="w-5 h-5 mt-1" />
-                  <p>Jardines del escorial, calle bienestar casa 15A, San Salvador San Salvador</p>
-                </div>
-              </div>
-            </div>
+            
+            {/* Componente de información del usuario */}
+            <UserInfo user={userData} />
 
-            {/* Resumen */}
-            <div className="mt-8">
-              <h3 className="font-semibold text-gray-800 mb-3 text-lg md:text-xl">Resumen</h3>
-              <div className="flex flex-col md:flex-row gap-3">
-                <div className="text-center rounded-xl p-4 flex-1" style={{ backgroundColor: '#E8ACD2' }}>
-                  <img src={regalo} alt="regalo" className="mx-auto w-6 mb-1" />
-                  <p className="text-xs text-white">Pedidos totales</p>
-                  <p className="text-white text-xl font-bold">12</p>
-                </div>
-                <div className="text-center rounded-xl p-4 flex-1" style={{ backgroundColor: '#E8ACD2' }}>
-                  <img src={relog} alt="relog" className="mx-auto w-6 mb-1" />
-                  <p className="text-xs text-white">Pedidos pendientes</p>
-                  <p className="text-white text-xl font-bold">3</p>
-                </div>
-                <div className="text-center rounded-xl p-4 flex-1" style={{ backgroundColor: '#E8ACD2' }}>
-                  <img src={cancelar} alt="cancelar" className="mx-auto w-6 mb-1" />
-                  <p className="text-xs text-white">Pedidos cancelados</p>
-                  <p className="text-white text-xl font-bold">5</p>
-                </div>
-              </div>
-            </div>
+            {/* Componente de resumen estadístico */}
+            <UserSummary />
 
             <div className="text-center mt-6">
               <Button style={{ backgroundColor: '#E8ACD2' }} className="hover:bg-pink-400 text-white w-full py-2 text-sm md:text-base" onClick={handleLogout}>
@@ -104,7 +110,7 @@ const Perfil = () => {
             </div>
           </Card>
 
-          {/* Tabs contenido */}
+          {/* Tabs contenido - SIN CAMBIOS */}
           <div className="md:col-span-2">
             <Card className="p-6">
               <Tabs defaultValue="pedidos">

@@ -161,13 +161,12 @@ export const AuthProvider = ({ children }) => {
 
     /**
      * Obtiene información completa del usuario desde el servidor
+     * CORREGIDO: Mejorado manejo de errores y datos
      */
     const getUserInfo = async () => {
         try {
-            if (!isAuthenticated) {
-                return null;
-            }
-
+            console.log('Obteniendo información del usuario...');
+            
             const response = await fetch('http://localhost:4000/api/login/user-info', {
                 method: 'GET',
                 credentials: 'include',
@@ -178,13 +177,15 @@ export const AuthProvider = ({ children }) => {
 
             if (response.ok) {
                 const data = await response.json();
+                console.log('Respuesta getUserInfo:', data);
                 
                 if (data && data.success && data.user) {
+                    console.log('Información del usuario obtenida:', data.user);
                     setUserInfo(data.user);
                     setAuthError(null);
                     return data.user;
                 } else {
-                    console.error('Respuesta de información de usuario sin éxito:', data?.message);
+                    console.warn('Respuesta sin éxito:', data?.message);
                     return null;
                 }
             } else {
@@ -200,32 +201,42 @@ export const AuthProvider = ({ children }) => {
 
     /**
      * Verifica el estado de autenticación del usuario
+     * CORREGIDO: Siempre obtiene la información del usuario después de verificar el token
      */
     const checkAuthStatus = async () => {
         try {
             setLoading(true);
             setAuthError(null);
             
+            console.log('Verificando estado de autenticación...');
+            
             const token = getTokenFromCookies();
             
             if (token) {
+                console.log('Token encontrado, decodificando...');
                 const decodedToken = decodeToken(token);
                 
                 if (decodedToken && decodedToken.exp * 1000 > Date.now()) {
-                    // Crear userData con valores por defecto si no existen
+                    console.log('Token válido, configurando usuario...');
+                    
+                    // Crear userData con valores del token
                     const userData = {
                         id: decodedToken.id,
-                        userType: decodedToken.userType || 'user' // Valor por defecto
+                        userType: decodedToken.userType || 'user'
                     };
                     
                     setUser(userData);
                     setIsAuthenticated(true);
+                    
+                    // IMPORTANTE: Siempre obtener información completa del usuario
+                    console.log('Obteniendo información completa del usuario...');
                     await getUserInfo();
                 } else {
                     console.info('Token expirado o inválido');
                     clearAuthData();
                 }
             } else {
+                console.info('ℹNo se encontró token');
                 clearAuthData();
             }
         } catch (error) {
@@ -242,6 +253,8 @@ export const AuthProvider = ({ children }) => {
      */
     const clearAuthData = () => {
         try {
+            console.log('Limpiando datos de autenticación...');
+            
             if (typeof document !== 'undefined') {
                 document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
             }
@@ -251,16 +264,18 @@ export const AuthProvider = ({ children }) => {
             setUserInfo(null);
             setAuthError(null);
         } catch (error) {
-            console.error('Error al limpiar los datos de autenticación:', error);
+            console.error(' Error al limpiar los datos de autenticación:', error);
         }
     };
 
     /**
-     * Función de login simplificada
+     * Función de login CORREGIDA
+     * Ahora obtiene la información del usuario después del login exitoso
      */
     const login = async (email, password) => {
         try {
             setAuthError(null);
+            console.log('Iniciando proceso de login...');
             
             // Validación básica de entrada
             const emailValidation = validators.email(email);
@@ -289,13 +304,13 @@ export const AuthProvider = ({ children }) => {
 
             // Aceptar ambos mensajes posibles de éxito
             if (data.message === "login successful" || data.message === "Inicio de sesión exitoso") {
-                console.log('✅ Login exitoso detectado');
+                console.log('Login exitoso detectado');
                 
                 // Esperar para que se establezca la cookie
                 await new Promise(resolve => setTimeout(resolve, 300));
                 
                 const token = getTokenFromCookies();
-                console.log('Token encontrado:', !!token);
+                console.log('Token encontrado después del login:', !!token);
                 
                 if (token) {
                     const decodedToken = decodeToken(token);
@@ -304,14 +319,20 @@ export const AuthProvider = ({ children }) => {
                     if (decodedToken) {
                         const userData = {
                             id: decodedToken.id,
-                            userType: decodedToken.userType || data.userType || 'user' // Múltiples fuentes para userType
+                            userType: decodedToken.userType || data.userType || 'user'
                         };
                         
                         setUser(userData);
                         setIsAuthenticated(true);
                         setAuthError(null);
                         
-                        console.log('Estado actualizado:', userData);
+                        console.log('Estado de usuario actualizado:', userData);
+                        
+                        // IMPORTANTE: Obtener información completa del usuario
+                        console.log('Obteniendo información completa después del login...');
+                        const userInfoResult = await getUserInfo();
+                        
+                        console.log('Login completado con información del usuario:', !!userInfoResult);
                         
                         return { 
                             success: true, 
@@ -378,8 +399,19 @@ export const AuthProvider = ({ children }) => {
 
     // Verificar estado de autenticación al cargar la aplicación
     useEffect(() => {
+        console.log('Inicializando AuthProvider...');
         checkAuthStatus();
     }, []);
+
+    // Debug: Mostrar cambios en el estado
+    useEffect(() => {
+        console.log('Estado de autenticación actualizado:', {
+            isAuthenticated,
+            hasUser: !!user,
+            hasUserInfo: !!userInfo,
+            userType: user?.userType
+        });
+    }, [isAuthenticated, user, userInfo]);
 
     // Valor del contexto
     const contextValue = {

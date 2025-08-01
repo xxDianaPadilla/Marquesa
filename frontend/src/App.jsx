@@ -1,7 +1,14 @@
 /**
- * Componente principal de la aplicación
+ * Componente principal de la aplicación - ACTUALIZADO
  * Maneja el enrutamiento principal y la configuración de notificaciones toast
- * Incluye todas las rutas públicas y protegidas del sistema
+ * Incluye todas las rutas públicas, protegidas y de manejo de errores del sistema
+ * 
+ * NUEVAS FUNCIONALIDADES:
+ * - Rutas para manejo de errores HTTP (400, 401, 403, 404, 409)
+ * - Integración completa con el sistema de autenticación
+ * - Manejo de errores de red y estados de aplicación
+ * 
+ * Ubicación: frontend/src/App.jsx
  */
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
@@ -9,7 +16,7 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoutes from './components/ProtectedRoutes';
 import { Toaster } from 'react-hot-toast';
 
-// Importar todas las páginas de la aplicación
+// Importar todas las páginas principales de la aplicación
 import Login from './pages/Login';
 import Register from './pages/Register';
 import RecoverPassword from './pages/RecoverPassword';
@@ -43,6 +50,13 @@ import CustomProductsManager from './pages/CustomProductsManager';
 
 // Importar el gestor de chat para administradores
 import ChatManager from './pages/ChatManager';
+
+// NUEVAS IMPORTACIONES: Páginas de manejo de errores HTTP
+import BadRequest from './pages/Errors/BadRequest';
+import Unauthorized from './pages/Errors/Unauthorized';
+import Forbidden from './pages/Errors/Forbidden';
+import NotFound from './pages/Errors/NotFound';
+import Conflict from './pages/Errors/Conflict';
 
 function App() {
   return (
@@ -127,6 +141,13 @@ function App() {
           <Route path="/aboutUs" element={<AboutUs />} />
           <Route path="/privacyPolicies" element={<PrivacyPolicies />} />
           <Route path="/termsandConditions" element={<TermsandConditions />} />
+
+          {/* NUEVAS RUTAS: Manejo de errores HTTP */}
+          <Route path="/error/400" element={<BadRequest />} />
+          <Route path="/error/401" element={<Unauthorized />} />
+          <Route path="/error/403" element={<Forbidden />} />
+          <Route path="/error/404" element={<NotFound />} />
+          <Route path="/error/409" element={<Conflict />} />
 
           {/* Rutas del administrador - solo acceso para usuarios admin */}
           <Route path="/dashboard"
@@ -250,8 +271,8 @@ function App() {
               </ProtectedRoutes>
             } />
 
-          {/* Ruta de fallback - redirige al login si no encuentra la ruta */}
-          <Route path='*' element={<Navigate to="/login" replace />} />
+          {/* Ruta de fallback - redirige a la página 404 personalizada */}
+          <Route path='*' element={<NotFound />} />
         </Routes>
       </Router>
     </AuthProvider>

@@ -1,5 +1,5 @@
 // Importa React y hooks necesarios desde React
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 // Importa funciones de React Router para obtener parámetros de la URL y navegar entre rutas
 import { useParams, useNavigate } from 'react-router-dom';
 // Importa el encabezado del sitio
@@ -21,17 +21,30 @@ import RecommendedProducts from '../components/RecommendedProducts ';
 // Importa el hook personalizado que obtiene los detalles del producto
 import useDataBaseProductsDetail from '../components/ProductDetail/hooks/useDataProductDetail';
 
+// Importa tu contexto de autenticación
+import { useAuth } from '../context/AuthContext'; // Ajusta la ruta según tu estructura
+
 const ProductDetail = () => {
   // Obtiene el parámetro "id" de la URL (el ID del producto)
   const { id } = useParams();
   // Hook para navegar entre rutas del sitio
   const navigate = useNavigate();
 
+  // USUARIO: Obtén la información del usuario de tu AuthContext
+  const { user, userInfo, isAuthenticated, loading: authLoading } = useAuth();
+
   // Debug: muestra el ID recibido y la URL actual
   console.log('=== COMPONENT RENDER ===');
   console.log('ID from useParams:', id);
   console.log('Type of ID:', typeof id);
   console.log('URL actual:', window.location.href);
+  console.log('Auth state:', { 
+    isAuthenticated, 
+    hasUser: !!user, 
+    hasUserInfo: !!userInfo,
+    userId: user?.id,
+    authLoading
+  });
 
   // Estado para la imagen seleccionada del producto
   const [selectedImage, setSelectedImage] = useState(null);
@@ -46,14 +59,14 @@ const ProductDetail = () => {
   const { product, loading, error } = useDataBaseProductsDetail(id);
 
   // Debug: muestra el estado general del componente (producto, carga y error)
-  console.log('🏗️ Estado del componente:', { product, loading, error });
+  console.log('Estado del componente:', { product, loading, error });
 
   // Si hay producto y no está cargando, mostrar algunos datos en consola
   if (product && !loading) {
-    console.log('🎯 PRODUCTO RECIBIDO EN COMPONENTE:', product);
-    console.log('🔍 Nombre en componente:', product.name);
-    console.log('🔍 Precio en componente:', product.price);
-    console.log('🔍 Descripción en componente:', product.description);
+    console.log('PRODUCTO RECIBIDO EN COMPONENTE:', product);
+    console.log('Nombre en componente:', product.name);
+    console.log('Precio en componente:', product.price);
+    console.log('Descripción en componente:', product.description);
   }
 
   // useEffect para establecer la primera imagen como imagen seleccionada
@@ -84,23 +97,27 @@ const ProductDetail = () => {
     hasProduct: !!product, 
     productName: product?.name,
     loading, 
-    error 
+    error,
+    hasUser: !!user,
+    userId: user?.id
   });
 
   // Muestra el producto en consola si está disponible
   if (product) {
-    console.log('✅ PRODUCTO PARA RENDERIZAR:', product);
+    console.log('PRODUCTO PARA RENDERIZAR:', product);
   }
 
-  // Si está cargando, muestra pantalla de carga con animación
-  if (loading) {
+  // Si está cargando (producto o autenticación), muestra pantalla de carga con animación
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen">
         <Header />
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
             <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-pink-500 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Cargando producto...</p>
+            <p className="mt-4 text-gray-600">
+              {loading ? 'Cargando producto...' : 'Verificando autenticación...'}
+            </p>
           </div>
         </div>
         <Footer />
@@ -194,7 +211,10 @@ const ProductDetail = () => {
               product={product} 
               quantity={quantity} 
               setQuantity={setQuantity} 
-              handleCustomProductClick={handleCustomProductClick} 
+              handleCustomProductClick={handleCustomProductClick}
+              user={user} // Datos básicos del token
+              userInfo={userInfo} // Información completa del usuario
+              isAuthenticated={isAuthenticated} // Estado de autenticación
             />
             {/* Pestañas de descripción, detalles y envío */}
             <ProductTabs 

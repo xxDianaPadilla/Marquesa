@@ -145,6 +145,57 @@ const useCustomization = () => {
         }
     };
 
+    // Nueva función específica para productos regulares
+    const addRegularProductToCart = async (userId, product, quantity) => {
+        try {
+            console.log('=== AGREGANDO PRODUCTO REGULAR AL CARRITO ===');
+            console.log('userId:', userId);
+            console.log('product:', product.name, product._id);
+            console.log('quantity:', quantity);
+
+            // Validaciones
+            if (!userId) {
+                throw new Error('ID de usuario requerido');
+            }
+
+            if (!product || !product._id) {
+                throw new Error('Producto inválido');
+            }
+
+            if (!quantity || quantity < 1) {
+                throw new Error('Cantidad debe ser mayor a 0');
+            }
+
+            // Extraer precio numérico del string
+            const priceMatch = product.price?.toString().match(/[\d,.]+/);
+            const numericPrice = priceMatch ? parseFloat(priceMatch[0].replace(',', '')) : 0;
+            
+            if (numericPrice <= 0) {
+                throw new Error('Precio del producto inválido');
+            }
+
+            const subtotal = numericPrice * quantity;
+
+            // Preparar datos del item
+            const itemData = {
+                itemType: "product",
+                itemId: product._id,
+                itemTypeRef: "products",
+                quantity: quantity,
+                subtotal: subtotal
+            };
+
+            console.log('Datos preparados para el carrito:', itemData);
+
+            // Agregar al carrito usando la función existente
+            return await addItemToCart(userId, itemData);
+
+        } catch (error) {
+            console.error('Error en addRegularProductToCart:', error);
+            throw error;
+        }
+    };
+
     // Función principal que maneja todo el proceso de personalización
     const processCustomization = async (customizationParams) => {
         const {
@@ -264,6 +315,7 @@ const useCustomization = () => {
         isLoading,
         createCustomProduct,
         addItemToCart,
+        addRegularProductToCart, // Nueva función exportada
         processCustomization
     };
 };

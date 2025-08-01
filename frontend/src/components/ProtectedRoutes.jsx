@@ -1,17 +1,20 @@
 /**
- * Componente ProtectedRoutes - VERSIÓN FINAL CORREGIDA
+ * Componente ProtectedRoutes - VERSIÓN CORREGIDA PARA LOGOUT DE ADMIN
  * 
- * Funcionalidades principales:
- * - NO muestra páginas de error durante login/logout normales
- * - SÍ muestra páginas de error cuando un usuario autenticado trata de acceder a áreas prohibidas
- * - Espera a que el proceso de login termine completamente antes de hacer validaciones
- * - Navegación limpia durante login/logout
+ * PROBLEMA SOLUCIONADO:
+ * - Cuando admin hace logout desde dashboard u otras páginas admin, aparecía página 401
+ * - Ahora redirige limpiamente al login durante logout desde páginas admin
  * 
- * SOLUCIÓN IMPLEMENTADA:
- * - Durante login: Espera hasta que isLoggingIn sea false
- * - Durante logout: Espera hasta que isLoggingOut sea false  
- * - Durante violaciones de acceso: Páginas de error 403
- * - Durante acceso sin autenticar a rutas protegidas: Redirigir a login (NO página 401)
+ * NUEVA FUNCIONALIDAD:
+ * - Detecta si la página actual es de admin durante logout
+ * - Redirige al login en lugar de mostrar 401 para páginas admin durante logout
+ * - Mantiene el comportamiento 401 para accesos normales sin autenticación
+ * 
+ * COMPORTAMIENTO ACTUALIZADO:
+ * - Admin logout desde dashboard → Redirige a /login (NO página 401)
+ * - Cliente logout desde saves → Redirige a /login (NO página 401) 
+ * - Usuario no autenticado → /saves, /shoppingCart, etc. = Página 401 (normal)
+ * - Usuario no autenticado → /profile = Redirige a /login (excepción)
  * 
  * Ubicación: frontend/src/components/ProtectedRoutes.jsx
  */
@@ -67,16 +70,55 @@ const LoadingSpinner = () => (
 );
 
 /**
- * Componente principal ProtectedRoutes - VERSIÓN FINAL
+ * NUEVA FUNCIÓN: Detecta si la ruta actual es de administrador
+ * @param {string} pathname - Ruta actual
+ * @returns {boolean} - True si es ruta de admin
+ */
+const isAdminRoute = (pathname) => {
+  const adminRoutes = [
+    '/dashboard',
+    '/media', 
+    '/products',
+    '/sales',
+    '/categories',
+    '/reviews',
+    '/chat',
+    '/customProductsMaterials'
+  ];
+  
+  return adminRoutes.includes(pathname);
+};
+
+/**
+ * NUEVA FUNCIÓN: Detecta si estamos en proceso de logout desde una página específica
+ * @param {boolean} isLoggingOut - Estado de logout
+ * @param {boolean} isAuthenticated - Estado de autenticación
+ * @param {string} pathname - Ruta actual
+ * @returns {boolean} - True si es logout desde página protegida
+ */
+const isLogoutFromProtectedPage = (isLoggingOut, isAuthenticated, pathname) => {
+  // Si estamos haciendo logout O acabamos de terminar logout (no autenticado)
+  // Y estamos en una página protegida
+  const protectedRoutes = [
+    '/dashboard', '/media', '/products', '/sales', '/categories', '/reviews', '/chat', '/customProductsMaterials', // Admin
+    '/saves', '/orderdetails', '/shoppingCart', '/customProducts', '/paymentProcess', '/ruleta' // Customer
+  ];
+  
+  return (isLoggingOut || (!isAuthenticated && protectedRoutes.includes(pathname)));
+};
+
+/**
+ * Componente principal ProtectedRoutes - VERSIÓN CORREGIDA
  */
 const ProtectedRoutes = ({ 
   children, 
-  requiredUserType = null
+  requiredUserType = null,
+  isProfilePage = false
 }) => {
   const { isAuthenticated, user, loading, isLoggingOut, isLoggingIn } = useAuth();
   const location = useLocation();
 
-  // Debug logging
+  // Debug logging mejorado
   React.useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
       console.log('🔒 ProtectedRoutes - Estado completo:', {
@@ -87,10 +129,12 @@ const ProtectedRoutes = ({
         isLoggingOut,
         isLoggingIn,
         loading,
-        userObject: user
+        isProfilePage,
+        isAdminRoute: isAdminRoute(location.pathname),
+        isLogoutFromProtected: isLogoutFromProtectedPage(isLoggingOut, isAuthenticated, location.pathname)
       });
     }
-  }, [isAuthenticated, user, requiredUserType, location.pathname, isLoggingOut, isLoggingIn, loading]);
+  }, [isAuthenticated, user, requiredUserType, location.pathname, isLoggingOut, isLoggingIn, loading, isProfilePage]);
 
   // 1. LOADING: Mostrar spinner durante verificaciones iniciales
   if (loading) {
@@ -104,10 +148,30 @@ const ProtectedRoutes = ({
     return <LoadingSpinner />;
   }
 
-  // 3. USUARIO NO AUTENTICADO: Redirigir a login (NUNCA páginas de error)
+  // 3. USUARIO NO AUTENTICADO: LÓGICA DIFERENCIADA MEJORADA
   if (!isAuthenticated || !user) {
-    console.log('🚫 Usuario no autenticado → Redirigir a login');
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+    console.log('🚫 Usuario no autenticado detectado');
+    
+    // CASO ESPECIAL: Página de perfil - Redirigir al login (comportamiento original)
+    if (isProfilePage) {
+      console.log('👤 Página de perfil sin autenticación → Redirigir a login');
+      return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+    }
+    
+    // NUEVO: CASO ESPECIAL - Páginas de admin sin autenticación durante/después de logout
+    if (isAdminRoute(location.pathname)) {
+      console.log('👑 Página de admin sin autenticación → Redirigir a login (posible logout)');
+      return <Navigate to="/login" replace />;
+    }
+    
+    // CASO GENERAL: Todas las demás páginas protegidas - Mostrar página 401
+    console.log('🚫 Página protegida sin autenticación → Mostrar página 401');
+    return <Navigate to="/error/401" replace state={{ 
+      from: location.pathname,
+      reason: 'not_authenticated',
+      message: 'Debes iniciar sesión para acceder a esta página',
+      timestamp: new Date().toISOString()
+    }} />;
   }
 
   // 4. VERIFICAR QUE EL USUARIO TENGA userType VÁLIDO
@@ -128,7 +192,8 @@ const ProtectedRoutes = ({
         requiredUserType,
         currentUserType: user.userType,
         reason: 'insufficient_permissions',
-        message: `Acceso denegado: Se requiere tipo "${requiredUserType}", usuario actual es "${user.userType}"`
+        message: `Acceso denegado: Se requiere tipo "${requiredUserType}", usuario actual es "${user.userType}"`,
+        timestamp: new Date().toISOString()
       }} />;
     } else {
       // Si estamos en transición, mostrar loading
@@ -143,7 +208,7 @@ const ProtectedRoutes = ({
 };
 
 /**
- * Hook personalizado para verificar permisos
+ * Hook personalizado para verificar permisos (SIN CAMBIOS)
  */
 export const usePermissions = () => {
   const { isAuthenticated, user, loading } = useAuth();
@@ -168,7 +233,7 @@ export const usePermissions = () => {
 };
 
 /**
- * Componente para mostrar contenido condicionalmente basado en permisos
+ * Componente para mostrar contenido condicionalmente basado en permisos (SIN CAMBIOS)
  */
 export const ConditionalRender = ({ 
   requiredUserType = null, 

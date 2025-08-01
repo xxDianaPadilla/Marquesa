@@ -1,11 +1,16 @@
 /**
- * Componente principal de la aplicación - VERSIÓN FINAL LIMPIA
+ * Componente principal de la aplicación - VERSIÓN MODIFICADA PARA 401
  * 
- * COMPORTAMIENTO CORREGIDO:
+ * COMPORTAMIENTO ACTUALIZADO:
  * - Login/Logout: Navegación LIMPIA sin páginas de error
  * - Violaciones de acceso: SÍ muestra páginas de error (ej: cliente → dashboard)
- * - Usuario no autenticado: Redirige a login (NO página 401)
+ * - Usuario no autenticado → páginas protegidas: Muestra página 401
+ * - Usuario no autenticado → perfil: Redirige a login (EXCEPCIÓN)
  * - Sistema de protección funcional y sin interferencias
+ * 
+ * CAMBIOS PRINCIPALES:
+ * - Agregada prop isProfilePage=true SOLO para la ruta /profile
+ * - Todas las demás rutas protegidas mostrarán página 401 cuando no hay autenticación
  * 
  * Ubicación: frontend/src/App.jsx
  */
@@ -149,10 +154,10 @@ function App() {
 
             {/* 
               RUTAS PROTEGIDAS DEL ADMINISTRADOR 
-              COMPORTAMIENTO:
-              - Usuario no autenticado: Redirige a /login (NO página 401)
-              - Cliente autenticado: Muestra página 403 (Acceso Prohibido)
-              - Admin autenticado: Acceso permitido
+              COMPORTAMIENTO ACTUALIZADO:
+              - Usuario no autenticado: Muestra página 401 (NUEVO)
+              - Cliente autenticado: Muestra página 403 (sin cambios)
+              - Admin autenticado: Acceso permitido (sin cambios)
             */}
             <Route 
               path="/dashboard"
@@ -228,25 +233,31 @@ function App() {
 
             {/* 
               RUTAS PROTEGIDAS DEL CLIENTE 
-              COMPORTAMIENTO:
-              - Usuario no autenticado: Redirige a /login (NO página 401)
-              - Admin autenticado: Muestra página 403 (Acceso Prohibido)
-              - Cliente autenticado: Acceso permitido
+              COMPORTAMIENTO ACTUALIZADO:
+              - Usuario no autenticado: Muestra página 401 (NUEVO - excepto perfil)
+              - Admin autenticado: Muestra página 403 (sin cambios)
+              - Cliente autenticado: Acceso permitido (sin cambios)
             */}
+            
+            {/* RUTA ESPECIAL: PERFIL - Mantiene redirección al login */}
+            <Route 
+              path="/profile"
+              element={
+                <ProtectedRoutes 
+                  requiredUserType="Customer" 
+                  isProfilePage={true}
+                >
+                  <Profile />
+                </ProtectedRoutes>
+              }
+            />
+
+            {/* RUTAS GENERALES DEL CLIENTE - Muestran página 401 */}
             <Route 
               path="/saves"
               element={
                 <ProtectedRoutes requiredUserType="Customer">
                   <Saves />
-                </ProtectedRoutes>
-              }
-            />
-
-            <Route 
-              path="/profile"
-              element={
-                <ProtectedRoutes requiredUserType="Customer">
-                  <Profile />
                 </ProtectedRoutes>
               }
             />

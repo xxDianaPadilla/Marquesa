@@ -1,13 +1,22 @@
 /**
- * Context de autenticación para la aplicación - ACTUALIZADO
- * Maneja el estado global de autenticación del usuario, login, logout
- * y verificación del estado de autenticación mediante cookies
+ * Context de autenticación para la aplicación - COMENTARIOS ACTUALIZADOS
  * 
- * NUEVAS FUNCIONALIDADES AGREGADAS:
+ * NOTA: No se requieren cambios en este archivo para la nueva funcionalidad 401.
+ * El AuthContext mantiene toda su funcionalidad existente, pero ahora trabaja
+ * en conjunto con el ProtectedRoutes modificado para mostrar páginas 401.
+ * 
+ * FUNCIONALIDADES EXISTENTES QUE SIGUEN FUNCIONANDO:
  * - Estado isLoggingOut para evitar interferencias durante logout
  * - Mejor manejo de transiciones de estado
  * - Evita redirecciones a páginas 401 durante procesos normales
- * - Mantiene todas las funcionalidades existentes
+ * - Mantiene todas las funcionalidades de autenticación
+ * 
+ * CÓMO TRABAJA CON EL NUEVO SISTEMA:
+ * - Los estados isLoggingIn/isLoggingOut previenen mostrar 401 durante transiciones
+ * - El estado loading evita mostrar 401 durante verificaciones iniciales
+ * - Los estados de autenticación se usan en ProtectedRoutes para decidir 401 vs 403
+ * 
+ * Ubicación: frontend/src/context/AuthContext.jsx
  */
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
@@ -29,6 +38,7 @@ export const useAuth = () => {
 
 /**
  * Validaciones básicas y no restrictivas
+ * NOTA: Estas validaciones siguen siendo las mismas, sin cambios requeridos
  */
 const validators = {
     /**
@@ -87,16 +97,17 @@ const validators = {
 
 /**
  * Proveedor del contexto de autenticación
+ * NOTA: Todos los estados y funciones mantienen su funcionalidad original
  */
 export const AuthProvider = ({ children }) => {
-    // Estados del contexto de autenticación (EXISTENTES)
+    // Estados del contexto de autenticación (EXISTENTES - Sin cambios)
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [userInfo, setUserInfo] = useState(null);
     const [authError, setAuthError] = useState(null);
     
-    // NUEVOS ESTADOS para manejo de páginas de error
+    // Estados para manejo de páginas de error (EXISTENTES - Sin cambios)
     const [isLoggingOut, setIsLoggingOut] = useState(false); // Evita interferencias durante logout
     const [isLoggingIn, setIsLoggingIn] = useState(false); // Evita interferencias durante login
 
@@ -213,7 +224,7 @@ export const AuthProvider = ({ children }) => {
 
     /**
      * Limpia todos los datos de autenticación
-     * MEJORADA: Ahora considera si es logout voluntario
+     * (FUNCIÓN EXISTENTE - Sin cambios)
      */
     const clearAuthData = (isVoluntaryLogout = false) => {
         try {
@@ -227,7 +238,7 @@ export const AuthProvider = ({ children }) => {
             setIsAuthenticated(false);
             setUserInfo(null);
             
-            // NUEVO: Solo limpiar errores si es logout voluntario o login fallido
+            // Solo limpiar errores si es logout voluntario o login fallido
             if (isVoluntaryLogout) {
                 setAuthError(null);
             }
@@ -238,11 +249,15 @@ export const AuthProvider = ({ children }) => {
 
     /**
      * Verifica el estado de autenticación del usuario
-     * MEJORADA: No ejecuta durante procesos de login/logout
+     * (FUNCIÓN EXISTENTE - Sin cambios, pero importante para el nuevo sistema)
+     * 
+     * IMPORTANTE: Esta función es clave para el nuevo comportamiento 401
+     * - No ejecuta durante procesos de login/logout (previene mostrar 401 incorrectamente)
+     * - Establece los estados que ProtectedRoutes usa para determinar 401 vs redirección
      */
     const checkAuthStatus = async () => {
         try {
-            // NUEVO: No verificar si se está haciendo login o logout
+            // No verificar si se está haciendo login o logout
             if (isLoggingOut || isLoggingIn) {
                 console.log('Proceso de autenticación en progreso, saltando verificación');
                 return;
@@ -271,7 +286,7 @@ export const AuthProvider = ({ children }) => {
                     setUser(userData);
                     setIsAuthenticated(true);
                     
-                    // IMPORTANTE: Siempre obtener información completa del usuario
+                    // Obtener información completa del usuario
                     console.log('Obteniendo información completa del usuario...');
                     await getUserInfo();
                 } else {
@@ -287,7 +302,7 @@ export const AuthProvider = ({ children }) => {
             setAuthError('Error al verificar el estado de autenticación');
             clearAuthData(false);
         } finally {
-            // IMPORTANTE: Solo marcar como no loading si NO estamos en proceso de login
+            // Solo marcar como no loading si NO estamos en proceso de login
             if (!isLoggingIn) {
                 setLoading(false);
             }
@@ -295,12 +310,16 @@ export const AuthProvider = ({ children }) => {
     };
 
     /**
-     * Función de login MEJORADA PARA EVITAR RACE CONDITIONS
+     * Función de login - FUNCIONALIDAD CLAVE PARA EL NUEVO SISTEMA 401
+     * (FUNCIÓN EXISTENTE - Sin cambios pero crítica)
+     * 
+     * IMPORTANTE: Los estados isLoggingIn que maneja esta función previenen
+     * que se muestren páginas 401 durante el proceso normal de login
      */
     const login = async (email, password) => {
         try {
-            setIsLoggingIn(true);
-            setLoading(true); // NUEVO: También marcar loading durante login
+            setIsLoggingIn(true); // CRÍTICO: Previene mostrar 401 durante login
+            setLoading(true);
             setAuthError(null);
             console.log('🔐 Iniciando proceso de login...');
             
@@ -336,7 +355,7 @@ export const AuthProvider = ({ children }) => {
             if (data.message === "login successful" || data.message === "Inicio de sesión exitoso") {
                 console.log('✅ Login exitoso detectado');
                 
-                // Esperar más tiempo para que se establezca la cookie
+                // Esperar para que se establezca la cookie
                 await new Promise(resolve => setTimeout(resolve, 800));
                 
                 const token = getTokenFromCookies();
@@ -354,7 +373,7 @@ export const AuthProvider = ({ children }) => {
                         
                         console.log('👤 Configurando datos del usuario:', userData);
                         
-                        // IMPORTANTE: Configurar todos los estados de una vez
+                        // Configurar todos los estados de una vez
                         setUser(userData);
                         setIsAuthenticated(true);
                         setAuthError(null);
@@ -368,7 +387,7 @@ export const AuthProvider = ({ children }) => {
                         setIsLoggingIn(false);
                         setLoading(false);
                         
-                        // Esperar un poco más para asegurar que el estado se propagó
+                        // Esperar para asegurar que el estado se propagó
                         await new Promise(resolve => setTimeout(resolve, 200));
                         
                         console.log('🎉 Login completado exitosamente para:', userData.userType);
@@ -405,18 +424,21 @@ export const AuthProvider = ({ children }) => {
     };
 
     /**
-     * Función de logout MEJORADA
-     * Mantiene toda la funcionalidad existente + mejoras para páginas de estado
+     * Función de logout - FUNCIONALIDAD CLAVE PARA EL NUEVO SISTEMA 401
+     * (FUNCIÓN EXISTENTE - Sin cambios pero crítica)
+     * 
+     * IMPORTANTE: Los estados isLoggingOut que maneja esta función previenen
+     * que se muestren páginas 401 durante el proceso normal de logout
      */
     const logout = async () => {
         try {
-            setIsLoggingOut(true); // NUEVO: Marcar inicio de logout
+            setIsLoggingOut(true); // CRÍTICO: Previene mostrar 401 durante logout
             setAuthError(null);
             
             console.log('Iniciando proceso de logout...');
             
             try {
-                // Intentar hacer logout en el servidor (EXISTENTE)
+                // Intentar hacer logout en el servidor
                 const response = await fetch('http://localhost:4000/api/logout', {
                     method: 'POST',
                     credentials: 'include',
@@ -434,8 +456,8 @@ export const AuthProvider = ({ children }) => {
                 console.warn('Error de red al cerrar sesión en el servidor, continuando localmente:', serverError);
             }
 
-            // Limpiar datos locales (MEJORADO)
-            clearAuthData(true); // NUEVO: Marcar como logout voluntario
+            // Limpiar datos locales
+            clearAuthData(true); // Marcar como logout voluntario
             
             console.log('Logout completado correctamente');
             return { success: true };
@@ -446,7 +468,7 @@ export const AuthProvider = ({ children }) => {
             clearAuthData(true);
             return { success: true, warning: 'Sesión cerrada localmente' };
         } finally {
-            setIsLoggingOut(false); // NUEVO: Finalizar proceso de logout
+            setIsLoggingOut(false); // CRÍTICO: Finalizar proceso de logout
         }
     };
 
@@ -459,7 +481,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     // Verificar estado de autenticación al cargar la aplicación
-    // MEJORADO: Solo si no hay procesos de auth en curso
+    // Solo si no hay procesos de auth en curso
     useEffect(() => {
         if (!isLoggingOut && !isLoggingIn) {
             console.log('Inicializando AuthProvider...');
@@ -467,7 +489,7 @@ export const AuthProvider = ({ children }) => {
         }
     }, [isLoggingOut, isLoggingIn]);
 
-    // Debug: Mostrar cambios en el estado (MEJORADO)
+    // Debug: Mostrar cambios en el estado
     useEffect(() => {
         console.log('Estado de autenticación actualizado:', {
             isAuthenticated,
@@ -479,25 +501,25 @@ export const AuthProvider = ({ children }) => {
         });
     }, [isAuthenticated, user, userInfo, isLoggingOut, isLoggingIn]);
 
-    // Valor del contexto (AMPLIADO con nuevos estados)
+    // Valor del contexto (TODOS LOS ESTADOS EXISTENTES)
     const contextValue = {
-        // Estados existentes
-        user,
-        userInfo,
-        loading,
-        isAuthenticated,
-        authError,
+        // Estados existentes - CRÍTICOS para el nuevo sistema 401
+        user,                  // Usado por ProtectedRoutes para determinar autenticación
+        userInfo,             // Información completa del usuario
+        loading,              // Usado por ProtectedRoutes para evitar mostrar 401 durante carga
+        isAuthenticated,      // Estado principal de autenticación
+        authError,            // Errores de autenticación
         
-        // NUEVOS estados para páginas de error
-        isLoggingOut,
-        isLoggingIn,
+        // Estados para páginas de error - CRÍTICOS para prevenir 401 durante transiciones
+        isLoggingOut,         // Previene mostrar 401 durante logout
+        isLoggingIn,          // Previene mostrar 401 durante login
         
         // Funciones existentes
-        login,
-        logout,
-        checkAuthStatus,
-        getUserInfo,
-        clearAuthError
+        login,                // Función de login que maneja isLoggingIn
+        logout,               // Función de logout que maneja isLoggingOut
+        checkAuthStatus,      // Verificación de estado
+        getUserInfo,          // Obtener información del usuario
+        clearAuthError        // Limpiar errores
     };
 
     return (

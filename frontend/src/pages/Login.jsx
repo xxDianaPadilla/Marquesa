@@ -20,22 +20,19 @@ import emailIcon from "../assets/emailIcon.png";
 import lockIcon from "../assets/lockIcon.png";
 
 /**
- * Página de inicio de sesión completamente optimizada
- * CARACTERÍSTICAS PRINCIPALES:
- * - Validación en tiempo real con feedback visual
- * - Manejo robusto de errores con mensajes específicos
- * - Integración completa con AuthContext
- * - Redirección automática según tipo de usuario
- * - Prevención de múltiples envíos
- * - Accesibilidad mejorada
- * - Optimización de rendimiento con memo y useCallback
+ * Página de inicio de sesión completamente optimizada - CORREGIDA
+ * CORRECCIONES PRINCIPALES:
+ * - Redirección corregida: Cliente va al HOME (/) no al /home
+ * - Admin va al dashboard (/dashboard)
+ * - Mejor manejo de timing para evitar páginas 403
+ * - Logging mejorado para debugging
  */
 const Login = memo(() => {
     // ============ HOOKS Y ESTADO ============
     
     const navigate = useNavigate();
     const location = useLocation();
-    const { isAuthenticated, user, authError, clearAuthError } = useAuth();
+    const { isAuthenticated, user, authError, clearAuthError, isLoggingIn } = useAuth();
 
     // Hook personalizado que maneja toda la lógica del formulario
     const {
@@ -55,21 +52,38 @@ const Login = memo(() => {
     // ============ EFECTOS ============
     
     /**
-     * Redirección automática si ya está autenticado
-     * Se ejecuta cada vez que cambia el estado de autenticación
+     * Redirección automática si ya está autenticado - CORREGIDA
+     * Ahora redirige correctamente según el tipo de usuario
      */
     useEffect(() => {
-        if (isAuthenticated && user) {
-            console.log('👤 Usuario ya autenticado, redirigiendo...', user);
+        // Solo redirigir si está completamente autenticado y NO en proceso de login
+        if (isAuthenticated && user && user.userType && !isLoggingIn) {
+            console.log('👤 Usuario ya autenticado, redirigiendo...', {
+                userType: user.userType,
+                isLoggingIn
+            });
             
-            // Determinar ruta de redirección
-            const redirectPath = location.state?.from || 
-                                (user.userType === 'admin' ? '/dashboard' : '/home');
+            // CORREGIDO: Redirecciones apropiadas
+            let redirectPath;
             
-            console.log('🔄 Redirigiendo a:', redirectPath);
-            navigate(redirectPath, { replace: true });
+            if (user.userType === 'admin') {
+                redirectPath = '/dashboard';
+                console.log('👑 Redirigiendo admin al dashboard');
+            } else if (user.userType === 'Customer') {
+                redirectPath = '/'; // HOME para clientes (NO /home)
+                console.log('👤 Redirigiendo cliente al HOME');
+            } else {
+                redirectPath = '/';
+                console.log('❓ Tipo desconocido, redirigiendo al home');
+            }
+            
+            // Usar timeout para evitar race conditions
+            setTimeout(() => {
+                console.log('🔄 Ejecutando redirección a:', redirectPath);
+                navigate(redirectPath, { replace: true });
+            }, 100);
         }
-    }, [isAuthenticated, user, navigate, location.state]);
+    }, [isAuthenticated, user, navigate, isLoggingIn]);
 
     /**
      * Limpiar errores del AuthContext cuando el usuario interactúa
@@ -104,7 +118,7 @@ const Login = memo(() => {
      */
     const handleRegisterClick = (e) => {
         e.preventDefault();
-        if (!isLoading) {
+        if (!isLoading && !isLoggingIn) {
             console.log('📝 Navegando a registro');
             clearForm();
             navigate('/register');
@@ -117,7 +131,7 @@ const Login = memo(() => {
      */
     const handleRecoverPasswordClick = (e) => {
         e.preventDefault();
-        if (!isLoading) {
+        if (!isLoading && !isLoggingIn) {
             console.log('🔑 Navegando a recuperación de contraseña');
             
             // Pasar el email si está disponible
@@ -152,6 +166,19 @@ const Login = memo(() => {
         );
     };
 
+    // ============ LOGGING ADICIONAL PARA DEBUG ============
+    
+    // Debug del estado actual
+    useEffect(() => {
+        console.log('🔍 Estado actual Login:', {
+            isAuthenticated,
+            userType: user?.userType,
+            isLoggingIn,
+            isLoading,
+            currentPath: location.pathname
+        });
+    }, [isAuthenticated, user, isLoggingIn, isLoading, location.pathname]);
+
     // ============ RENDERIZADO DEL COMPONENTE ============
     
     return (
@@ -182,7 +209,7 @@ const Login = memo(() => {
                             placeholder="Correo electrónico"
                             value={formData.email}
                             onChange={handleInputChange}
-                            disabled={isLoading}
+                            disabled={isLoading || isLoggingIn}
                             autoComplete="email"
                             className={`flex-1 bg-transparent outline-none text-sm transition-colors duration-200 ${
                                 errors.email 
@@ -224,7 +251,7 @@ const Login = memo(() => {
                             placeholder="Contraseña"
                             value={formData.password}
                             onChange={handleInputChange}
-                            disabled={isLoading}
+                            disabled={isLoading || isLoggingIn}
                             autoComplete="current-password"
                             className={`flex-1 bg-transparent outline-none text-sm transition-colors duration-200 ${
                                 errors.password 
@@ -240,7 +267,7 @@ const Login = memo(() => {
                         <button
                             type="button"
                             onClick={togglePasswordVisibility}
-                            disabled={isLoading}
+                            disabled={isLoading || isLoggingIn}
                             className={`ml-3 transition-colors duration-200 ${
                                 errors.password 
                                     ? 'text-red-500 hover:text-red-600' 
@@ -276,7 +303,7 @@ const Login = memo(() => {
                             fontStyle: 'italic'
                         }} 
                         onClick={handleRecoverPasswordClick}
-                        disabled={isLoading}
+                        disabled={isLoading || isLoggingIn}
                     >
                         ¿Olvidaste tu contraseña?
                     </button>
@@ -284,14 +311,14 @@ const Login = memo(() => {
 
                 {/* Botón de inicio de sesión */}
                 <Button
-                    text={isLoading ? "Iniciando sesión..." : "Iniciar Sesión"}
+                    text={(isLoading || isLoggingIn) ? "Iniciando sesión..." : "Iniciar Sesión"}
                     variant="primary"
                     type="submit"
-                    disabled={isLoading || !isFormValid}
+                    disabled={isLoading || isLoggingIn || !isFormValid}
                 />
 
                 {/* Indicador de carga */}
-                {isLoading && (
+                {(isLoading || isLoggingIn) && (
                     <div className="text-center mt-2">
                         <div className="inline-flex items-center">
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-pink-500 mr-2"></div>
@@ -313,7 +340,7 @@ const Login = memo(() => {
                 <Separator text="o" />
 
                 {/* Botón de Google */}
-                <GoogleButton disabled={isLoading} />
+                <GoogleButton disabled={isLoading || isLoggingIn} />
 
                 {/* Términos y condiciones */}
                 <div className="text-center mt-4">
@@ -323,7 +350,7 @@ const Login = memo(() => {
                             type="button"
                             className="text-pink-500 hover:text-pink-600 underline disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-pink-300 rounded"
                             onClick={() => navigate('/terms-and-conditions')}
-                            disabled={isLoading}
+                            disabled={isLoading || isLoggingIn}
                         >
                             Términos y Condiciones
                         </button>
@@ -332,7 +359,7 @@ const Login = memo(() => {
                             type="button"
                             className="text-pink-500 hover:text-pink-600 underline disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-pink-300 rounded"
                             onClick={() => navigate('/privacy-policies')}
-                            disabled={isLoading}
+                            disabled={isLoading || isLoggingIn}
                         >
                             Política de Privacidad
                         </button>
@@ -343,6 +370,5 @@ const Login = memo(() => {
         </PageContainer>
     );
 });
-
 
 export default Login;

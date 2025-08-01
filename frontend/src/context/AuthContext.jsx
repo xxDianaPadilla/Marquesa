@@ -287,30 +287,37 @@ export const AuthProvider = ({ children }) => {
             setAuthError('Error al verificar el estado de autenticación');
             clearAuthData(false);
         } finally {
-            setLoading(false);
+            // IMPORTANTE: Solo marcar como no loading si NO estamos en proceso de login
+            if (!isLoggingIn) {
+                setLoading(false);
+            }
         }
     };
 
     /**
-     * Función de login MEJORADA
-     * Mantiene toda la funcionalidad existente + mejoras para páginas de estado
+     * Función de login MEJORADA PARA EVITAR RACE CONDITIONS
      */
     const login = async (email, password) => {
         try {
-            setIsLoggingIn(true); // NUEVO: Marcar inicio de login
+            setIsLoggingIn(true);
+            setLoading(true); // NUEVO: También marcar loading durante login
             setAuthError(null);
-            console.log('Iniciando proceso de login...');
+            console.log('🔐 Iniciando proceso de login...');
             
-            // Validación básica de entrada (EXISTENTE)
+            // Validación básica de entrada
             const emailValidation = validators.email(email);
             if (!emailValidation.isValid) {
                 setAuthError(emailValidation.error);
+                setIsLoggingIn(false);
+                setLoading(false);
                 return { success: false, message: emailValidation.error };
             }
             
             const passwordValidation = validators.password(password);
             if (!passwordValidation.isValid) {
                 setAuthError(passwordValidation.error);
+                setIsLoggingIn(false);
+                setLoading(false);
                 return { success: false, message: passwordValidation.error };
             }
 
@@ -324,21 +331,20 @@ export const AuthProvider = ({ children }) => {
             });
 
             const data = await response.json();
-            console.log('Login response:', data);
+            console.log('📡 Login response:', data);
 
-            // Aceptar ambos mensajes posibles de éxito (EXISTENTE)
             if (data.message === "login successful" || data.message === "Inicio de sesión exitoso") {
-                console.log('Login exitoso detectado');
+                console.log('✅ Login exitoso detectado');
                 
-                // Esperar para que se establezca la cookie
-                await new Promise(resolve => setTimeout(resolve, 300));
+                // Esperar más tiempo para que se establezca la cookie
+                await new Promise(resolve => setTimeout(resolve, 800));
                 
                 const token = getTokenFromCookies();
-                console.log('Token encontrado después del login:', !!token);
+                console.log('🎫 Token encontrado después del login:', !!token);
                 
                 if (token) {
                     const decodedToken = decodeToken(token);
-                    console.log('Token decodificado:', !!decodedToken);
+                    console.log('🔍 Token decodificado exitosamente:', !!decodedToken);
                     
                     if (decodedToken) {
                         const userData = {
@@ -346,17 +352,26 @@ export const AuthProvider = ({ children }) => {
                             userType: decodedToken.userType || data.userType || 'user'
                         };
                         
+                        console.log('👤 Configurando datos del usuario:', userData);
+                        
+                        // IMPORTANTE: Configurar todos los estados de una vez
                         setUser(userData);
                         setIsAuthenticated(true);
                         setAuthError(null);
                         
-                        console.log('Estado de usuario actualizado:', userData);
-                        
-                        // IMPORTANTE: Obtener información completa del usuario
-                        console.log('Obteniendo información completa después del login...');
+                        // Obtener información completa del usuario
+                        console.log('📋 Obteniendo información completa...');
                         const userInfoResult = await getUserInfo();
+                        console.log('📋 Información del usuario obtenida:', !!userInfoResult);
                         
-                        console.log('Login completado con información del usuario:', !!userInfoResult);
+                        // CRÍTICO: Finalizar todos los procesos ANTES de retornar
+                        setIsLoggingIn(false);
+                        setLoading(false);
+                        
+                        // Esperar un poco más para asegurar que el estado se propagó
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                        
+                        console.log('🎉 Login completado exitosamente para:', userData.userType);
                         
                         return { 
                             success: true, 
@@ -369,19 +384,23 @@ export const AuthProvider = ({ children }) => {
                 
                 const errorMsg = 'Error al procesar el token de autenticación';
                 setAuthError(errorMsg);
+                setIsLoggingIn(false);
+                setLoading(false);
                 return { success: false, message: errorMsg };
             } else {
                 const errorMsg = data.message || 'Error en la autenticación';
                 setAuthError(errorMsg);
+                setIsLoggingIn(false);
+                setLoading(false);
                 return { success: false, message: errorMsg };
             }
         } catch (error) {
-            console.error('Error en el proceso de login:', error);
+            console.error('❌ Error en el proceso de login:', error);
             const errorMsg = 'Error de conexión con el servidor';
             setAuthError(errorMsg);
+            setIsLoggingIn(false);
+            setLoading(false);
             return { success: false, message: errorMsg };
-        } finally {
-            setIsLoggingIn(false); // NUEVO: Finalizar proceso de login
         }
     };
 

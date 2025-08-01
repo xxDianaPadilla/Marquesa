@@ -4,11 +4,12 @@
  * Funcionalidades principales:
  * - NO muestra páginas de error durante login/logout normales
  * - SÍ muestra páginas de error cuando un usuario autenticado trata de acceder a áreas prohibidas
- * - Distingue perfectamente entre procesos de auth y violaciones de acceso
+ * - Espera a que el proceso de login termine completamente antes de hacer validaciones
  * - Navegación limpia durante login/logout
  * 
  * SOLUCIÓN IMPLEMENTADA:
- * - Durante login/logout: Redirecciones normales (NO páginas de error)
+ * - Durante login: Espera hasta que isLoggingIn sea false
+ * - Durante logout: Espera hasta que isLoggingOut sea false  
  * - Durante violaciones de acceso: Páginas de error 403
  * - Durante acceso sin autenticar a rutas protegidas: Redirigir a login (NO página 401)
  * 
@@ -78,79 +79,66 @@ const ProtectedRoutes = ({
   // Debug logging
   React.useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.log('🔒 ProtectedRoutes - Estado:', {
+      console.log('🔒 ProtectedRoutes - Estado completo:', {
         isAuthenticated,
         userType: user?.userType,
         requiredUserType,
         currentPath: location.pathname,
         isLoggingOut,
         isLoggingIn,
-        loading
+        loading,
+        userObject: user
       });
     }
   }, [isAuthenticated, user, requiredUserType, location.pathname, isLoggingOut, isLoggingIn, loading]);
 
-  // 1. LOADING: Mostrar spinner durante verificaciones
+  // 1. LOADING: Mostrar spinner durante verificaciones iniciales
   if (loading) {
-    console.log('🔄 Estado: Cargando...');
+    console.log('🔄 Estado: Cargando verificación inicial...');
     return <LoadingSpinner />;
   }
 
-  // 2. PROCESOS DE AUTH EN CURSO: No hacer validaciones, solo mostrar loading
+  // 2. PROCESOS DE AUTH EN CURSO: Esperar a que terminen completamente
   if (isLoggingOut || isLoggingIn) {
-    console.log('🔄 Proceso de autenticación en curso, esperando...');
+    console.log('🔄 Proceso de autenticación en curso...', { isLoggingIn, isLoggingOut });
     return <LoadingSpinner />;
   }
 
   // 3. USUARIO NO AUTENTICADO: Redirigir a login (NUNCA páginas de error)
   if (!isAuthenticated || !user) {
     console.log('🚫 Usuario no autenticado → Redirigir a login');
-    
-    // IMPORTANTE: NUNCA mostrar página 401 durante procesos normales
-    // Siempre redirigir a login con la ruta original
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
-  // 4. USUARIO AUTENTICADO SIN PERMISOS: Aquí SÍ mostrar páginas de error
+  // 4. VERIFICAR QUE EL USUARIO TENGA userType VÁLIDO
+  if (!user.userType) {
+    console.log('⚠️ Usuario sin tipo definido, redirigiendo a login');
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
+
+  // 5. USUARIO AUTENTICADO SIN PERMISOS: Mostrar página de error 403
   if (requiredUserType && user.userType !== requiredUserType) {
     console.log(`🚫 VIOLACIÓN DE ACCESO - Requerido: ${requiredUserType}, Usuario: ${user.userType}`);
     
-    // Esta es una violación real de permisos, el usuario YA está autenticado
-    // pero no tiene los permisos necesarios → Mostrar página 403
-    console.log('📄 Mostrando página 403 - Acceso Prohibido');
-    return <Navigate to="/error/403" replace state={{ 
-      from: location.pathname,
-      requiredUserType,
-      currentUserType: user.userType,
-      reason: 'insufficient_permissions',
-      message: `Acceso denegado: Se requiere tipo "${requiredUserType}", usuario actual es "${user.userType}"`
-    }} />;
-  }
-
-  // 5. VALIDACIONES ESPECÍFICAS ADICIONALES
-  
-  // Para rutas de administrador
-  if (requiredUserType === 'admin' && user.userType !== 'admin') {
-    console.log('🚫 Acceso denegado a área administrativa');
-    return <Navigate to="/error/403" replace state={{ 
-      from: location.pathname,
-      reason: 'admin_area_access_denied',
-      message: 'Esta área está restringida solo para administradores'
-    }} />;
-  }
-  
-  // Para rutas de cliente
-  if (requiredUserType === 'Customer' && user.userType !== 'Customer') {
-    console.log('🚫 Acceso denegado a área de cliente');
-    return <Navigate to="/error/403" replace state={{ 
-      from: location.pathname,
-      reason: 'customer_area_access_denied',
-      message: 'Esta área está restringida solo para clientes'
-    }} />;
+    // Verificar que realmente estamos en un estado estable (no en transición)
+    if (isAuthenticated && user && user.userType && !isLoggingIn && !isLoggingOut && !loading) {
+      console.log('📄 Usuario autenticado pero sin permisos → Página 403');
+      return <Navigate to="/error/403" replace state={{ 
+        from: location.pathname,
+        requiredUserType,
+        currentUserType: user.userType,
+        reason: 'insufficient_permissions',
+        message: `Acceso denegado: Se requiere tipo "${requiredUserType}", usuario actual es "${user.userType}"`
+      }} />;
+    } else {
+      // Si estamos en transición, mostrar loading
+      console.log('⏳ Estado en transición, mostrando loading...');
+      return <LoadingSpinner />;
+    }
   }
 
   // 6. TODO CORRECTO: Renderizar contenido
-  console.log('✅ Acceso permitido - Renderizando contenido');
+  console.log(`✅ Acceso permitido para ${user.userType} → Renderizando contenido`);
   return children;
 };
 

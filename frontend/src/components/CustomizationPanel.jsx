@@ -1,14 +1,15 @@
-import React, {useState} from 'react';
+import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import CustomizationModal from './CustomizationModal';
 
-const CustomizationPanel = ({ 
-    selectedProducts = [], 
-    onRemoveProduct, 
+const CustomizationPanel = ({
+    selectedProducts = [],
+    onRemoveProduct,
     onFinishCustomization,
     productType = ''
 }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
-    
+
     // Calcular precio total
     const totalPrice = selectedProducts.reduce((total, product) => total + product.price, 0);
 
@@ -27,7 +28,15 @@ const CustomizationPanel = ({
 
     const handleOpenModal = () => {
         if (!isCustomizationComplete) {
-            alert('Selecciona al menos un producto para personalizar');
+            toast.error('Selecciona al menos un producto para personalizar', {
+                duration: 3000,
+                position: 'top-center',
+                style: {
+                    background: '#FEF2F2',
+                    color: '#B91C1C',
+                    border: '1px solid #FECACA'
+                }
+            });
             return;
         }
         setIsModalOpen(true);
@@ -41,6 +50,84 @@ const CustomizationPanel = ({
         // Llamar a la función original con los datos adicionales
         onFinishCustomization(customizationData);
         setIsModalOpen(false);
+
+        // Mostrar toast de éxito
+        toast.success('¡Personalización completada exitosamente!', {
+            duration: 4000,
+            position: 'top-center',
+            style: {
+                background: '#F0FDF4',
+                color: '#16A34A',
+                border: '1px solid #BBF7D0'
+            }
+        });
+    };
+
+    const handleClearSelection = () => {
+        // Crear un toast personalizado de confirmación
+        toast.custom((t) => (
+            <div className={`${t.visible ? 'animate-enter' : 'animate-leave'
+                } max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}>
+                <div className="flex-1 w-0 p-4">
+                    <div className="flex items-start">
+                        <div className="flex-shrink-0">
+                            <svg className="h-6 w-6 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.924-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                            </svg>
+                        </div>
+                        <div className="ml-3 flex-1">
+                            <p className="text-sm font-medium text-gray-900">
+                                Confirmar acción
+                            </p>
+                            <p className="mt-1 text-sm text-gray-500">
+                                ¿Estás seguro de que deseas limpiar toda la selección?
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex border-l border-gray-200">
+                    <button
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                            selectedProducts.forEach(product => onRemoveProduct(product._id));
+                            toast.success('Selección limpiada', {
+                                duration: 2000,
+                                position: 'top-center'
+                            });
+                            toast.dismiss(t.id);
+                        }}
+                        className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-red-600 hover:text-red-500 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    >
+                        Sí, limpiar
+                    </button>
+                </div>
+                <div className="flex border-l border-gray-200">
+                    <button
+                        onClick={() => toast.dismiss(t.id)}
+                        style={{cursor: 'pointer'}}
+                        className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-gray-600 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                    >
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        ), {
+            duration: Infinity,
+            position: 'top-center'
+        });
+    };
+
+    const handleRemoveProduct = (productId) => {
+        onRemoveProduct(productId);
+        toast.success('Producto eliminado de la selección', {
+            duration: 2000,
+            position: 'bottom-right',
+            style: {
+                background: '#F0FDF4',
+                color: '#16A34A',
+                fontSize: '14px'
+            }
+        });
     };
 
     return (
@@ -103,7 +190,7 @@ const CustomizationPanel = ({
                                             <SelectedProductItem
                                                 key={product._id}
                                                 product={product}
-                                                onRemove={() => onRemoveProduct(product._id)}
+                                                onRemove={() => handleRemoveProduct(product._id)}
                                             />
                                         ))}
                                     </div>
@@ -128,11 +215,8 @@ const CustomizationPanel = ({
                     <div className="mt-6 space-y-2">
                         {selectedProducts.length > 0 && (
                             <button
-                                onClick={() => {
-                                    if (window.confirm('¿Estás seguro de que deseas limpiar toda la selección?')) {
-                                        selectedProducts.forEach(product => onRemoveProduct(product._id));
-                                    }
-                                }}
+                                style={{ cursor: 'pointer' }}
+                                onClick={handleClearSelection}
                                 className="w-full py-2 px-4 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200"
                             >
                                 Limpiar selección
@@ -142,12 +226,11 @@ const CustomizationPanel = ({
                         <button
                             onClick={handleOpenModal}
                             disabled={!isCustomizationComplete}
-                            style={{cursor: 'pointer'}}
-                            className={`w-full py-3 px-4 rounded-lg font-semibold transition-all duration-200 ${
-                                isCustomizationComplete
-                                    ? 'bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white shadow-md hover:shadow-lg transform hover:scale-105'
-                                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                            }`}
+                            style={{ cursor: 'pointer' }}
+                            className={`w-full py-3 px-4 rounded-lg font-semibold transition-all duration-200 ${isCustomizationComplete
+                                ? 'bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white shadow-md hover:shadow-lg transform hover:scale-105'
+                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                }`}
                         >
                             {isCustomizationComplete ? (
                                 <>

@@ -11,6 +11,19 @@ router.route("/")
     .get(shoppingCartController.getShoppingCarts) // Obtener todos los carritos de compras
     .post(shoppingCartController.createShoppingCart); // Crear un nuevo carrito de compras
 
+// NUEVAS RUTAS para operaciones específicas de items (antes de las rutas con parámetros)
+// Ruta para actualizar cantidad de un item específico
+router.route("/update-quantity")
+    .put(shoppingCartController.updateItemQuantity); // Actualizar cantidad de un item
+
+// Ruta para eliminar un item específico del carrito
+router.route("/remove-item")
+    .delete(shoppingCartController.removeSpecificItem); // Eliminar item específico
+
+// Ruta para agregar item al carrito (formato del hook)
+router.route("/add-item")
+    .post(shoppingCartController.addItemToCartNew); // Agregar item al carrito
+
 // Rutas para operaciones específicas de un carrito por ID
 router.route("/:id")
     .get(shoppingCartController.getShoppingCartById) // Obtener un carrito específico por ID
@@ -21,10 +34,10 @@ router.route("/:id")
 router.route("/client/:clientId")
     .get(shoppingCartController.getShoppingCartByClient); // Obtener carrito por ID del cliente
 
-// RUTA ACTUALIZADA: Agregar item al carrito (coincide con el hook)
+// RUTA ACTUALIZADA: Agregar item al carrito (formato alternativo)
 // POST /api/shoppingCart/:clientId/add-item
 router.route("/:clientId/add-item")
-    .post(shoppingCartController.addItemToCart); // Agregar un item al carrito
+    .post(shoppingCartController.addItemToCart); // Agregar un item al carrito (formato original)
 
 // Rutas para gestión de items/productos dentro del carrito de un cliente
 router.route("/client/:clientId/items")

@@ -1,177 +1,188 @@
-// frontend/src/components/OrderSummary.jsx
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-
 /**
- * Componente OrderSummary - Resumen del pedido con funcionalidad de descuentos
- * @param {number} subtotal - Precio subtotal de los productos
- * @param {number} shipping - Costo de envío (por defecto 10.00)
- * @param {function} onApplyDiscount - Callback cuando se aplica un descuento
- * @param {function} onProceedToPay - Callback para proceder al pago
- * @param {function} onContinueShopping - Callback para continuar comprando
- * @param {function} onClick - Callback adicional para clicks
+ * Componente OrderSummary - Resumen del pedido
+ * ACTUALIZADO: Adaptado para trabajar con datos de la API del carrito
  */
+
+import React, { useState } from 'react';
+
 const OrderSummary = ({ 
     subtotal, 
     shipping = 10.00, 
+    total, 
     onApplyDiscount, 
     onProceedToPay, 
     onContinueShopping,
-    onClick 
+    discountError = null,
+    isLoading = false,
+    updating = false
 }) => {
-    // Estado para almacenar el código de descuento ingresado
-    const [discountCode, setDiscountCode] = useState("");
-    
-    // Estado para almacenar el monto del descuento aplicado
-    const [discount, setDiscount] = useState(0);
-    
-    // Hook para navegación programática
-    const navigate = useNavigate();
+    const [discountCode, setDiscountCode] = useState('');
+    const [appliedDiscount, setAppliedDiscount] = useState(0);
+    const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
 
     /**
-     * Maneja el click en el botón de "Proceder al pago"
-     * Navega a la página de proceso de pago
+     * Maneja la aplicación del código de descuento
      */
-    const handlePaymentProcessClick = (e) => {
+    const handleApplyDiscount = async (e) => {
         e.preventDefault();
-        navigate('/paymentProcess');
-    };
+        
+        if (!discountCode.trim() || isApplyingDiscount || updating) {
+            return;
+        }
 
-    // Calcula el total final (subtotal + envío - descuento)
-    const total = subtotal + shipping - discount;
-
-    /**
-     * Maneja la aplicación de códigos de descuento
-     * Valida el código ingresado y aplica el descuento correspondiente
-     */
-    const handleApplyDiscount = () => {
-        if (discountCode.trim()) {
-            // Variable para almacenar el monto del descuento
+        setIsApplyingDiscount(true);
+        
+        try {
+            // Simular descuento por ahora - aquí iría la lógica real
             let discountAmount = 0;
+            const code = discountCode.trim().toUpperCase();
             
-            // Switch para validar códigos de descuento predefinidos
-            switch (discountCode.toUpperCase()) {
-                case "DESCUENTO10":
-                    discountAmount = subtotal * 0.1; // 10% de descuento
+            // Códigos de ejemplo
+            switch (code) {
+                case 'DESCUENTO10':
+                    discountAmount = subtotal * 0.10;
                     break;
-                case "MARQUESA20":
-                    discountAmount = subtotal * 0.2; // 20% de descuento
+                case 'DESCUENTO20':
+                    discountAmount = subtotal * 0.20;
                     break;
-                case "FLORES15":
-                    discountAmount = subtotal * 0.15; // 15% de descuento
+                case 'ENVIOGRATIS':
+                    discountAmount = shipping;
                     break;
                 default:
-                    // Código no válido - mostrar alerta y salir
-                    alert("Código de descuento no válido");
-                    return;
+                    discountAmount = 0;
             }
             
-            // Actualizar el estado con el descuento aplicado
-            setDiscount(discountAmount);
+            await onApplyDiscount(discountCode, discountAmount);
             
-            // Ejecutar callback si está definido
-            if (onApplyDiscount) {
-                onApplyDiscount(discountCode, discountAmount);
+            if (discountAmount > 0) {
+                setAppliedDiscount(discountAmount);
             }
-            
-            // Mostrar confirmación del descuento aplicado
-            alert(`Descuento aplicado: ${discountAmount.toFixed(2)}$`);
+        } catch (error) {
+            console.error('Error aplicando descuento:', error);
+        } finally {
+            setIsApplyingDiscount(false);
         }
     };
 
     /**
-     * Maneja la acción de proceder al pago
-     * Ejecuta el callback con los datos del resumen
+     * Calcula el total final considerando descuentos
      */
-    const handleProceedToPay = () => {
-        if (onProceedToPay) {
-            onProceedToPay({
-                subtotal,
-                shipping,
-                discount,
-                total
-            });
-        }
-    };
+    const finalTotal = Math.max(0, (total || (subtotal + shipping)) - appliedDiscount);
 
     return (
-        <aside className="summary" aria-label="Resumen del pedido">
-            <h3>Resumen del pedido</h3>
-            
-            {/* Fila del subtotal */}
-            <div className="summary-row">
-                <span>Sub Total</span>
-                <span>{subtotal.toFixed(2)}$</span>
+        <div className="order-summary">
+            <div className="summary-header">
+                <h3 style={{ fontFamily: 'Poppins, sans-serif' }}>
+                    Resumen del pedido
+                </h3>
             </div>
-            
-            {/* Fila del costo de envío */}
-            <div className="summary-row">
-                <span>Envío</span>
-                <span>{shipping.toFixed(2)}$</span>
-            </div>
-            
-            {/* Fila del descuento - solo se muestra si hay descuento aplicado */}
-            {discount > 0 && (
-                <div className="summary-row">
-                    <span>Descuento</span>
-                    <span style={{ color: '#28a745' }}>-{discount.toFixed(2)}$</span>
+
+            <div className="summary-content">
+                {/* Subtotal */}
+                <div className="summary-line">
+                    <span>Subtotal:</span>
+                    <span>${subtotal.toFixed(2)}</span>
                 </div>
-            )}
-            
-            {/* Separador visual */}
-            <hr />
-            
-            {/* Fila del total final */}
-            <div className="summary-row total">
-                <span>Total</span>
-                <span>{total.toFixed(2)}$</span>
+
+                {/* Descuento aplicado */}
+                {appliedDiscount > 0 && (
+                    <div className="summary-line discount-line">
+                        <span style={{ color: '#10b981' }}>
+                            Descuento aplicado:
+                        </span>
+                        <span style={{ color: '#10b981' }}>
+                            -${appliedDiscount.toFixed(2)}
+                        </span>
+                    </div>
+                )}
+
+                {/* Total */}
+                <div className="summary-line total-line">
+                    <span><strong>Total:</strong></span>
+                    <span><strong>${finalTotal.toFixed(2)}</strong></span>
+                </div>
             </div>
-            
-            {/* Etiqueta para el campo de código de descuento */}
-            <label htmlFor="discount-code" className="discount-label">
-                Código de descuento
-            </label>
-            
-            {/* Contenedor para input y botón de descuento */}
-            <div className="discount-container">
-                <input 
-                    id="discount-code"
-                    className="discount-input"
-                    type="text"
-                    placeholder="Introducir código"
-                    value={discountCode}
-                    onChange={(e) => setDiscountCode(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleApplyDiscount()}
-                />
-                <button 
-                    className="discount-btn"
-                    type="button"
-                    onClick={handleApplyDiscount}
+
+            {/* Sección de código promocional */}
+            <div className="discount-section">
+                <form onSubmit={handleApplyDiscount} className="discount-form">
+                    <div className="discount-input-group">
+                        <input
+                            type="text"
+                            placeholder="Código promocional"
+                            value={discountCode}
+                            onChange={(e) => setDiscountCode(e.target.value)}
+                            disabled={isApplyingDiscount || updating}
+                            maxLength={20}
+                            style={{ fontFamily: 'Poppins, sans-serif' }}
+                        />
+                        <button 
+                            type="submit"
+                            disabled={!discountCode.trim() || isApplyingDiscount || updating}
+                            className="apply-discount-btn"
+                        >
+                            {isApplyingDiscount ? 'Aplicando...' : 'Aplicar'}
+                        </button>
+                    </div>
+                </form>
+
+                {/* Error de descuento */}
+                {discountError && (
+                    <div className="discount-error">
+                        <span style={{ color: '#ef4444', fontSize: '12px', fontFamily: 'Poppins, sans-serif' }}>
+                            {discountError}
+                        </span>
+                    </div>
+                )}
+
+                {/* Códigos de ejemplo */}
+                <div className="discount-hints">
+                    <small style={{ color: '#6b7280', fontFamily: 'Poppins, sans-serif' }}>
+                        Códigos de prueba: DESCUENTO10, DESCUENTO20, ENVIOGRATIS
+                    </small>
+                </div>
+            </div>
+
+            {/* Botones de acción */}
+            <div className="summary-actions">
+                <button
+                    onClick={onContinueShopping}
+                    disabled={updating || isLoading}
+                    className="continue-shopping-btn"
+                    style={{ fontFamily: 'Poppins, sans-serif' }}
                 >
-                    Aplicar
+                    Continuar comprando
+                </button>
+
+                <button
+                    onClick={onProceedToPay}
+                    disabled={updating || isLoading || finalTotal <= 0}
+                    className="pay-btn"
+                    style={{ fontFamily: 'Poppins, sans-serif' }}
+                >
+                    {updating || isLoading ? (
+                        <span className="flex items-center">
+                            <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Procesando...
+                        </span>
+                    ) : (
+                        `Proceder al pago - $${finalTotal.toFixed(2)}`
+                    )}
                 </button>
             </div>
-            
-            {/* Botón principal para proceder al pago */}
-            <button 
-                className="pay-btn"
-                type="button"
-                onClick={handlePaymentProcessClick}
-            >
-                Proceder al pago
-            </button>
-            
-            {/* Enlace para continuar comprando - accesible con teclado */}
-            <div 
-                className="continue"
-                role="button"
-                tabIndex={0}
-                onClick={onContinueShopping}
-                onKeyPress={(e) => (e.key === 'Enter' || e.key === ' ') && onContinueShopping()}
-            >
-                Continuar comprando
+
+            {/* Información adicional */}
+            <div className="payment-info">
+                <div className="security-badges">
+                    <small style={{ color: '#6b7280', fontFamily: 'Poppins, sans-serif' }}>
+                        🔒 Pago seguro SSL 
+                    </small>
+                </div>
             </div>
-        </aside>
+        </div>
     );
 };
 

@@ -1,17 +1,16 @@
 /**
- * Componente ProtectedRoutes - Sistema de protección de rutas CORREGIDO
+ * Componente ProtectedRoutes - VERSIÓN FINAL CORREGIDA
  * 
  * Funcionalidades principales:
- * - Protege rutas basándose en autenticación y tipo de usuario
- * - MUESTRA páginas de error para accesos realmente prohibidos
- * - Distingue entre procesos normales de auth y violaciones de acceso
- * - Maneja estados de carga y autenticación correctamente
- * - Valida permisos de usuario de forma granular
+ * - NO muestra páginas de error durante login/logout normales
+ * - SÍ muestra páginas de error cuando un usuario autenticado trata de acceder a áreas prohibidas
+ * - Distingue perfectamente entre procesos de auth y violaciones de acceso
+ * - Navegación limpia durante login/logout
  * 
- * CORRECCIÓN PRINCIPAL:
- * - Ahora SÍ muestra páginas de error cuando un usuario autenticado
- *   trata de acceder a áreas para las que NO tiene permisos
- * - Solo evita páginas de error durante login/logout normales
+ * SOLUCIÓN IMPLEMENTADA:
+ * - Durante login/logout: Redirecciones normales (NO páginas de error)
+ * - Durante violaciones de acceso: Páginas de error 403
+ * - Durante acceso sin autenticar a rutas protegidas: Redirigir a login (NO página 401)
  * 
  * Ubicación: frontend/src/components/ProtectedRoutes.jsx
  */
@@ -22,7 +21,6 @@ import { useAuth } from '../context/AuthContext';
 
 /**
  * Componente de indicador de carga mejorado
- * Muestra un spinner elegante mientras se verifica la autenticación
  */
 const LoadingSpinner = () => (
   <div 
@@ -33,18 +31,17 @@ const LoadingSpinner = () => (
       justifyContent: 'center',
       alignItems: 'center',
       height: '100vh',
-      backgroundColor: '#fdf2f8', // bg-pink-50
+      backgroundColor: '#fdf2f8',
       fontFamily: 'Poppins, sans-serif'
     }}
   >
-    {/* Spinner animado */}
     <div 
       className="spinner"
       style={{
         width: '40px',
         height: '40px',
-        border: '4px solid #f2d1d4', // Color rosa claro
-        borderTop: '4px solid #f2c6c2', // Color rosa del proyecto
+        border: '4px solid #f2d1d4',
+        borderTop: '4px solid #f2c6c2',
         borderRadius: '50%',
         animation: 'spin 1s linear infinite',
         marginBottom: '16px'
@@ -59,7 +56,6 @@ const LoadingSpinner = () => (
       Verificando acceso...
     </div>
     
-    {/* CSS para la animación del spinner */}
     <style jsx>{`
       @keyframes spin {
         0% { transform: rotate(0deg); }
@@ -70,170 +66,96 @@ const LoadingSpinner = () => (
 );
 
 /**
- * Componente principal ProtectedRoutes CORREGIDO
- * @param {React.ReactNode} children - Componentes hijos a proteger
- * @param {string|null} requiredUserType - Tipo de usuario requerido ('admin', 'Customer', etc.)
- * @param {boolean} showErrorPages - Si debe usar páginas de error para violaciones de acceso (por defecto true)
+ * Componente principal ProtectedRoutes - VERSIÓN FINAL
  */
 const ProtectedRoutes = ({ 
   children, 
-  requiredUserType = null,
-  showErrorPages = true // CAMBIADO: Por defecto true para mostrar errores cuando corresponda
+  requiredUserType = null
 }) => {
-  // Obtiene el estado de autenticación del contexto
-  const { isAuthenticated, user, userInfo, loading, isLoggingOut, isLoggingIn } = useAuth();
-  
-  // Obtiene la ubicación actual para logging y redirección
+  const { isAuthenticated, user, loading, isLoggingOut, isLoggingIn } = useAuth();
   const location = useLocation();
 
-  // Log para debugging (solo en desarrollo)
+  // Debug logging
   React.useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.log('ProtectedRoutes - Estado actual:', {
+      console.log('🔒 ProtectedRoutes - Estado:', {
         isAuthenticated,
         userType: user?.userType,
         requiredUserType,
         currentPath: location.pathname,
-        hasUserInfo: !!userInfo,
-        showErrorPages,
         isLoggingOut,
-        isLoggingIn
+        isLoggingIn,
+        loading
       });
     }
-  }, [isAuthenticated, user, requiredUserType, location.pathname, userInfo, showErrorPages, isLoggingOut, isLoggingIn]);
+  }, [isAuthenticated, user, requiredUserType, location.pathname, isLoggingOut, isLoggingIn, loading]);
 
-  // Si está cargando la verificación de autenticación, muestra el spinner
+  // 1. LOADING: Mostrar spinner durante verificaciones
   if (loading) {
+    console.log('🔄 Estado: Cargando...');
     return <LoadingSpinner />;
   }
 
-  // NUEVO: Si estamos en proceso de logout o login, no hacer validaciones
+  // 2. PROCESOS DE AUTH EN CURSO: No hacer validaciones, solo mostrar loading
   if (isLoggingOut || isLoggingIn) {
-    console.log('Proceso de autenticación en curso, mostrando loading...');
+    console.log('🔄 Proceso de autenticación en curso, esperando...');
     return <LoadingSpinner />;
   }
 
-  // VALIDACIÓN 1: Usuario no autenticado
+  // 3. USUARIO NO AUTENTICADO: Redirigir a login (NUNCA páginas de error)
   if (!isAuthenticated || !user) {
-    console.log('Usuario no autenticado, redirigiendo...');
+    console.log('🚫 Usuario no autenticado → Redirigir a login');
     
-    // CORREGIDO: Solo usar páginas de error si NO estamos en proceso de auth
-    if (showErrorPages && !isLoggingOut && !isLoggingIn) {
-      return <Navigate to="/error/401" replace state={{ 
-        from: location.pathname,
-        reason: 'authentication_required'
-      }} />;
-    }
-    
-    // Comportamiento normal: Redirigir a login con la ruta original
+    // IMPORTANTE: NUNCA mostrar página 401 durante procesos normales
+    // Siempre redirigir a login con la ruta original
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
-  // VALIDACIÓN 2: Verificar tipo de usuario específico si es requerido
+  // 4. USUARIO AUTENTICADO SIN PERMISOS: Aquí SÍ mostrar páginas de error
   if (requiredUserType && user.userType !== requiredUserType) {
-    console.log(`🚫 ACCESO DENEGADO - Requerido: ${requiredUserType}, Usuario actual: ${user.userType}`);
+    console.log(`🚫 VIOLACIÓN DE ACCESO - Requerido: ${requiredUserType}, Usuario: ${user.userType}`);
     
-    // CORREGIDO: SIEMPRE mostrar página de error para violaciones de permisos
-    // (independientemente del estado de login/logout porque el usuario YA está autenticado)
-    if (showErrorPages) {
-      console.log('Redirigiendo a página de error 403 - Acceso Prohibido');
-      return <Navigate to="/error/403" replace state={{ 
-        from: location.pathname,
-        requiredUserType,
-        currentUserType: user.userType,
-        reason: 'insufficient_permissions',
-        message: `Se requiere acceso de tipo "${requiredUserType}" pero el usuario es de tipo "${user.userType}"`
-      }} />;
-    }
-    
-    // Comportamiento alternativo: Redirigir según el tipo de usuario actual
-    console.log('Redirigiendo según tipo de usuario actual...');
-    if (user.userType === 'admin') {
-      return <Navigate to="/dashboard" replace />;
-    } else if (user.userType === 'Customer') {
-      return <Navigate to="/" replace />; // Página principal para clientes
-    } else {
-      // Tipo de usuario desconocido, redirigir a inicio
-      return <Navigate to="/" replace />;
-    }
+    // Esta es una violación real de permisos, el usuario YA está autenticado
+    // pero no tiene los permisos necesarios → Mostrar página 403
+    console.log('📄 Mostrando página 403 - Acceso Prohibido');
+    return <Navigate to="/error/403" replace state={{ 
+      from: location.pathname,
+      requiredUserType,
+      currentUserType: user.userType,
+      reason: 'insufficient_permissions',
+      message: `Acceso denegado: Se requiere tipo "${requiredUserType}", usuario actual es "${user.userType}"`
+    }} />;
   }
 
-  // VALIDACIONES ADICIONALES ESPECÍFICAS POR TIPO DE USUARIO
+  // 5. VALIDACIONES ESPECÍFICAS ADICIONALES
   
-  // Para rutas de administrador - Validación estricta
-  if (requiredUserType === 'admin') {
-    if (user.userType !== 'admin') {
-      console.log('🚫 ACCESO DENEGADO - Área administrativa');
-      
-      if (showErrorPages) {
-        console.log('Redirigiendo a página de error 403 - Área administrativa');
-        return <Navigate to="/error/403" replace state={{ 
-          from: location.pathname,
-          reason: 'admin_area_access_denied',
-          message: 'Esta área está restringida solo para administradores'
-        }} />;
-      }
-      
-      return <Navigate to="/" replace />;
-    }
+  // Para rutas de administrador
+  if (requiredUserType === 'admin' && user.userType !== 'admin') {
+    console.log('🚫 Acceso denegado a área administrativa');
+    return <Navigate to="/error/403" replace state={{ 
+      from: location.pathname,
+      reason: 'admin_area_access_denied',
+      message: 'Esta área está restringida solo para administradores'
+    }} />;
   }
   
-  // Para rutas de cliente - Validación estricta
-  if (requiredUserType === 'Customer') {
-    if (user.userType !== 'Customer') {
-      console.log('🚫 ACCESO DENEGADO - Área de cliente');
-      
-      if (showErrorPages) {
-        console.log('Redirigiendo a página de error 403 - Área de cliente');
-        return <Navigate to="/error/403" replace state={{ 
-          from: location.pathname,
-          reason: 'customer_area_access_denied',
-          message: 'Esta área está restringida solo para clientes registrados'
-        }} />;
-      }
-      
-      return <Navigate to="/dashboard" replace />;
-    }
+  // Para rutas de cliente
+  if (requiredUserType === 'Customer' && user.userType !== 'Customer') {
+    console.log('🚫 Acceso denegado a área de cliente');
+    return <Navigate to="/error/403" replace state={{ 
+      from: location.pathname,
+      reason: 'customer_area_access_denied',
+      message: 'Esta área está restringida solo para clientes'
+    }} />;
   }
 
-  // VALIDACIÓN FINAL: Todo está correcto
-  console.log('✅ ACCESO PERMITIDO - Renderizando contenido protegido');
+  // 6. TODO CORRECTO: Renderizar contenido
+  console.log('✅ Acceso permitido - Renderizando contenido');
   return children;
 };
 
 /**
- * Versión específica para procesos de autenticación que NO debe usar páginas de error
- * Úsala solo para login/register/logout donde no quieres interferencias
- */
-export const AuthProtectedRoutes = ({ children, requiredUserType = null }) => {
-  return (
-    <ProtectedRoutes 
-      requiredUserType={requiredUserType} 
-      showErrorPages={false} // NO mostrar páginas de error para procesos de auth
-    >
-      {children}
-    </ProtectedRoutes>
-  );
-};
-
-/**
- * Versión específica para páginas sensibles que SIEMPRE deben usar páginas de error
- * Úsala para rutas administrativas o muy sensibles
- */
-export const StrictProtectedRoutes = ({ children, requiredUserType = null }) => {
-  return (
-    <ProtectedRoutes 
-      requiredUserType={requiredUserType} 
-      showErrorPages={true} // SIEMPRE mostrar páginas de error
-    >
-      {children}
-    </ProtectedRoutes>
-  );
-};
-
-/**
- * Hook personalizado para verificar permisos sin redireccionar
- * Útil para mostrar/ocultar elementos de UI basados en permisos
+ * Hook personalizado para verificar permisos
  */
 export const usePermissions = () => {
   const { isAuthenticated, user, loading } = useAuth();
@@ -250,32 +172,15 @@ export const usePermissions = () => {
       return user.userType === requiredUserType;
     },
     canAccess: (requiredUserType) => {
-      console.log('Verificando acceso:', { 
-        isAuthenticated, 
-        currentUserType: user?.userType, 
-        requiredUserType 
-      });
-      
-      if (!isAuthenticated || !user) {
-        console.log('Sin acceso: Usuario no autenticado');
-        return false;
-      }
-      
-      if (!requiredUserType) {
-        console.log('Acceso permitido: No se requiere tipo específico');
-        return true;
-      }
-      
-      const hasAccess = user.userType === requiredUserType;
-      console.log('Resultado de verificación:', hasAccess);
-      return hasAccess;
+      if (!isAuthenticated || !user) return false;
+      if (!requiredUserType) return true;
+      return user.userType === requiredUserType;
     }
   };
 };
 
 /**
  * Componente para mostrar contenido condicionalmente basado en permisos
- * Útil para mostrar/ocultar elementos sin necesidad de rutas
  */
 export const ConditionalRender = ({ 
   requiredUserType = null, 
@@ -289,15 +194,6 @@ export const ConditionalRender = ({
   }
   
   return fallback;
-};
-
-/**
- * Validador de rutas para uso en configuración de router
- * Útil para validar acceso antes de cargar componentes pesados
- */
-export const validateRouteAccess = (userType, requiredUserType) => {
-  if (!requiredUserType) return true;
-  return userType === requiredUserType;
 };
 
 // Exporta el componente como default

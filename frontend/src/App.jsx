@@ -1,20 +1,18 @@
 /**
- * Componente principal de la aplicación - VERSIÓN CORREGIDA
- * Maneja el enrutamiento principal y la configuración de notificaciones toast
- * Incluye todas las rutas públicas, protegidas y de manejo de errores del sistema
+ * Componente principal de la aplicación - VERSIÓN FINAL LIMPIA
  * 
- * CORRECCIÓN IMPLEMENTADA:
- * - Ahora SÍ muestra páginas de error cuando un usuario autenticado
- *   trata de acceder a áreas prohibidas (ej: cliente → dashboard admin)
- * - Usa ProtectedRoutes con showErrorPages=true por defecto
- * - Mantiene redirecciones limpias para login/logout normales
+ * COMPORTAMIENTO CORREGIDO:
+ * - Login/Logout: Navegación LIMPIA sin páginas de error
+ * - Violaciones de acceso: SÍ muestra páginas de error (ej: cliente → dashboard)
+ * - Usuario no autenticado: Redirige a login (NO página 401)
+ * - Sistema de protección funcional y sin interferencias
  * 
  * Ubicación: frontend/src/App.jsx
  */
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
-import ProtectedRoutes, { StrictProtectedRoutes } from './components/ProtectedRoutes';
+import ProtectedRoutes from './components/ProtectedRoutes';
 import { RouteErrorBoundary } from './components/RouteErrorHandler';
 import { Toaster } from 'react-hot-toast';
 
@@ -53,7 +51,7 @@ import CustomProductsManager from './pages/CustomProductsManager';
 // Importar el gestor de chat para administradores
 import ChatManager from './pages/ChatManager';
 
-// PÁGINAS DE MANEJO DE ERRORES HTTP - Actualizadas con componentes
+// PÁGINAS DE MANEJO DE ERRORES HTTP
 import BadRequest from './pages/errors/BadRequest';
 import Unauthorized from './pages/errors/Unauthorized';
 import Forbidden from './pages/errors/Forbidden';
@@ -64,9 +62,8 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        {/* Boundary de error para capturar errores de React */}
         <RouteErrorBoundary>
-          {/* Configuración de notificaciones toast con estilos personalizados */}
+          {/* Configuración de notificaciones toast */}
           <Toaster
             position="top-right"
             toastOptions={{
@@ -80,7 +77,6 @@ function App() {
                 border: '1px solid #E5E7EB',
                 boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
               },
-              // Estilos para notificaciones de éxito
               success: {
                 duration: 4000,
                 style: {
@@ -94,7 +90,6 @@ function App() {
                   secondary: '#10B981',
                 },
               },
-              // Estilos para notificaciones de error
               error: {
                 duration: 4000,
                 style: {
@@ -108,7 +103,6 @@ function App() {
                   secondary: '#EF4444',
                 },
               },
-              // Estilos para notificaciones de carga
               loading: {
                 style: {
                   background: '#F3F4F6',
@@ -146,7 +140,7 @@ function App() {
             <Route path="/privacyPolicies" element={<PrivacyPolicies />} />
             <Route path="/termsandConditions" element={<TermsandConditions />} />
 
-            {/* RUTAS DE MANEJO DE ERRORES HTTP - Acceso directo */}
+            {/* RUTAS DE MANEJO DE ERRORES HTTP */}
             <Route path="/error/400" element={<BadRequest />} />
             <Route path="/error/401" element={<Unauthorized />} />
             <Route path="/error/403" element={<Forbidden />} />
@@ -155,149 +149,154 @@ function App() {
 
             {/* 
               RUTAS PROTEGIDAS DEL ADMINISTRADOR 
-              CORREGIDO: Usando StrictProtectedRoutes para SIEMPRE mostrar páginas de error
+              COMPORTAMIENTO:
+              - Usuario no autenticado: Redirige a /login (NO página 401)
+              - Cliente autenticado: Muestra página 403 (Acceso Prohibido)
+              - Admin autenticado: Acceso permitido
             */}
             <Route 
               path="/dashboard"
               element={
-                <StrictProtectedRoutes requiredUserType="admin">
+                <ProtectedRoutes requiredUserType="admin">
                   <Dashboard />
-                </StrictProtectedRoutes>
+                </ProtectedRoutes>
               }
             />
 
             <Route 
               path="/media"
               element={
-                <StrictProtectedRoutes requiredUserType="admin">
+                <ProtectedRoutes requiredUserType="admin">
                   <MediaManager />
-                </StrictProtectedRoutes>
+                </ProtectedRoutes>
               }
             />
 
             <Route 
               path="/products"
               element={
-                <StrictProtectedRoutes requiredUserType="admin">
+                <ProtectedRoutes requiredUserType="admin">
                   <ProductsManager />
-                </StrictProtectedRoutes>
+                </ProtectedRoutes>
               }
             />
 
             <Route 
               path="/sales"
               element={
-                <StrictProtectedRoutes requiredUserType="admin">
+                <ProtectedRoutes requiredUserType="admin">
                   <SalesManager />
-                </StrictProtectedRoutes>
+                </ProtectedRoutes>
               }
             />
 
             <Route 
               path="/categories"
               element={
-                <StrictProtectedRoutes requiredUserType="admin">
+                <ProtectedRoutes requiredUserType="admin">
                   <CategoriesManager />
-                </StrictProtectedRoutes>
+                </ProtectedRoutes>
               }
             />
 
             <Route 
               path="/reviews"
               element={
-                <StrictProtectedRoutes requiredUserType="admin">
+                <ProtectedRoutes requiredUserType="admin">
                   <ReviewsManager />
-                </StrictProtectedRoutes>
+                </ProtectedRoutes>
               }
             />
 
-            {/* Ruta para el gestor de chat - solo administradores */}
             <Route 
               path="/chat"
               element={
-                <StrictProtectedRoutes requiredUserType="admin">
+                <ProtectedRoutes requiredUserType="admin">
                   <ChatManager />
-                </StrictProtectedRoutes>
+                </ProtectedRoutes>
               }
             />
 
             <Route 
               path="/customProductsMaterials"
               element={
-                <StrictProtectedRoutes requiredUserType="admin">
+                <ProtectedRoutes requiredUserType="admin">
                   <CustomProductsManager />
-                </StrictProtectedRoutes>
+                </ProtectedRoutes>
               }
             />
 
             {/* 
               RUTAS PROTEGIDAS DEL CLIENTE 
-              CORREGIDO: Usando StrictProtectedRoutes para SIEMPRE mostrar páginas de error
+              COMPORTAMIENTO:
+              - Usuario no autenticado: Redirige a /login (NO página 401)
+              - Admin autenticado: Muestra página 403 (Acceso Prohibido)
+              - Cliente autenticado: Acceso permitido
             */}
             <Route 
               path="/saves"
               element={
-                <StrictProtectedRoutes requiredUserType="Customer">
+                <ProtectedRoutes requiredUserType="Customer">
                   <Saves />
-                </StrictProtectedRoutes>
+                </ProtectedRoutes>
               }
             />
 
             <Route 
               path="/profile"
               element={
-                <StrictProtectedRoutes requiredUserType="Customer">
+                <ProtectedRoutes requiredUserType="Customer">
                   <Profile />
-                </StrictProtectedRoutes>
+                </ProtectedRoutes>
               }
             />
 
             <Route 
               path="/orderdetails"
               element={
-                <StrictProtectedRoutes requiredUserType="Customer">
+                <ProtectedRoutes requiredUserType="Customer">
                   <OrderDetail />
-                </StrictProtectedRoutes>
+                </ProtectedRoutes>
               }
             />
 
             <Route 
               path="/shoppingCart"
               element={
-                <StrictProtectedRoutes requiredUserType="Customer">
+                <ProtectedRoutes requiredUserType="Customer">
                   <ShoppingCart />
-                </StrictProtectedRoutes>
+                </ProtectedRoutes>
               }
             />
 
             <Route 
               path="/customProducts"
               element={
-                <StrictProtectedRoutes requiredUserType="Customer">
+                <ProtectedRoutes requiredUserType="Customer">
                   <CustomProducts />
-                </StrictProtectedRoutes>
+                </ProtectedRoutes>
               }
             />
 
             <Route 
               path="/paymentProcess"
               element={
-                <StrictProtectedRoutes requiredUserType="Customer">
+                <ProtectedRoutes requiredUserType="Customer">
                   <PaymentProcessPage />
-                </StrictProtectedRoutes>
+                </ProtectedRoutes>
               }
             />
 
             <Route 
               path="/ruleta"
               element={
-                <StrictProtectedRoutes requiredUserType="Customer">
+                <ProtectedRoutes requiredUserType="Customer">
                   <RuletaPage />
-                </StrictProtectedRoutes>
+                </ProtectedRoutes>
               }
             />
 
-            {/* Ruta de fallback - redirige a la página 404 personalizada */}
+            {/* Ruta de fallback */}
             <Route path='*' element={<NotFound />} />
           </Routes>
         </RouteErrorBoundary>

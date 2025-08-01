@@ -1,7 +1,13 @@
 /**
- * Context de autenticación para la aplicación
+ * Context de autenticación para la aplicación - ACTUALIZADO
  * Maneja el estado global de autenticación del usuario, login, logout
  * y verificación del estado de autenticación mediante cookies
+ * 
+ * NUEVAS FUNCIONALIDADES AGREGADAS:
+ * - Estado isLoggingOut para evitar interferencias durante logout
+ * - Mejor manejo de transiciones de estado
+ * - Evita redirecciones a páginas 401 durante procesos normales
+ * - Mantiene todas las funcionalidades existentes
  */
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
@@ -83,15 +89,20 @@ const validators = {
  * Proveedor del contexto de autenticación
  */
 export const AuthProvider = ({ children }) => {
-    // Estados del contexto de autenticación
+    // Estados del contexto de autenticación (EXISTENTES)
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [userInfo, setUserInfo] = useState(null);
     const [authError, setAuthError] = useState(null);
+    
+    // NUEVOS ESTADOS para manejo de páginas de error
+    const [isLoggingOut, setIsLoggingOut] = useState(false); // Evita interferencias durante logout
+    const [isLoggingIn, setIsLoggingIn] = useState(false); // Evita interferencias durante login
 
     /**
      * Obtiene el token de autenticación de las cookies
+     * (FUNCIÓN EXISTENTE - Sin cambios)
      */
     const getTokenFromCookies = () => {
         try {
@@ -117,6 +128,7 @@ export const AuthProvider = ({ children }) => {
 
     /**
      * Decodifica un token JWT - simplificado
+     * (FUNCIÓN EXISTENTE - Sin cambios)
      */
     const decodeToken = (token) => {
         try {
@@ -161,7 +173,7 @@ export const AuthProvider = ({ children }) => {
 
     /**
      * Obtiene información completa del usuario desde el servidor
-     * CORREGIDO: Mejorado manejo de errores y datos
+     * (FUNCIÓN EXISTENTE - Sin cambios)
      */
     const getUserInfo = async () => {
         try {
@@ -200,11 +212,42 @@ export const AuthProvider = ({ children }) => {
     };
 
     /**
+     * Limpia todos los datos de autenticación
+     * MEJORADA: Ahora considera si es logout voluntario
+     */
+    const clearAuthData = (isVoluntaryLogout = false) => {
+        try {
+            console.log('Limpiando datos de autenticación...', { isVoluntaryLogout });
+            
+            if (typeof document !== 'undefined') {
+                document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            }
+            
+            setUser(null);
+            setIsAuthenticated(false);
+            setUserInfo(null);
+            
+            // NUEVO: Solo limpiar errores si es logout voluntario o login fallido
+            if (isVoluntaryLogout) {
+                setAuthError(null);
+            }
+        } catch (error) {
+            console.error('Error al limpiar los datos de autenticación:', error);
+        }
+    };
+
+    /**
      * Verifica el estado de autenticación del usuario
-     * CORREGIDO: Siempre obtiene la información del usuario después de verificar el token
+     * MEJORADA: No ejecuta durante procesos de login/logout
      */
     const checkAuthStatus = async () => {
         try {
+            // NUEVO: No verificar si se está haciendo login o logout
+            if (isLoggingOut || isLoggingIn) {
+                console.log('Proceso de autenticación en progreso, saltando verificación');
+                return;
+            }
+
             setLoading(true);
             setAuthError(null);
             
@@ -233,51 +276,32 @@ export const AuthProvider = ({ children }) => {
                     await getUserInfo();
                 } else {
                     console.info('Token expirado o inválido');
-                    clearAuthData();
+                    clearAuthData(false); // No es logout voluntario
                 }
             } else {
-                console.info('ℹNo se encontró token');
-                clearAuthData();
+                console.info('No se encontró token');
+                clearAuthData(false); // No es logout voluntario
             }
         } catch (error) {
             console.error('Error al verificar la autenticación:', error);
             setAuthError('Error al verificar el estado de autenticación');
-            clearAuthData();
+            clearAuthData(false);
         } finally {
             setLoading(false);
         }
     };
 
     /**
-     * Limpia todos los datos de autenticación
-     */
-    const clearAuthData = () => {
-        try {
-            console.log('Limpiando datos de autenticación...');
-            
-            if (typeof document !== 'undefined') {
-                document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-            }
-            
-            setUser(null);
-            setIsAuthenticated(false);
-            setUserInfo(null);
-            setAuthError(null);
-        } catch (error) {
-            console.error(' Error al limpiar los datos de autenticación:', error);
-        }
-    };
-
-    /**
-     * Función de login CORREGIDA
-     * Ahora obtiene la información del usuario después del login exitoso
+     * Función de login MEJORADA
+     * Mantiene toda la funcionalidad existente + mejoras para páginas de estado
      */
     const login = async (email, password) => {
         try {
+            setIsLoggingIn(true); // NUEVO: Marcar inicio de login
             setAuthError(null);
             console.log('Iniciando proceso de login...');
             
-            // Validación básica de entrada
+            // Validación básica de entrada (EXISTENTE)
             const emailValidation = validators.email(email);
             if (!emailValidation.isValid) {
                 setAuthError(emailValidation.error);
@@ -302,7 +326,7 @@ export const AuthProvider = ({ children }) => {
             const data = await response.json();
             console.log('Login response:', data);
 
-            // Aceptar ambos mensajes posibles de éxito
+            // Aceptar ambos mensajes posibles de éxito (EXISTENTE)
             if (data.message === "login successful" || data.message === "Inicio de sesión exitoso") {
                 console.log('Login exitoso detectado');
                 
@@ -356,70 +380,100 @@ export const AuthProvider = ({ children }) => {
             const errorMsg = 'Error de conexión con el servidor';
             setAuthError(errorMsg);
             return { success: false, message: errorMsg };
+        } finally {
+            setIsLoggingIn(false); // NUEVO: Finalizar proceso de login
         }
     };
 
     /**
-     * Función de logout
+     * Función de logout MEJORADA
+     * Mantiene toda la funcionalidad existente + mejoras para páginas de estado
      */
     const logout = async () => {
         try {
+            setIsLoggingOut(true); // NUEVO: Marcar inicio de logout
             setAuthError(null);
             
-            const response = await fetch('http://localhost:4000/api/logout', {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
+            console.log('Iniciando proceso de logout...');
+            
+            try {
+                // Intentar hacer logout en el servidor (EXISTENTE)
+                const response = await fetch('http://localhost:4000/api/logout', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
 
-            clearAuthData();
-
-            if (response && response.ok) {
-                console.log('Sesión cerrada correctamente en el servidor');
-                return { success: true };
-            } else {
-                console.warn('Error al cerrar sesión en el servidor, pero el estado local fue limpiado');
-                return { success: true, warning: 'Sesión cerrada localmente' };
+                if (response && response.ok) {
+                    console.log('Sesión cerrada correctamente en el servidor');
+                } else {
+                    console.warn('Error al cerrar sesión en el servidor, pero continuando con logout local');
+                }
+            } catch (serverError) {
+                console.warn('Error de red al cerrar sesión en el servidor, continuando localmente:', serverError);
             }
+
+            // Limpiar datos locales (MEJORADO)
+            clearAuthData(true); // NUEVO: Marcar como logout voluntario
+            
+            console.log('Logout completado correctamente');
+            return { success: true };
+
         } catch (error) {
-            console.error('Error de red al cerrar sesión:', error);
-            clearAuthData();
+            console.error('Error durante logout:', error);
+            // Aún así limpiar datos locales
+            clearAuthData(true);
             return { success: true, warning: 'Sesión cerrada localmente' };
+        } finally {
+            setIsLoggingOut(false); // NUEVO: Finalizar proceso de logout
         }
     };
 
     /**
      * Limpia errores de autenticación
+     * (FUNCIÓN EXISTENTE - Sin cambios)
      */
     const clearAuthError = () => {
         setAuthError(null);
     };
 
     // Verificar estado de autenticación al cargar la aplicación
+    // MEJORADO: Solo si no hay procesos de auth en curso
     useEffect(() => {
-        console.log('Inicializando AuthProvider...');
-        checkAuthStatus();
-    }, []);
+        if (!isLoggingOut && !isLoggingIn) {
+            console.log('Inicializando AuthProvider...');
+            checkAuthStatus();
+        }
+    }, [isLoggingOut, isLoggingIn]);
 
-    // Debug: Mostrar cambios en el estado
+    // Debug: Mostrar cambios en el estado (MEJORADO)
     useEffect(() => {
         console.log('Estado de autenticación actualizado:', {
             isAuthenticated,
             hasUser: !!user,
             hasUserInfo: !!userInfo,
-            userType: user?.userType
+            userType: user?.userType,
+            isLoggingOut,
+            isLoggingIn
         });
-    }, [isAuthenticated, user, userInfo]);
+    }, [isAuthenticated, user, userInfo, isLoggingOut, isLoggingIn]);
 
-    // Valor del contexto
+    // Valor del contexto (AMPLIADO con nuevos estados)
     const contextValue = {
+        // Estados existentes
         user,
         userInfo,
         loading,
         isAuthenticated,
         authError,
+        
+        // NUEVOS estados para páginas de error
+        isLoggingOut,
+        isLoggingIn,
+        
+        // Funciones existentes
         login,
         logout,
         checkAuthStatus,

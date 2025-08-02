@@ -13,17 +13,17 @@ const validateRating = (rating) => {
     if (rating === undefined || rating === null) {
         return { isValid: false, error: "La calificación es requerida" };
     }
-    
+
     const numericRating = parseInt(rating);
-    
+
     if (isNaN(numericRating)) {
         return { isValid: false, error: "La calificación debe ser un número" };
     }
-    
+
     if (numericRating < 1 || numericRating > 5) {
         return { isValid: false, error: "La calificación debe estar entre 1 y 5" };
     }
-    
+
     return { isValid: true, value: numericRating };
 };
 
@@ -32,23 +32,23 @@ const validateMessage = (message) => {
     if (!message || typeof message !== 'string') {
         return { isValid: false, error: "El mensaje es requerido" };
     }
-    
+
     const trimmedMessage = message.trim();
-    
+
     if (trimmedMessage.length < 10) {
         return { isValid: false, error: "El mensaje debe tener al menos 10 caracteres" };
     }
-    
+
     if (trimmedMessage.length > 1000) {
         return { isValid: false, error: "El mensaje no puede exceder 1000 caracteres" };
     }
-    
+
     // Validar caracteres especiales maliciosos
     const dangerousChars = /<script|javascript:|on\w+=/i;
     if (dangerousChars.test(trimmedMessage)) {
         return { isValid: false, error: "El mensaje contiene contenido no permitido" };
     }
-    
+
     return { isValid: true, value: trimmedMessage };
 };
 
@@ -57,38 +57,38 @@ const validateProducts = (products) => {
     if (!products || !Array.isArray(products) || products.length === 0) {
         return { isValid: false, error: "Se requiere al menos un producto" };
     }
-    
+
     if (products.length > 10) {
         return { isValid: false, error: "Máximo 10 productos por reseña" };
     }
-    
+
     for (let i = 0; i < products.length; i++) {
         const product = products[i];
-        
+
         if (!product.itemType || !['product', 'custom'].includes(product.itemType)) {
-            return { 
-                isValid: false, 
-                error: `Tipo de producto inválido en posición ${i + 1}. Debe ser 'product' o 'custom'` 
+            return {
+                isValid: false,
+                error: `Tipo de producto inválido en posición ${i + 1}. Debe ser 'product' o 'custom'`
             };
         }
-        
+
         if (!product.itemId || !isValidObjectId(product.itemId)) {
-            return { 
-                isValid: false, 
-                error: `ID de producto inválido en posición ${i + 1}` 
+            return {
+                isValid: false,
+                error: `ID de producto inválido en posición ${i + 1}`
             };
         }
-        
+
         // Validar itemTypeRef
         const validRefs = { product: 'products', custom: 'CustomProducts' };
         if (!product.itemTypeRef || product.itemTypeRef !== validRefs[product.itemType]) {
-            return { 
-                isValid: false, 
-                error: `Referencia de tipo incorrecta en posición ${i + 1}` 
+            return {
+                isValid: false,
+                error: `Referencia de tipo incorrecta en posición ${i + 1}`
             };
         }
     }
-    
+
     return { isValid: true };
 };
 
@@ -97,23 +97,23 @@ const validateResponse = (response) => {
     if (!response || typeof response !== 'string') {
         return { isValid: false, error: "La respuesta es requerida" };
     }
-    
+
     const trimmedResponse = response.trim();
-    
+
     if (trimmedResponse.length < 10) {
         return { isValid: false, error: "La respuesta debe tener al menos 10 caracteres" };
     }
-    
+
     if (trimmedResponse.length > 1000) {
         return { isValid: false, error: "La respuesta no puede exceder 1000 caracteres" };
     }
-    
+
     // Validar caracteres especiales maliciosos
     const dangerousChars = /<script|javascript:|on\w+=/i;
     if (dangerousChars.test(trimmedResponse)) {
         return { isValid: false, error: "La respuesta contiene contenido no permitido" };
     }
-    
+
     return { isValid: true, value: trimmedResponse };
 };
 
@@ -131,48 +131,48 @@ const getPopulateOptions = () => ({
 const getClientPopulateOptions = () => ({
     path: 'clientId',
     model: 'Clients',
-    select: 'fullName email phone profilePicture'
+    select: 'fullName email phone profilePicture createdAt'
 });
 
 // CORREGIDO: Devolver array directo para compatibilidad con frontend
 reviewsController.getReviews = async (req, res) => {
     try {
         const { page = 1, limit = 10, status, rating } = req.query;
-        
+
         // Validar parámetros de paginación
         const pageNum = parseInt(page);
         const limitNum = parseInt(limit);
-        
+
         if (isNaN(pageNum) || pageNum < 1) {
             return res.status(400).json({
                 success: false,
                 message: "Número de página inválido"
             });
         }
-        
+
         if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
             return res.status(400).json({
                 success: false,
                 message: "Límite inválido (1-100)"
             });
         }
-        
+
         // Construir filtros
         const filters = {};
-        
+
         if (status && ['pending', 'replied'].includes(status)) {
             filters.status = status;
         }
-        
+
         if (rating) {
             const ratingValidation = validateRating(rating);
             if (ratingValidation.isValid) {
                 filters.rating = ratingValidation.value;
             }
         }
-        
+
         const skip = (pageNum - 1) * limitNum;
-        
+
         const [reviews, totalCount] = await Promise.all([
             reviewsModel.find(filters)
                 .populate(getClientPopulateOptions())
@@ -189,10 +189,10 @@ reviewsController.getReviews = async (req, res) => {
         res.status(200).json(reviews);
     } catch (error) {
         console.error('Error en getReviews:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             success: false,
-            message: "Error interno del servidor al obtener las reseñas", 
-            error: error.message 
+            message: "Error interno del servidor al obtener las reseñas",
+            error: error.message
         });
     }
 };
@@ -200,22 +200,22 @@ reviewsController.getReviews = async (req, res) => {
 reviewsController.getReviewById = async (req, res) => {
     try {
         const { id } = req.params;
-        
+
         if (!isValidObjectId(id)) {
             return res.status(400).json({
                 success: false,
                 message: "ID de reseña no válido"
             });
         }
-        
+
         const review = await reviewsModel.findById(id)
             .populate(getClientPopulateOptions())
             .populate(getPopulateOptions());
 
         if (!review) {
-            return res.status(404).json({ 
+            return res.status(404).json({
                 success: false,
-                message: "Reseña no encontrada" 
+                message: "Reseña no encontrada"
             });
         }
 
@@ -225,10 +225,10 @@ reviewsController.getReviewById = async (req, res) => {
         });
     } catch (error) {
         console.error('Error en getReviewById:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             success: false,
-            message: "Error interno del servidor al obtener la reseña", 
-            error: error.message 
+            message: "Error interno del servidor al obtener la reseña",
+            error: error.message
         });
     }
 };
@@ -237,26 +237,26 @@ reviewsController.getReviewByClient = async (req, res) => {
     try {
         const { clientId } = req.params;
         const { page = 1, limit = 10 } = req.query;
-        
+
         if (!isValidObjectId(clientId)) {
             return res.status(400).json({
                 success: false,
                 message: "ID de cliente no válido"
             });
         }
-        
+
         const pageNum = parseInt(page);
         const limitNum = parseInt(limit);
-        
+
         if (isNaN(pageNum) || pageNum < 1 || isNaN(limitNum) || limitNum < 1 || limitNum > 50) {
             return res.status(400).json({
                 success: false,
                 message: "Parámetros de paginación inválidos"
             });
         }
-        
+
         const skip = (pageNum - 1) * limitNum;
-        
+
         const [reviews, totalCount] = await Promise.all([
             reviewsModel.find({ clientId })
                 .populate(getClientPopulateOptions())
@@ -266,7 +266,7 @@ reviewsController.getReviewByClient = async (req, res) => {
                 .limit(limitNum),
             reviewsModel.countDocuments({ clientId })
         ]);
-        
+
         res.status(200).json({
             success: true,
             data: reviews,
@@ -278,10 +278,100 @@ reviewsController.getReviewByClient = async (req, res) => {
         });
     } catch (error) {
         console.error('Error en getReviewByClient:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             success: false,
-            message: "Error interno del servidor al obtener las reseñas del cliente", 
-            error: error.message 
+            message: "Error interno del servidor al obtener las reseñas del cliente",
+            error: error.message
+        });
+    }
+};
+
+reviewsController.getProductReviews = async (req, res) => {
+    try {
+        const { productId } = req.params;
+
+        // Validar productId
+        if (!productId || !isValidObjectId(productId)) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de producto inválido"
+            });
+        }
+
+        // Buscar todas las reseñas que contengan este producto
+        const reviews = await reviewsModel.find({
+            'products.itemId': productId,
+            'products.itemType': 'product'
+        })
+            .populate({
+                path: 'clientId',
+                model: 'Clients',
+                select: 'fullName email profilePicture createdAt'
+            })
+            .sort({ createdAt: -1 }); // Más recientes primero
+
+        console.log('Reviews encontradas:', reviews.length);
+        console.log('Primer review populado:', reviews[0]);
+
+        // Calcular estadísticas
+        const totalReviews = reviews.length;
+        let totalRating = 0;
+
+        if (totalReviews > 0) {
+            totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+        }
+
+        const averageRating = totalReviews > 0 ? (totalRating / totalReviews) : 0;
+
+        // Formatear respuesta
+        const formattedReviews = reviews.map(review => {
+            console.log('Procesando review:', {
+                id: review._id,
+                clientId: review.clientId,
+                hasClient: !!review.clientId,
+                clientName: review.clientId?.fullName
+            });
+
+            return {
+                _id: review._id,
+                clientId: review.clientId,
+                clientName: review.clientId?.fullName || 'Usuario anónimo',
+                clientEmail: review.clientId?.email,
+                clientProfilePicture: review.clientId?.profilePicture,
+                rating: review.rating,
+                message: review.message,
+                response: review.response,
+                status: review.status,
+                createdAt: review.createdAt,
+                updatedAt: review.updatedAt
+            };
+        });
+
+        res.status(200).json({
+            success: true,
+            message: "Reseñas obtenidas exitosamente",
+            data: {
+                reviews: formattedReviews,
+                totalReviews,
+                averageRating: Math.round(averageRating * 10) / 10,
+                productId
+            }
+        });
+
+    } catch (error) {
+        console.error('Error en getProductReviews:', error);
+
+        if (error.name === 'CastError') {
+            return res.status(400).json({
+                success: false,
+                message: "ID de producto con formato incorrecto"
+            });
+        }
+
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor al obtener las reseñas",
+            error: error.message
         });
     }
 };
@@ -336,17 +426,22 @@ reviewsController.createReview = async (req, res) => {
 
         // Populate la respuesta
         const populatedReview = await reviewsModel.findById(newReview._id)
-            .populate(getClientPopulateOptions())
-            .populate(getPopulateOptions());
+            .populate({
+                path: 'clientId',
+                model: 'Clients',
+                select: 'fullName email profilePicture createdAt'
+            });
 
-        res.status(201).json({ 
+        console.log('Nueva review creada y populada: ', populatedReview);
+
+        res.status(201).json({
             success: true,
-            message: "Reseña guardada exitosamente", 
-            data: populatedReview 
+            message: "Reseña guardada exitosamente",
+            data: populatedReview
         });
     } catch (error) {
         console.error('Error en createReview:', error);
-        
+
         if (error.name === 'ValidationError') {
             return res.status(400).json({
                 success: false,
@@ -354,18 +449,18 @@ reviewsController.createReview = async (req, res) => {
                 details: Object.values(error.errors).map(err => err.message)
             });
         }
-        
+
         if (error.name === 'CastError') {
             return res.status(400).json({
                 success: false,
                 message: "Datos con formato incorrecto"
             });
         }
-        
-        res.status(500).json({ 
+
+        res.status(500).json({
             success: false,
-            message: "Error interno del servidor al crear la reseña", 
-            error: error.message 
+            message: "Error interno del servidor al crear la reseña",
+            error: error.message
         });
     }
 };
@@ -450,16 +545,16 @@ reviewsController.updateReview = async (req, res) => {
             updateData,
             { new: true, runValidators: true }
         ).populate(getClientPopulateOptions())
-         .populate(getPopulateOptions());
+            .populate(getPopulateOptions());
 
-        res.status(200).json({ 
+        res.status(200).json({
             success: true,
-            message: "Reseña actualizada exitosamente", 
-            data: updatedReview 
+            message: "Reseña actualizada exitosamente",
+            data: updatedReview
         });
     } catch (error) {
         console.error('Error en updateReview:', error);
-        
+
         if (error.name === 'ValidationError') {
             return res.status(400).json({
                 success: false,
@@ -467,18 +562,18 @@ reviewsController.updateReview = async (req, res) => {
                 details: Object.values(error.errors).map(err => err.message)
             });
         }
-        
+
         if (error.name === 'CastError') {
             return res.status(400).json({
                 success: false,
                 message: "Datos con formato incorrecto"
             });
         }
-        
-        res.status(500).json({ 
+
+        res.status(500).json({
             success: false,
-            message: "Error interno del servidor al actualizar la reseña", 
-            error: error.message 
+            message: "Error interno del servidor al actualizar la reseña",
+            error: error.message
         });
     }
 };
@@ -497,13 +592,13 @@ reviewsController.deleteReview = async (req, res) => {
         const deletedReview = await reviewsModel.findByIdAndDelete(id);
 
         if (!deletedReview) {
-            return res.status(404).json({ 
+            return res.status(404).json({
                 success: false,
-                message: "Reseña no encontrada" 
+                message: "Reseña no encontrada"
             });
         }
 
-        res.status(200).json({ 
+        res.status(200).json({
             success: true,
             message: "Reseña eliminada exitosamente",
             data: {
@@ -512,10 +607,10 @@ reviewsController.deleteReview = async (req, res) => {
         });
     } catch (error) {
         console.error('Error en deleteReview:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             success: false,
-            message: "Error interno del servidor al eliminar la reseña", 
-            error: error.message 
+            message: "Error interno del servidor al eliminar la reseña",
+            error: error.message
         });
     }
 };
@@ -534,9 +629,9 @@ reviewsController.moderateReview = async (req, res) => {
         }
 
         if (!['approve', 'reject'].includes(action)) {
-            return res.status(400).json({ 
+            return res.status(400).json({
                 success: false,
-                message: "Acción inválida. Use 'approve' o 'reject'" 
+                message: "Acción inválida. Use 'approve' o 'reject'"
             });
         }
 
@@ -547,26 +642,26 @@ reviewsController.moderateReview = async (req, res) => {
             { status },
             { new: true, runValidators: true }
         ).populate(getClientPopulateOptions())
-         .populate(getPopulateOptions());
+            .populate(getPopulateOptions());
 
         if (!updatedReview) {
-            return res.status(404).json({ 
+            return res.status(404).json({
                 success: false,
-                message: "Reseña no encontrada" 
+                message: "Reseña no encontrada"
             });
         }
 
-        res.status(200).json({ 
+        res.status(200).json({
             success: true,
-            message: "Reseña moderada exitosamente", 
-            data: updatedReview 
+            message: "Reseña moderada exitosamente",
+            data: updatedReview
         });
     } catch (error) {
         console.error('Error en moderateReview:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             success: false,
-            message: "Error interno del servidor al moderar la reseña", 
-            error: error.message 
+            message: "Error interno del servidor al moderar la reseña",
+            error: error.message
         });
     }
 };
@@ -579,18 +674,18 @@ reviewsController.replyToReview = async (req, res) => {
         console.log('Full req.path:', req.path);
         console.log('Review ID:', req.params.id);
         console.log('Request body:', req.body);
-        
+
         const { id } = req.params;
         const { response } = req.body;
-        
+
         // Validaciones
         if (!isValidObjectId(id)) {
-            return res.status(400).json({ 
+            return res.status(400).json({
                 success: false,
-                message: 'ID de reseña no válido' 
+                message: 'ID de reseña no válido'
             });
         }
-        
+
         const responseValidation = validateResponse(response);
         if (!responseValidation.isValid) {
             return res.status(400).json({
@@ -611,29 +706,29 @@ reviewsController.replyToReview = async (req, res) => {
         // Actualizar en la base de datos y poblar los datos relacionados
         const updatedReview = await reviewsModel.findByIdAndUpdate(
             id,
-            { 
+            {
                 response: responseValidation.value,
                 status: 'replied'
             },
             { new: true, runValidators: true }
         )
-        .populate(getClientPopulateOptions())
-        .populate(getPopulateOptions());
-        
+            .populate(getClientPopulateOptions())
+            .populate(getPopulateOptions());
+
         console.log('Reseña actualizada exitosamente:', updatedReview);
-        
-        res.status(200).json({ 
-            success: true, 
+
+        res.status(200).json({
+            success: true,
             message: 'Respuesta guardada correctamente',
-            data: updatedReview 
+            data: updatedReview
         });
-        
+
     } catch (error) {
         console.error('Error en replyToReview backend:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             success: false,
             message: "Error interno del servidor al responder la reseña",
-            error: error.message 
+            error: error.message
         });
     }
 };
@@ -694,10 +789,10 @@ reviewsController.getReviewStats = async (req, res) => {
         });
     } catch (error) {
         console.error('Error en getReviewStats:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             success: false,
-            message: "Error interno del servidor al obtener estadísticas", 
-            error: error.message 
+            message: "Error interno del servidor al obtener estadísticas",
+            error: error.message
         });
     }
 };
@@ -705,7 +800,7 @@ reviewsController.getReviewStats = async (req, res) => {
 reviewsController.getBestRankedProducts = async (req, res) => {
     try {
         const { limit = 10 } = req.query;
-        
+
         const limitNum = parseInt(limit);
         if (isNaN(limitNum) || limitNum < 1 || limitNum > 50) {
             return res.status(400).json({

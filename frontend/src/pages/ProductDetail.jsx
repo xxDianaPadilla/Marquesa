@@ -38,9 +38,9 @@ const ProductDetail = () => {
   console.log('ID from useParams:', id);
   console.log('Type of ID:', typeof id);
   console.log('URL actual:', window.location.href);
-  console.log('Auth state:', { 
-    isAuthenticated, 
-    hasUser: !!user, 
+  console.log('Auth state:', {
+    isAuthenticated,
+    hasUser: !!user,
     hasUserInfo: !!userInfo,
     userId: user?.id,
     authLoading
@@ -93,10 +93,10 @@ const ProductDetail = () => {
   };
 
   // Debug del renderizado del componente
-  console.log('🎬 RENDERIZANDO COMPONENTE CON:', { 
-    hasProduct: !!product, 
+  console.log('🎬 RENDERIZANDO COMPONENTE CON:', {
+    hasProduct: !!product,
     productName: product?.name,
-    loading, 
+    loading,
     error,
     hasUser: !!user,
     userId: user?.id
@@ -175,7 +175,7 @@ const ProductDetail = () => {
   return (
     <div>
       <Header />
-      
+
       {/* Navegación de categorías arriba del producto */}
       <section className="bg-white pt-2 sm:pt-4 pb-4 sm:pb-6">
         <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
@@ -199,34 +199,38 @@ const ProductDetail = () => {
         {/* Layout en dos columnas: imágenes e info */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
           {/* Muestra las imágenes del producto con posibilidad de selección */}
-          <ProductImages 
+          <ProductImages
             sampleImages={product.images || []}
-            selectedImage={selectedImage} 
-            setSelectedImage={setSelectedImage} 
+            selectedImage={selectedImage}
+            setSelectedImage={setSelectedImage}
           />
-          
+
           <div>
             {/* Información del producto: nombre, precio, stock, botón, etc. */}
-            <ProductInfo 
-              product={product} 
-              quantity={quantity} 
-              setQuantity={setQuantity} 
+            <ProductInfo
+              product={product}
+              quantity={quantity}
+              setQuantity={setQuantity}
               handleCustomProductClick={handleCustomProductClick}
               user={user} // Datos básicos del token
               userInfo={userInfo} // Información completa del usuario
               isAuthenticated={isAuthenticated} // Estado de autenticación
             />
             {/* Pestañas de descripción, detalles y envío */}
-            <ProductTabs 
-              tab={tab} 
-              setTab={setTab} 
-              product={product} 
+            <ProductTabs
+              tab={tab}
+              setTab={setTab}
+              product={product}
             />
           </div>
         </div>
 
         {/* Reseñas del producto: promedio, cantidad y comentarios */}
-        <ProductReviews reviews={product.reviews || { average: 0, count: 0, comments: [] }} />
+        <ProductReviews
+          productId={product._id}
+          user={user}
+          isAuthenticated={isAuthenticated}
+        />
       </div>
 
       {/* Muestra productos recomendados al final */}

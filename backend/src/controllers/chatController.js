@@ -7,48 +7,173 @@ import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import { v2 as cloudinary } from 'cloudinary';
 import { config } from '../config.js';
 
-// Configurar Cloudinary
+/**
+ * Controlador de Chat - CORREGIDO PARA CONVERSACIONES VACÍAS Y ACTUALIZACIONES EN TIEMPO REAL
+ * 
+ * FIXES IMPLEMENTADOS:
+ * - Conversaciones solo aparecen cuando tienen al menos 1 mensaje
+ * - Mejor actualización en tiempo real del último mensaje
+ * - Actualización correcta de contadores de mensajes no leídos
+ * - Eliminación automática de conversaciones huérfanas
+ * - Límite de 75 mensajes funcionando correctamente
+ * 
+ * Ubicación: backend/src/controllers/chatController.js
+ */
+
+// ============ CONFIGURACIÓN CLOUDINARY ============
 cloudinary.config({
     cloud_name: config.cloudinary.cloud_name,
     api_key: config.cloudinary.cloudinary_api_key,
     api_secret: config.cloudinary.cloudinary_api_secret
 });
 
-// Configurar almacenamiento en Cloudinary para archivos multimedia
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
         folder: 'chat_media',
         allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx', 'mp4', 'mp3', 'wav'],
-        transformation: [
-            { width: 800, height: 600, crop: 'limit', quality: 'auto' }
-        ]
+        transformation: [{ width: 800, height: 600, crop: 'limit', quality: 'auto' }]
     }
 });
 
 export const upload = multer({ 
     storage: storage,
-    limits: {
-        fileSize: 10 * 1024 * 1024 // 10MB límite
-    }
+    limits: { fileSize: 10 * 1024 * 1024 }
 });
 
-const chatController = {};
+// ============ CONSTANTES ============
+const MAX_MESSAGES_PER_CONVERSATION = 75;
 
-// Función para generar ID único de conversación
+// ============ FUNCIONES AUXILIARES ============
+
+/**
+ * Genera ID único de conversación
+ */
 const generateConversationId = (clientId) => {
     return `chat_${clientId}_${Date.now()}`;
 };
 
-// Obtener o crear conversación
+/**
+ * Verifica si un cliente existe
+ */
+const validateClientExists = async (clientId) => {
+    try {
+        const client = await clientsModel.findById(clientId).lean();
+        return !!client;
+    } catch (error) {
+        return false;
+    }
+};
+
+/**
+ * FUNCIÓN CORREGIDA: Aplica límite de 75 mensajes y elimina antiguos
+ */
+const enforceMessageLimit = async (conversationId) => {
+    try {
+        const messageCount = await ChatMessage.countDocuments({ 
+            conversationId, 
+            isDeleted: false 
+        });
+        
+        if (messageCount > MAX_MESSAGES_PER_CONVERSATION) {
+            const messagesToDelete = messageCount - MAX_MESSAGES_PER_CONVERSATION;
+            
+            const oldestMessages = await ChatMessage.find({ 
+                conversationId, 
+                isDeleted: false 
+            })
+            .sort({ createdAt: 1 })
+            .limit(messagesToDelete)
+            .select('_id');
+            
+            const messageIds = oldestMessages.map(msg => msg._id);
+            await ChatMessage.updateMany(
+                { _id: { $in: messageIds } },
+                { 
+                    isDeleted: true, 
+                    deletedAt: new Date(),
+                    deletedBy: 'system'
+                }
+            );
+        }
+    } catch (error) {
+        console.error('Error aplicando límite:', error);
+    }
+};
+
+/**
+ * FUNCIÓN CORREGIDA: Actualiza el último mensaje válido
+ */
+const updateConversationLastMessage = async (conversationId) => {
+    try {
+        // Buscar el último mensaje NO ELIMINADO
+        const lastMessage = await ChatMessage.findOne({
+            conversationId,
+            isDeleted: false
+        })
+        .sort({ createdAt: -1 })
+        .lean();
+        
+        const updateData = {};
+        
+        if (lastMessage) {
+            updateData.lastMessage = lastMessage.message || 
+                (lastMessage.media ? '📎 Archivo multimedia' : 'Sin contenido');
+            updateData.lastMessageAt = lastMessage.createdAt;
+        } else {
+            updateData.lastMessage = '';
+            updateData.lastMessageAt = new Date();
+        }
+        
+        await ChatConversation.findOneAndUpdate(
+            { conversationId },
+            updateData
+        );
+        
+    } catch (error) {
+        console.error('Error actualizando último mensaje:', error);
+    }
+};
+
+/**
+ * FUNCIÓN CORREGIDA: Elimina conversaciones de clientes inexistentes
+ */
+const cleanupOrphanedConversations = async () => {
+    try {
+        const conversations = await ChatConversation.find({}).lean();
+        let deletedCount = 0;
+        
+        for (const conversation of conversations) {
+            const clientExists = await validateClientExists(conversation.clientId);
+            
+            if (!clientExists) {
+                // Eliminar mensajes
+                await ChatMessage.deleteMany({ conversationId: conversation.conversationId });
+                
+                // Eliminar conversación
+                await ChatConversation.findOneAndDelete({ conversationId: conversation.conversationId });
+                
+                deletedCount++;
+            }
+        }
+        
+        return deletedCount;
+    } catch (error) {
+        console.error('Error limpiando conversaciones:', error);
+        return 0;
+    }
+};
+
+// ============ CONTROLADOR PRINCIPAL ============
+const chatController = {};
+
+/**
+ * CORREGIDO: Obtener o crear conversación - NO CREAR HASTA QUE HAYA MENSAJE
+ */
 chatController.getOrCreateConversation = async (req, res) => {
     try {
         const { clientId } = req.params;
         
-        console.log('Obteniendo conversación para cliente:', clientId);
-        console.log('Usuario autenticado:', req.user);
-        
-        // Validar usuario autenticado
         if (!req.user) {
             return res.status(401).json({
                 success: false,
@@ -56,7 +181,6 @@ chatController.getOrCreateConversation = async (req, res) => {
             });
         }
 
-        // Verificar permisos - los clientes solo pueden acceder a su propia conversación
         if (req.user.userType === 'Customer' && req.user.id !== clientId) {
             return res.status(403).json({
                 success: false,
@@ -64,32 +188,47 @@ chatController.getOrCreateConversation = async (req, res) => {
             });
         }
         
-        // Verificar que el cliente existe
         const client = await clientsModel.findById(clientId).lean();
         if (!client) {
+            await cleanupOrphanedConversations();
             return res.status(404).json({
                 success: false,
                 message: "Cliente no encontrado"
             });
         }
 
-        // Buscar conversación existente activa usando el método estático
-        let conversation = await ChatConversation.findActiveByClient(clientId);
+        // ✅ CAMBIO PRINCIPAL: Buscar conversación existente CON MENSAJES
+        let conversation = await ChatConversation.findOne({
+            clientId: clientId,
+            status: 'active'
+        });
 
-        // Si no existe, crear nueva conversación
-        if (!conversation) {
-            const conversationId = generateConversationId(clientId);
-            conversation = new ChatConversation({
-                conversationId,
-                clientId: clientId
+        // ✅ VERIFICAR QUE LA CONVERSACIÓN TENGA AL MENOS UN MENSAJE
+        if (conversation) {
+            const messageCount = await ChatMessage.countDocuments({
+                conversationId: conversation.conversationId,
+                isDeleted: false
             });
-            await conversation.save();
-            console.log('Nueva conversación creada:', conversationId);
-        } else {
-            console.log('Conversación existente encontrada:', conversation.conversationId);
+            
+            // Si no tiene mensajes, no devolver la conversación aún
+            if (messageCount === 0) {
+                conversation = null;
+            }
         }
 
-        // Preparar respuesta con información del cliente
+        // ✅ SOLO CREAR CONVERSACIÓN CUANDO SE ENVÍE EL PRIMER MENSAJE
+        // No crear automáticamente aquí
+        if (!conversation) {
+            // Para clientes, devolver null hasta que envíen el primer mensaje
+            if (req.user.userType === 'Customer') {
+                return res.status(200).json({
+                    success: true,
+                    conversation: null,
+                    message: "No hay conversación activa. Se creará al enviar el primer mensaje."
+                });
+            }
+        }
+
         const response = {
             ...conversation.toObject(),
             clientId: {
@@ -109,84 +248,194 @@ chatController.getOrCreateConversation = async (req, res) => {
         console.error('Error en getOrCreateConversation:', error);
         res.status(500).json({
             success: false,
-            message: "Error interno del servidor",
-            error: error.message
+            message: "Error interno del servidor"
         });
     }
 };
 
-// Enviar mensaje (con archivo multimedia opcional) - CORREGIDO
+/**
+ * CORREGIDO: Obtener todas las conversaciones - SOLO CON MENSAJES
+ */
+chatController.getAllConversations = async (req, res) => {
+    try {
+        if (!req.user || req.user.userType !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: "Acceso denegado"
+            });
+        }
+
+        const { page = 1, limit = 20 } = req.query;
+        
+        // PRIMERO: Limpiar conversaciones huérfanas
+        await cleanupOrphanedConversations();
+        
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        // ✅ CAMBIO PRINCIPAL: Solo obtener conversaciones que tengan mensajes
+        const conversationsWithMessages = await ChatConversation.aggregate([
+            {
+                $lookup: {
+                    from: 'chatmessages',
+                    localField: 'conversationId',
+                    foreignField: 'conversationId',
+                    as: 'messages'
+                }
+            },
+            {
+                $match: {
+                    'messages.0': { $exists: true }, // Solo conversaciones con al menos 1 mensaje
+                    'messages': { 
+                        $elemMatch: { 
+                            isDeleted: false // Al menos un mensaje no eliminado
+                        } 
+                    }
+                }
+            },
+            {
+                $sort: { lastMessageAt: -1 }
+            },
+            {
+                $skip: skip
+            },
+            {
+                $limit: parseInt(limit)
+            }
+        ]);
+
+        // SEGUNDO: Filtrar y actualizar último mensaje de cada conversación
+        const validConversations = [];
+        
+        for (const conv of conversationsWithMessages) {
+            const client = await clientsModel.findById(conv.clientId).lean();
+            
+            if (client) {
+                // Actualizar último mensaje válido
+                await updateConversationLastMessage(conv.conversationId);
+                
+                // Obtener conversación actualizada
+                const updatedConv = await ChatConversation.findOne({ 
+                    conversationId: conv.conversationId 
+                }).lean();
+                
+                validConversations.push({
+                    ...updatedConv,
+                    clientId: {
+                        _id: client._id,
+                        fullName: client.fullName,
+                        email: client.email,
+                        profilePicture: client.profilePicture || null
+                    }
+                });
+            }
+        }
+
+        // TERCERO: Contar total válido
+        const totalConversations = validConversations.length;
+
+        res.status(200).json({
+            success: true,
+            conversations: validConversations,
+            pagination: {
+                currentPage: parseInt(page),
+                totalPages: Math.ceil(totalConversations / parseInt(limit)),
+                totalConversations,
+                hasNextPage: skip + validConversations.length < totalConversations,
+                hasPrevPage: parseInt(page) > 1
+            }
+        });
+
+    } catch (error) {
+        console.error('Error en getAllConversations:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor"
+        });
+    }
+};
+
+/**
+ * CORREGIDO: Enviar mensaje - CREAR CONVERSACIÓN AL PRIMER MENSAJE
+ */
 chatController.sendMessage = async (req, res) => {
     try {
-        console.log('=== ENVIAR MENSAJE ===');
-        console.log('Body:', req.body);
-        console.log('File:', req.file);
-        console.log('User:', req.user);
-        
         const { conversationId, message } = req.body;
         
-        // Validar usuario autenticado
         if (!req.user) {
-            console.error('Usuario no autenticado');
             return res.status(401).json({
                 success: false,
                 message: "Usuario no autenticado"
             });
         }
 
-        const { id: senderId, userType: senderType } = req.user;
-
-        // Validar datos requeridos (mensaje o archivo)
-        if (!conversationId) {
-            console.error('ConversationId requerido');
-            return res.status(400).json({
-                success: false,
-                message: "ID de conversación es requerido"
-            });
-        }
-
         if (!message?.trim() && !req.file) {
-            console.error('Mensaje o archivo requerido');
             return res.status(400).json({
                 success: false,
                 message: "Debes enviar un mensaje de texto o un archivo"
             });
         }
 
-        // Verificar que la conversación existe
-        const conversation = await ChatConversation.findOne({ 
-            conversationId: conversationId 
-        });
+        let conversation;
+        let actualConversationId = conversationId;
+
+        // ✅ LÓGICA PARA CREAR CONVERSACIÓN AL PRIMER MENSAJE
+        if (!conversationId && req.user.userType === 'Customer') {
+            // Crear conversación automáticamente para el primer mensaje del cliente
+            const newConversationId = generateConversationId(req.user.id);
+            
+            conversation = new ChatConversation({
+                conversationId: newConversationId,
+                clientId: req.user.id
+            });
+            await conversation.save();
+            
+            actualConversationId = newConversationId;
+            console.log(`✅ Nueva conversación creada: ${actualConversationId}`);
+        } else {
+            conversation = await ChatConversation.findOne({ 
+                conversationId: actualConversationId 
+            });
+        }
         
         if (!conversation) {
-            console.error('Conversación no encontrada:', conversationId);
             return res.status(404).json({
                 success: false,
                 message: "Conversación no encontrada"
             });
         }
 
-        // Verificar permisos - los clientes solo pueden enviar mensajes a su conversación
-        if (senderType === 'Customer' && conversation.clientId !== senderId) {
-            console.error('Permisos insuficientes:', { senderType, conversationClientId: conversation.clientId, senderId });
+        // Verificar que el cliente existe
+        if (req.user.userType === 'Customer') {
+            const clientExists = await validateClientExists(conversation.clientId);
+            if (!clientExists) {
+                await cleanupOrphanedConversations();
+                return res.status(404).json({
+                    success: false,
+                    message: "La cuenta del cliente no existe"
+                });
+            }
+        }
+
+        if (req.user.userType === 'Customer' && conversation.clientId !== req.user.id) {
             return res.status(403).json({
                 success: false,
                 message: "No tienes permisos para enviar mensajes a esta conversación"
             });
         }
 
-        // Crear mensaje con el ID del remitente
-        const messageSenderId = senderType === 'admin' ? 'admin' : senderId;
+        // APLICAR LÍMITE ANTES DE CREAR MENSAJE
+        await enforceMessageLimit(actualConversationId);
+
+        const messageSenderId = req.user.userType === 'admin' ? 'admin' : req.user.id;
 
         const messageData = {
-            conversationId,
+            conversationId: actualConversationId,
             senderId: messageSenderId,
-            senderType,
+            senderType: req.user.userType,
             message: message?.trim() || '',
             status: 'sent'
         };
 
-        // CORRECCIÓN: Solo agregar media si hay archivo
         if (req.file) {
             const fileType = req.file.mimetype.startsWith('image/') ? 'image' :
                            req.file.mimetype.startsWith('video/') ? 'video' :
@@ -198,171 +447,148 @@ chatController.sendMessage = async (req, res) => {
                 filename: req.file.originalname,
                 size: req.file.size
             };
-            console.log('Archivo adjunto:', messageData.media);
         }
-        // IMPORTANTE: No agregar media si no hay archivo (esto evita el error de null)
-
-        console.log('Datos del mensaje a guardar:', messageData);
 
         const chatMessage = new ChatMessage(messageData);
         await chatMessage.save();
 
-        console.log('Mensaje guardado exitosamente:', chatMessage._id);
-
-        // Actualizar la conversación con el último mensaje
+        // ✅ ACTUALIZACIÓN CORREGIDA: Actualizar conversación con último mensaje
         const updateData = {
             lastMessage: message?.trim() || `📎 ${req.file?.originalname || 'Archivo multimedia'}`,
-            lastMessageAt: new Date(),
-            status: 'active'
+            lastMessageAt: new Date()
         };
 
-        // Incrementar contador de mensajes no leídos según el tipo de usuario
-        if (senderType === 'admin') {
+        if (req.user.userType === 'admin') {
             updateData.unreadCountClient = (conversation.unreadCountClient || 0) + 1;
         } else {
             updateData.unreadCountAdmin = (conversation.unreadCountAdmin || 0) + 1;
         }
 
-        await ChatConversation.findOneAndUpdate(
-            { conversationId },
-            updateData
+        const updatedConversation = await ChatConversation.findOneAndUpdate(
+            { conversationId: actualConversationId }, 
+            updateData,
+            { new: true }
         );
 
-        // Obtener información del remitente
+        // Preparar información del remitente
         let senderInfo = {
             _id: messageSenderId,
-            fullName: senderType === 'admin' ? 'Atención al Cliente' : 'Cliente',
+            fullName: req.user.userType === 'admin' ? 'Atención al Cliente' : 'Cliente',
             email: req.user.email || '',
-            profilePicture: null
+            profilePicture: req.user.userType === 'admin' ? '/assets/marquesaMiniLogo.png' : null
         };
 
-        if (senderType === 'Customer') {
-            const clientInfo = await clientsModel.findById(senderId, 'fullName email profilePicture').lean();
+        if (req.user.userType === 'Customer') {
+            const clientInfo = await clientsModel.findById(req.user.id, 'fullName email profilePicture').lean();
             if (clientInfo) {
                 senderInfo = {
-                    _id: senderId,
+                    _id: req.user.id,
                     fullName: clientInfo.fullName,
                     email: clientInfo.email,
                     profilePicture: clientInfo.profilePicture || null
                 };
             }
-        } else {
-            // Para admin, usar imagen de marquesa
-            senderInfo.profilePicture = '/assets/marquesaMiniLogo.png';
         }
 
-        // Preparar respuesta del mensaje
         const responseMessage = {
             ...chatMessage.toObject(),
             senderId: senderInfo
         };
 
-        console.log('Mensaje preparado para respuesta:', responseMessage._id);
-
-        // ===== EMISIÓN EN TIEMPO REAL =====
-        // Obtener instancia de Socket.IO
+        // ✅ EMISIÓN CORREGIDA: Emitir eventos de Socket.IO con datos actualizados
         const io = req.app.get('io');
         if (io) {
-            console.log('Emitiendo mensaje via Socket.IO...');
-            // Emitir nuevo mensaje a todos los usuarios en la conversación
-            emitNewMessage(io, conversationId, responseMessage);
+            // Emitir nuevo mensaje
+            emitNewMessage(io, actualConversationId, responseMessage);
             
-            // Emitir estadísticas actualizadas a administradores
+            // ✅ NUEVO: Emitir actualización de conversación para admins
+            io.to('admins').emit('conversation_updated', {
+                conversationId: actualConversationId,
+                lastMessage: updateData.lastMessage,
+                lastMessageAt: updateData.lastMessageAt,
+                unreadCountAdmin: updatedConversation.unreadCountAdmin,
+                unreadCountClient: updatedConversation.unreadCountClient,
+                // ✅ INCLUIR INFO DEL CLIENTE para conversaciones nuevas
+                clientId: req.user.userType === 'Customer' ? {
+                    _id: req.user.id,
+                    fullName: senderInfo.fullName,
+                    email: senderInfo.email,
+                    profilePicture: senderInfo.profilePicture
+                } : null
+            });
+            
+            // Emitir estadísticas actualizadas
             emitChatStats(io);
-        } else {
-            console.warn('Socket.IO no disponible');
         }
 
         res.status(201).json({
             success: true,
-            message: responseMessage
+            message: responseMessage,
+            conversationId: actualConversationId // ✅ Devolver el ID de conversación
         });
 
     } catch (error) {
         console.error('Error en sendMessage:', error);
-        
-        // Manejo específico del error de validación de Mongoose
-        if (error.name === 'ValidationError') {
-            return res.status(400).json({
-                success: false,
-                message: "Error de validación en los datos del mensaje",
-                details: error.message
-            });
-        }
-        
         res.status(500).json({
             success: false,
-            message: "Error interno del servidor",
-            error: error.message
+            message: "Error interno del servidor"
         });
     }
 };
 
-// Eliminar mensaje
+/**
+ * CORREGIDO: Eliminar mensaje y actualizar último mensaje EN TIEMPO REAL
+ */
 chatController.deleteMessage = async (req, res) => {
     try {
-        console.log('=== ELIMINAR MENSAJE ===');
         const { messageId } = req.params;
-        console.log('ID del mensaje a eliminar:', messageId);
-        console.log('Usuario:', req.user);
         
-        // Validar usuario autenticado
         if (!req.user) {
-            console.error('Usuario no autenticado');
             return res.status(401).json({
                 success: false,
                 message: "Usuario no autenticado"
             });
         }
 
-        const { id: userId, userType } = req.user;
-
-        // Buscar el mensaje
         const message = await ChatMessage.findById(messageId);
         if (!message) {
-            console.error('Mensaje no encontrado:', messageId);
             return res.status(404).json({
                 success: false,
                 message: "Mensaje no encontrado"
             });
         }
 
-        console.log('Mensaje encontrado:', {
-            id: message._id,
-            senderId: message.senderId,
-            senderType: message.senderType,
-            conversationId: message.conversationId
-        });
-
-        // Verificar permisos - solo el remitente o admin puede eliminar
-        const messageSenderId = userType === 'admin' ? 'admin' : userId;
+        const messageSenderId = req.user.userType === 'admin' ? 'admin' : req.user.id;
         
-        console.log('Verificando permisos:', {
-            messageSenderId,
-            messageOriginalSender: message.senderId,
-            userType,
-            canDelete: message.senderId === messageSenderId || userType === 'admin'
-        });
-
-        if (message.senderId !== messageSenderId && userType !== 'admin') {
-            console.error('Permisos insuficientes para eliminar mensaje');
+        if (message.senderId !== messageSenderId && req.user.userType !== 'admin') {
             return res.status(403).json({
                 success: false,
                 message: "No tienes permisos para eliminar este mensaje"
             });
         }
 
-        // Marcar como eliminado
+        // Eliminar mensaje (soft delete)
         await message.softDelete(messageSenderId);
-        console.log('Mensaje marcado como eliminado exitosamente');
 
-        // ===== EMISIÓN EN TIEMPO REAL =====
+        // ✅ ACTUALIZACIÓN EN TIEMPO REAL: Actualizar último mensaje inmediatamente
+        await updateConversationLastMessage(message.conversationId);
+        
+        // ✅ OBTENER CONVERSACIÓN ACTUALIZADA para enviar por Socket.IO
+        const updatedConversation = await ChatConversation.findOne({
+            conversationId: message.conversationId
+        }).lean();
+
         const io = req.app.get('io');
         if (io) {
-            console.log('Emitiendo eliminación via Socket.IO...');
+            // Emitir mensaje eliminado
             emitMessageDeleted(io, message.conversationId, messageId, messageSenderId);
-        } else {
-            console.warn('Socket.IO no disponible');
+            
+            // ✅ NUEVO: Emitir actualización de conversación con último mensaje actualizado
+            io.to('admins').emit('conversation_updated', {
+                conversationId: message.conversationId,
+                lastMessage: updatedConversation?.lastMessage || '',
+                lastMessageAt: updatedConversation?.lastMessageAt || new Date()
+            });
         }
 
         res.status(200).json({
@@ -374,21 +600,19 @@ chatController.deleteMessage = async (req, res) => {
         console.error('Error en deleteMessage:', error);
         res.status(500).json({
             success: false,
-            message: "Error interno del servidor",
-            error: error.message
+            message: "Error interno del servidor"
         });
     }
 };
 
-// Obtener mensajes de una conversación
+/**
+ * Obtener mensajes de una conversación
+ */
 chatController.getMessages = async (req, res) => {
     try {
         const { conversationId } = req.params;
         const { page = 1, limit = 50 } = req.query;
         
-        console.log('Obteniendo mensajes:', { conversationId, page, limit });
-        
-        // Validar usuario autenticado
         if (!req.user) {
             return res.status(401).json({
                 success: false,
@@ -396,9 +620,6 @@ chatController.getMessages = async (req, res) => {
             });
         }
 
-        const { id: userId, userType } = req.user;
-
-        // Verificar que la conversación existe
         const conversation = await ChatConversation.findOne({ 
             conversationId: conversationId 
         }).lean();
@@ -410,31 +631,31 @@ chatController.getMessages = async (req, res) => {
             });
         }
 
-        // Verificar permisos - los clientes solo pueden ver mensajes de su conversación
-        if (userType === 'Customer' && conversation.clientId !== userId) {
+        if (req.user.userType === 'Customer' && conversation.clientId !== req.user.id) {
             return res.status(403).json({
                 success: false,
                 message: "No tienes permisos para acceder a esta conversación"
             });
         }
 
-        // Obtener mensajes con paginación (incluyendo eliminados para mostrar placeholder)
         const skip = (parseInt(page) - 1) * parseInt(limit);
-        const messages = await ChatMessage.find({ conversationId })
+        
+        // Solo obtener mensajes NO eliminados
+        const messages = await ChatMessage.find({ 
+            conversationId,
+            isDeleted: false 
+        })
             .sort({ createdAt: -1 })
             .limit(parseInt(limit))
             .skip(skip)
             .lean();
 
-        console.log(`Encontrados ${messages.length} mensajes`);
-
-        // Población manual de la información del remitente
         const populatedMessages = await Promise.all(messages.map(async (message) => {
             let senderInfo = {
                 _id: message.senderId,
                 fullName: message.senderType === 'admin' ? 'Atención al Cliente' : 'Cliente',
                 email: '',
-                profilePicture: null
+                profilePicture: message.senderType === 'admin' ? '/assets/marquesaMiniLogo.png' : null
             };
 
             if (message.senderType === 'Customer' && message.senderId !== 'admin') {
@@ -451,8 +672,6 @@ chatController.getMessages = async (req, res) => {
                 } catch (error) {
                     console.error('Error obteniendo info del cliente:', error);
                 }
-            } else if (message.senderType === 'admin') {
-                senderInfo.profilePicture = '/assets/marquesaMiniLogo.png';
             }
 
             return {
@@ -461,12 +680,14 @@ chatController.getMessages = async (req, res) => {
             };
         }));
 
-        // Contar total de mensajes para paginación
-        const totalMessages = await ChatMessage.countDocuments({ conversationId });
+        const totalMessages = await ChatMessage.countDocuments({ 
+            conversationId,
+            isDeleted: false 
+        });
 
         res.status(200).json({
             success: true,
-            messages: populatedMessages.reverse(), // Revertir para mostrar cronológicamente
+            messages: populatedMessages.reverse(),
             pagination: {
                 currentPage: parseInt(page),
                 totalPages: Math.ceil(totalMessages / parseInt(limit)),
@@ -480,18 +701,18 @@ chatController.getMessages = async (req, res) => {
         console.error('Error en getMessages:', error);
         res.status(500).json({
             success: false,
-            message: "Error interno del servidor",
-            error: error.message
+            message: "Error interno del servidor"
         });
     }
 };
 
-// Marcar mensajes como leídos
+/**
+ * CORREGIDO: Marcar mensajes como leídos CON ACTUALIZACIÓN EN TIEMPO REAL
+ */
 chatController.markAsRead = async (req, res) => {
     try {
         const { conversationId } = req.params;
         
-        // Validar usuario autenticado
         if (!req.user) {
             return res.status(401).json({
                 success: false,
@@ -499,10 +720,8 @@ chatController.markAsRead = async (req, res) => {
             });
         }
 
-        const { id: userId, userType } = req.user;
-        const queryUserId = userType === 'admin' ? 'admin' : userId;
+        const queryUserId = req.user.userType === 'admin' ? 'admin' : req.user.id;
 
-        // Marcar mensajes como leídos (excepto los propios)
         await ChatMessage.updateMany(
             { 
                 conversationId,
@@ -516,28 +735,36 @@ chatController.markAsRead = async (req, res) => {
             }
         );
 
-        // Resetear contador de mensajes no leídos en la conversación
         const conversationUpdate = {};
-        if (userType === 'admin') {
+        if (req.user.userType === 'admin') {
             conversationUpdate.unreadCountAdmin = 0;
         } else {
             conversationUpdate.unreadCountClient = 0;
         }
 
-        await ChatConversation.findOneAndUpdate(
-            { conversationId },
-            conversationUpdate
+        // ✅ ACTUALIZACIÓN EN TIEMPO REAL: Actualizar conversación y emitir cambios
+        const updatedConversation = await ChatConversation.findOneAndUpdate(
+            { conversationId }, 
+            conversationUpdate,
+            { new: true }
         );
 
-        // ===== EMISIÓN EN TIEMPO REAL =====
-        // Obtener instancia de Socket.IO
         const io = req.app.get('io');
         if (io) {
-            // Emitir evento de mensajes leídos
             emitMessagesRead(io, conversationId, {
-                userId: userId,
-                userType: userType
+                userId: req.user.id,
+                userType: req.user.userType
             });
+            
+            // ✅ NUEVO: Emitir actualización de contador de no leídos
+            io.to('admins').emit('conversation_updated', {
+                conversationId,
+                unreadCountAdmin: updatedConversation.unreadCountAdmin,
+                unreadCountClient: updatedConversation.unreadCountClient
+            });
+            
+            // Actualizar estadísticas
+            emitChatStats(io);
         }
 
         res.status(200).json({
@@ -549,97 +776,16 @@ chatController.markAsRead = async (req, res) => {
         console.error('Error en markAsRead:', error);
         res.status(500).json({
             success: false,
-            message: "Error interno del servidor",
-            error: error.message
+            message: "Error interno del servidor"
         });
     }
 };
 
-// Obtener todas las conversaciones (solo administradores)
-chatController.getAllConversations = async (req, res) => {
-    try {
-        // Validar que sea administrador
-        if (!req.user || req.user.userType !== 'admin') {
-            return res.status(403).json({
-                success: false,
-                message: "Acceso denegado"
-            });
-        }
-
-        const { page = 1, limit = 20, status = 'all' } = req.query;
-        
-        // Construir filtro de búsqueda
-        const filter = {};
-        if (status !== 'all') {
-            filter.status = status;
-        }
-
-        const skip = (parseInt(page) - 1) * parseInt(limit);
-
-        // Obtener conversaciones ordenadas por último mensaje
-        const conversations = await ChatConversation.find(filter)
-            .sort({ lastMessageAt: -1 })
-            .limit(parseInt(limit))
-            .skip(skip)
-            .lean();
-
-        // Población manual de información del cliente para cada conversación
-        const populatedConversations = await Promise.all(
-            conversations.map(async (conv) => {
-                try {
-                    const client = await clientsModel.findById(conv.clientId, 'fullName email profilePicture').lean();
-                    return {
-                        ...conv,
-                        clientId: client || { 
-                            _id: conv.clientId, 
-                            fullName: 'Cliente desconocido', 
-                            email: '',
-                            profilePicture: null
-                        }
-                    };
-                } catch (error) {
-                    return {
-                        ...conv,
-                        clientId: { 
-                            _id: conv.clientId, 
-                            fullName: 'Cliente con error', 
-                            email: '',
-                            profilePicture: null
-                        }
-                    };
-                }
-            })
-        );
-
-        // Contar total de conversaciones para paginación
-        const totalConversations = await ChatConversation.countDocuments(filter);
-
-        res.status(200).json({
-            success: true,
-            conversations: populatedConversations,
-            pagination: {
-                currentPage: parseInt(page),
-                totalPages: Math.ceil(totalConversations / parseInt(limit)),
-                totalConversations,
-                hasNextPage: skip + conversations.length < totalConversations,
-                hasPrevPage: parseInt(page) > 1
-            }
-        });
-
-    } catch (error) {
-        console.error('Error en getAllConversations:', error);
-        res.status(500).json({
-            success: false,
-            message: "Error interno del servidor",
-            error: error.message
-        });
-    }
-};
-
-// Obtener estadísticas del chat (solo administradores)
+/**
+ * Obtener estadísticas del chat
+ */
 chatController.getChatStats = async (req, res) => {
     try {
-        // Validar que sea administrador
         if (!req.user || req.user.userType !== 'admin') {
             return res.status(403).json({
                 success: false,
@@ -647,7 +793,6 @@ chatController.getChatStats = async (req, res) => {
             });
         }
 
-        // Ejecutar consultas en paralelo para mejor rendimiento
         const [
             totalConversations,
             activeConversations,
@@ -679,8 +824,48 @@ chatController.getChatStats = async (req, res) => {
         console.error('Error en getChatStats:', error);
         res.status(500).json({
             success: false,
-            message: "Error interno del servidor",
-            error: error.message
+            message: "Error interno del servidor"
+        });
+    }
+};
+
+/**
+ * Limpieza programada
+ */
+chatController.scheduledCleanup = async (req, res) => {
+    try {
+        if (!req.user || req.user.userType !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: "Acceso denegado"
+            });
+        }
+
+        // Limpiar conversaciones huérfanas
+        const deletedCount = await cleanupOrphanedConversations();
+        
+        // Aplicar límites a todas las conversaciones activas
+        const activeConversations = await ChatConversation.find({ status: 'active' }).lean();
+        
+        for (const conversation of activeConversations) {
+            await enforceMessageLimit(conversation.conversationId);
+            await updateConversationLastMessage(conversation.conversationId);
+        }
+        
+        res.status(200).json({
+            success: true,
+            message: "Limpieza completada exitosamente",
+            results: {
+                deletedConversations: deletedCount,
+                processedConversations: activeConversations.length
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error en limpieza programada:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error en la limpieza programada"
         });
     }
 };

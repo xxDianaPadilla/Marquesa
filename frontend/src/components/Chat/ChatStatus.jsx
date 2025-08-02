@@ -1,5 +1,15 @@
 import React from 'react';
 
+/**
+ * Componente de Estado del Chat - ACTUALIZADO
+ * 
+ * CAMBIOS IMPLEMENTADOS:
+ * - Eliminado el estado del cliente (en línea/activo)
+ * - Simplificado para mostrar solo estado de conexión del sistema
+ * - Mejorado el manejo de errores de conectividad
+ * 
+ * Ubicación: frontend/src/components/Chat/ChatStatus.jsx
+ */
 const ChatStatus = ({ isConnected, isLoading, error, onRetry }) => {
     if (isLoading) {
         return (
@@ -42,21 +52,22 @@ const ChatStatus = ({ isConnected, isLoading, error, onRetry }) => {
         return (
             <div className="flex items-center justify-between p-4 bg-orange-50 border-b border-orange-200">
                 <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                    <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
                     <span className="text-sm text-orange-800" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                        Desconectado - Intentando reconectar...
+                        Reconectando...
                     </span>
                 </div>
             </div>
         );
     }
 
+    // Estado conectado - Mostrar solo si es necesario (opcional)
     return (
         <div className="flex items-center p-2 bg-green-50 border-b border-green-200">
             <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 <span className="text-xs text-green-800" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                    En línea
+                    Conectado
                 </span>
             </div>
         </div>

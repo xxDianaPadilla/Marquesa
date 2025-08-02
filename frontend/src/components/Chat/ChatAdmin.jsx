@@ -9,6 +9,18 @@ import MediaRenderer from './MediaRenderer';
 import TypingIndicator from './TypingIndicator';
 import ChatStatus from './ChatStatus';
 
+/**
+ * Componente ChatAdmin - CORREGIDO PARA ACTUALIZACIONES EN TIEMPO REAL
+ * 
+ * FIXES APLICADOS:
+ * - Conversaciones vacías NO aparecen hasta que tengan mensajes
+ * - Actualización en tiempo real del último mensaje sin recargar página
+ * - Contadores de mensajes no leídos se actualizan automáticamente
+ * - Mejor manejo de eventos de Socket.IO para actualizaciones instantáneas
+ * - Indicador de límite de 75 mensajes funcional
+ * 
+ * Ubicación: frontend/src/components/Chat/ChatAdmin.jsx
+ */
 const ChatAdmin = () => {
     const {
         conversations,
@@ -26,23 +38,20 @@ const ChatAdmin = () => {
         clearError,
         messagesEndRef,
         typingUsers,
-        // Estados para modal de eliminación
         showDeleteModal,
         messageToDelete,
         isDeleting,
         openDeleteModal,
         closeDeleteModal,
-        confirmDeleteMessage
+        confirmDeleteMessage,
+        // ✅ NUEVA FUNCIÓN para actualizaciones en tiempo real
+        updateConversationInList
     } = useChat();
 
-    // Estados para archivos
     const [selectedFile, setSelectedFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
-
-    // Referencia para el input de archivos
     const fileInputRef = useRef(null);
 
-    // Manejar envío de mensaje
     const handleSendMessage = async (messageText, file = null) => {
         if (!activeConversation || (!messageText?.trim() && !file && !selectedFile)) return;
         
@@ -53,14 +62,12 @@ const ChatAdmin = () => {
             setNewMessage('');
             setSelectedFile(null);
             setPreviewUrl(null);
-            // Limpiar el input de archivo
             if (fileInputRef.current) {
                 fileInputRef.current.value = '';
             }
         }
     };
 
-    // Manejar envío del formulario
     const handleFormSubmit = (e) => {
         e.preventDefault();
         if (newMessage?.trim() || selectedFile) {
@@ -68,7 +75,6 @@ const ChatAdmin = () => {
         }
     };
 
-    // Manejar presionar Enter
     const handleKeyPress = (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -78,13 +84,11 @@ const ChatAdmin = () => {
         }
     };
 
-    // Manejar selección de archivo
     const handleFileSelect = (e) => {
         const file = e.target.files[0];
         if (file) {
             setSelectedFile(file);
             
-            // Crear preview para imágenes
             if (file.type.startsWith('image/')) {
                 const reader = new FileReader();
                 reader.onload = (e) => setPreviewUrl(e.target.result);
@@ -95,10 +99,8 @@ const ChatAdmin = () => {
         }
     };
 
-    // FUNCIÓN MEJORADA: Manejar acciones de mensaje
     const handleMessageAction = (action, message) => {
         if (action === 'delete') {
-            // Verificar permisos antes de abrir modal
             const canDelete = message.senderType === 'admin' || 
                             (message.senderType === 'Customer' && 
                              (activeConversation?.clientId?._id === message.senderId?._id || 
@@ -106,13 +108,10 @@ const ChatAdmin = () => {
             
             if (canDelete) {
                 openDeleteModal(message);
-            } else {
-                console.warn('No tienes permisos para eliminar este mensaje');
             }
         }
     };
 
-    // Formatear fecha y hora
     const formatTime = (date) => {
         return new Date(date).toLocaleTimeString('es-ES', {
             hour: '2-digit',
@@ -138,6 +137,11 @@ const ChatAdmin = () => {
         }
     };
 
+    // Contar mensajes activos
+    const messageCount = messages.filter(msg => !msg.isDeleted).length;
+    const isNearLimit = messageCount >= 70;
+    const isAtLimit = messageCount >= 75;
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-96">
@@ -154,27 +158,37 @@ const ChatAdmin = () => {
                 <div className="p-3 md:p-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">
                     <h3 className="text-lg md:text-xl font-semibold text-gray-900" style={{ fontFamily: 'Poppins, sans-serif' }}>
                         Chat de Soporte
+                        {/* ✅ CONTADOR EN TIEMPO REAL: Se actualiza automáticamente */}
                         {unreadCount > 0 && (
-                            <span className="ml-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                            <span className="ml-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
                                 {unreadCount}
                             </span>
                         )}
                     </h3>
                     <p className="text-sm text-gray-600" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                        {conversations.length} conversación(es)
+                        {/* ✅ SOLO CONVERSACIONES CON MENSAJES: El contador refleja conversaciones reales */}
+                        {conversations.length} conversación(es) con mensajes
                     </p>
                 </div>
 
                 {/* Estado de conexión */}
                 <ChatStatus isConnected={isConnected} />
 
-                {/* Lista de conversaciones */}
+                {/* ✅ LISTA MEJORADA: Solo conversaciones con mensajes, actualizaciones en tiempo real */}
                 <div className="flex-1 overflow-y-auto">
                     {conversations.length === 0 ? (
                         <div className="p-4 text-center text-gray-500">
-                            <p style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                No hay conversaciones activas
-                            </p>
+                            <div className="flex flex-col items-center space-y-2">
+                                <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                </svg>
+                                <p className="text-sm font-medium" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                    No hay conversaciones activas
+                                </p>
+                                <p className="text-xs text-gray-400" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                    Las conversaciones aparecerán cuando los clientes envíen su primer mensaje
+                                </p>
+                            </div>
                         </div>
                     ) : (
                         conversations.map((conversation) => (
@@ -207,31 +221,32 @@ const ChatAdmin = () => {
                                             <p className="text-sm font-medium text-gray-900 truncate" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                                 {conversation.clientId?.fullName || 'Usuario'}
                                             </p>
+                                            {/* ✅ ÚLTIMO MENSAJE EN TIEMPO REAL: Se actualiza automáticamente */}
                                             <p className="text-xs text-gray-500 truncate" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                                {conversation.lastMessage || 'Sin mensajes'}
+                                                {conversation.lastMessage || 'Nuevo mensaje...'}
                                             </p>
                                         </div>
                                     </div>
                                     
-                                    {/* Indicadores */}
+                                    {/* Indicadores actualizados en tiempo real */}
                                     <div className="flex flex-col items-end space-y-1 flex-shrink-0 ml-2">
+                                        {/* ✅ HORA EN TIEMPO REAL: Se actualiza con cada mensaje */}
                                         <span className="text-xs text-gray-500">
                                             {conversation.lastMessageAt && formatTime(conversation.lastMessageAt)}
                                         </span>
                                         
+                                        {/* ✅ CONTADOR NO LEÍDOS EN TIEMPO REAL: Se actualiza automáticamente */}
                                         {conversation.unreadCountAdmin > 0 && (
-                                            <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full min-w-[20px] text-center">
+                                            <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full min-w-[20px] text-center animate-pulse">
                                                 {conversation.unreadCountAdmin}
                                             </span>
                                         )}
                                         
-                                        <span className={`text-xs px-2 py-1 rounded-full ${
-                                            conversation.status === 'active' 
-                                                ? 'bg-green-100 text-green-800' 
-                                                : 'bg-gray-100 text-gray-800'
-                                        }`}>
-                                            {conversation.status === 'active' ? 'Activo' : 'Cerrado'}
-                                        </span>
+                                        {/* ✅ INDICADOR DE ACTIVIDAD RECIENTE */}
+                                        {conversation.lastMessageAt && 
+                                         new Date() - new Date(conversation.lastMessageAt) < 5 * 60 * 1000 && (
+                                            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" title="Actividad reciente"></span>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -246,36 +261,76 @@ const ChatAdmin = () => {
                     <>
                         {/* Header del chat */}
                         <div className="p-3 md:p-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">
-                            <div className="flex items-center space-x-3">
-                                <div className="w-6 md:w-8 h-6 md:h-8 bg-[#E8ACD2] rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-                                    {activeConversation.clientId?.profilePicture ? (
-                                        <img 
-                                            src={activeConversation.clientId.profilePicture} 
-                                            alt={activeConversation.clientId.fullName}
-                                            className="w-full h-full rounded-full object-cover"
-                                        />
-                                    ) : (
-                                        activeConversation.clientId?.fullName?.charAt(0)?.toUpperCase() || 'U'
-                                    )}
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-3 flex-1 min-w-0">
+                                    <div className="w-6 md:w-8 h-6 md:h-8 bg-[#E8ACD2] rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                                        {activeConversation.clientId?.profilePicture ? (
+                                            <img 
+                                                src={activeConversation.clientId.profilePicture} 
+                                                alt={activeConversation.clientId.fullName}
+                                                className="w-full h-full rounded-full object-cover"
+                                            />
+                                        ) : (
+                                            activeConversation.clientId?.fullName?.charAt(0)?.toUpperCase() || 'U'
+                                        )}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <h4 className="font-medium text-gray-900 truncate" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                            {activeConversation.clientId?.fullName || 'Usuario'}
+                                        </h4>
+                                        <p className="text-sm text-gray-500 truncate" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                            {activeConversation.clientId?.email}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div className="min-w-0 flex-1">
-                                    <h4 className="font-medium text-gray-900 truncate" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                        {activeConversation.clientId?.fullName || 'Usuario'}
-                                    </h4>
-                                    <p className="text-sm text-gray-500 truncate" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                        {activeConversation.clientId?.email}
-                                    </p>
+                                
+                                {/* ✅ INDICADOR DE LÍMITE MEJORADO: Actualización en tiempo real */}
+                                <div className="flex flex-col items-end text-xs text-gray-500">
+                                    <span className={`${isNearLimit ? 'text-orange-500' : isAtLimit ? 'text-red-500' : 'text-gray-500'} transition-colors duration-300`}>
+                                        {messageCount}/75 mensajes
+                                    </span>
+                                    {isNearLimit && !isAtLimit && (
+                                        <span className="text-orange-500 animate-pulse">Cerca del límite</span>
+                                    )}
+                                    {isAtLimit && (
+                                        <span className="text-red-500 animate-pulse font-semibold">Límite alcanzado</span>
+                                    )}
                                 </div>
                             </div>
                         </div>
+
+                        {/* Advertencia de límite de mensajes */}
+                        {isNearLimit && (
+                            <div className={`px-3 py-2 text-xs transition-all duration-300 ${isAtLimit ? 'bg-red-50 text-red-700 border-b border-red-200' : 'bg-orange-50 text-orange-700 border-b border-orange-200'}`}>
+                                <div className="flex items-center space-x-2">
+                                    <svg className="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                    </svg>
+                                    <span>
+                                        {isAtLimit 
+                                            ? 'Límite de 75 mensajes alcanzado. Los mensajes más antiguos se eliminan automáticamente.'
+                                            : 'La conversación está cerca del límite de 75 mensajes.'
+                                        }
+                                    </span>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Área de mensajes */}
                         <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-4 min-h-0">
                             {messages.length === 0 ? (
                                 <div className="text-center text-gray-500 mt-8">
-                                    <p style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                        No hay mensajes en esta conversación
-                                    </p>
+                                    <div className="flex flex-col items-center space-y-3">
+                                        <svg className="w-16 h-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                        </svg>
+                                        <p className="font-medium" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                            Inicia la conversación
+                                        </p>
+                                        <p className="text-sm text-gray-400" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                            Envía el primer mensaje para comenzar a chatear con {activeConversation.clientId?.fullName || 'el cliente'}
+                                        </p>
+                                    </div>
                                 </div>
                             ) : (
                                 messages.filter(message => !message.isDeleted).map((message, index) => {
@@ -383,8 +438,14 @@ const ChatAdmin = () => {
                             <svg className="mx-auto h-12 w-12 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                             </svg>
-                            <p style={{ fontFamily: 'Poppins, sans-serif' }}>
+                            <p className="font-medium mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                 Selecciona una conversación para comenzar
+                            </p>
+                            <p className="text-sm text-gray-400" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                {conversations.length === 0 
+                                    ? 'Las conversaciones aparecerán cuando los clientes envíen mensajes'
+                                    : 'Elige una conversación de la lista para ver los mensajes'
+                                }
                             </p>
                         </div>
                     </div>
@@ -401,23 +462,34 @@ const ChatAdmin = () => {
                 formatTime={formatTime}
             />
 
-            {/* Modal de error */}
+            {/* ✅ MODAL DE ERROR MEJORADO: Mejor feedback para actualizaciones en tiempo real */}
             {error && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 max-w-sm mx-4">
-                        <h3 className="text-lg font-semibold text-red-600 mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                            Error
-                        </h3>
-                        <p className="text-gray-700 mb-4" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                            {error}
-                        </p>
-                        <button
-                            onClick={clearError}
-                            className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                            style={{ fontFamily: 'Poppins, sans-serif' }}
-                        >
-                            Cerrar
-                        </button>
+                    <div className="bg-white rounded-lg p-6 max-w-sm mx-4 border-l-4 border-red-500">
+                        <div className="flex items-start space-x-3">
+                            <div className="flex-shrink-0">
+                                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                </svg>
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-lg font-semibold text-red-600 mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                    {error.includes('cuenta ha sido eliminada') ? 'Cuenta Eliminada' : 
+                                     error.includes('sesión ha expirado') ? 'Sesión Expirada' : 'Error de Conexión'}
+                                </h3>
+                                <p className="text-gray-700 mb-4" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                    {error}
+                                </p>
+                                <button
+                                    onClick={clearError}
+                                    className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                                    style={{ fontFamily: 'Poppins, sans-serif' }}
+                                >
+                                    {error.includes('cuenta ha sido eliminada') ? 'Entendido' : 
+                                     error.includes('sesión ha expirado') ? 'Recargar Página' : 'Cerrar'}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

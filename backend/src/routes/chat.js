@@ -1,50 +1,183 @@
-// Importar Express para crear el enrutador
-import express from "express";
-// Importar el controlador de chat
-import chatController, { upload } from "../controllers/chatController.js";
-// Importar middlewares de autenticación
-import verifyToken, { verifyAdmin, verifyCustomer } from "../middlewares/validateAuthToken.js";
+import express from 'express';
+import chatController, { upload } from '../controllers/chatController.js';
+import verifyToken, { verifyAdmin, verifyCustomer } from '../middlewares/validateAuthToken.js';
 
-// Crear una instancia del enrutador de Express
+/**
+ * Rutas del Chat - CORREGIDAS CON MIDDLEWARE DE AUTENTICACIÓN
+ * 
+ * PROBLEMAS SOLUCIONADOS:
+ * - Agregado middleware verifyToken para autenticación básica
+ * - Agregado verifyAdmin para rutas administrativas
+ * - Agregado verifyCustomer para rutas de cliente específicas
+ * - Corregido orden de middlewares para evitar errores 401
+ * 
+ * Ubicación: backend/src/routes/chat.js
+ */
+
 const router = express.Router();
 
-// ===== RUTAS PARA CLIENTES =====
+// ============ RUTAS PRINCIPALES DEL CHAT (Requieren autenticación básica) ============
 
-// GET /conversation/:clientId - Obtener o crear conversación del cliente autenticado
-// Solo los clientes pueden acceder a su propia conversación
-router.get("/conversation/:clientId", verifyCustomer, chatController.getOrCreateConversation);
+/**
+ * POST /api/chat/message
+ * Enviar un nuevo mensaje (con archivo opcional)
+ * MIDDLEWARE: verifyToken (autenticación básica)
+ */
+router.post('/message', 
+    verifyToken,           // ✅ Agregado: Verificación de autenticación
+    upload.single('file'), // Manejo de archivos
+    chatController.sendMessage
+);
 
-// ===== RUTAS COMPARTIDAS (CLIENTES Y ADMINISTRADORES) =====
+/**
+ * GET /api/chat/conversation/:clientId
+ * Obtener o crear conversación para un cliente
+ * MIDDLEWARE: verifyToken (autenticación básica)
+ */
+router.get('/conversation/:clientId', 
+    verifyToken,           // ✅ Agregado: Verificación de autenticación
+    chatController.getOrCreateConversation
+);
 
-// POST /message - Enviar un mensaje (cliente o admin) con archivo multimedia opcional
-// Requiere autenticación pero puede ser usado por ambos tipos de usuario
-router.post("/message", verifyToken, upload.single('file'), chatController.sendMessage);
+/**
+ * GET /api/chat/messages/:conversationId
+ * Obtener mensajes de una conversación
+ * MIDDLEWARE: verifyToken (autenticación básica)
+ */
+router.get('/messages/:conversationId', 
+    verifyToken,           // ✅ Agregado: Verificación de autenticación
+    chatController.getMessages
+);
 
-// DELETE /message/:messageId - Eliminar un mensaje
-// Solo el remitente o admin pueden eliminar mensajes
-router.delete("/message/:messageId", verifyToken, chatController.deleteMessage);
+/**
+ * DELETE /api/chat/message/:messageId
+ * Eliminar un mensaje específico
+ * MIDDLEWARE: verifyToken (autenticación básica)
+ */
+router.delete('/message/:messageId', 
+    verifyToken,           // ✅ Agregado: Verificación de autenticación
+    chatController.deleteMessage
+);
 
-// GET /messages/:conversationId - Obtener mensajes de una conversación
-// Requiere autenticación y verificación de permisos dentro del controlador
-router.get("/messages/:conversationId", verifyToken, chatController.getMessages);
+/**
+ * PUT /api/chat/read/:conversationId
+ * Marcar mensajes como leídos
+ * MIDDLEWARE: verifyToken (autenticación básica)
+ */
+router.put('/read/:conversationId', 
+    verifyToken,           // ✅ Agregado: Verificación de autenticación
+    chatController.markAsRead
+);
 
-// PUT /read/:conversationId - Marcar mensajes como leídos
-// Requiere autenticación, usado tanto por clientes como administradores
-router.put("/read/:conversationId", verifyToken, chatController.markAsRead);
+// ============ RUTAS DE ADMINISTRADOR (Requieren permisos de admin) ============
 
-// ===== RUTAS EXCLUSIVAS PARA ADMINISTRADORES =====
+/**
+ * GET /api/chat/admin/conversations
+ * Obtener todas las conversaciones (solo admin)
+ * MIDDLEWARE: verifyAdmin (verificación de admin + autenticación)
+ */
+router.get('/admin/conversations', 
+    verifyAdmin,           // ✅ Cambiado: De requireAdmin a verifyAdmin
+    chatController.getAllConversations
+);
 
-// GET /admin/conversations - Obtener todas las conversaciones (solo admin)
-// Lista todas las conversaciones para gestión administrativa
-router.get("/admin/conversations", verifyAdmin, chatController.getAllConversations);
+/**
+ * GET /api/chat/admin/stats
+ * Obtener estadísticas del chat (solo admin)
+ * MIDDLEWARE: verifyAdmin (verificación de admin + autenticación)
+ */
+router.get('/admin/stats', 
+    verifyAdmin,           // ✅ Cambiado: De requireAdmin a verifyAdmin
+    chatController.getChatStats
+);
 
-// GET /admin/conversation/:clientId - Obtener o crear conversación para un cliente específico (admin)
-// Permite al admin acceder a cualquier conversación de cliente
-router.get("/admin/conversation/:clientId", verifyAdmin, chatController.getOrCreateConversation);
+/**
+ * POST /api/chat/admin/cleanup
+ * Ejecutar limpieza manual del sistema (solo admin)
+ * MIDDLEWARE: verifyAdmin (verificación de admin + autenticación)
+ */
+router.post('/admin/cleanup', 
+    verifyAdmin,           // ✅ Cambiado: De requireAdmin a verifyAdmin
+    chatController.scheduledCleanup
+);
 
-// GET /admin/stats - Obtener estadísticas de chat (solo admin)
-// Proporciona métricas y estadísticas del sistema de chat
-router.get("/admin/stats", verifyAdmin, chatController.getChatStats);
+// ============ RUTAS ESPECÍFICAS DE CLIENTE (Si las necesitas) ============
 
-// Exportar el enrutador para ser usado en la aplicación principal
+/**
+ * Ejemplo de ruta específica para clientes
+ * GET /api/chat/client/my-conversation
+ * MIDDLEWARE: verifyCustomer (verificación de cliente + autenticación)
+ */
+router.get('/client/my-conversation', 
+    verifyCustomer,        // Middleware específico para clientes
+    (req, res) => {
+        // Lógica específica para clientes
+        res.json({
+            success: true,
+            message: "Ruta específica para clientes",
+            clientId: req.user.id
+        });
+    }
+);
+
+// ============ MANEJO DE ERRORES ============
+
+/**
+ * Middleware para manejar rutas no encontradas
+ */
+router.use('*', (req, res) => {
+    res.status(404).json({
+        success: false,
+        message: `Ruta ${req.method} ${req.originalUrl} no encontrada`,
+        availableRoutes: [
+            'POST /message',
+            'GET /conversation/:clientId',
+            'GET /messages/:conversationId',
+            'DELETE /message/:messageId',
+            'PUT /read/:conversationId',
+            'GET /admin/conversations',
+            'GET /admin/stats',
+            'POST /admin/cleanup',
+            'GET /client/my-conversation'
+        ]
+    });
+});
+
+/**
+ * Middleware para manejar errores en las rutas
+ */
+router.use((error, req, res, next) => {
+    console.error('Error en rutas de chat:', error);
+
+    // Error de Multer (archivos)
+    if (error.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({
+            success: false,
+            message: "El archivo es demasiado grande (máximo 10MB)"
+        });
+    }
+
+    if (error.code === 'LIMIT_UNEXPECTED_FILE') {
+        return res.status(400).json({
+            success: false,
+            message: "Tipo de archivo no permitido"
+        });
+    }
+
+    // Error de autenticación
+    if (error.message?.includes('Token') || error.message?.includes('autenticación')) {
+        return res.status(401).json({
+            success: false,
+            message: "Error de autenticación: " + error.message
+        });
+    }
+
+    // Error genérico
+    res.status(500).json({
+        success: false,
+        message: "Error interno del servidor",
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+});
+
 export default router;

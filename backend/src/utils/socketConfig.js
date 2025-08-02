@@ -152,9 +152,12 @@ export const setupSocketIO = (io) => {
     });
 };
 
-// === FUNCIONES AUXILIARES ===
+// === FUNCIONES AUXILIARES CORREGIDAS ===
 
-// Emitir nuevo mensaje a todos los usuarios en una conversación
+/**
+ * ✅ CORREGIDO: Emitir nuevo mensaje a todos los usuarios en una conversación
+ * Ahora incluye mejor manejo de datos para actualizaciones en tiempo real
+ */
 export const emitNewMessage = (io, conversationId, message, excludeSocketId = null) => {
     const eventData = {
         conversationId,
@@ -162,7 +165,7 @@ export const emitNewMessage = (io, conversationId, message, excludeSocketId = nu
         timestamp: new Date()
     };
     
-    console.log(`Emitiendo nuevo mensaje en conversación ${conversationId}`);
+    console.log(`🔔 Emitiendo nuevo mensaje en conversación ${conversationId}`);
     
     if (excludeSocketId) {
         // Emitir a todos en la conversación excepto al remitente
@@ -172,24 +175,89 @@ export const emitNewMessage = (io, conversationId, message, excludeSocketId = nu
         io.to(`conversation_${conversationId}`).emit('new_message', eventData);
     }
     
-    // Emitir a todos los administradores para actualizar lista de conversaciones
-    io.to('admins').emit('conversation_updated', {
+    // ✅ MEJORADO: Emitir evento más específico para actualizar lista de conversaciones
+    const updateData = {
         conversationId,
         lastMessage: message.message || 'Archivo multimedia',
-        lastMessageAt: new Date()
-    });
+        lastMessageAt: new Date(),
+        action: 'new_message'
+    };
+    
+    io.to('admins').emit('conversation_list_updated', updateData);
 };
 
-// Emitir cuando un mensaje es eliminado
-export const emitMessageDeleted = (io, conversationId, messageId, deletedBy) => {
-    console.log(`Emitiendo mensaje eliminado: ${messageId} en conversación ${conversationId}`);
+/**
+ * ✅ FUNCIÓN CRÍTICA CORREGIDA: Emitir cuando un mensaje es eliminado
+ * Ahora obtiene y emite el nuevo último mensaje válido inmediatamente
+ */
+export const emitMessageDeleted = async (io, conversationId, messageId, deletedBy) => {
+    console.log(`🗑️ Emitiendo mensaje eliminado: ${messageId} en conversación ${conversationId}`);
     
+    // Emitir evento de mensaje eliminado a la conversación
     io.to(`conversation_${conversationId}`).emit('message_deleted', {
         conversationId,
         messageId,
         deletedBy,
         timestamp: new Date()
     });
+    
+    // ✅ NUEVA LÓGICA: Obtener el nuevo último mensaje válido desde la base de datos
+    try {
+        // Importación dinámica para evitar dependencias circulares
+        const { default: ChatMessage } = await import('../models/ChatMessage.js');
+        const { default: ChatConversation } = await import('../models/ChatConversation.js');
+        
+        // Buscar el último mensaje NO eliminado de la conversación
+        const lastValidMessage = await ChatMessage.findOne({
+            conversationId,
+            isDeleted: false
+        })
+        .sort({ createdAt: -1 })
+        .lean();
+        
+        let newLastMessage = '';
+        let newLastMessageAt = new Date();
+        
+        if (lastValidMessage) {
+            newLastMessage = lastValidMessage.message || 
+                (lastValidMessage.media ? '📎 Archivo multimedia' : 'Sin contenido');
+            newLastMessageAt = lastValidMessage.createdAt;
+        }
+        
+        // Actualizar la conversación en la base de datos
+        await ChatConversation.findOneAndUpdate(
+            { conversationId },
+            {
+                lastMessage: newLastMessage,
+                lastMessageAt: newLastMessageAt
+            }
+        );
+        
+        // ✅ CRÍTICO: Emitir actualización específica del último mensaje
+        const updateData = {
+            conversationId,
+            lastMessage: newLastMessage,
+            lastMessageAt: newLastMessageAt,
+            action: 'message_deleted',
+            messageId: messageId // Incluir ID del mensaje eliminado
+        };
+        
+        console.log(`📋 Emitiendo nuevo último mensaje para ${conversationId}: "${newLastMessage}"`);
+        
+        // Emitir a todos los admins para actualizar la lista
+        io.to('admins').emit('conversation_updated', updateData);
+        io.to('admins').emit('conversation_list_updated', updateData);
+        
+    } catch (error) {
+        console.error('❌ Error obteniendo nuevo último mensaje:', error);
+        
+        // En caso de error, emitir evento básico
+        io.to('admins').emit('conversation_list_updated', {
+            conversationId,
+            action: 'message_deleted_error',
+            timestamp: new Date()
+        });
+    }
 };
 
 // Emitir cuando una conversación es cerrada
@@ -206,36 +274,93 @@ export const emitConversationClosed = (io, conversationId) => {
     });
 };
 
-// Emitir cuando mensajes son marcados como leídos
+/**
+ * ✅ CORREGIDO: Emitir cuando mensajes son marcados como leídos
+ * Ahora actualiza contadores en tiempo real
+ */
 export const emitMessagesRead = (io, conversationId, readBy) => {
     io.to(`conversation_${conversationId}`).emit('messages_read', {
         conversationId,
         readBy,
         timestamp: new Date()
     });
+    
+    // ✅ NUEVO: Emitir actualización de contadores para admins
+    io.to('admins').emit('conversation_list_updated', {
+        conversationId,
+        action: 'messages_read',
+        readBy: readBy,
+        timestamp: new Date()
+    });
 };
 
-// Emitir estadísticas del chat a administradores
+/**
+ * ✅ CORREGIDO: Emitir estadísticas del chat a administradores
+ * Ahora calcula estadísticas más precisas y en tiempo real
+ */
 export const emitChatStats = async (io) => {
     try {
         // Importar modelos (importación dinámica para evitar circular dependencies)
         const { default: ChatConversation } = await import('../models/ChatConversation.js');
         const { default: ChatMessage } = await import('../models/ChatMessage.js');
         
+        // ✅ MEJORADO: Solo contar conversaciones que tengan mensajes
+        const conversationsWithMessages = await ChatConversation.aggregate([
+            {
+                $lookup: {
+                    from: 'chatmessages',
+                    localField: 'conversationId',
+                    foreignField: 'conversationId',
+                    as: 'messages'
+                }
+            },
+            {
+                $match: {
+                    'messages.0': { $exists: true },
+                    'messages': { 
+                        $elemMatch: { 
+                            isDeleted: false 
+                        } 
+                    }
+                }
+            }
+        ]);
+        
         const [
-            totalConversations,
-            activeConversations,
             totalMessages,
             unreadMessages
         ] = await Promise.all([
-            ChatConversation.countDocuments(),
-            ChatConversation.countDocuments({ status: 'active' }),
             ChatMessage.countDocuments({ isDeleted: false }),
             ChatConversation.aggregate([
-                { $group: { _id: null, total: { $sum: '$unreadCountAdmin' } } }
+                {
+                    $lookup: {
+                        from: 'chatmessages',
+                        localField: 'conversationId',
+                        foreignField: 'conversationId',
+                        as: 'messages'
+                    }
+                },
+                {
+                    $match: {
+                        'messages.0': { $exists: true },
+                        'messages': { 
+                            $elemMatch: { 
+                                isDeleted: false 
+                            } 
+                        }
+                    }
+                },
+                { 
+                    $group: { 
+                        _id: null, 
+                        total: { $sum: '$unreadCountAdmin' } 
+                    } 
+                }
             ])
         ]);
         
+        const totalConversations = conversationsWithMessages.length;
+        const activeConversations = conversationsWithMessages.filter(conv => conv.status === 'active').length;
         const unreadCount = unreadMessages.length > 0 ? unreadMessages[0].total : 0;
         
         const stats = {
@@ -244,13 +369,53 @@ export const emitChatStats = async (io) => {
             closedConversations: totalConversations - activeConversations,
             totalMessages,
             unreadMessages: unreadCount,
-            connectedUsers: connectedUsers.size
+            connectedUsers: connectedUsers.size,
+            timestamp: new Date()
         };
         
+        console.log(`📊 Emitiendo estadísticas actualizadas:`, stats);
         io.to('admins').emit('chat_stats_updated', stats);
+        
     } catch (error) {
-        console.error('Error emitiendo estadísticas:', error);
+        console.error('❌ Error emitiendo estadísticas:', error);
     }
+};
+
+/**
+ * ✅ NUEVA FUNCIÓN: Emitir actualización específica de conversación
+ * Para manejar cambios en tiempo real de conversaciones individuales
+ */
+export const emitConversationUpdate = (io, conversationData) => {
+    console.log(`🔄 Emitiendo actualización de conversación: ${conversationData.conversationId}`);
+    
+    io.to('admins').emit('conversation_updated', {
+        ...conversationData,
+        timestamp: new Date()
+    });
+    
+    // También emitir a la conversación específica si hay cambios relevantes
+    if (conversationData.lastMessage || conversationData.unreadCountClient || conversationData.unreadCountAdmin) {
+        io.to(`conversation_${conversationData.conversationId}`).emit('conversation_data_updated', {
+            ...conversationData,
+            timestamp: new Date()
+        });
+    }
+};
+
+/**
+ * ✅ NUEVA FUNCIÓN: Emitir cuando se crea una nueva conversación
+ * Para que aparezca inmediatamente en la lista de admins
+ */
+export const emitNewConversation = (io, conversationData) => {
+    console.log(`✨ Emitiendo nueva conversación: ${conversationData.conversationId}`);
+    
+    io.to('admins').emit('new_conversation_created', {
+        ...conversationData,
+        timestamp: new Date()
+    });
+    
+    // Actualizar estadísticas también
+    emitChatStats(io);
 };
 
 // Obtener usuarios conectados en una conversación

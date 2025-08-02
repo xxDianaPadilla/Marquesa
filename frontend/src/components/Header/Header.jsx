@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 // Iconos desde lucide-react 
-import { Menu, X } from "lucide-react";
+import { Menu, X, User, LogIn } from "lucide-react";
 // Iconos de favoritos desde la carpeta "assets"
 import iconFavorites from './../../assets/favoritesIcon.png';
 // Icono del carrito desde la carpeta "assets"
@@ -15,13 +16,40 @@ import './../../components/Header/Header.css';
 
 const Header = () => {
   const navigate = useNavigate();
+  const { isAuthenticated, loading } = useAuth(); // Obtener estado de autenticación
+  
   // Estado para controlar si el menú móvil está abierto o cerrado
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  // Estado para controlar el modal de autenticación
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
-  //Navegación para configuración
+  // Navegación para configuración con verificación de autenticación
   const handleProfileClick = (e) => {
     e.preventDefault();
-    navigate('/profile');
+    
+    // Si está cargando, no hacer nada
+    if (loading) {
+      return;
+    }
+    
+    // Si el usuario está autenticado, ir al perfil
+    if (isAuthenticated) {
+      navigate('/profile');
+    } else {
+      // Si no está autenticado, mostrar modal
+      setShowAuthModal(true);
+    }
+  };
+
+  // Función para manejar el clic en "Iniciar Sesión" del modal
+  const handleLoginRedirect = () => {
+    setShowAuthModal(false);
+    navigate('/login');
+  };
+
+  // Función para cerrar el modal
+  const closeAuthModal = () => {
+    setShowAuthModal(false);
   };
 
   //Navegación para favoritos
@@ -90,8 +118,8 @@ const Header = () => {
               />
               <img
                 src={iconSettings}
-                alt="Configuración"
-                className="icon-style"
+                alt="Perfil"
+                className={`icon-style ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 onClick={handleProfileClick}
               />
             </div>
@@ -162,8 +190,8 @@ const Header = () => {
                 <div className="flex flex-col items-center">
                   <img
                     src={iconSettings}
-                    alt="Configuración"
-                    className="icon-style mb-1"
+                    alt="Perfil"
+                    className={`icon-style mb-1 ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                     onClick={(e) => {
                       handleProfileClick(e);
                       closeMenu();
@@ -175,6 +203,67 @@ const Header = () => {
           </div>
         </div>
       </header>
+
+      {/* Modal de Autenticación */}
+      {showAuthModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
+          <div className="bg-white rounded-lg shadow-xl p-6 mx-4 max-w-sm w-full">
+            {/* Header del modal */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <User className="w-6 h-6 text-gray-600 mr-2" />
+                <h2 className="text-lg font-semibold text-gray-800">
+                  Acceso Requerido
+                </h2>
+              </div>
+              <button
+                onClick={closeAuthModal}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                style={{cursor: 'pointer'}}
+                aria-label="Cerrar modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Contenido del modal */}
+            <div className="mb-6">
+              <p className="text-gray-600 text-center">
+                Para acceder a tu perfil necesitas iniciar sesión
+              </p>
+            </div>
+
+            {/* Botones del modal */}
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={handleLoginRedirect}
+                style={{cursor: 'pointer'}}
+                className="w-full bg-pink-300 hover:bg-pink-400 text-white font-medium py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center"
+              >
+                <LogIn className="w-4 h-4 mr-2" />
+                Iniciar Sesión
+              </button>
+              
+              <button
+                onClick={closeAuthModal}
+                style={{cursor: 'pointer'}}
+                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2.5 px-4 rounded-lg transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Overlay para cerrar el modal al hacer clic fuera */}
+      {showAuthModal && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={closeAuthModal}
+          aria-hidden="true"
+        />
+      )}
     </>
   );
 };

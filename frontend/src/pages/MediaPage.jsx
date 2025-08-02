@@ -1,7 +1,7 @@
 /**
  * Página principal del blog de Marquesa
  * Muestra una lista filtrable de artículos con paginación
- * Utiliza el hook useMedia para manejar la lógica de filtrado y carga de artículos
+ * Utiliza el hook useMedia para manejar la lógica de filtrado y carga de artículos desde la API
  */
 import React from "react";
 import Header from "../components/Header/Header";
@@ -18,8 +18,50 @@ const MediaPage = () => {
         hasMoreItems, // Boolean para saber si hay más artículos para cargar
         loadMoreItems, // Función para cargar más artículos
         handleFilterChange, // Función para cambiar el filtro activo
-        totalItems // Total de artículos disponibles
+        totalItems, // Total de artículos disponibles
+        loading, // Estado de carga
+        error, // Estado de error
+        refreshData, // Función para refrescar datos
+        stats // Estadísticas de los medios
     } = useMedia();
+
+    // Componente de loading
+    const LoadingSpinner = () => (
+        <div className="flex items-center justify-center py-12">
+            <div className="flex flex-col items-center space-y-4">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
+                <p className="text-gray-600 text-sm" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                    Cargando contenido...
+                </p>
+            </div>
+        </div>
+    );
+
+    // Componente de error
+    const ErrorMessage = () => (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+                <div className="text-red-400 mb-4">
+                    <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-red-800 mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                    Error al cargar el contenido
+                </h3>
+                <p className="text-red-600 mb-4">
+                    {error || 'Ha ocurrido un error inesperado'}
+                </p>
+                <button
+                    onClick={refreshData}
+                    className="bg-red-100 hover:bg-red-200 text-red-800 px-4 py-2 rounded-full font-medium transition-all duration-300"
+                    style={{ fontFamily: 'Poppins, sans-serif' }}
+                >
+                    Intentar de nuevo
+                </button>
+            </div>
+        </div>
+    );
 
     return (
         <>
@@ -37,50 +79,80 @@ const MediaPage = () => {
                             <p className="text-sm sm:text-base lg:text-lg xl:text-xl text-gray-600 leading-relaxed px-4 sm:px-0">
                                 Descubre consejos, técnicas y contenido especialmente diseñado para el cuidado y disfrute de las flores.
                             </p>
+                            
+                            {/* Mostrar estadísticas si están disponibles */}
+                            {stats && !loading && (
+                                <div className="mt-6 flex flex-wrap justify-center gap-4 text-sm text-gray-500">
+                                    <div className="flex items-center gap-1">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                        </svg>
+                                        {stats.total} artículos
+                                    </div>
+                                    {stats.totalViews > 0 && (
+                                        <div className="flex items-center gap-1">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                            {stats.totalViews.toLocaleString()} visualizaciones
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </section>
 
-                {/* Sección de filtros */}
-                <section>
-                    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                        <FilterButtons 
-                            activeFilter={activeFilter}
-                            onFilterChange={handleFilterChange}
-                        />
-                    </div>
-                </section>
+                {/* Sección de filtros - Solo mostrar si no hay error */}
+                {!error && (
+                    <section>
+                        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                            <FilterButtons 
+                                activeFilter={activeFilter}
+                                onFilterChange={handleFilterChange}
+                                disabled={loading}
+                            />
+                        </div>
+                    </section>
+                )}
 
                 {/* Contador de resultados */}
-                <section>
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                            <p className="text-sm sm:text-base text-gray-600 text-center" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                {displayedItems.length === 0 ? (
-                                    <span className="flex items-center justify-center gap-2">
-                                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                        </svg>
-                                        No se encontraron artículos para este filtro
-                                    </span>
-                                ) : (
-                                    <>
-                                        Mostrando <span className="font-semibold text-gray-800">{displayedItems.length}</span> de <span className="font-semibold text-gray-800">{totalItems}</span> artículos
-                                        {activeFilter !== 'all' && (
-                                            <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                                                Filtro: {activeFilter}
-                                            </span>
-                                        )}
-                                    </>
-                                )}
-                            </p>
+                {!error && !loading && (
+                    <section>
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                                <p className="text-sm sm:text-base text-gray-600 text-center" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                    {displayedItems.length === 0 ? (
+                                        <span className="flex items-center justify-center gap-2">
+                                            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                            No se encontraron artículos para este filtro
+                                        </span>
+                                    ) : (
+                                        <>
+                                            Mostrando <span className="font-semibold text-gray-800">{displayedItems.length}</span> de <span className="font-semibold text-gray-800">{totalItems}</span> artículos
+                                            {activeFilter !== 'all' && (
+                                                <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                                                    Filtro: {activeFilter}
+                                                </span>
+                                            )}
+                                        </>
+                                    )}
+                                </p>
+                            </div>
                         </div>
-                    </div>
-                </section>
+                    </section>
+                )}
 
-                {/* Grid de tarjetas del blog */}
+                {/* Contenido principal */}
                 <section className="py-8 sm:py-12 lg:py-16">
-                    {displayedItems.length > 0 ? (
+                    {loading ? (
+                        <LoadingSpinner />
+                    ) : error ? (
+                        <ErrorMessage />
+                    ) : displayedItems.length > 0 ? (
                         <MediaGrid mediaItems={displayedItems} />
                     ) : (
                         // Estado vacío cuando no hay artículos
@@ -110,12 +182,13 @@ const MediaPage = () => {
                 </section>
 
                 {/* Botón "Cargar más" */}
-                {hasMoreItems && displayedItems.length > 0 && (
+                {hasMoreItems && displayedItems.length > 0 && !loading && !error && (
                     <section className="pb-12 sm:pb-16 lg:pb-20">
                         <div className="text-center">
                             <button 
                                 onClick={loadMoreItems}
-                                className="bg-pink-200 hover:bg-pink-300 text-pink-800 px-6 sm:px-8 lg:px-10 py-3 sm:py-4 rounded-full font-medium transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl text-sm sm:text-base lg:text-lg"
+                                disabled={loading}
+                                className="bg-pink-200 hover:bg-pink-300 disabled:bg-gray-200 disabled:text-gray-500 text-pink-800 px-6 sm:px-8 lg:px-10 py-3 sm:py-4 rounded-full font-medium transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl text-sm sm:text-base lg:text-lg"
                                 style={{ fontFamily: 'Poppins, sans-serif' }}
                             >
                                 <span className="flex items-center gap-2">
@@ -143,7 +216,7 @@ const MediaPage = () => {
                             <button
                                 onClick={() => window.location.href = '/'}
                                 className="bg-pink-200 hover:bg-pink-300 text-pink-800 px-6 sm:px-8 lg:px-10 py-3 sm:py-4 rounded-full font-medium transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl text-sm sm:text-base lg:text-lg"
-                                style={{ fontFamily: 'Poppins, sans-serif' }}
+                                style={{ fontFamily: 'Poppins, sans-serif', cursor: 'pointer' }}
                             >
                                 <span className="flex items-center gap-2 justify-center">
                                     <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

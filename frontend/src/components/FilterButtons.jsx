@@ -1,17 +1,17 @@
 import React from "react";
 
 // Componente para los botones de filtrado
-// Permite filtrar el contenido por categorías
-const FilterButtons = ({ activeFilter, onFilterChange }) => {
+// Permite filtrar el contenido por categorías basado en los tipos reales de la base de datos
+const FilterButtons = ({ activeFilter, onFilterChange, disabled = false }) => {
     const filters = [
         { id: 'all', label: 'Todos', icon: '📚', description: 'Todo el contenido' },
-        { id: 'blog', label: 'Blog', icon: '📝', description: 'Artículos del blog' },
-        { id: 'tips', label: 'Tips', icon: '💡', description: 'Consejos útiles' },
-        { id: 'datos-curiosos', label: 'Datos Curiosos', icon: '🌟', description: 'Información interesante' }
+        { id: 'Blog', label: 'Blog', icon: '📝', description: 'Artículos del blog' },
+        { id: 'Dato Curioso', label: 'Datos Curiosos', icon: '💡', description: 'Curiosidades interesantes' }, 
+        { id: 'Tip', label: 'Tips', icon: '✨', description: 'Consejos útiles' },
     ];
 
     return (
-        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-5 lg:px-8">
             {/* Mobile: Dropdown selector */}
             <div className="block sm:hidden">
                 <label htmlFor="filter-select" className="block text-sm font-medium text-gray-700 mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
@@ -21,7 +21,8 @@ const FilterButtons = ({ activeFilter, onFilterChange }) => {
                     id="filter-select"
                     value={activeFilter}
                     onChange={(e) => onFilterChange(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white text-gray-900"
+                    disabled={disabled}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white text-gray-900 disabled:bg-gray-100 disabled:text-gray-500"
                     style={{ fontFamily: 'Poppins, sans-serif' }}
                 >
                     {filters.map((filter) => (
@@ -44,24 +45,26 @@ const FilterButtons = ({ activeFilter, onFilterChange }) => {
                     </p>
                 </div>
 
-                {/* Filter buttons grid */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+                {/* Filter buttons grid - Responsive grid that adapts to number of filters */}
+                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
                     {filters.map((filter) => {
                         const isActive = activeFilter === filter.id;
                         return (
                             <button
                                 key={filter.id}
-                                onClick={() => onFilterChange(filter.id)}
+                                onClick={() => !disabled && onFilterChange(filter.id)}
+                                disabled={disabled}
                                 className={`
                                     group relative overflow-hidden rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 
                                     transition-all duration-300 transform hover:scale-105 hover:shadow-xl
                                     border-2 focus:outline-none focus:ring-4 focus:ring-pink-300
+                                    disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
                                     ${isActive 
                                         ? 'bg-gradient-to-br from-pink-500 to-purple-600 text-white border-pink-500 shadow-lg scale-105' 
                                         : 'bg-white text-gray-700 border-gray-200 hover:border-pink-300 hover:bg-pink-50 shadow-md'
                                     }
                                 `}
-                                style={{ fontFamily: 'Poppins, sans-serif' }}
+                                style={{ fontFamily: 'Poppins, sans-serif', cursor: 'pointer' }}
                             >
                                 {/* Background pattern for active state */}
                                 {isActive && (

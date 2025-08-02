@@ -35,11 +35,13 @@ import ChatButton from "../components/Chat/ChatButton";
 
 // Componentes nuevos reutilizables
 import FeatureCard from "../components/FeatureCard";
-import TestimonialCard from "../components/TestimonialCard";
 import NotificationToast from "../components/NotificationToast";
 import Container from "../components/Container";
 import ActionButton from "../components/ActionButton";
 import PriceDisplay from "../components/PriceDisplay";
+
+// NUEVO: Carrusel de testimonios
+import TestimonialsCarousel from "../components/TestimonialCarousel";
 
 // Recursos visuales
 import heroImage from "../assets/postfebruaryhome.png";
@@ -140,33 +142,6 @@ const HomePage = () => {
   ];
 
   /**
-   * Datos de testimonios de clientes
-   */
-  const testimonials = [
-    {
-      name: "María González",
-      year: 2024,
-      comment: "El arreglo floral que compré para el cumpleaños de mi madre superó todas mis expectativas. La calidad y frescura de las flores fue excepcional.",
-      rating: 5,
-      avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
-    },
-    {
-      name: "Carlos Rodríguez",
-      year: 2023,
-      comment: "La Giftbox personalizada que pedí para mi aniversario fue perfecta. El servicio al cliente fue excelente y me ayudaron a crear algo realmente especial.",
-      rating: 5,
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
-    },
-    {
-      name: "Laura Martínez",
-      year: 2025,
-      comment: "Los cuadros decorativos que compré para mi nueva casa son preciosos. La calidad es excelente y el envío fue rápido y seguro.",
-      rating: 5,
-      avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
-    }
-  ];
-
-  /**
    * Maneja el cambio de categoría en la navegación
    */
   const handleCategoryChange = (newCategoryId) => {
@@ -250,22 +225,22 @@ const HomePage = () => {
       </div>
 
       {/* Navegación de categorías funcionales debajo del Header */}
-<section className="bg-white pt-2 sm:pt-4 pb-4 sm:pb-6">
-  <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
-    <CategoryNavigation
-      categories={[
-        { _id: 'todos', name: 'Todos' },
-        { _id: '688175a69579a7cde1657aaa', name: 'Arreglos con flores naturales' },
-        { _id: '688175d89579a7cde1657ac2', name: 'Arreglos con flores secas' },
-        { _id: '688175fd9579a7cde1657aca', name: 'Cuadros decorativos' },
-        { _id: '688176179579a7cde1657ace', name: 'Giftboxes' },
-        { _id: '688175e79579a7cde1657ac6', name: 'Tarjetas' }
-      ]}
-      activeCategory="todos"
-      onCategoryChange={handleCategoryChange}
-    />
-  </div>
-</section>
+      <section className="bg-white pt-2 sm:pt-4 pb-4 sm:pb-6">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+          <CategoryNavigation
+            categories={[
+              { _id: 'todos', name: 'Todos' },
+              { _id: '688175a69579a7cde1657aaa', name: 'Arreglos con flores naturales' },
+              { _id: '688175d89579a7cde1657ac2', name: 'Arreglos con flores secas' },
+              { _id: '688175fd9579a7cde1657aca', name: 'Cuadros decorativos' },
+              { _id: '688176179579a7cde1657ace', name: 'Giftboxes' },
+              { _id: '688175e79579a7cde1657ac6', name: 'Tarjetas' }
+            ]}
+            activeCategory="todos"
+            onCategoryChange={handleCategoryChange}
+          />
+        </div>
+      </section>
 
       {/* Hero Section */}
       <section className="bg-pink-50 py-8 sm:py-14 -mt-12">
@@ -358,7 +333,7 @@ const HomePage = () => {
                     alt={product.name}
                     className="w-full h-48 sm:h-64 lg:h-85 object-cover rounded-t-lg"
                   />
-                  
+
                   {/* Badge de precio usando componente nuevo */}
                   <div className="absolute top-3 right-3 bg-white bg-opacity-90 rounded-full px-3 py-1 shadow-md">
                     <PriceDisplay price={product.price} size="sm" />
@@ -372,28 +347,26 @@ const HomePage = () => {
                   <p className="text-sm text-gray-600 mb-2" style={{ fontFamily: "Poppins" }}>
                     {product.description}
                   </p>
-                  
+
                   <div className="flex items-center justify-between mb-3">
                     <PriceDisplay price={product.price} />
-                    
+
                     <button
                       style={{ cursor: 'pointer' }}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleToggleFavorite(product.id);
                       }}
-                      className={`p-1 rounded-full transition-all duration-200 transform hover:scale-110 ${
-                        favorites.has(product.id)
+                      className={`p-1 rounded-full transition-all duration-200 transform hover:scale-110 ${favorites.has(product.id)
                           ? 'bg-red-100 hover:bg-red-200'
                           : 'hover:bg-gray-100'
-                      }`}
+                        }`}
                     >
                       <img
                         src={iconFavorites}
                         alt="Agregar a favoritos"
-                        className={`w-5 h-6 transition-all duration-200 ${
-                          favorites.has(product.id) ? 'filter-red' : ''
-                        }`}
+                        className={`w-5 h-6 transition-all duration-200 ${favorites.has(product.id) ? 'filter-red' : ''
+                          }`}
                         style={favorites.has(product.id) ? { filter: 'hue-rotate(320deg) saturate(2)' } : {}}
                       />
                     </button>
@@ -460,39 +433,11 @@ const HomePage = () => {
         </Container>
       </section>
 
-      {/* Sección de testimonios usando TestimonialCard */}
-      <section className="bg-pink-50 py-8 sm:py-14">
-        <Container>
-          <div className="text-center mb-8 sm:mb-12">
-            <h2
-              className="text-2xl sm:text-3xl lg:text-4xl font-medium text-gray-900 mb-4"
-              style={{ fontFamily: "Poppins" }}
-            >
-              Lo que dicen nuestros clientes
-            </h2>
-            <p
-              className="text-gray-600 mx-auto text-sm sm:text-base lg:text-lg max-w-xs sm:max-w-2xl lg:max-w-4xl"
-              style={{ fontFamily: "Poppins" }}
-            >
-              Descubre por qué nuestros clientes confían en nosotros para sus momentos especiales.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            {testimonials.map((testimonial, index) => (
-              <TestimonialCard
-                key={index}
-                name={testimonial.name}
-                year={testimonial.year}
-                comment={testimonial.comment}
-                rating={testimonial.rating}
-                avatar={testimonial.avatar}
-                className="md:col-span-2 lg:col-span-1"
-              />
-            ))}
-          </div>
-        </Container>
-      </section>
+      {/* NUEVO: Sección de testimonios con carrusel dinámico */}
+      <TestimonialsCarousel
+        maxReviews={6}
+        autoSlideInterval={4000}
+      />
 
       <Footer />
     </div>

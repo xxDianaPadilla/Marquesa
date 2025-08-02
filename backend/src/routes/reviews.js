@@ -25,6 +25,9 @@ router.route("/bestRanked")
 router.route("/client/:clientId")
     .get(reviewsController.getReviewByClient); // Obtener todas las reseñas de un cliente específico
 
+router.route('/product/:productId')
+    .get(reviewsController.getProductReviews);
+
 // Rutas de moderación y respuesta a reseñas
 // Nota: estas rutas deben ir antes de /:id para que Express las reconozca correctamente
 router.route("/:id/moderate")

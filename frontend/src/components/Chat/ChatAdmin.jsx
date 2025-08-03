@@ -125,9 +125,14 @@ const ChatAdmin = () => {
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
 
-        if (messageDate.toDateString() === today.toDateString()) {
+        // ✅ CORRECCIÓN: Comparar solo fechas, no horas
+        const messageDateOnly = messageDate.toDateString();
+        const todayOnly = today.toDateString();
+        const yesterdayOnly = yesterday.toDateString();
+
+        if (messageDateOnly === todayOnly) {
             return 'Hoy';
-        } else if (messageDate.toDateString() === yesterday.toDateString()) {
+        } else if (messageDateOnly === yesterdayOnly) {
             return 'Ayer';
         } else {
             return messageDate.toLocaleDateString('es-ES', {
@@ -203,25 +208,25 @@ const ChatAdmin = () => {
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center space-x-3 flex-1 min-w-0">
-                                        {/* Avatar */}
+                                        {/* ✅ CORRECCIÓN: Avatar siempre del cliente original */}
                                         <div className="w-8 md:w-10 h-8 md:h-10 bg-[#E8ACD2] rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0">
                                             {conversation.clientId?.profilePicture ? (
                                                 <img 
                                                     src={conversation.clientId.profilePicture} 
-                                                    alt={conversation.clientId.fullName}
+                                                    alt={conversation.clientId.fullName || 'Cliente'}
                                                     className="w-full h-full rounded-full object-cover"
                                                 />
                                             ) : (
-                                                conversation.clientId?.fullName?.charAt(0)?.toUpperCase() || 'U'
+                                                (conversation.clientId?.fullName?.charAt(0)?.toUpperCase() || 'C')
                                             )}
                                         </div>
                                         
-                                        {/* Info del cliente */}
+                                        {/* ✅ CORRECCIÓN: Info siempre del cliente original */}
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm font-medium text-gray-900 truncate" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                                {conversation.clientId?.fullName || 'Usuario'}
+                                                {conversation.clientId?.fullName || 'Cliente'}
                                             </p>
-                                            {/* ✅ ÚLTIMO MENSAJE EN TIEMPO REAL: Se actualiza automáticamente */}
+                                            {/* Último mensaje (puede ser de admin o cliente) */}
                                             <p className="text-xs text-gray-500 truncate" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                                 {conversation.lastMessage || 'Nuevo mensaje...'}
                                             </p>
@@ -230,19 +235,19 @@ const ChatAdmin = () => {
                                     
                                     {/* Indicadores actualizados en tiempo real */}
                                     <div className="flex flex-col items-end space-y-1 flex-shrink-0 ml-2">
-                                        {/* ✅ HORA EN TIEMPO REAL: Se actualiza con cada mensaje */}
+                                        {/* ✅ Hora del último mensaje */}
                                         <span className="text-xs text-gray-500">
                                             {conversation.lastMessageAt && formatTime(conversation.lastMessageAt)}
                                         </span>
                                         
-                                        {/* ✅ CONTADOR NO LEÍDOS EN TIEMPO REAL: Se actualiza automáticamente */}
+                                        {/* ✅ Contador no leídos */}
                                         {conversation.unreadCountAdmin > 0 && (
                                             <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full min-w-[20px] text-center animate-pulse">
                                                 {conversation.unreadCountAdmin}
                                             </span>
                                         )}
                                         
-                                        {/* ✅ INDICADOR DE ACTIVIDAD RECIENTE */}
+                                        {/* ✅ Indicador de actividad reciente */}
                                         {conversation.lastMessageAt && 
                                          new Date() - new Date(conversation.lastMessageAt) < 5 * 60 * 1000 && (
                                             <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" title="Actividad reciente"></span>
@@ -263,28 +268,30 @@ const ChatAdmin = () => {
                         <div className="p-3 md:p-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-3 flex-1 min-w-0">
+                                    {/* ✅ CORRECCIÓN: Avatar siempre del cliente de la conversación */}
                                     <div className="w-6 md:w-8 h-6 md:h-8 bg-[#E8ACD2] rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
                                         {activeConversation.clientId?.profilePicture ? (
                                             <img 
                                                 src={activeConversation.clientId.profilePicture} 
-                                                alt={activeConversation.clientId.fullName}
+                                                alt={activeConversation.clientId.fullName || 'Cliente'}
                                                 className="w-full h-full rounded-full object-cover"
                                             />
                                         ) : (
-                                            activeConversation.clientId?.fullName?.charAt(0)?.toUpperCase() || 'U'
+                                            (activeConversation.clientId?.fullName?.charAt(0)?.toUpperCase() || 'C')
                                         )}
                                     </div>
                                     <div className="min-w-0 flex-1">
+                                        {/* ✅ CORRECCIÓN: Nombre y email siempre del cliente de la conversación */}
                                         <h4 className="font-medium text-gray-900 truncate" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                            {activeConversation.clientId?.fullName || 'Usuario'}
+                                            {activeConversation.clientId?.fullName || 'Cliente'}
                                         </h4>
                                         <p className="text-sm text-gray-500 truncate" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                            {activeConversation.clientId?.email}
+                                            {activeConversation.clientId?.email || 'Email no disponible'}
                                         </p>
                                     </div>
                                 </div>
                                 
-                                {/* ✅ INDICADOR DE LÍMITE MEJORADO: Actualización en tiempo real */}
+                                {/* ✅ INDICADOR DE LÍMITE MEJORADO */}
                                 <div className="flex flex-col items-end text-xs text-gray-500">
                                     <span className={`${isNearLimit ? 'text-orange-500' : isAtLimit ? 'text-red-500' : 'text-gray-500'} transition-colors duration-300`}>
                                         {messageCount}/75 mensajes
@@ -334,30 +341,31 @@ const ChatAdmin = () => {
                                 </div>
                             ) : (
                                 messages.filter(message => !message.isDeleted).map((message, index) => {
-                                    const showDate = index === 0 || 
-                                        formatDate(message.createdAt) !== formatDate(messages[index - 1].createdAt);
-                                    
-                                    return (
-                                        <div key={message._id}>
-                                            {showDate && (
-                                                <div className="text-center mb-4">
-                                                    <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                                                        {formatDate(message.createdAt)}
-                                                    </span>
-                                                </div>
-                                            )}
-                                            
-                                            <MessageItem
-                                                message={message}
-                                                isOwnMessage={message.senderType === 'admin'}
-                                                isAdmin={true}
-                                                onAction={handleMessageAction}
-                                                MediaRenderer={MediaRenderer}
-                                                formatTime={formatTime}
-                                            />
-                                        </div>
-                                    );
-                                })
+                                const showDate = index === 0 || 
+                                    formatDate(message.createdAt) !== formatDate(messages[index - 1].createdAt);
+                                
+                                return (
+                                    <div key={message._id}>
+                                        {showDate && (
+                                            <div className="text-center mb-4">
+                                                <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                                                    {formatDate(message.createdAt)}
+                                                </span>
+                                            </div>
+                                        )}
+                                        
+                                        <MessageItem
+                                            message={message}
+                                            isOwnMessage={message.senderType === 'admin'}
+                                            isAdmin={true}
+                                            onAction={handleMessageAction}
+                                            MediaRenderer={MediaRenderer}
+                                            formatTime={formatTime}
+                                            activeConversation={activeConversation} // ✅ CORRECCIÓN CRÍTICA: Pasar activeConversation
+                                        />
+                                    </div>
+                                );
+                            })
                             )}
                             
                             {/* Indicador de escritura */}

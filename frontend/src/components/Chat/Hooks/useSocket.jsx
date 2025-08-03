@@ -3,33 +3,32 @@ import { io } from 'socket.io-client';
 import { useAuth } from '../../../context/AuthContext';
 
 /**
- * Hook personalizado para manejar la conexión y eventos de Socket.IO
- * Proporciona funcionalidades de chat en tiempo real como:
- * - Conexión/desconexión automática
- * - Unirse/salir de conversaciones
- * - Indicadores de escritura
- * - Listeners para eventos del chat
+ * Hook useSocket - ACTUALIZADO SEGÚN INFORME
  * 
- * @returns {Object} Objeto con funciones y estados de Socket.IO
+ * CAMBIOS IMPLEMENTADOS:
+ * - Eventos Socket.IO unificados (conversation_updated con actions)
+ * - Mejor manejo de reconexión automática
+ * - Eventos específicos mantenidos (5 eventos)
+ * - Evento unificado conversation_updated (3→1)
+ * - Solo imágenes en eventos de archivos
+ * 
+ * Ubicación: frontend/src/components/Chat/Hooks/useSocket.jsx
  */
 export const useSocket = () => {
     // ============ CONTEXTO Y REFERENCIAS ============
     
-    const { user, isAuthenticated } = useAuth(); // Datos del usuario autenticado
-    const socketRef = useRef(null); // Referencia al socket de Socket.IO
+    const { user, isAuthenticated } = useAuth();
+    const socketRef = useRef(null);
     
     // ============ ESTADOS DE CONEXIÓN ============
     
-    const [isConnected, setIsConnected] = useState(false); // Estado de conexión actual
-    const [connectionError, setConnectionError] = useState(null); // Errores de conexión
+    const [isConnected, setIsConnected] = useState(false);
+    const [connectionError, setConnectionError] = useState(null);
 
     // ============ FUNCIONES DE AUTENTICACIÓN ============
     
     /**
-     * Obtiene el token de autenticación de las cookies del navegador
-     * El token se usa para autenticar la conexión Socket.IO
-     * 
-     * @returns {string|null} Token de autenticación o null si no existe
+     * ✅ Obtiene el token de autenticación de las cookies
      */
     const getAuthToken = useCallback(() => {
         const cookies = document.cookie.split(';');
@@ -45,25 +44,23 @@ export const useSocket = () => {
     // ============ FUNCIONES DE CONEXIÓN ============
     
     /**
-     * Establece la conexión con el servidor Socket.IO
-     * Incluye configuración de autenticación y reintentos automáticos
+     * ✅ Establece la conexión con el servidor Socket.IO
      */
     const connectSocket = useCallback(() => {
         console.log('🔄 Intentando conectar Socket.IO...');
         
-        // Validar prerrequisitos para la conexión
         if (!isAuthenticated || !user) {
             console.log('❌ Usuario no autenticado, cancelando conexión');
+            setConnectionError('Usuario no autenticado');
             return;
         }
 
-        // Evitar múltiples conexiones simultáneas
         if (socketRef.current?.connected) {
             console.log('✅ Socket ya conectado, saltando conexión');
+            setIsConnected(true);
             return;
         }
 
-        // Verificar que existe un token de autenticación
         const token = getAuthToken();
         if (!token) {
             console.log('❌ No hay token de autenticación disponible');
@@ -74,36 +71,46 @@ export const useSocket = () => {
         try {
             console.log('🚀 Creando nueva conexión Socket.IO...');
             
-            // Crear nueva instancia de Socket.IO con configuración completa
+            // ✅ CORRECCIÓN: Limpiar errores previos al intentar conectar
+            setConnectionError(null);
+            
             socketRef.current = io('http://localhost:4000', {
                 auth: {
-                    token: token // Token para autenticación en el servidor
+                    token: token,
+                    userId: user.id,
+                    userType: user.userType
                 },
-                withCredentials: true, // Incluir cookies en las peticiones
-                reconnection: true, // Habilitar reconexión automática
-                reconnectionAttempts: 5, // Máximo 5 intentos de reconexión
-                reconnectionDelay: 1000, // 1 segundo entre intentos
-                timeout: 20000, // Timeout de 20 segundos para conexión
-                transports: ['websocket', 'polling'] // Transportes permitidos
+                withCredentials: true,
+                reconnection: true,
+                reconnectionAttempts: 5,
+                reconnectionDelay: 1000,
+                reconnectionDelayMax: 5000,
+                timeout: 20000,
+                transports: ['websocket', 'polling'],
+                // ✅ CORRECCIÓN: Configuraciones adicionales para mejor estabilidad
+                forceNew: false,
+                autoConnect: true
             });
 
-            // Configurar eventos de conexión y manejo de errores
             setupConnectionEvents();
 
         } catch (error) {
             console.error('❌ Error creando socket:', error);
             setConnectionError(`Error creando socket: ${error.message}`);
+            setIsConnected(false);
         }
     }, [isAuthenticated, user, getAuthToken]);
 
     /**
-     * Configura todos los eventos relacionados con la conexión Socket.IO
-     * Maneja estados de conexión, errores y eventos del servidor
+     * ✅ Configura todos los eventos de conexión Socket.IO
      */
     const setupConnectionEvents = useCallback(() => {
         if (!socketRef.current) return;
 
         console.log('⚙️ Configurando eventos de conexión Socket.IO...');
+
+        // ✅ CORRECCIÓN: Limpiar listeners previos para evitar duplicados
+        socketRef.current.removeAllListeners();
 
         // ---- EVENTO: Conexión exitosa ----
         socketRef.current.on('connect', () => {
@@ -115,7 +122,8 @@ export const useSocket = () => {
         // ---- EVENTO: Confirmación del servidor ----
         socketRef.current.on('connected', (data) => {
             console.log('🎯 Confirmación recibida del servidor:', data);
-            // El servidor confirma que la autenticación fue exitosa
+            setIsConnected(true);
+            setConnectionError(null);
         });
 
         // ---- EVENTO: Desconexión ----
@@ -123,9 +131,9 @@ export const useSocket = () => {
             console.log('❌ Socket.IO desconectado:', reason);
             setIsConnected(false);
             
-            // Solo mostrar error si no es desconexión intencional del cliente
-            if (reason !== 'io client disconnect') {
-                setConnectionError('Conexión perdida');
+            // ✅ CORRECCIÓN: Solo mostrar error si no es desconexión intencional
+            if (reason !== 'io client disconnect' && reason !== 'transport close') {
+                setConnectionError(`Desconectado: ${reason}`);
                 console.log('🔄 Intentando reconectar automáticamente...');
             }
         });
@@ -133,7 +141,14 @@ export const useSocket = () => {
         // ---- EVENTO: Error de conexión ----
         socketRef.current.on('connect_error', (error) => {
             console.error('❌ Error de conexión Socket.IO:', error);
-            setConnectionError(`Error de conexión: ${error.message}`);
+            setConnectionError(`Error de conexión: ${error.message || 'Error desconocido'}`);
+            setIsConnected(false);
+        });
+
+        // ---- EVENTO: Error de autenticación ----
+        socketRef.current.on('unauthorized', (error) => {
+            console.error('❌ Error de autenticación Socket.IO:', error);
+            setConnectionError('Error de autenticación: Token inválido o expirado');
             setIsConnected(false);
         });
 
@@ -141,13 +156,33 @@ export const useSocket = () => {
         socketRef.current.on('error', (error) => {
             console.error('❌ Error en socket:', error);
             setConnectionError(`Error en socket: ${error.message || error}`);
+            setIsConnected(false);
+        });
+
+        // ✅ CORRECCIÓN: Evento de reconexión exitosa
+        socketRef.current.on('reconnect', (attemptNumber) => {
+            console.log(`✅ Reconectado exitosamente después de ${attemptNumber} intentos`);
+            setIsConnected(true);
+            setConnectionError(null);
+        });
+
+        // ✅ CORRECCIÓN: Evento de intento de reconexión
+        socketRef.current.on('reconnect_attempt', (attemptNumber) => {
+            console.log(`🔄 Intento de reconexión #${attemptNumber}`);
+            setConnectionError(`Reconectando... Intento ${attemptNumber}/5`);
+        });
+
+        // ✅ CORRECCIÓN: Evento de fallo de reconexión
+        socketRef.current.on('reconnect_failed', () => {
+            console.error('❌ Falló la reconexión después de todos los intentos');
+            setConnectionError('No se pudo reconectar. Verifica tu conexión a internet.');
+            setIsConnected(false);
         });
 
     }, []);
 
     /**
-     * Desconecta el socket y limpia todas las referencias
-     * Se usa cuando el usuario se desloguea o el componente se desmonta
+     * ✅ Desconecta el socket y limpia referencias
      */
     const disconnectSocket = useCallback(() => {
         console.log('🔌 Desconectando Socket.IO...');
@@ -163,10 +198,6 @@ export const useSocket = () => {
 
     // ============ EFECTOS DE CICLO DE VIDA ============
     
-    /**
-     * Efecto para manejar conexión/desconexión automática basada en autenticación
-     * Se ejecuta cuando cambia el estado de autenticación o los datos del usuario
-     */
     useEffect(() => {
         if (isAuthenticated && user) {
             console.log('👤 Usuario autenticado, conectando Socket.IO...');
@@ -176,7 +207,6 @@ export const useSocket = () => {
             disconnectSocket();
         }
 
-        // Cleanup: desconectar al desmontar el componente
         return () => {
             console.log('🧹 Limpiando conexión Socket.IO...');
             disconnectSocket();
@@ -186,10 +216,7 @@ export const useSocket = () => {
     // ============ FUNCIONES PARA EVENTOS DEL CHAT ============
     
     /**
-     * Une al usuario a una conversación específica (sala de Socket.IO)
-     * Permite recibir mensajes y eventos específicos de esa conversación
-     * 
-     * @param {string} conversationId - ID de la conversación a unirse
+     * ✅ Une al usuario a una conversación específica
      */
     const joinConversation = useCallback((conversationId) => {
         if (socketRef.current?.connected && conversationId) {
@@ -201,10 +228,7 @@ export const useSocket = () => {
     }, []);
 
     /**
-     * Saca al usuario de una conversación específica
-     * Deja de recibir eventos de esa conversación
-     * 
-     * @param {string} conversationId - ID de la conversación a abandonar
+     * ✅ Saca al usuario de una conversación específica
      */
     const leaveConversation = useCallback((conversationId) => {
         if (socketRef.current?.connected && conversationId) {
@@ -214,10 +238,7 @@ export const useSocket = () => {
     }, []);
 
     /**
-     * Indica al servidor que el usuario está escribiendo un mensaje
-     * Activa el indicador de "escribiendo" para otros usuarios
-     * 
-     * @param {string} conversationId - ID de la conversación donde se escribe
+     * ✅ Indica que el usuario está escribiendo
      */
     const startTyping = useCallback((conversationId) => {
         if (socketRef.current?.connected && conversationId) {
@@ -226,10 +247,7 @@ export const useSocket = () => {
     }, []);
 
     /**
-     * Indica al servidor que el usuario dejó de escribir
-     * Desactiva el indicador de "escribiendo"
-     * 
-     * @param {string} conversationId - ID de la conversación donde se escribía
+     * ✅ Indica que el usuario dejó de escribir
      */
     const stopTyping = useCallback((conversationId) => {
         if (socketRef.current?.connected && conversationId) {
@@ -237,20 +255,23 @@ export const useSocket = () => {
         }
     }, []);
 
-    // ============ FUNCIONES PARA SUSCRIBIRSE A EVENTOS ============
+    // ============ EVENTOS ESPECÍFICOS MANTENIDOS (5 eventos) ============
     
     /**
-     * Suscribe a eventos de nuevos mensajes recibidos
-     * 
-     * @param {Function} callback - Función a ejecutar cuando llega un nuevo mensaje
-     * @returns {Function} Función de cleanup para remover el listener
+     * ✅ EVENTO 1/6: Suscribe a eventos de nuevos mensajes
      */
     const onNewMessage = useCallback((callback) => {
         if (socketRef.current) {
             console.log('📨 Suscribiéndose a eventos de nuevos mensajes');
-            socketRef.current.on('new_message', callback);
+            socketRef.current.on('new_message', (data) => {
+                console.log('📨 Nuevo mensaje recibido via Socket.IO:', {
+                    conversationId: data.conversationId,
+                    hasImage: data.message?.media?.type === 'image', // ✅ Solo imágenes
+                    timestamp: data.timestamp
+                });
+                callback(data);
+            });
             
-            // Retornar función de cleanup
             return () => {
                 if (socketRef.current) {
                     console.log('🧹 Removiendo listener de nuevos mensajes');
@@ -258,19 +279,24 @@ export const useSocket = () => {
                 }
             };
         }
-        return () => {}; // Función vacía si no hay socket
+        return () => {};
     }, []);
 
     /**
-     * Suscribe a eventos de mensajes eliminados
-     * 
-     * @param {Function} callback - Función a ejecutar cuando se elimina un mensaje
-     * @returns {Function} Función de cleanup
+     * ✅ EVENTO 2/6: Suscribe a eventos de mensajes eliminados (físicamente)
      */
     const onMessageDeleted = useCallback((callback) => {
         if (socketRef.current) {
             console.log('🗑️ Suscribiéndose a eventos de mensajes eliminados');
-            socketRef.current.on('message_deleted', callback);
+            socketRef.current.on('message_deleted', (data) => {
+                console.log('🗑️ Mensaje eliminado via Socket.IO:', {
+                    messageId: data.messageId,
+                    conversationId: data.conversationId,
+                    deletionType: data.deletionType, // ✅ Siempre será 'physical'
+                    timestamp: data.timestamp
+                });
+                callback(data);
+            });
             
             return () => {
                 if (socketRef.current) {
@@ -283,52 +309,7 @@ export const useSocket = () => {
     }, []);
 
     /**
-     * Suscribe a eventos de actualización de conversaciones
-     * 
-     * @param {Function} callback - Función a ejecutar cuando se actualiza una conversación
-     * @returns {Function} Función de cleanup
-     */
-    const onConversationUpdated = useCallback((callback) => {
-        if (socketRef.current) {
-            console.log('💬 Suscribiéndose a eventos de conversaciones actualizadas');
-            socketRef.current.on('conversation_updated', callback);
-            
-            return () => {
-                if (socketRef.current) {
-                    console.log('🧹 Removiendo listener de conversaciones actualizadas');
-                    socketRef.current.off('conversation_updated', callback);
-                }
-            };
-        }
-        return () => {};
-    }, []);
-
-    /**
-     * Suscribe a eventos de conversaciones cerradas
-     * 
-     * @param {Function} callback - Función a ejecutar cuando se cierra una conversación
-     * @returns {Function} Función de cleanup
-     */
-    const onConversationClosed = useCallback((callback) => {
-        if (socketRef.current) {
-            console.log('🔒 Suscribiéndose a eventos de conversaciones cerradas');
-            socketRef.current.on('conversation_closed', callback);
-            
-            return () => {
-                if (socketRef.current) {
-                    console.log('🧹 Removiendo listener de conversaciones cerradas');
-                    socketRef.current.off('conversation_closed', callback);
-                }
-            };
-        }
-        return () => {};
-    }, []);
-
-    /**
-     * Suscribe a eventos de mensajes marcados como leídos
-     * 
-     * @param {Function} callback - Función a ejecutar cuando se marcan mensajes como leídos
-     * @returns {Function} Función de cleanup
+     * ✅ EVENTO 3/6: Suscribe a eventos de mensajes leídos
      */
     const onMessagesRead = useCallback((callback) => {
         if (socketRef.current) {
@@ -346,31 +327,7 @@ export const useSocket = () => {
     }, []);
 
     /**
-     * Suscribe a eventos de indicadores de escritura
-     * 
-     * @param {Function} callback - Función a ejecutar cuando alguien está escribiendo
-     * @returns {Function} Función de cleanup
-     */
-    const onUserTyping = useCallback((callback) => {
-        if (socketRef.current) {
-            console.log('⌨️ Suscribiéndose a eventos de escritura');
-            socketRef.current.on('user_typing', callback);
-            
-            return () => {
-                if (socketRef.current) {
-                    console.log('🧹 Removiendo listener de escritura');
-                    socketRef.current.off('user_typing', callback);
-                }
-            };
-        }
-        return () => {};
-    }, []);
-
-    /**
-     * Suscribe a eventos de estadísticas del chat (solo para administradores)
-     * 
-     * @param {Function} callback - Función a ejecutar cuando se actualizan las estadísticas
-     * @returns {Function} Función de cleanup
+     * ✅ EVENTO 4/6: Suscribe a eventos de estadísticas del chat
      */
     const onChatStatsUpdated = useCallback((callback) => {
         if (socketRef.current) {
@@ -388,10 +345,124 @@ export const useSocket = () => {
     }, []);
 
     /**
-     * Suscribe a eventos de usuarios uniéndose a conversaciones
+     * ✅ EVENTO 5/6: Suscribe a eventos de límite aplicado
+     */
+    const onLimitApplied = useCallback((callback) => {
+        if (socketRef.current) {
+            console.log('⚠️ Suscribiéndose a eventos de límite aplicado');
+            socketRef.current.on('limit_applied', (data) => {
+                console.log('⚠️ Límite aplicado via Socket.IO:', {
+                    conversationId: data.conversationId,
+                    deletedCount: data.deletedCount,
+                    deletedFiles: data.deletedFiles,
+                    deletionType: data.deletionType, // ✅ Siempre será 'physical'
+                    timestamp: data.timestamp
+                });
+                callback(data);
+            });
+            
+            return () => {
+                if (socketRef.current) {
+                    console.log('🧹 Removiendo listener de límite aplicado');
+                    socketRef.current.off('limit_applied', callback);
+                }
+            };
+        }
+        return () => {};
+    }, []);
+
+    // ============ EVENTO UNIFICADO (3→1) ============
+
+    /**
+     * ✅ EVENTO 6/6: conversation_updated - UNIFICA 3 EVENTOS ANTERIORES
      * 
-     * @param {Function} callback - Función a ejecutar cuando un usuario se une
-     * @returns {Function} Función de cleanup
+     * ANTES (3 eventos separados):
+     * - conversation_updated
+     * - conversation_list_updated  
+     * - new_conversation_created
+     * 
+     * DESPUÉS (1 evento unificado con actions):
+     */
+    const onConversationUpdated = useCallback((callback) => {
+        if (socketRef.current) {
+            console.log('💬 Suscribiéndose a eventos de conversaciones actualizadas (unificado)');
+            socketRef.current.on('conversation_updated', (data) => {
+                console.log('💬 Conversación actualizada via Socket.IO:', {
+                    conversationId: data.conversationId,
+                    action: data.action, // ✅ 'created' | 'updated' | 'list_updated'
+                    timestamp: data.timestamp
+                });
+                
+                // Procesar según el tipo de acción
+                switch (data.action) {
+                    case 'created':
+                        console.log('✨ Nueva conversación creada:', data.conversationId);
+                        break;
+                    case 'updated':
+                        console.log('🔄 Conversación actualizada:', data.conversationId);
+                        break;
+                    case 'list_updated':
+                        console.log('📋 Lista de conversaciones actualizada');
+                        break;
+                    default:
+                        console.log('🔄 Conversación actualizada (acción genérica):', data.conversationId);
+                }
+                
+                callback(data);
+            });
+            
+            return () => {
+                if (socketRef.current) {
+                    console.log('🧹 Removiendo listener de conversaciones actualizadas');
+                    socketRef.current.off('conversation_updated', callback);
+                }
+            };
+        }
+        return () => {};
+    }, []);
+
+    // ============ EVENTOS ELIMINADOS SEGÚN INFORME ============
+    // ❌ onConversationListUpdated - Eliminado (unificado en conversation_updated)
+    // ❌ onNewConversationCreated - Eliminado (unificado en conversation_updated)
+
+    /**
+     * ✅ Suscribe a eventos de conversaciones cerradas
+     */
+    const onConversationClosed = useCallback((callback) => {
+        if (socketRef.current) {
+            console.log('🔒 Suscribiéndose a eventos de conversaciones cerradas');
+            socketRef.current.on('conversation_closed', callback);
+            
+            return () => {
+                if (socketRef.current) {
+                    console.log('🧹 Removiendo listener de conversaciones cerradas');
+                    socketRef.current.off('conversation_closed', callback);
+                }
+            };
+        }
+        return () => {};
+    }, []);
+
+    /**
+     * ✅ Suscribe a eventos de indicadores de escritura
+     */
+    const onUserTyping = useCallback((callback) => {
+        if (socketRef.current) {
+            console.log('⌨️ Suscribiéndose a eventos de escritura');
+            socketRef.current.on('user_typing', callback);
+            
+            return () => {
+                if (socketRef.current) {
+                    console.log('🧹 Removiendo listener de escritura');
+                    socketRef.current.off('user_typing', callback);
+                }
+            };
+        }
+        return () => {};
+    }, []);
+
+    /**
+     * ✅ Suscribe a eventos de usuarios uniéndose a conversaciones
      */
     const onUserJoinedConversation = useCallback((callback) => {
         if (socketRef.current) {
@@ -409,10 +480,7 @@ export const useSocket = () => {
     }, []);
 
     /**
-     * Suscribe a eventos de usuarios saliendo de conversaciones
-     * 
-     * @param {Function} callback - Función a ejecutar cuando un usuario sale
-     * @returns {Function} Función de cleanup
+     * ✅ Suscribe a eventos de usuarios saliendo de conversaciones
      */
     const onUserLeftConversation = useCallback((callback) => {
         if (socketRef.current) {
@@ -432,53 +500,57 @@ export const useSocket = () => {
     // ============ FUNCIONES DE UTILIDAD ============
     
     /**
-     * Limpia el error de conexión actual
+     * ✅ Limpia el error de conexión actual
      */
     const clearConnectionError = useCallback(() => {
         setConnectionError(null);
     }, []);
 
     /**
-     * Fuerza una reconexión desconectando y conectando nuevamente
-     * Útil cuando hay problemas de conectividad
+     * ✅ Fuerza una reconexión
      */
     const reconnect = useCallback(() => {
         console.log('🔄 Forzando reconexión...');
         disconnectSocket();
         setTimeout(() => {
             connectSocket();
-        }, 1000); // Esperar 1 segundo antes de reconectar
+        }, 1000);
     }, [disconnectSocket, connectSocket]);
 
-    // ============ RETORNO DEL HOOK ============
+    // ============ RETORNO DEL HOOK ACTUALIZADO ============
     
     return {
         // ---- Estado de la conexión ----
-        socket: socketRef.current,     // Instancia del socket (para uso directo si es necesario)
-        isConnected,                   // Estado de conexión actual
-        connectionError,               // Error de conexión actual (si existe)
+        socket: socketRef.current,
+        isConnected,
+        connectionError,
         
         // ---- Acciones de conexión ----
-        connectSocket,                 // Función para conectar manualmente
-        disconnectSocket,              // Función para desconectar manualmente
-        reconnect,                     // Función para reconectar forzadamente
-        clearConnectionError,          // Función para limpiar errores
+        connectSocket,
+        disconnectSocket,
+        reconnect,
+        clearConnectionError,
         
         // ---- Acciones del chat ----
-        joinConversation,              // Unirse a una conversación específica
-        leaveConversation,             // Salir de una conversación específica
-        startTyping,                   // Iniciar indicador de escritura
-        stopTyping,                    // Detener indicador de escritura
+        joinConversation,
+        leaveConversation,
+        startTyping,
+        stopTyping,
         
-        // ---- Suscripciones a eventos ----
-        onNewMessage,                  // Listener para nuevos mensajes
-        onMessageDeleted,              // Listener para mensajes eliminados
-        onConversationUpdated,         // Listener para conversaciones actualizadas
-        onConversationClosed,          // Listener para conversaciones cerradas
-        onMessagesRead,                // Listener para mensajes leídos
-        onUserTyping,                  // Listener para indicadores de escritura
-        onChatStatsUpdated,            // Listener para estadísticas actualizadas
-        onUserJoinedConversation,      // Listener para usuarios uniéndose
-        onUserLeftConversation         // Listener para usuarios saliendo
+        // ---- Eventos específicos mantenidos (5 eventos) ----
+        onNewMessage,                  // ✅ Nuevo mensaje recibido
+        onMessageDeleted,              // ✅ Mensaje eliminado (físicamente)
+        onMessagesRead,                // ✅ Mensajes marcados como leídos
+        onChatStatsUpdated,            // ✅ Estadísticas actualizadas
+        onLimitApplied,                // ✅ Límite de 75 mensajes aplicado
+        
+        // ---- Evento unificado (3→1) ----
+        onConversationUpdated,         // ✅ UNIFICA: conversation_updated + conversation_list_updated + new_conversation_created
+        
+        // ---- Otros eventos útiles ----
+        onConversationClosed,          // Conversación cerrada
+        onUserTyping,                  // Indicadores de escritura
+        onUserJoinedConversation,      // Usuario se unió a conversación
+        onUserLeftConversation         // Usuario salió de conversación
     };
 };

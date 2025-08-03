@@ -3,13 +3,13 @@ import { useAuth } from "../../../context/AuthContext";
 import { useSocket } from "./useSocket";
 
 /**
- * Hook useChat - CORREGIDO PARA ACTUALIZACIÓN CORRECTA DEL ÚLTIMO MENSAJE
+ * Hook useChat - CORREGIDO PARA ACTUALIZACIONES EN TIEMPO REAL
  * 
- * FIXES APLICADOS:
- * - Último mensaje se actualiza inmediatamente al eliminar
- * - Mejor sincronización entre mensajes locales y estado de conversaciones
- * - Socket.IO escucha eventos específicos de actualización de último mensaje
- * - Estado local se mantiene sincronizado con el backend
+ * PROBLEMAS SOLUCIONADOS:
+ * - Último mensaje se actualiza correctamente al eliminar desde cliente
+ * - Contador de no leídos se resetea correctamente al eliminar
+ * - Sincronización perfecta entre cliente y admin
+ * - Eventos Socket.IO mejorados para actualizaciones bidireccionales
  * 
  * Ubicación: frontend/src/components/Chat/Hooks/useChat.jsx
  */
@@ -65,53 +65,124 @@ export const useChat = () => {
         activeConversationRef.current = activeConversation;
     }, [activeConversation]);
 
-    // ============ FUNCIONES DE VALIDACIÓN Y UTILIDAD ============
+    // ============ FUNCIÓN UNIFICADA DE FORMATO ============
 
-    /**
-     * ✅ Valida que el usuario esté autenticado antes de hacer peticiones
-     */
-    const validateAuthenticatedUser = useCallback(() => {
-        console.log(`🔍 Validando usuario autenticado:`, {
-            isAuthenticated,
-            hasUser: !!user,
-            userId: user?.id,
-            userType: user?.userType,
-            authLoading
-        });
+    const formatChatContent = useCallback((data, options = {}) => {
+        const formatTime = (date) => {
+            if (!date) return '';
+            return new Date(date).toLocaleTimeString('es-ES', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        };
         
+        // ✅ CORRECCIÓN CRÍTICA: Función de formateo de fecha corregida
+        const formatDate = (date) => {
+            if (!date) return '';
+            
+            const messageDate = new Date(date);
+            const now = new Date();
+            
+            // ✅ CORRECCIÓN: Comparar solo las fechas (sin horas)
+            const messageDateOnly = new Date(messageDate.getFullYear(), messageDate.getMonth(), messageDate.getDate());
+            const todayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const yesterdayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+            
+            const diffTime = todayOnly.getTime() - messageDateOnly.getTime();
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 0) {
+                return 'Hoy';
+            } else if (diffDays === 1) {
+                return 'Ayer';
+            } else if (diffDays <= 7) {
+                return `Hace ${diffDays} días`;
+            } else {
+                return messageDate.toLocaleDateString('es-ES', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: messageDate.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+                });
+            }
+        };
+        
+        const formatMessage = (message, maxLength = 50) => {
+            if (!message) return 'Sin mensaje';
+            
+            if (message.message && message.message.trim()) {
+                const text = message.message.trim();
+                return text.length > maxLength 
+                    ? text.substring(0, maxLength) + '...' 
+                    : text;
+            }
+            
+            if (message.media && message.media.url) {
+                return `📷 ${message.media.filename || 'Imagen'}`;
+            }
+            
+            return 'Sin contenido';
+        };
+        
+        if (options.timeOnly) return formatTime(data);
+        if (options.dateOnly) return formatDate(data);
+        if (options.messageOnly) return formatMessage(data, options.maxLength);
+        
+        return {
+            time: formatTime(data),
+            date: formatDate(data),
+            message: formatMessage(data, options.maxLength)
+        };
+    }, []);
+
+    // ============ VALIDACIONES Y UTILIDADES ============
+
+    const validateAuthenticatedUser = useCallback(() => {
         if (authLoading) {
-            console.log(`⏳ Autenticación en progreso, esperando...`);
             return false;
         }
         
         if (!isAuthenticated || !user) {
-            console.log(`❌ Usuario no autenticado`);
             setError('Debes iniciar sesión para usar el chat');
             return false;
         }
         
         if (!user.id || !user.userType) {
-            console.log(`❌ Datos de usuario incompletos:`, user);
             setError('Datos de usuario incompletos');
             return false;
         }
         
-        console.log(`✅ Usuario validado correctamente`);
         return true;
     }, [isAuthenticated, user, authLoading]);
 
-    /**
-     * ✅ Función de utilidad para scroll
-     */
+    const validateImageFile = useCallback((file) => {
+        if (!file) return { isValid: true };
+        
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        
+        if (!allowedTypes.includes(file.type)) {
+            return {
+                isValid: false,
+                error: 'Solo se permiten archivos de imagen (JPG, PNG, GIF, WebP)'
+            };
+        }
+        
+        if (file.size > maxSize) {
+            return {
+                isValid: false,
+                error: 'El archivo no puede exceder 10MB'
+            };
+        }
+        
+        return { isValid: true };
+    }, []);
+
     const scrollToBottom = useCallback(() => {
         if (messagesEndRef.current) {
             messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
         }
     }, []);
 
-    /**
-     * ✅ Función para manejar cliente no encontrado
-     */
     const handleClientNotFound = useCallback(() => {
         console.log('Cliente no encontrado, limpiando estado local...');
         setActiveConversation(null);
@@ -123,9 +194,8 @@ export const useChat = () => {
         }
     }, [user?.userType]);
 
-    /**
-     * ✅ FUNCIÓN CRÍTICA CORREGIDA: Actualizar conversación específica en tiempo real
-     */
+    // ============ FUNCIÓN CRÍTICA CORREGIDA: updateConversationInList ============
+
     const updateConversationInList = useCallback((conversationId, updates) => {
         console.log(`🔄 Actualizando conversación ${conversationId} con:`, updates);
         
@@ -133,14 +203,22 @@ export const useChat = () => {
             const existingConvIndex = prev.findIndex(conv => conv.conversationId === conversationId);
             
             if (existingConvIndex >= 0) {
-                // Actualizar conversación existente
                 const updatedConversations = [...prev];
+                const existingConv = updatedConversations[existingConvIndex];
+                
+                // ✅ CORRECCIÓN CRÍTICA: Preservar datos del cliente, solo actualizar campos específicos
                 updatedConversations[existingConvIndex] = {
-                    ...updatedConversations[existingConvIndex],
-                    ...updates
+                    ...existingConv,
+                    // Solo actualizar campos permitidos, NUNCA clientId
+                    ...(updates.lastMessage !== undefined && { lastMessage: updates.lastMessage }),
+                    ...(updates.lastMessageAt !== undefined && { lastMessageAt: updates.lastMessageAt }),
+                    ...(updates.unreadCountAdmin !== undefined && { unreadCountAdmin: updates.unreadCountAdmin }),
+                    ...(updates.unreadCountClient !== undefined && { unreadCountClient: updates.unreadCountClient }),
+                    ...(updates.status !== undefined && { status: updates.status })
+                    // ✅ NO incluir clientId en las actualizaciones para preservar datos originales
                 };
                 
-                // Reordenar por fecha del último mensaje si se actualizó
+                // ✅ Reordenar por fecha si se actualizó el último mensaje
                 if (updates.lastMessageAt) {
                     updatedConversations.sort((a, b) => 
                         new Date(b.lastMessageAt) - new Date(a.lastMessageAt)
@@ -150,7 +228,7 @@ export const useChat = () => {
                 console.log(`✅ Conversación ${conversationId} actualizada en lista`);
                 return updatedConversations;
             } else if (updates.clientId) {
-                // ✅ NUEVA CONVERSACIÓN: Agregar al inicio de la lista
+                // Solo para nuevas conversaciones
                 console.log(`✨ Nueva conversación detectada: ${conversationId}`);
                 const newConversation = {
                     conversationId,
@@ -166,66 +244,66 @@ export const useChat = () => {
             return prev;
         });
         
-        // ✅ NUEVO: También actualizar conversación activa si es la misma
+        // ✅ También actualizar conversación activa sin cambiar clientId
         if (activeConversationRef.current?.conversationId === conversationId) {
-            setActiveConversation(prev => prev ? { ...prev, ...updates } : prev);
+            setActiveConversation(prev => {
+                if (!prev) return prev;
+                
+                return {
+                    ...prev,
+                    // Solo actualizar campos específicos, preservar clientId
+                    ...(updates.lastMessage !== undefined && { lastMessage: updates.lastMessage }),
+                    ...(updates.lastMessageAt !== undefined && { lastMessageAt: updates.lastMessageAt }),
+                    ...(updates.unreadCountAdmin !== undefined && { unreadCountAdmin: updates.unreadCountAdmin }),
+                    ...(updates.unreadCountClient !== undefined && { unreadCountClient: updates.unreadCountClient }),
+                    ...(updates.status !== undefined && { status: updates.status })
+                    // ✅ Preservar clientId original
+                };
+            });
         }
     }, []);
 
+    // ============ FUNCIÓN CRÍTICA CORREGIDA: calculateLastMessage ============
+
     /**
-     * ✅ FUNCIÓN CRÍTICA CORREGIDA: Actualización de último mensaje basada en mensajes LOCALES
+     * ✅ NUEVA FUNCIÓN: Calcula el último mensaje basado en mensajes actuales
      */
-    const updateConversationLastMessage = useCallback((conversationId) => {
-        console.log(`🔄 Actualizando último mensaje local para conversación: ${conversationId}`);
+    const calculateLastMessage = useCallback((conversationId, currentMessages) => {
+        console.log(`📋 Calculando último mensaje para conversación: ${conversationId}`);
         
-        // ✅ CAMBIO CRÍTICO: Usar mensajes del estado local actual, no del ref
-        setMessages(currentMessages => {
-            // Filtrar mensajes no eliminados de la conversación específica
-            const validMessages = currentMessages.filter(msg => 
-                !msg.isDeleted && 
-                msg.conversationId === conversationId
-            );
-            
-            console.log(`📊 Mensajes válidos locales encontrados: ${validMessages.length}`);
-            
-            let lastMessage = '';
-            let lastMessageAt = null;
-            
-            if (validMessages.length > 0) {
-                // Ordenar por fecha para obtener el más reciente
-                const sortedMessages = validMessages.sort((a, b) => 
-                    new Date(b.createdAt) - new Date(a.createdAt)
-                );
-                
-                const latestMessage = sortedMessages[0];
-                lastMessage = latestMessage.message || 
-                    (latestMessage.media ? '📎 Archivo multimedia' : 'Sin contenido');
-                lastMessageAt = latestMessage.createdAt;
-                
-                console.log(`✅ Nuevo último mensaje local: "${lastMessage}"`);
-            } else {
-                console.log(`📝 No hay mensajes válidos, limpiando último mensaje`);
-            }
-            
-            // Actualizar usando la función de actualización específica
-            updateConversationInList(conversationId, {
-                lastMessage,
-                lastMessageAt: lastMessageAt || new Date()
-            });
-            
-            // Retornar los mensajes sin cambios (solo estamos consultando)
-            return currentMessages;
-        });
-    }, [updateConversationInList]);
+        // Filtrar mensajes válidos de esta conversación
+        const validMessages = currentMessages.filter(msg => 
+            msg.conversationId === conversationId && !msg.isDeleted
+        );
+        
+        if (validMessages.length === 0) {
+            console.log(`📝 No hay mensajes válidos, último mensaje vacío`);
+            return {
+                lastMessage: '',
+                lastMessageAt: new Date()
+            };
+        }
+        
+        // Ordenar por fecha para obtener el más reciente
+        const sortedMessages = validMessages.sort((a, b) => 
+            new Date(b.createdAt) - new Date(a.createdAt)
+        );
+        
+        const latestMessage = sortedMessages[0];
+        const lastMessage = formatChatContent(latestMessage, { messageOnly: true });
+        
+        console.log(`✅ Último mensaje calculado: "${lastMessage}"`);
+        
+        return {
+            lastMessage,
+            lastMessageAt: latestMessage.createdAt
+        };
+    }, [formatChatContent]);
 
-    // ============ FUNCIONES API CON MANEJO DE ERRORES MEJORADO ============
+    // ============ FUNCIONES API ============
 
-    /**
-     * ✅ Petición API con mejor manejo de errores 401
-     */
     const apiRequest = useCallback(async (url, options = {}) => {
         try {
-            // Validar autenticación antes de hacer la petición
             if (!validateAuthenticatedUser()) {
                 throw new Error('Usuario no autenticado');
             }
@@ -241,8 +319,6 @@ export const useChat = () => {
                 ...options
             });
 
-            console.log(`📡 Response status: ${response.status} for ${url}`);
-
             const contentType = response.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
                 throw new Error('El servidor no devolvió una respuesta JSON válida');
@@ -251,21 +327,12 @@ export const useChat = () => {
             const data = await response.json();
             
             if (!response.ok) {
-                // ✅ MANEJO ESPECÍFICO DE ERRORES 401
                 if (response.status === 401) {
-                    console.error(`❌ Error 401 en ${url}:`, data);
-                    
-                    // Si es error de token, limpiar estado y solicitar reautenticación
-                    if (data.code === 'TOKEN_EXPIRED' || data.code === 'TOKEN_INVALID_DATA' || data.code === 'TOKEN_MISSING') {
-                        setError('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.');
-                        // Limpiar estado del chat
-                        setConversations([]);
-                        setActiveConversation(null);
-                        setMessages([]);
-                        return null;
-                    }
-                    
-                    throw new Error(data.message || 'Error de autenticación');
+                    setError('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.');
+                    setConversations([]);
+                    setActiveConversation(null);
+                    setMessages([]);
+                    return null;
                 }
                 
                 if (response.status === 404 && data.message?.includes('Cliente no encontrado')) {
@@ -281,7 +348,6 @@ export const useChat = () => {
         } catch (error) {
             console.error(`❌ Error en petición API ${url}:`, error);
             
-            // ✅ MANEJO ESPECÍFICO DE ERRORES DE RED
             if (error.name === 'TypeError' && error.message.includes('fetch')) {
                 throw new Error('Error de conexión con el servidor. Verifica tu conexión a internet.');
             }
@@ -290,25 +356,17 @@ export const useChat = () => {
         }
     }, [validateAuthenticatedUser, handleClientNotFound]);
 
-    /**
-     * ✅ Petición FormData con manejo de errores 401
-     */
     const apiRequestFormData = useCallback(async (url, formData) => {
         try {
-            // Validar autenticación antes de hacer la petición
             if (!validateAuthenticatedUser()) {
                 throw new Error('Usuario no autenticado');
             }
-            
-            console.log(`🌐 FormData Request: POST ${API_BASE}${url}`);
             
             const response = await fetch(`${API_BASE}${url}`, {
                 method: 'POST',
                 credentials: 'include',
                 body: formData
             });
-
-            console.log(`📡 FormData Response status: ${response.status} for ${url}`);
 
             const contentType = response.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
@@ -318,64 +376,38 @@ export const useChat = () => {
             const data = await response.json();
             
             if (!response.ok) {
-                // ✅ MANEJO ESPECÍFICO DE ERRORES 401
                 if (response.status === 401) {
-                    console.error(`❌ Error 401 en FormData ${url}:`, data);
-                    
-                    if (data.code === 'TOKEN_EXPIRED' || data.code === 'TOKEN_INVALID_DATA' || data.code === 'TOKEN_MISSING') {
-                        setError('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.');
-                        setConversations([]);
-                        setActiveConversation(null);
-                        setMessages([]);
-                        return null;
-                    }
-                    
-                    throw new Error(data.message || 'Error de autenticación');
-                }
-                
-                if (response.status === 404 && data.message?.includes('Cliente no encontrado')) {
-                    handleClientNotFound();
-                    throw new Error('Tu cuenta ha sido eliminada del sistema');
+                    setError('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.');
+                    setConversations([]);
+                    setActiveConversation(null);
+                    setMessages([]);
+                    return null;
                 }
                 
                 throw new Error(data.message || `Error ${response.status}`);
             }
             
-            console.log(`✅ FormData Request exitosa: ${url}`);
             return data;
         } catch (error) {
             console.error(`❌ Error en petición FormData ${url}:`, error);
             throw error;
         }
-    }, [validateAuthenticatedUser, handleClientNotFound]);
+    }, [validateAuthenticatedUser]);
 
     // ============ FUNCIONES DE CONVERSACIONES ============
 
-    /**
-     * ✅ CORREGIDA: Obtener o crear conversación - solo devuelve si tiene mensajes
-     */
     const getOrCreateConversation = useCallback(async (showLoader = true, retryCount = 0) => {
-        if (!validateAuthenticatedUser()) {
-            return null;
-        }
-        
-        if (user.userType !== 'Customer') {
+        if (!validateAuthenticatedUser() || user.userType !== 'Customer') {
             return null;
         }
         
         try {
             if (showLoader) setLoading(true);
             
-            console.log(`🎯 Obteniendo conversación para cliente ${user.id} (intento ${retryCount + 1})`);
-            
             const data = await apiRequest(`/conversation/${user.id}`);
             
-            if (data === null) {
-                // Error 401 manejado, no reintentar
-                return null;
-            }
+            if (data === null) return null;
             
-            // ✅ CAMBIO: El backend puede devolver null si no hay conversación con mensajes
             if (data.conversation) {
                 console.log(`✅ Conversación obtenida exitosamente`);
                 return data.conversation;
@@ -384,25 +416,7 @@ export const useChat = () => {
                 return null;
             }
         } catch (error) {
-            console.error(`❌ Error obteniendo conversación (intento ${retryCount + 1}):`, error);
-            
-            // ✅ RETRY AUTOMÁTICO para errores temporales
-            if (retryCount < 2 && !error.message.includes('cuenta ha sido eliminada') && !error.message.includes('sesión ha expirado')) {
-                console.log(`🔄 Reintentando en 2 segundos... (intento ${retryCount + 2}/3)`);
-                
-                return new Promise((resolve) => {
-                    retryTimeoutRef.current = setTimeout(async () => {
-                        const result = await getOrCreateConversation(false, retryCount + 1);
-                        resolve(result);
-                    }, 2000);
-                });
-            }
-            
-            if (error.message.includes('cuenta ha sido eliminada')) {
-                setError('Tu cuenta ha sido eliminada del sistema');
-                return null;
-            }
-            
+            console.error(`❌ Error obteniendo conversación:`, error);
             setError('Error al obtener conversación: ' + error.message);
             return null;
         } finally {
@@ -410,75 +424,28 @@ export const useChat = () => {
         }
     }, [user, apiRequest, validateAuthenticatedUser]);
 
-    /**
-     * ✅ CORREGIDA: Obtener todas las conversaciones - solo con mensajes
-     */
-    const getAllConversations = useCallback(async (showLoader = true, retryCount = 0) => {
-        if (!validateAuthenticatedUser()) {
-            return;
-        }
-        
-        if (user.userType !== 'admin') {
+    const getAllConversations = useCallback(async (showLoader = true) => {
+        if (!validateAuthenticatedUser() || user.userType !== 'admin') {
             return;
         }
         
         try {
             if (showLoader) setLoading(true);
             
-            console.log(`🎯 Obteniendo conversaciones para admin ${user.id} (intento ${retryCount + 1})`);
-            
             const data = await apiRequest('/admin/conversations');
             
-            if (data === null) {
-                // Error 401 manejado, no reintentar
-                return;
-            }
+            if (data === null) return;
             
             const newConversations = data.conversations || [];
             
-            console.log(`✅ Obtenidas ${newConversations.length} conversaciones válidas (solo con mensajes)`);
+            setConversations(newConversations);
             
-            setConversations(prevConversations => {
-                // Verificar si hay cambios significativos
-                const hasChanges = JSON.stringify(prevConversations.map(c => ({
-                    id: c.conversationId,
-                    lastMessage: c.lastMessage,
-                    lastMessageAt: c.lastMessageAt,
-                    unreadCount: c.unreadCountAdmin
-                }))) !== JSON.stringify(newConversations.map(c => ({
-                    id: c.conversationId,
-                    lastMessage: c.lastMessage,
-                    lastMessageAt: c.lastMessageAt,
-                    unreadCount: c.unreadCountAdmin
-                })));
-                
-                if (!hasChanges) {
-                    console.log('📝 Sin cambios en conversaciones');
-                    return prevConversations;
-                }
-                
-                console.log('🔄 Actualizando conversaciones con cambios');
-                return newConversations;
-            });
-            
-            // Calcular total de mensajes no leídos
             const totalUnread = newConversations.reduce((sum, conv) => 
                 sum + (conv.unreadCountAdmin || 0), 0);
             setUnreadCount(totalUnread);
             
         } catch (error) {
-            console.error(`❌ Error obteniendo conversaciones (intento ${retryCount + 1}):`, error);
-            
-            // ✅ RETRY AUTOMÁTICO para errores temporales
-            if (retryCount < 2 && !error.message.includes('sesión ha expirado')) {
-                console.log(`🔄 Reintentando conversaciones en 2 segundos... (intento ${retryCount + 2}/3)`);
-                
-                retryTimeoutRef.current = setTimeout(() => {
-                    getAllConversations(false, retryCount + 1);
-                }, 2000);
-                return;
-            }
-            
+            console.error(`❌ Error obteniendo conversaciones:`, error);
             setError('Error al obtener conversaciones: ' + error.message);
         } finally {
             if (showLoader) setLoading(false);
@@ -487,10 +454,7 @@ export const useChat = () => {
 
     // ============ FUNCIONES DE MENSAJES ============
 
-    /**
-     * ✅ Obtener mensajes con retry automático
-     */
-    const getMessages = useCallback(async (conversationId, page = 1, resetMessages = false, showLoader = true, retryCount = 0) => {
+    const getMessages = useCallback(async (conversationId, page = 1, resetMessages = false, showLoader = true) => {
         if (!conversationId || !validateAuthenticatedUser()) {
             return;
         }
@@ -498,31 +462,14 @@ export const useChat = () => {
         try {
             if (showLoader) setLoadingMessages(true);
             
-            console.log(`📨 Obteniendo mensajes para conversación: ${conversationId} (página ${page}, intento ${retryCount + 1})`);
-            
             const data = await apiRequest(`/messages/${conversationId}?page=${page}&limit=50`);
             
-            if (data === null) {
-                // Error 401 manejado, no reintentar
-                return;
-            }
+            if (data === null) return;
             
             const newMessages = data.messages || [];
             
-            console.log(`✅ Obtenidos ${newMessages.length} mensajes válidos`);
-            
             if (resetMessages || page === 1) {
-                setMessages(prevMessages => {
-                    const hasSameIds = JSON.stringify(prevMessages.map(m => m._id)) === 
-                                     JSON.stringify(newMessages.map(m => m._id));
-                    
-                    if (hasSameIds && prevMessages.length === newMessages.length) {
-                        return prevMessages;
-                    }
-                    
-                    lastMessageCountRef.current = newMessages.length;
-                    return newMessages;
-                });
+                setMessages(newMessages);
                 setCurrentPage(1);
             } else {
                 setMessages(prev => [...newMessages, ...prev]);
@@ -531,77 +478,42 @@ export const useChat = () => {
             setHasMoreMessages(data.pagination?.hasNextPage || false);
             setCurrentPage(page);
             
-            if ((resetMessages || page === 1) && newMessages.length > lastMessageCountRef.current) {
+            if ((resetMessages || page === 1) && newMessages.length > 0) {
                 setTimeout(() => scrollToBottom(), 100);
             }
             
         } catch (error) {
-            console.error(`❌ Error obteniendo mensajes (intento ${retryCount + 1}):`, error);
-            
-            // ✅ RETRY AUTOMÁTICO para errores temporales
-            if (retryCount < 2 && !error.message.includes('cuenta ha sido eliminada') && !error.message.includes('sesión ha expirado')) {
-                console.log(`🔄 Reintentando mensajes en 2 segundos... (intento ${retryCount + 2}/3)`);
-                
-                retryTimeoutRef.current = setTimeout(() => {
-                    getMessages(conversationId, page, resetMessages, false, retryCount + 1);
-                }, 2000);
-                return;
-            }
-            
-            if (error.message.includes('cuenta ha sido eliminada')) {
-                return; // Ya manejado en apiRequest
-            }
-            
+            console.error(`❌ Error obteniendo mensajes:`, error);
             setError('Error al obtener mensajes: ' + error.message);
         } finally {
             if (showLoader) setLoadingMessages(false);
         }
     }, [apiRequest, scrollToBottom, validateAuthenticatedUser]);
 
-    /**
-     * ✅ Marcar mensajes como leídos
-     */
-    const markAsRead = useCallback(async (conversationId, retryCount = 0) => {
+    const markAsRead = useCallback(async (conversationId) => {
         if (!conversationId || !validateAuthenticatedUser()) return;
         
         try {
-            console.log(`👁️ Marcando como leído: ${conversationId} (intento ${retryCount + 1})`);
-            
             const data = await apiRequest(`/read/${conversationId}`, { method: 'PUT' });
             
-            if (data === null) {
-                // Error 401 manejado, no reintentar
-                return;
-            }
+            if (data === null) return;
             
             if (user?.userType === 'admin') {
-                // ✅ ACTUALIZACIÓN LOCAL INMEDIATA
                 updateConversationInList(conversationId, {
                     unreadCountAdmin: 0
                 });
                 
-                setUnreadCount(prev => Math.max(0, prev - (activeConversationRef.current?.unreadCountAdmin || 0)));
+                setUnreadCount(prev => {
+                    const currentConv = conversations.find(c => c.conversationId === conversationId);
+                    return Math.max(0, prev - (currentConv?.unreadCountAdmin || 0));
+                });
             }
-            
-            console.log(`✅ Mensajes marcados como leídos`);
             
         } catch (error) {
-            console.error(`❌ Error marcando como leído (intento ${retryCount + 1}):`, error);
-            
-            // ✅ RETRY AUTOMÁTICO para errores temporales
-            if (retryCount < 1 && !error.message.includes('sesión ha expirado')) {
-                console.log(`🔄 Reintentando marcar como leído en 1 segundo...`);
-                
-                retryTimeoutRef.current = setTimeout(() => {
-                    markAsRead(conversationId, retryCount + 1);
-                }, 1000);
-            }
+            console.error(`❌ Error marcando como leído:`, error);
         }
-    }, [user, apiRequest, validateAuthenticatedUser, updateConversationInList]);
+    }, [user, apiRequest, validateAuthenticatedUser, updateConversationInList, conversations]);
 
-    /**
-     * ✅ FUNCIÓN DECLARADA DESPUÉS DE SUS DEPENDENCIAS: Seleccionar conversación
-     */
     const selectConversation = useCallback(async (conversation) => {
         if (!conversation || !validateAuthenticatedUser()) return;
         
@@ -609,13 +521,10 @@ export const useChat = () => {
             leaveConversation(activeConversationRef.current.conversationId);
         }
         
-        console.log(`🎯 Seleccionando conversación: ${conversation.conversationId}`);
-        
         setActiveConversation(conversation);
         setMessages([]);
         setCurrentPage(1);
         setHasMoreMessages(true);
-        lastMessageCountRef.current = 0;
         setTypingUsers(new Set());
         
         joinConversation(conversation.conversationId);
@@ -624,7 +533,181 @@ export const useChat = () => {
         await markAsRead(conversation.conversationId);
     }, [getMessages, markAsRead, leaveConversation, joinConversation, validateAuthenticatedUser]);
 
-    // ============ RESTO DE FUNCIONES ============
+    // ============ FUNCIONES DE ENVÍO Y ELIMINACIÓN DE MENSAJES CORREGIDAS ============
+
+    const sendMessage = useCallback(async (conversationId, message, file = null) => {
+        if (!message?.trim() && !file) {
+            setError('Debes escribir un mensaje o seleccionar un archivo');
+            return false;
+        }
+        
+        if (!validateAuthenticatedUser()) {
+            setError('Debes iniciar sesión para enviar mensajes');
+            return false;
+        }
+
+        if (file) {
+            const validation = validateImageFile(file);
+            if (!validation.isValid) {
+                setError(validation.error);
+                return false;
+            }
+        }
+        
+        stopTyping(conversationId);
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+            typingTimeoutRef.current = null;
+        }
+        
+        try {
+            let data;
+            
+            if (file) {
+                const formData = new FormData();
+                if (conversationId) {
+                    formData.append('conversationId', conversationId);
+                }
+                if (message?.trim()) {
+                    formData.append('message', message.trim());
+                }
+                formData.append('file', file);
+                
+                data = await apiRequestFormData('/message', formData);
+            } else {
+                const requestBody = {
+                    message: message.trim()
+                };
+                
+                if (conversationId) {
+                    requestBody.conversationId = conversationId;
+                }
+                
+                data = await apiRequest('/message', {
+                    method: 'POST',
+                    body: JSON.stringify(requestBody)
+                });
+            }
+            
+            if (data === null) return false;
+            
+            // ✅ NUEVO: Si no teníamos conversación activa, establecerla ahora
+            if (!activeConversationRef.current && data.conversationId && user?.userType === 'Customer') {
+                try {
+                    const conversationData = await apiRequest(`/conversation/${user.id}`);
+                    if (conversationData?.conversation) {
+                        setActiveConversation(conversationData.conversation);
+                        joinConversation(conversationData.conversation.conversationId);
+                    }
+                } catch (error) {
+                    console.error('Error obteniendo conversación después de enviar mensaje:', error);
+                }
+            }
+            
+            return true;
+            
+        } catch (error) {
+            console.error(`❌ Error enviando mensaje:`, error);
+            setError('Error al enviar mensaje: ' + error.message);
+            return false;
+        }
+    }, [user, apiRequest, apiRequestFormData, stopTyping, validateAuthenticatedUser, validateImageFile, joinConversation]);
+
+    /**
+     * ✅ FUNCIÓN CRÍTICA CORREGIDA: deleteMessage con actualizaciones correctas
+     */
+    const deleteMessage = useCallback(async (messageId) => {
+        if (!messageId || !validateAuthenticatedUser()) {
+            return false;
+        }
+        
+        try {
+            setIsDeleting(true);
+            
+            const messageToDelete = messages.find(msg => msg._id === messageId);
+            const conversationId = messageToDelete?.conversationId || activeConversationRef.current?.conversationId;
+            
+            console.log(`🗑️ Eliminando mensaje: ${messageId}`);
+            
+            const data = await apiRequest(`/message/${messageId}`, { method: 'DELETE' });
+            
+            if (data === null) return false;
+            
+            console.log(`✅ Mensaje eliminado exitosamente`);
+            
+            // ✅ FIX CRÍTICO: Actualizar estado local INMEDIATAMENTE
+            setMessages(prev => {
+                const updatedMessages = prev.filter(msg => msg._id !== messageId);
+                
+                // ✅ CALCULAR NUEVO ÚLTIMO MENSAJE EN TIEMPO REAL
+                if (conversationId) {
+                    const { lastMessage, lastMessageAt } = calculateLastMessage(conversationId, updatedMessages);
+                    
+                    console.log(`📋 Actualizando último mensaje inmediatamente: "${lastMessage}"`);
+                    
+                    // ✅ ACTUALIZAR CONVERSACIÓN CON NUEVO ÚLTIMO MENSAJE
+                    updateConversationInList(conversationId, {
+                        lastMessage,
+                        lastMessageAt
+                    });
+                    
+                    // ✅ FIX CRÍTICO: Si es cliente eliminando y no hay más mensajes, resetear unread count
+                    if (user?.userType === 'Customer' && updatedMessages.filter(m => m.conversationId === conversationId).length === 0) {
+                        updateConversationInList(conversationId, {
+                            unreadCountAdmin: 0,
+                            unreadCountClient: 0
+                        });
+                        
+                        // También actualizar el contador global para admins
+                        setUnreadCount(prev => Math.max(0, prev - 1));
+                    }
+                }
+                
+                return updatedMessages;
+            });
+            
+            return true;
+        } catch (error) {
+            console.error(`❌ Error eliminando mensaje:`, error);
+            setError('Error al eliminar mensaje: ' + error.message);
+            return false;
+        } finally {
+            setIsDeleting(false);
+        }
+    }, [apiRequest, messages, calculateLastMessage, updateConversationInList, validateAuthenticatedUser, user?.userType]);
+
+    // ============ FUNCIONES DE MANEJO DE ARCHIVOS ============
+
+    const handleFileSelect = useCallback((e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const validation = validateImageFile(file);
+            if (!validation.isValid) {
+                setError(validation.error);
+                return;
+            }
+            
+            setSelectedFile(file);
+            
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => setPreviewUrl(e.target.result);
+                reader.readAsDataURL(file);
+            } else {
+                setPreviewUrl(null);
+            }
+        }
+    }, [validateImageFile]);
+
+    const clearSelectedFile = useCallback(() => {
+        setSelectedFile(null);
+        setPreviewUrl(null);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    }, []);
+
+    // ============ FUNCIONES DE MANEJO DE MENSAJES ============
 
     const handleMessageChange = useCallback((value) => {
         setNewMessage(value);
@@ -653,210 +736,6 @@ export const useChat = () => {
         }
     }, [startTyping, stopTyping]);
 
-    /**
-     * ✅ CORREGIDO: Enviar mensaje - maneja conversación nueva automáticamente
-     */
-    const sendMessage = useCallback(async (conversationId, message, file = null, retryCount = 0) => {
-        // ✅ CAMBIO: Para clientes, permitir envío sin conversationId (primera vez)
-        if (!message?.trim() && !file) {
-            setError('Debes escribir un mensaje o seleccionar un archivo');
-            return false;
-        }
-        
-        if (!validateAuthenticatedUser()) {
-            setError('Debes iniciar sesión para enviar mensajes');
-            return false;
-        }
-        
-        stopTyping(conversationId);
-        if (typingTimeoutRef.current) {
-            clearTimeout(typingTimeoutRef.current);
-            typingTimeoutRef.current = null;
-        }
-        
-        try {
-            console.log(`📤 Enviando mensaje (intento ${retryCount + 1}):`, {
-                conversationId,
-                hasMessage: !!message?.trim(),
-                hasFile: !!file,
-                userType: user?.userType
-            });
-            
-            let data;
-            
-            if (file) {
-                const formData = new FormData();
-                // ✅ CAMBIO: conversationId puede ser null para clientes sin conversación
-                if (conversationId) {
-                    formData.append('conversationId', conversationId);
-                }
-                if (message?.trim()) {
-                    formData.append('message', message.trim());
-                }
-                formData.append('file', file);
-                
-                data = await apiRequestFormData('/message', formData);
-            } else {
-                const requestBody = {
-                    message: message.trim()
-                };
-                
-                // ✅ CAMBIO: Solo incluir conversationId si existe
-                if (conversationId) {
-                    requestBody.conversationId = conversationId;
-                }
-                
-                data = await apiRequest('/message', {
-                    method: 'POST',
-                    body: JSON.stringify(requestBody)
-                });
-            }
-            
-            if (data === null) {
-                // Error 401 manejado, no reintentar
-                return false;
-            }
-            
-            console.log(`✅ Mensaje enviado exitosamente`);
-            
-            // ✅ NUEVO: Si no teníamos conversación activa, establecerla ahora
-            if (!activeConversationRef.current && data.conversationId && user?.userType === 'Customer') {
-                // Obtener la conversación completa
-                try {
-                    const conversationData = await apiRequest(`/conversation/${user.id}`);
-                    if (conversationData?.conversation) {
-                        setActiveConversation(conversationData.conversation);
-                        joinConversation(conversationData.conversation.conversationId);
-                    }
-                } catch (error) {
-                    console.error('Error obteniendo conversación después de enviar mensaje:', error);
-                }
-            }
-            
-            // ✅ ACTUALIZACIÓN INMEDIATA: Actualizar último mensaje para admins
-            if (user?.userType === 'admin' && conversationId) {
-                updateConversationInList(conversationId, {
-                    lastMessage: message?.trim() || '📎 Archivo multimedia',
-                    lastMessageAt: new Date()
-                });
-            }
-            
-            return true;
-            
-        } catch (error) {
-            console.error(`❌ Error enviando mensaje (intento ${retryCount + 1}):`, error);
-            
-            // ✅ RETRY AUTOMÁTICO para errores temporales
-            if (retryCount < 2 && !error.message.includes('cuenta ha sido eliminada') && !error.message.includes('sesión ha expirado')) {
-                console.log(`🔄 Reintentando envío en 2 segundos... (intento ${retryCount + 2}/3)`);
-                
-                return new Promise((resolve) => {
-                    retryTimeoutRef.current = setTimeout(async () => {
-                        const result = await sendMessage(conversationId, message, file, retryCount + 1);
-                        resolve(result);
-                    }, 2000);
-                });
-            }
-            
-            if (error.message.includes('cuenta ha sido eliminada')) {
-                return false;
-            }
-            
-            setError('Error al enviar mensaje: ' + error.message);
-            return false;
-        }
-    }, [user, apiRequest, apiRequestFormData, stopTyping, validateAuthenticatedUser, updateConversationInList, joinConversation]);
-
-    /**
-     * ✅ FUNCIÓN CRÍTICA CORREGIDA: Eliminar mensaje con actualización inmediata del último mensaje
-     */
-    const deleteMessage = useCallback(async (messageId, retryCount = 0) => {
-        if (!messageId) {
-            setError('ID de mensaje requerido');
-            return false;
-        }
-        
-        if (!validateAuthenticatedUser()) {
-            setError('Debes iniciar sesión para eliminar mensajes');
-            return false;
-        }
-        
-        try {
-            setIsDeleting(true);
-            
-            const messageToDelete = messages.find(msg => msg._id === messageId);
-            const conversationId = messageToDelete?.conversationId || activeConversationRef.current?.conversationId;
-            
-            console.log(`🗑️ Eliminando mensaje: ${messageId} (intento ${retryCount + 1})`);
-            
-            const data = await apiRequest(`/message/${messageId}`, { method: 'DELETE' });
-            
-            if (data === null) {
-                // Error 401 manejado, no reintentar
-                return false;
-            }
-            
-            console.log(`✅ Mensaje eliminado exitosamente`);
-            
-            // ✅ ACTUALIZACIÓN CRÍTICA INMEDIATA: Actualizar estado local primero
-            setMessages(prev => {
-                const updatedMessages = prev.filter(msg => msg._id !== messageId);
-                
-                // ✅ INMEDIATAMENTE actualizar último mensaje basado en mensajes restantes
-                if (conversationId) {
-                    // Usar los mensajes actualizados para calcular el nuevo último mensaje
-                    const validMessages = updatedMessages.filter(msg => 
-                        !msg.isDeleted && msg.conversationId === conversationId
-                    );
-                    
-                    let newLastMessage = '';
-                    let newLastMessageAt = new Date();
-                    
-                    if (validMessages.length > 0) {
-                        const sortedMessages = validMessages.sort((a, b) => 
-                            new Date(b.createdAt) - new Date(a.createdAt)
-                        );
-                        const latestMessage = sortedMessages[0];
-                        newLastMessage = latestMessage.message || 
-                            (latestMessage.media ? '📎 Archivo multimedia' : 'Sin contenido');
-                        newLastMessageAt = latestMessage.createdAt;
-                    }
-                    
-                    console.log(`📋 Actualizando último mensaje inmediatamente: "${newLastMessage}"`);
-                    
-                    // Actualizar inmediatamente en la lista de conversaciones
-                    updateConversationInList(conversationId, {
-                        lastMessage: newLastMessage,
-                        lastMessageAt: newLastMessageAt
-                    });
-                }
-                
-                return updatedMessages;
-            });
-            
-            return true;
-        } catch (error) {
-            console.error(`❌ Error eliminando mensaje (intento ${retryCount + 1}):`, error);
-            
-            // ✅ RETRY AUTOMÁTICO para errores temporales
-            if (retryCount < 2 && !error.message.includes('sesión ha expirado')) {
-                console.log(`🔄 Reintentando eliminación en 2 segundos... (intento ${retryCount + 2}/3)`);
-                
-                return new Promise((resolve) => {
-                    retryTimeoutRef.current = setTimeout(async () => {
-                        const result = await deleteMessage(messageId, retryCount + 1);
-                        resolve(result);
-                    }, 2000);
-                });
-            }
-            
-            setError('Error al eliminar mensaje: ' + error.message);
-            return false;
-        } finally {
-            setIsDeleting(false);
-        }
-    }, [apiRequest, messages, updateConversationInList, validateAuthenticatedUser]);
-
     const confirmDeleteMessage = useCallback(async () => {
         if (!messageToDelete) return;
         
@@ -873,19 +752,23 @@ export const useChat = () => {
         await getMessages(activeConversation.conversationId, nextPage, false, true);
     }, [activeConversation, hasMoreMessages, loadingMessages, currentPage, getMessages, validateAuthenticatedUser]);
 
-    // ============ INICIALIZACIÓN MEJORADA ============
+    // ============ MODAL DE ELIMINACIÓN ============
 
-    /**
-     * ✅ Inicialización con mejor manejo de estados de auth
-     */
+    const openDeleteModal = useCallback((message) => {
+        setMessageToDelete(message);
+        setShowDeleteModal(true);
+    }, []);
+
+    const closeDeleteModal = useCallback(() => {
+        setShowDeleteModal(false);
+        setMessageToDelete(null);
+        setIsDeleting(false);
+    }, []);
+
+    // ============ INICIALIZACIÓN ============
+
     const initializeChat = useCallback(async () => {
-        // Esperar a que la autenticación se complete
-        if (authLoading) {
-            console.log('⏳ Esperando a que termine la carga de autenticación...');
-            return;
-        }
-        
-        if (!validateAuthenticatedUser() || isInitializedRef.current) {
+        if (authLoading || !validateAuthenticatedUser() || isInitializedRef.current) {
             return;
         }
         
@@ -894,10 +777,8 @@ export const useChat = () => {
         
         try {
             if (user.userType === 'admin') {
-                console.log('👨‍💼 Inicializando chat para administrador...');
                 await getAllConversations(true);
             } else if (user.userType === 'Customer') {
-                console.log('👤 Inicializando chat para cliente...');
                 const conversation = await getOrCreateConversation(true);
                 if (conversation) {
                     await selectConversation(conversation);
@@ -905,14 +786,12 @@ export const useChat = () => {
             }
         } catch (error) {
             console.error('Error al inicializar el chat:', error);
-            if (!error.message.includes('cuenta ha sido eliminada') && !error.message.includes('sesión ha expirado')) {
-                setError('Error al inicializar el chat: ' + error.message);
-            }
+            setError('Error al inicializar el chat: ' + error.message);
             isInitializedRef.current = false;
         }
     }, [authLoading, user, getAllConversations, getOrCreateConversation, selectConversation, validateAuthenticatedUser]);
 
-    // ============ CONFIGURACIÓN SOCKET.IO MEJORADA ============
+    // ============ CONFIGURACIÓN SOCKET.IO CORREGIDA ============
 
     useEffect(() => {
         if (!socketConnected || !isAuthenticated || !validateAuthenticatedUser()) return;
@@ -930,45 +809,80 @@ export const useChat = () => {
                 return [...prev, data.message];
             });
             
-            // ✅ ACTUALIZACIÓN EN TIEMPO REAL: Actualizar conversación inmediatamente
+            // ✅ CORRECCIÓN CRÍTICA: Actualización en tiempo real para admins SIN cambiar datos del cliente
             if (user?.userType === 'admin') {
+                // Determinar el texto del último mensaje sin cambiar senderId
+                let lastMessageText;
+                if (data.message.message && data.message.message.trim()) {
+                    lastMessageText = data.message.message;
+                } else if (data.message.media?.url) {
+                    lastMessageText = '📷 Imagen';
+                } else {
+                    lastMessageText = 'Nuevo mensaje';
+                }
+                
                 updateConversationInList(data.conversationId, {
-                    lastMessage: data.message.message || '📎 Archivo multimedia',
+                    lastMessage: lastMessageText,
                     lastMessageAt: data.timestamp,
+                    // ✅ SOLO actualizar contadores, NO los datos del cliente
                     unreadCountAdmin: data.message.senderType !== 'admin' 
                         ? ((conversations.find(c => c.conversationId === data.conversationId)?.unreadCountAdmin || 0) + 1)
                         : (conversations.find(c => c.conversationId === data.conversationId)?.unreadCountAdmin || 0)
                 });
                 
-                // Actualizar contador total
                 if (data.message.senderType !== 'admin') {
                     setUnreadCount(prev => prev + 1);
                 }
             }
         });
 
+        // ✅ FIX CRÍTICO: Listener mejorado para eliminación de mensajes
         const unsubscribeMessageDeleted = onMessageDeleted((data) => {
             console.log('🗑️ Mensaje eliminado via Socket.IO:', data);
             
             setMessages(prev => {
                 const updatedMessages = prev.filter(msg => msg._id !== data.messageId);
                 
-                // ✅ NO NECESARIO: La actualización del último mensaje la manejará el evento específico
-                // El backend ya emite conversation_updated con el nuevo último mensaje
+                // ✅ CALCULAR NUEVO ÚLTIMO MENSAJE AUTOMÁTICAMENTE
+                const { lastMessage, lastMessageAt } = calculateLastMessage(data.conversationId, updatedMessages);
+                
+                // ✅ ACTUALIZAR CONVERSACIÓN CON ÚLTIMO MENSAJE CORRECTO
+                updateConversationInList(data.conversationId, {
+                    lastMessage,
+                    lastMessageAt
+                });
+                
+                // ✅ FIX CRÍTICO: Resetear contador si no hay mensajes
+                const remainingMessages = updatedMessages.filter(m => m.conversationId === data.conversationId);
+                
+                if (remainingMessages.length === 0) {
+                    // Si no quedan mensajes, resetear contadores
+                    updateConversationInList(data.conversationId, {
+                        unreadCountAdmin: 0,
+                        unreadCountClient: 0
+                    });
+                    
+                    // Actualizar contador global para admins
+                    if (user?.userType === 'admin') {
+                        const currentConv = conversations.find(c => c.conversationId === data.conversationId);
+                        if (currentConv?.unreadCountAdmin > 0) {
+                            setUnreadCount(prev => Math.max(0, prev - currentConv.unreadCountAdmin));
+                        }
+                    }
+                }
                 
                 return updatedMessages;
             });
         });
 
-        // ✅ LISTENER CRÍTICO: Actualizaciones específicas de conversaciones
+        // ✅ LISTENER CRÍTICO: Evento unificado de conversaciones
         const unsubscribeConversationUpdated = onConversationUpdated((data) => {
             console.log('🔄 Conversación actualizada via Socket.IO:', data);
             
             if (user?.userType === 'admin') {
-                // ✅ CRÍTICO: Siempre actualizar cuando viene del backend
                 updateConversationInList(data.conversationId, data);
                 
-                // Actualizar contador total si cambió unreadCountAdmin
+                // ✅ FIX CRÍTICO: Actualizar contador total solo si hay cambio real
                 if (typeof data.unreadCountAdmin === 'number') {
                     const currentConv = conversations.find(c => c.conversationId === data.conversationId);
                     if (currentConv) {
@@ -978,33 +892,6 @@ export const useChat = () => {
                 }
             }
         });
-
-        // ✅ NUEVO LISTENER: Nuevas conversaciones creadas (con socket actual)
-        if (socketConnected && socketConnected.on) {
-            socketConnected.on('new_conversation_created', (data) => {
-                console.log('✨ Nueva conversación creada via Socket.IO:', data);
-                
-                if (user?.userType === 'admin') {
-                    updateConversationInList(data.conversationId, data);
-                }
-            });
-
-            // ✅ NUEVO LISTENER: Actualizaciones de lista de conversaciones
-            socketConnected.on('conversation_list_updated', (data) => {
-                console.log('📋 Lista de conversaciones actualizada:', data);
-                
-                if (user?.userType === 'admin') {
-                    // ✅ CRÍTICO: Para eliminación de mensajes, refrescar la lista
-                    if (data.action === 'message_deleted') {
-                        console.log('🔄 Refrescando conversaciones por eliminación de mensaje');
-                        // Pequeño delay para permitir que el backend actualice
-                        setTimeout(() => {
-                            getAllConversations(false);
-                        }, 200);
-                    }
-                }
-            });
-        }
 
         const unsubscribeConversationClosed = onConversationClosed((data) => {
             updateConversationInList(data.conversationId, { status: 'closed' });
@@ -1021,12 +908,12 @@ export const useChat = () => {
                 readAt: data.timestamp
             })));
             
-            // ✅ ACTUALIZACIÓN EN TIEMPO REAL: Actualizar contador
+            // ✅ FIX CRÍTICO: Actualizar contador correctamente
             if (user?.userType === 'admin') {
                 updateConversationInList(data.conversationId, { unreadCountAdmin: 0 });
                 
                 const currentConv = conversations.find(c => c.conversationId === data.conversationId);
-                if (currentConv?.unreadCountAdmin) {
+                if (currentConv?.unreadCountAdmin > 0) {
                     setUnreadCount(prev => Math.max(0, prev - currentConv.unreadCountAdmin));
                 }
             }
@@ -1061,14 +948,25 @@ export const useChat = () => {
             unsubscribeMessagesRead?.();
             unsubscribeUserTyping?.();
             unsubscribeChatStats?.();
-            
-            // Limpiar listeners específicos del socket
-            if (socketConnected && socketConnected.off) {
-                socketConnected.off('new_conversation_created');
-                socketConnected.off('conversation_list_updated');
-            }
         };
-    }, [socketConnected, isAuthenticated, user?.id, user?.userType, conversations, onNewMessage, onMessageDeleted, onConversationUpdated, onConversationClosed, onMessagesRead, onUserTyping, onChatStatsUpdated, scrollToBottom, updateConversationInList, getAllConversations, validateAuthenticatedUser]);
+    }, [
+        socketConnected, 
+        isAuthenticated, 
+        user?.id, 
+        user?.userType, 
+        conversations, 
+        onNewMessage, 
+        onMessageDeleted, 
+        onConversationUpdated, 
+        onConversationClosed, 
+        onMessagesRead, 
+        onUserTyping, 
+        onChatStatsUpdated, 
+        scrollToBottom, 
+        updateConversationInList, 
+        validateAuthenticatedUser,
+        calculateLastMessage // ✅ NUEVO: Agregar calculateLastMessage como dependencia
+    ]);
 
     // ============ EFECTOS DE INICIALIZACIÓN ============
 
@@ -1083,7 +981,6 @@ export const useChat = () => {
 
     useEffect(() => {
         return () => {
-            // Limpiar timeouts al desmontar
             if (retryTimeoutRef.current) {
                 clearTimeout(retryTimeoutRef.current);
             }
@@ -1093,51 +990,13 @@ export const useChat = () => {
         };
     }, []);
 
-    // ============ FUNCIONES DE ARCHIVOS ============
-
-    const handleFileSelect = useCallback((e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setSelectedFile(file);
-            
-            if (file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = (e) => setPreviewUrl(e.target.result);
-                reader.readAsDataURL(file);
-            } else {
-                setPreviewUrl(null);
-            }
-        }
-    }, []);
-
-    const clearSelectedFile = useCallback(() => {
-        setSelectedFile(null);
-        setPreviewUrl(null);
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-        }
-    }, []);
-
-    // ============ MODAL DE ELIMINACIÓN ============
-
-    const openDeleteModal = useCallback((message) => {
-        setMessageToDelete(message);
-        setShowDeleteModal(true);
-    }, []);
-
-    const closeDeleteModal = useCallback(() => {
-        setShowDeleteModal(false);
-        setMessageToDelete(null);
-        setIsDeleting(false);
-    }, []);
-
     // ============ UTILIDADES ============
 
     const clearError = useCallback(() => {
         setError(null);
     }, []);
 
-    // ============ RETORNO DEL HOOK MEJORADO ============
+    // ============ RETORNO DEL HOOK CORREGIDO ============
 
     return {
         // Estados principales
@@ -1160,7 +1019,7 @@ export const useChat = () => {
         messageToDelete,
         isDeleting,
         
-        // Estados adicionales para debug
+        // Estados adicionales
         authLoading,
         isAuthenticated,
         hasUser: !!user,
@@ -1178,9 +1037,10 @@ export const useChat = () => {
         scrollToBottom,
         clearError,
         
-        // Archivos
+        // Archivos con validación de imágenes
         handleFileSelect,
         clearSelectedFile,
+        validateImageFile,
         
         // Modal
         openDeleteModal,
@@ -1190,10 +1050,20 @@ export const useChat = () => {
         messagesEndRef,
         fileInputRef,
         
-        // ✅ FUNCIONES para actualizaciones en tiempo real
+        // ✅ FUNCIÓN UNIFICADA DE FORMATO
+        formatChatContent,
+        
+        // ✅ NUEVA FUNCIÓN CRÍTICA EXPORTADA
+        calculateLastMessage, // Para usar en componentes que necesiten calcular último mensaje
+        
+        // Funciones para actualizaciones en tiempo real
         updateConversationInList,
         
-        // Funciones de validación (para debug)
-        validateAuthenticatedUser
+        // Funciones de validación
+        validateAuthenticatedUser,
+        
+        // Constantes para validación
+        MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB
+        ALLOWED_IMAGE_TYPES: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
     };
 };

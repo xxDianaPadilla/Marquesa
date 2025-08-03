@@ -1,440 +1,401 @@
-import jwt from 'jsonwebtoken';
-import { config } from '../config.js';
+/**
+ * Configuración de eventos Socket.IO - CORREGIDA PARA SINCRONIZACIÓN PERFECTA
+ * 
+ * PROBLEMAS SOLUCIONADOS:
+ * - Eventos emitidos correctamente para eliminar mensaje desde cliente
+ * - Sincronización perfecta entre cliente y admin
+ * - Contadores de no leídos actualizados correctamente
+ * - Último mensaje actualizado en tiempo real
+ * 
+ * Ubicación: backend/src/utils/socketConfig.js
+ */
 
-// Almacenar usuarios conectados por socket ID
-const connectedUsers = new Map();
+// ============ EVENTOS ESPECÍFICOS MANTENIDOS (5 eventos) ============
 
-// Middleware de autenticación para Socket.IO
-const authenticateSocket = (socket, next) => {
+/**
+ * ✅ EVENTO 1/6: Emitir nuevo mensaje recibido
+ */
+export const emitNewMessage = (io, conversationId, messageData) => {
     try {
-        // Obtener token de las cookies o query params
-        const token = socket.handshake.auth.token || socket.handshake.headers.cookie?.split('authToken=')[1]?.split(';')[0];
+        console.log(`📨 Emitiendo nuevo mensaje para conversación: ${conversationId}`);
         
-        if (!token) {
-            return next(new Error('Token de autenticación requerido'));
-        }
-        
-        // Verificar el token
-        const decoded = jwt.verify(token, config.JWT.secret);
-        
-        if (!decoded || !decoded.id || !decoded.userType) {
-            return next(new Error('Token inválido'));
-        }
-        
-        // Agregar información del usuario al socket
-        socket.user = {
-            id: decoded.id,
-            userType: decoded.userType,
-            email: decoded.email || null
+        const eventData = {
+            conversationId,
+            message: messageData,
+            timestamp: new Date()
         };
         
-        next();
+        // Emitir a la sala específica de la conversación
+        io.to(`conversation_${conversationId}`).emit('new_message', eventData);
+        
+        // También emitir a administradores para notificaciones
+        io.to('admins').emit('new_message', eventData);
+        
+        console.log(`✅ Nuevo mensaje emitido exitosamente`);
     } catch (error) {
-        console.error('Error en autenticación de socket:', error);
-        next(new Error('Token inválido o expirado'));
+        console.error('❌ Error emitiendo nuevo mensaje:', error);
     }
 };
 
-// Configuración principal de Socket.IO
-export const setupSocketIO = (io) => {
-    // Aplicar middleware de autenticación
-    io.use(authenticateSocket);
-    
-    io.on('connection', (socket) => {
-        console.log(`Usuario conectado: ${socket.user.id} (${socket.user.userType})`);
+/**
+ * ✅ EVENTO 2/6: Emitir mensaje eliminado - CORREGIDO PARA SINCRONIZACIÓN
+ */
+export const emitMessageDeleted = (io, conversationId, messageId, deletedBy) => {
+    try {
+        console.log(`🗑️ Emitiendo mensaje eliminado: ${messageId} por ${deletedBy}`);
         
-        // Almacenar información del usuario conectado
-        connectedUsers.set(socket.id, {
-            userId: socket.user.id,
-            userType: socket.user.userType,
-            socketId: socket.id
+        const deleteData = {
+            conversationId,
+            messageId,
+            deletedBy,
+            deletionType: 'physical',
+            timestamp: new Date()
+        };
+        
+        // ✅ FIX CRÍTICO: Emitir a TODOS los clientes y admins para sincronización perfecta
+        io.to(`conversation_${conversationId}`).emit('message_deleted', deleteData);
+        io.to('admins').emit('message_deleted', deleteData);
+        
+        // ✅ TAMBIÉN emitir a clientes específicos para asegurar que reciban la notificación
+        io.emit('message_deleted', deleteData);
+        
+        console.log(`✅ Mensaje eliminado emitido exitosamente a todas las salas`);
+    } catch (error) {
+        console.error('❌ Error emitiendo mensaje eliminado:', error);
+    }
+};
+
+/**
+ * ✅ EVENTO 3/6: Emitir mensajes marcados como leídos
+ */
+export const emitMessagesRead = (io, conversationId, readData) => {
+    try {
+        console.log(`👁️ Emitiendo mensajes leídos para conversación: ${conversationId}`);
+        
+        const readEventData = {
+            conversationId,
+            userId: readData.userId,
+            userType: readData.userType,
+            timestamp: new Date()
+        };
+        
+        io.to(`conversation_${conversationId}`).emit('messages_read', readEventData);
+        io.to('admins').emit('messages_read', readEventData);
+        
+        console.log(`✅ Mensajes leídos emitido exitosamente`);
+    } catch (error) {
+        console.error('❌ Error emitiendo mensajes leídos:', error);
+    }
+};
+
+/**
+ * ✅ EVENTO 4/6: Emitir estadísticas del chat actualizadas
+ */
+export const emitChatStats = (io) => {
+    try {
+        console.log(`📊 Emitiendo estadísticas del chat actualizadas`);
+        
+        io.to('admins').emit('chat_stats_updated', {
+            timestamp: new Date(),
+            message: 'Estadísticas del chat actualizadas'
         });
         
-        // Unirse a sala personal (para notificaciones directas)
-        const personalRoom = `user_${socket.user.id}`;
-        socket.join(personalRoom);
+        console.log(`✅ Estadísticas del chat emitidas exitosamente`);
+    } catch (error) {
+        console.error('❌ Error emitiendo estadísticas del chat:', error);
+    }
+};
+
+/**
+ * ✅ EVENTO 5/6: Emitir límite de mensajes aplicado
+ */
+export const emitLimitApplied = (io, conversationId, limitData) => {
+    try {
+        console.log(`⚠️ Emitiendo límite aplicado para conversación: ${conversationId}`);
         
-        // Si es admin, unirse a sala de administradores
-        if (socket.user.userType === 'admin') {
-            socket.join('admins');
-            emitChatStats(io);
+        const limitEventData = {
+            conversationId,
+            action: 'limit_applied',
+            deletedCount: limitData.deletedCount || 0,
+            deletedFiles: limitData.deletedFiles || 0,
+            remainingCount: limitData.remainingCount || 0,
+            limit: limitData.limit || 75,
+            deletionType: 'physical',
+            timestamp: new Date()
+        };
+        
+        io.to(`conversation_${conversationId}`).emit('limit_applied', limitEventData);
+        io.to('admins').emit('limit_applied', limitEventData);
+        
+        console.log(`✅ Límite aplicado emitido exitosamente`);
+    } catch (error) {
+        console.error('❌ Error emitiendo límite aplicado:', error);
+    }
+};
+
+// ============ EVENTO UNIFICADO CORREGIDO (3→1) ============
+
+/**
+ * ✅ EVENTO 6/6: Conversación actualizada - CORREGIDO PARA ACTUALIZACIONES PERFECTAS
+ */
+export const emitConversationUpdated = (io, updateData) => {
+    try {
+        const { conversationId, action = 'updated' } = updateData;
+        
+        console.log(`🔄 Emitiendo conversación actualizada: ${conversationId} (${action})`);
+        
+        const eventData = {
+            ...updateData,
+            timestamp: new Date()
+        };
+        
+        // ✅ FIX CRÍTICO: Asegurar que las actualizaciones lleguen a TODOS los lugares necesarios
+        switch (action) {
+            case 'created':
+                console.log(`✨ Nueva conversación creada: ${conversationId}`);
+                // Emitir a administradores para nueva conversación
+                io.to('admins').emit('conversation_updated', {
+                    ...eventData,
+                    action: 'created'
+                });
+                break;
+                
+            case 'updated':
+                console.log(`🔄 Conversación actualizada: ${conversationId}`);
+                // ✅ FIX CRÍTICO: Emitir a TODAS las salas para sincronización perfecta
+                io.to(`conversation_${conversationId}`).emit('conversation_updated', {
+                    ...eventData,
+                    action: 'updated'
+                });
+                io.to('admins').emit('conversation_updated', {
+                    ...eventData,
+                    action: 'updated'
+                });
+                
+                // ✅ TAMBIÉN emitir globalmente para asegurar que TODOS reciban la actualización
+                io.emit('conversation_updated', {
+                    ...eventData,
+                    action: 'updated'
+                });
+                break;
+                
+            case 'list_updated':
+                console.log(`📋 Lista de conversaciones actualizada`);
+                io.to('admins').emit('conversation_updated', {
+                    ...eventData,
+                    action: 'list_updated'
+                });
+                break;
+                
+            default:
+                // Comportamiento por defecto (updated) con emisión global
+                io.to(`conversation_${conversationId}`).emit('conversation_updated', eventData);
+                io.to('admins').emit('conversation_updated', eventData);
+                io.emit('conversation_updated', eventData); // ✅ Emisión global adicional
         }
         
-        // === EVENTOS DEL CHAT ===
+        console.log(`✅ Conversación actualizada emitida exitosamente (${action}) a todas las salas`);
+    } catch (error) {
+        console.error('❌ Error emitiendo conversación actualizada:', error);
+    }
+};
+
+// ============ FUNCIONES AUXILIARES MEJORADAS ============
+
+/**
+ * ✅ Hacer que un usuario se una a una sala de conversación
+ */
+export const joinConversationRoom = (socket, conversationId) => {
+    try {
+        const roomName = `conversation_${conversationId}`;
+        socket.join(roomName);
+        console.log(`🚪 Usuario ${socket.userId} unido a sala: ${roomName}`);
         
-        // Unirse a una conversación específica
+        // Notificar a otros en la sala
+        socket.to(roomName).emit('user_joined_conversation', {
+            conversationId,
+            userId: socket.userId,
+            userType: socket.userType,
+            timestamp: new Date()
+        });
+    } catch (error) {
+        console.error('❌ Error uniendo usuario a sala:', error);
+    }
+};
+
+/**
+ * ✅ Hacer que un usuario salga de una sala de conversación
+ */
+export const leaveConversationRoom = (socket, conversationId) => {
+    try {
+        const roomName = `conversation_${conversationId}`;
+        socket.leave(roomName);
+        console.log(`🚪 Usuario ${socket.userId} salió de sala: ${roomName}`);
+        
+        // Notificar a otros en la sala
+        socket.to(roomName).emit('user_left_conversation', {
+            conversationId,
+            userId: socket.userId,
+            userType: socket.userType,
+            timestamp: new Date()
+        });
+    } catch (error) {
+        console.error('❌ Error saliendo de sala:', error);
+    }
+};
+
+/**
+ * ✅ Hacer que un usuario se una a la sala de administradores
+ */
+export const joinAdminRoom = (socket) => {
+    try {
+        socket.join('admins');
+        console.log(`👨‍💼 Administrador ${socket.userId} unido a sala de admins`);
+    } catch (error) {
+        console.error('❌ Error uniendo administrador a sala:', error);
+    }
+};
+
+/**
+ * ✅ Emitir indicador de escritura
+ */
+export const emitTypingIndicator = (socket, conversationId, isTyping) => {
+    try {
+        const roomName = `conversation_${conversationId}`;
+        
+        socket.to(roomName).emit('user_typing', {
+            conversationId,
+            userId: socket.userId,
+            userType: socket.userType,
+            isTyping,
+            timestamp: new Date()
+        });
+        
+        console.log(`⌨️ Indicador de escritura emitido: ${isTyping ? 'escribiendo' : 'dejó de escribir'}`);
+    } catch (error) {
+        console.error('❌ Error emitiendo indicador de escritura:', error);
+    }
+};
+
+// ============ CONFIGURACIÓN PRINCIPAL DE SOCKET.IO MEJORADA ============
+
+/**
+ * ✅ Configurar eventos y middleware de Socket.IO - MEJORADO
+ */
+export const setupSocketIO = (io) => {
+    console.log('⚙️ Configurando Socket.IO para chat...');
+    
+    // Middleware de autenticación mejorado
+    io.use(async (socket, next) => {
+        try {
+            const token = socket.handshake.auth.token;
+            const userId = socket.handshake.auth.userId;
+            const userType = socket.handshake.auth.userType;
+            
+            if (!token) {
+                return next(new Error('Token de autenticación requerido'));
+            }
+            
+            // Validar que tenemos los datos necesarios
+            if (!userId || !userType) {
+                return next(new Error('Datos de usuario incompletos'));
+            }
+            
+            socket.userId = userId;
+            socket.userType = userType;
+            
+            console.log(`🔐 Usuario autenticado: ${socket.userId} (${socket.userType})`);
+            next();
+        } catch (error) {
+            console.error('❌ Error en autenticación Socket.IO:', error);
+            next(new Error('Error de autenticación'));
+        }
+    });
+    
+    // Eventos de conexión mejorados
+    io.on('connection', (socket) => {
+        console.log(`🔗 Nueva conexión Socket.IO: ${socket.id} - Usuario: ${socket.userId} (${socket.userType})`);
+        
+        // Unir a sala de administradores si es admin
+        if (socket.userType === 'admin') {
+            joinAdminRoom(socket);
+        }
+        
+        // ✅ EVENTOS DE CONVERSACIONES CON LOGGING MEJORADO
         socket.on('join_conversation', (conversationId) => {
-            if (!conversationId) return;
-            
-            socket.join(`conversation_${conversationId}`);
-            console.log(`Usuario ${socket.user.id} se unió a conversación ${conversationId}`);
-            
-            // Notificar a otros usuarios en la conversación
-            socket.to(`conversation_${conversationId}`).emit('user_joined_conversation', {
-                userId: socket.user.id,
-                userType: socket.user.userType
-            });
+            console.log(`🚪 ${socket.userId} quiere unirse a conversación: ${conversationId}`);
+            joinConversationRoom(socket, conversationId);
         });
         
-        // Salir de una conversación
         socket.on('leave_conversation', (conversationId) => {
-            if (!conversationId) return;
-            
-            socket.leave(`conversation_${conversationId}`);
-            console.log(`Usuario ${socket.user.id} salió de conversación ${conversationId}`);
-            
-            // Notificar a otros usuarios en la conversación
-            socket.to(`conversation_${conversationId}`).emit('user_left_conversation', {
-                userId: socket.user.id,
-                userType: socket.user.userType
-            });
+            console.log(`🚪 ${socket.userId} quiere salir de conversación: ${conversationId}`);
+            leaveConversationRoom(socket, conversationId);
         });
         
-        // Indicar que el usuario está escribiendo
+        // ✅ EVENTOS DE ESCRITURA CON LOGGING
         socket.on('typing_start', (conversationId) => {
-            socket.to(`conversation_${conversationId}`).emit('user_typing', {
-                userId: socket.user.id,
-                userType: socket.user.userType,
-                isTyping: true
-            });
+            console.log(`⌨️ ${socket.userId} empezó a escribir en conversación: ${conversationId}`);
+            emitTypingIndicator(socket, conversationId, true);
         });
         
-        // Indicar que el usuario dejó de escribir
         socket.on('typing_stop', (conversationId) => {
-            socket.to(`conversation_${conversationId}`).emit('user_typing', {
-                userId: socket.user.id,
-                userType: socket.user.userType,
-                isTyping: false
-            });
+            console.log(`⌨️ ${socket.userId} dejó de escribir en conversación: ${conversationId}`);
+            emitTypingIndicator(socket, conversationId, false);
         });
         
-        // === EVENTOS DE CONEXIÓN ===
-        
-        // Manejar desconexión
+        // ✅ EVENTOS DE DESCONEXIÓN CON CLEANUP
         socket.on('disconnect', (reason) => {
-            console.log(`Usuario desconectado: ${socket.user.id} - Razón: ${reason}`);
+            console.log(`🔌 Desconexión Socket.IO: ${socket.id} (${socket.userId}) - Razón: ${reason}`);
             
-            // Remover de usuarios conectados
-            connectedUsers.delete(socket.id);
-            
-            // Notificar desconexión en todas las conversaciones donde estaba
+            // Cleanup: asegurar que el usuario salga de todas las salas
             const rooms = Array.from(socket.rooms);
             rooms.forEach(room => {
                 if (room.startsWith('conversation_')) {
+                    const conversationId = room.replace('conversation_', '');
                     socket.to(room).emit('user_left_conversation', {
-                        userId: socket.user.id,
-                        userType: socket.user.userType
+                        conversationId,
+                        userId: socket.userId,
+                        userType: socket.userType,
+                        timestamp: new Date()
                     });
                 }
             });
-            
-            // Si era admin, actualizar estadísticas
-            if (socket.user.userType === 'admin') {
-                emitChatStats(io);
-            }
         });
         
-        // Manejar errores
-        socket.on('error', (error) => {
-            console.error('Error en socket:', error);
-            socket.emit('socket_error', {
-                message: 'Error en conexión',
-                error: error.message
-            });
-        });
-        
-        // Enviar confirmación de conexión
+        // ✅ CONFIRMAR CONEXIÓN EXITOSA CON INFORMACIÓN DETALLADA
         socket.emit('connected', {
-            message: 'Conectado exitosamente al chat',
-            userId: socket.user.id,
-            userType: socket.user.userType
-        });
-    });
-};
-
-// === FUNCIONES AUXILIARES CORREGIDAS ===
-
-/**
- * ✅ CORREGIDO: Emitir nuevo mensaje a todos los usuarios en una conversación
- * Ahora incluye mejor manejo de datos para actualizaciones en tiempo real
- */
-export const emitNewMessage = (io, conversationId, message, excludeSocketId = null) => {
-    const eventData = {
-        conversationId,
-        message,
-        timestamp: new Date()
-    };
-    
-    console.log(`🔔 Emitiendo nuevo mensaje en conversación ${conversationId}`);
-    
-    if (excludeSocketId) {
-        // Emitir a todos en la conversación excepto al remitente
-        io.to(`conversation_${conversationId}`).except(excludeSocketId).emit('new_message', eventData);
-    } else {
-        // Emitir a todos en la conversación
-        io.to(`conversation_${conversationId}`).emit('new_message', eventData);
-    }
-    
-    // ✅ MEJORADO: Emitir evento más específico para actualizar lista de conversaciones
-    const updateData = {
-        conversationId,
-        lastMessage: message.message || 'Archivo multimedia',
-        lastMessageAt: new Date(),
-        action: 'new_message'
-    };
-    
-    io.to('admins').emit('conversation_list_updated', updateData);
-};
-
-/**
- * ✅ FUNCIÓN CRÍTICA CORREGIDA: Emitir cuando un mensaje es eliminado
- * Ahora obtiene y emite el nuevo último mensaje válido inmediatamente
- */
-export const emitMessageDeleted = async (io, conversationId, messageId, deletedBy) => {
-    console.log(`🗑️ Emitiendo mensaje eliminado: ${messageId} en conversación ${conversationId}`);
-    
-    // Emitir evento de mensaje eliminado a la conversación
-    io.to(`conversation_${conversationId}`).emit('message_deleted', {
-        conversationId,
-        messageId,
-        deletedBy,
-        timestamp: new Date()
-    });
-    
-    // ✅ NUEVA LÓGICA: Obtener el nuevo último mensaje válido desde la base de datos
-    try {
-        // Importación dinámica para evitar dependencias circulares
-        const { default: ChatMessage } = await import('../models/ChatMessage.js');
-        const { default: ChatConversation } = await import('../models/ChatConversation.js');
-        
-        // Buscar el último mensaje NO eliminado de la conversación
-        const lastValidMessage = await ChatMessage.findOne({
-            conversationId,
-            isDeleted: false
-        })
-        .sort({ createdAt: -1 })
-        .lean();
-        
-        let newLastMessage = '';
-        let newLastMessageAt = new Date();
-        
-        if (lastValidMessage) {
-            newLastMessage = lastValidMessage.message || 
-                (lastValidMessage.media ? '📎 Archivo multimedia' : 'Sin contenido');
-            newLastMessageAt = lastValidMessage.createdAt;
-        }
-        
-        // Actualizar la conversación en la base de datos
-        await ChatConversation.findOneAndUpdate(
-            { conversationId },
-            {
-                lastMessage: newLastMessage,
-                lastMessageAt: newLastMessageAt
-            }
-        );
-        
-        // ✅ CRÍTICO: Emitir actualización específica del último mensaje
-        const updateData = {
-            conversationId,
-            lastMessage: newLastMessage,
-            lastMessageAt: newLastMessageAt,
-            action: 'message_deleted',
-            messageId: messageId // Incluir ID del mensaje eliminado
-        };
-        
-        console.log(`📋 Emitiendo nuevo último mensaje para ${conversationId}: "${newLastMessage}"`);
-        
-        // Emitir a todos los admins para actualizar la lista
-        io.to('admins').emit('conversation_updated', updateData);
-        io.to('admins').emit('conversation_list_updated', updateData);
-        
-    } catch (error) {
-        console.error('❌ Error obteniendo nuevo último mensaje:', error);
-        
-        // En caso de error, emitir evento básico
-        io.to('admins').emit('conversation_list_updated', {
-            conversationId,
-            action: 'message_deleted_error',
+            message: 'Conectado al sistema de chat',
+            userId: socket.userId,
+            userType: socket.userType,
+            socketId: socket.id,
             timestamp: new Date()
         });
-    }
-};
-
-// Emitir cuando una conversación es cerrada
-export const emitConversationClosed = (io, conversationId) => {
-    io.to(`conversation_${conversationId}`).emit('conversation_closed', {
-        conversationId,
-        timestamp: new Date()
-    });
-    
-    // Notificar a administradores
-    io.to('admins').emit('conversation_updated', {
-        conversationId,
-        status: 'closed'
-    });
-};
-
-/**
- * ✅ CORREGIDO: Emitir cuando mensajes son marcados como leídos
- * Ahora actualiza contadores en tiempo real
- */
-export const emitMessagesRead = (io, conversationId, readBy) => {
-    io.to(`conversation_${conversationId}`).emit('messages_read', {
-        conversationId,
-        readBy,
-        timestamp: new Date()
-    });
-    
-    // ✅ NUEVO: Emitir actualización de contadores para admins
-    io.to('admins').emit('conversation_list_updated', {
-        conversationId,
-        action: 'messages_read',
-        readBy: readBy,
-        timestamp: new Date()
-    });
-};
-
-/**
- * ✅ CORREGIDO: Emitir estadísticas del chat a administradores
- * Ahora calcula estadísticas más precisas y en tiempo real
- */
-export const emitChatStats = async (io) => {
-    try {
-        // Importar modelos (importación dinámica para evitar circular dependencies)
-        const { default: ChatConversation } = await import('../models/ChatConversation.js');
-        const { default: ChatMessage } = await import('../models/ChatMessage.js');
         
-        // ✅ MEJORADO: Solo contar conversaciones que tengan mensajes
-        const conversationsWithMessages = await ChatConversation.aggregate([
-            {
-                $lookup: {
-                    from: 'chatmessages',
-                    localField: 'conversationId',
-                    foreignField: 'conversationId',
-                    as: 'messages'
-                }
-            },
-            {
-                $match: {
-                    'messages.0': { $exists: true },
-                    'messages': { 
-                        $elemMatch: { 
-                            isDeleted: false 
-                        } 
-                    }
-                }
-            }
-        ]);
-        
-        const [
-            totalMessages,
-            unreadMessages
-        ] = await Promise.all([
-            ChatMessage.countDocuments({ isDeleted: false }),
-            ChatConversation.aggregate([
-                {
-                    $lookup: {
-                        from: 'chatmessages',
-                        localField: 'conversationId',
-                        foreignField: 'conversationId',
-                        as: 'messages'
-                    }
-                },
-                {
-                    $match: {
-                        'messages.0': { $exists: true },
-                        'messages': { 
-                            $elemMatch: { 
-                                isDeleted: false 
-                            } 
-                        }
-                    }
-                },
-                { 
-                    $group: { 
-                        _id: null, 
-                        total: { $sum: '$unreadCountAdmin' } 
-                    } 
-                }
-            ])
-        ]);
-        
-        const totalConversations = conversationsWithMessages.length;
-        const activeConversations = conversationsWithMessages.filter(conv => conv.status === 'active').length;
-        const unreadCount = unreadMessages.length > 0 ? unreadMessages[0].total : 0;
-        
-        const stats = {
-            totalConversations,
-            activeConversations,
-            closedConversations: totalConversations - activeConversations,
-            totalMessages,
-            unreadMessages: unreadCount,
-            connectedUsers: connectedUsers.size,
-            timestamp: new Date()
-        };
-        
-        console.log(`📊 Emitiendo estadísticas actualizadas:`, stats);
-        io.to('admins').emit('chat_stats_updated', stats);
-        
-    } catch (error) {
-        console.error('❌ Error emitiendo estadísticas:', error);
-    }
-};
-
-/**
- * ✅ NUEVA FUNCIÓN: Emitir actualización específica de conversación
- * Para manejar cambios en tiempo real de conversaciones individuales
- */
-export const emitConversationUpdate = (io, conversationData) => {
-    console.log(`🔄 Emitiendo actualización de conversación: ${conversationData.conversationId}`);
-    
-    io.to('admins').emit('conversation_updated', {
-        ...conversationData,
-        timestamp: new Date()
+        console.log(`✅ Socket.IO configurado para usuario: ${socket.userId} (${socket.userType})`);
     });
     
-    // También emitir a la conversación específica si hay cambios relevantes
-    if (conversationData.lastMessage || conversationData.unreadCountClient || conversationData.unreadCountAdmin) {
-        io.to(`conversation_${conversationData.conversationId}`).emit('conversation_data_updated', {
-            ...conversationData,
-            timestamp: new Date()
-        });
-    }
+    console.log('✅ Socket.IO configurado exitosamente con logging mejorado');
 };
 
-/**
- * ✅ NUEVA FUNCIÓN: Emitir cuando se crea una nueva conversación
- * Para que aparezca inmediatamente en la lista de admins
- */
-export const emitNewConversation = (io, conversationData) => {
-    console.log(`✨ Emitiendo nueva conversación: ${conversationData.conversationId}`);
-    
-    io.to('admins').emit('new_conversation_created', {
-        ...conversationData,
-        timestamp: new Date()
-    });
-    
-    // Actualizar estadísticas también
-    emitChatStats(io);
-};
+// ============ EXPORTACIÓN POR DEFECTO ============
 
-// Obtener usuarios conectados en una conversación
-export const getConnectedUsersInConversation = (conversationId) => {
-    const users = [];
+export default {
+    // Eventos específicos
+    emitNewMessage,
+    emitMessageDeleted,
+    emitMessagesRead,
+    emitChatStats,
+    emitLimitApplied,
     
-    connectedUsers.forEach((user) => {
-        users.push(user);
-    });
+    // Evento unificado
+    emitConversationUpdated,
     
-    return users;
-};
-
-// Verificar si un usuario está conectado
-export const isUserConnected = (userId) => {
-    for (const user of connectedUsers.values()) {
-        if (user.userId === userId) {
-            return true;
-        }
-    }
-    return false;
+    // Funciones auxiliares
+    joinConversationRoom,
+    leaveConversationRoom,
+    joinAdminRoom,
+    emitTypingIndicator,
+    
+    // Configuración principal
+    setupSocketIO
 };

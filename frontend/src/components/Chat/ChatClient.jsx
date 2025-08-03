@@ -25,7 +25,7 @@ import ChatStatus from './ChatStatus';
 class ChatErrorBoundary extends React.Component {
     constructor(props) {
         super(props);
-        this.state = { hasError: false, error: null };
+        this.state = { hasError: false, error: null, errorInfo: null };
     }
 
     static getDerivedStateFromError(error) {
@@ -34,6 +34,10 @@ class ChatErrorBoundary extends React.Component {
 
     componentDidCatch(error, errorInfo) {
         console.error('❌ Error en ChatClient:', error, errorInfo);
+        this.setState({
+            error,
+            errorInfo
+        });
     }
 
     render() {
@@ -52,13 +56,31 @@ class ChatErrorBoundary extends React.Component {
                         <p className="text-red-700 text-xs mb-3" style={{ fontFamily: 'Poppins, sans-serif' }}>
                             Hubo un problema al cargar el chat. Por favor, recarga la página.
                         </p>
-                        <button
-                            onClick={() => window.location.reload()}
-                            className="w-full px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs"
-                            style={{ fontFamily: 'Poppins, sans-serif' }}
-                        >
-                            Recargar Página
-                        </button>
+                        <div className="space-y-2">
+                            <button
+                                onClick={() => this.setState({ hasError: false, error: null, errorInfo: null })}
+                                className="w-full px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs"
+                                style={{ fontFamily: 'Poppins, sans-serif' }}
+                            >
+                                Reintentar
+                            </button>
+                            <button
+                                onClick={() => window.location.reload()}
+                                className="w-full px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-xs"
+                                style={{ fontFamily: 'Poppins, sans-serif' }}
+                            >
+                                Recargar Página
+                            </button>
+                        </div>
+                        {/* Debug info en desarrollo */}
+                        {process.env.NODE_ENV === 'development' && this.state.error && (
+                            <details className="mt-3">
+                                <summary className="text-xs text-red-600 cursor-pointer">Ver detalles del error</summary>
+                                <pre className="text-xs text-red-500 mt-2 overflow-auto max-h-20">
+                                    {this.state.error.toString()}
+                                </pre>
+                            </details>
+                        )}
                     </div>
                 </div>
             );
@@ -231,9 +253,14 @@ const ChatClient = ({ isOpen, onClose }) => {
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
 
-        if (messageDate.toDateString() === today.toDateString()) {
+        // ✅ CORRECCIÓN CRÍTICA: Comparar solo fechas, no horas
+        const messageDateOnly = messageDate.toDateString();
+        const todayOnly = today.toDateString();
+        const yesterdayOnly = yesterday.toDateString();
+
+        if (messageDateOnly === todayOnly) {
             return 'Hoy';
-        } else if (messageDate.toDateString() === yesterday.toDateString()) {
+        } else if (messageDateOnly === yesterdayOnly) {
             return 'Ayer';
         } else {
             return messageDate.toLocaleDateString('es-ES', {
@@ -319,6 +346,7 @@ const ChatClient = ({ isOpen, onClose }) => {
                             <div className="bg-white rounded-lg px-3 py-2 max-w-[85%] shadow-sm">
                                 <div className="flex items-center space-x-2 mb-1">
                                     <div className="w-4 h-4 rounded-full bg-[#E8ACD2] flex items-center justify-center">
+                                        {/* ✅ CORRECCIÓN: Logo fijo del sistema para mensajes de bienvenida */}
                                         <img 
                                             src="/assets/marquesaMiniLogo.png" 
                                             alt="Marquesa"
@@ -330,6 +358,7 @@ const ChatClient = ({ isOpen, onClose }) => {
                                         />
                                         <span className="text-xs text-white hidden">M</span>
                                     </div>
+                                    {/* ✅ CORRECCIÓN: Nombre fijo del sistema */}
                                     <span className="text-xs text-gray-600 font-medium">Atención al Cliente</span>
                                 </div>
                                 <p className="text-xs md:text-sm text-gray-800" style={{ fontFamily: 'Poppins, sans-serif' }}>
@@ -368,6 +397,7 @@ const ChatClient = ({ isOpen, onClose }) => {
                                         MediaRenderer={MediaRenderer}
                                         formatTime={formatTime}
                                         compact={true}
+                                        activeConversation={activeConversation} // ✅ CORRECCIÓN CRÍTICA: Pasar activeConversation
                                     />
                                 </div>
                             );

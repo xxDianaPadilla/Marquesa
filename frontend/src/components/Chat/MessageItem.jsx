@@ -7,7 +7,8 @@ const MessageItem = ({
     onAction,
     MediaRenderer,
     formatTime,
-    compact = false
+    compact = false,
+    activeConversation = null // ✅ CORRECCIÓN CRÍTICA: Agregar prop activeConversation
 }) => {
     const [showActions, setShowActions] = useState(false);
     const actionsRef = useRef(null);
@@ -31,25 +32,25 @@ const MessageItem = ({
         setShowActions(false);
     };
 
-    // LÓGICA MEJORADA: Determinar permisos de eliminación
+    // ✅ CORRECCIÓN CRÍTICA: Determinar permisos de eliminación correctamente
     const canDelete = () => {
         if (isAdmin) {
             // Los administradores pueden eliminar cualquier mensaje
             return true;
         } else {
             // Los clientes solo pueden eliminar sus propios mensajes
-            return isOwnMessage && message.senderType === 'Customer';
+            return message.senderType === 'Customer' && isOwnMessage;
         }
     };
 
-    // LÓGICA MEJORADA: Determinar si mostrar menú de acciones
+    // ✅ CORRECCIÓN: Determinar si mostrar menú de acciones
     const shouldShowActionsMenu = () => {
         if (isAdmin) {
             // Los administradores ven el menú en todos los mensajes
             return true;
         } else {
             // Los clientes solo ven el menú en sus propios mensajes
-            return isOwnMessage;
+            return message.senderType === 'Customer' && isOwnMessage;
         }
     };
 
@@ -62,19 +63,44 @@ const MessageItem = ({
                 {/* Avatar y nombre para mensajes de otros usuarios */}
                 {!isOwnMessage && !compact && (
                     <div className="flex items-center space-x-2 mb-1">
-                        <div className="w-5 h-5 rounded-full bg-[#E8ACD2] flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
-                            {message.senderId?.profilePicture ? (
+                        <div className="w-4 h-4 rounded-full bg-[#E8ACD2] flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+                            {/* ✅ CORRECCIÓN: Renderizar según el tipo de mensaje */}
+                            {message.senderType === 'admin' ? (
+                                // Para mensajes de admin, mostrar logo del sistema
                                 <img 
-                                    src={message.senderId.profilePicture} 
-                                    alt={message.senderId.fullName}
+                                    src="/assets/marquesaMiniLogo.png" 
+                                    alt="Atención al Cliente"
                                     className="w-full h-full rounded-full object-cover"
+                                    onError={(e) => {
+                                        e.target.style.display = 'none';
+                                        e.target.nextSibling.style.display = 'block';
+                                    }}
                                 />
                             ) : (
-                                message.senderId?.fullName?.charAt(0)?.toUpperCase() || 'U'
+                                // Para mensajes de cliente, mostrar foto del cliente o inicial
+                                <>
+                                    {message.senderId?.profilePicture ? (
+                                        <img 
+                                            src={message.senderId.profilePicture} 
+                                            alt={message.senderId.fullName || 'Cliente'}
+                                            className="w-full h-full rounded-full object-cover"
+                                        />
+                                    ) : (
+                                        message.senderId?.fullName?.charAt(0)?.toUpperCase() || 'C'
+                                    )}
+                                </>
+                            )}
+                            {/* Fallback para admin si no carga la imagen */}
+                            {message.senderType === 'admin' && (
+                                <span className="text-xs text-white hidden">A</span>
                             )}
                         </div>
                         <span className="text-xs text-gray-600 font-medium">
-                            {message.senderId?.fullName || (message.senderType === 'admin' ? 'Atención al Cliente' : 'Cliente')}
+                            {/* ✅ CORRECCIÓN: Mostrar nombre según el tipo de mensaje */}
+                            {message.senderType === 'admin' 
+                                ? 'Atención al Cliente' 
+                                : (message.senderId?.fullName || 'Cliente')
+                            }
                         </span>
                     </div>
                 )}

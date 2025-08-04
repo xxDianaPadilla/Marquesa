@@ -168,7 +168,8 @@ loginController.login = async (req, res) => {
             res.status(200).json({
                 success: true,
                 message: "login successful",
-                userType: userType
+                userType: userType,
+                token: token
             });
         } catch (jwtError) {
             console.error("Error generating token:", jwtError);

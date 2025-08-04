@@ -10,11 +10,13 @@ const { width, height } = Dimensions.get('window');
 
 export default function WelcomeScreen({ navigation }) {
     const handleContinue = () => {
-        console.log('Navegando a la siguiente pantalla...');
+        console.log('Navegando a la pantalla de login...');
+        navigation.navigate('Login');
     };
 
     const handleLoginPress = () => {
         console.log('Ir a login');
+        navigation.navigate('Login');
     };
 
     return (

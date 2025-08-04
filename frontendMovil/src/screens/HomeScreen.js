@@ -6,7 +6,7 @@ import perfilIcon from "../images/perfilIcon.png";
 export default function HomeScreen({ navigation }) {
     const { user, userInfo, logout, isLoggingOut } = useAuth();
 
-    const handñeProfilePress = () => {
+    const handleProfilePress = () => {
         if (userInfo) {
             Alert.alert(
                 "Información del Usuario",
@@ -50,7 +50,7 @@ export default function HomeScreen({ navigation }) {
                 console.log('Logout exitoso, navegando a Welcome...');
                 navigation.reset({
                     index: 0,
-                    routes: [{ name: 'Welcome' }],
+                    routes: [{ name: 'Login' }],
                 });
             }
         } catch (error) {

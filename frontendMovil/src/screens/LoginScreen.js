@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, Dimensions, StatusBar, ImageBackground, TouchableOpacity, Alert } from "react-native";
+import React, { useState, useEffect, useRef } from "react";
+import { View, Text, StyleSheet, Dimensions, StatusBar, ImageBackground, TouchableOpacity } from "react-native";
 import { useAuth } from "../context/AuthContext";
+import { useAlert } from "../hooks/useAlert";
+import {CustomAlert, LoadingDialog, ToastDialog } from "../components/CustomAlerts";
 import loginBg from "../images/loginBg.png";
 import PinkInputs from "../components/PinkInputs";
 import emailIcon from "../images/emailIcon.png";
@@ -17,46 +19,76 @@ export default function LoginScreen({ navigation }) {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    const hasNavigated = useRef(false);
 
     const { login, isAuthenticated, authError, clearAuthError, loading } = useAuth();
 
+    const {
+        alertState,
+        showLoading,
+        hideLoading,
+        showError,
+        showSuccessToast,
+        hideToast
+    } = useAlert();
+
     useEffect(() => {
-        if (isAuthenticated && !loading) {
+        if(loading){
+            showLoading({
+                title: 'Verificando autenticación',
+                message: 'Comprobando credenciales...'
+            });
+        } else {
+            hideLoading();
+        }
+
+        if (isAuthenticated && !loading && !hasNavigated.current) {
             console.log('Usuario autenticado, navegando a Home');
-            navigation.replace('Home');
+            hasNavigated.current = true; 
+            hideLoading();
+            showSuccessToast('¡Bienvenid@ de vuelta!');
+
+            navigation.replace('TabNavigator');
         }
     }, [isAuthenticated, loading, navigation]);
 
     useEffect(() => {
-        if (authError) {
-            Alert.alert(
-                "Error de Autenticación",
-                authError,
-                [
-                    {
-                        text: 'OK',
-                        onPress: () => clearAuthError()
-                    }
-                ]
-            );
+        if (authError && !hasNavigated.current) {
+            hideLoading();
+            showError(authError, 'Error de Autenticación');
+            clearAuthError();
         }
     }, [authError, clearAuthError]);
 
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('focus', () => {
+            hasNavigated.current = false;
+        });
+
+        return unsubscribe;
+    }, [navigation]);
+
     const handleLogin = async () => {
-        if (isSubmitting) return;
+        if (isSubmitting || hasNavigated.current) return;
 
         if (!email.trim()) {
-            Alert.alert("Error", "Por favor ingresa tu correo electrónico");
+            showError("Por favor ingresa tu correo electrónico", "Campo requerido");
             return;
         }
 
         if (!password.trim()) {
-            Alert.alert("Error", "Por favor ingresa tu contraseña");
+            showError("Por favor ingresa tu contraseña", "Campo requerido");
             return;
         }
 
         try {
             setIsSubmitting(true);
+            showLoading({
+                title: 'Iniciando sesión',
+                message: 'Verificando credenciales...'
+            });
+
             console.log('Iniciando login con: ', { email: email.trim() });
 
             const result = await login(email.trim(), password);
@@ -67,30 +99,28 @@ export default function LoginScreen({ navigation }) {
                 console.log('Login exitoso, el useEffect manejará la navegación');
             } else {
                 console.log('Login falló: ', result.message);
+                hideLoading();
             }
         } catch (error) {
             console.error('Error inesperado en login: ', error);
-            Alert.alert("Error", "Ocurrió un error inesperado. Inténtalo de nuevo.");
+            hideLoading();
+            showError("Ocurrió un error inesperado. Inténtelo de nuevo.", "Error de conexión");
         } finally {
             setIsSubmitting(false);
         }
     };
 
     const handleRegister = () => {
-        console.log('Ir a registro');
+        if (!hasNavigated.current) {
+            console.log('Ir a registro');
+        }
     };
 
     const handleForgotPassword = () => {
-        console.log('Olvidé mi contraseña');
+        if (!hasNavigated.current) {
+            console.log('Olvidé mi contraseña');
+        }
     };
-
-    if (loading) {
-        return (
-            <View style={[styles.container, styles.loadingContainer]}>
-                <Text style={styles.loadingText}>Verificando autenticación...</Text>
-            </View>
-        );
-    }
 
     return (
         <View style={styles.container}>
@@ -115,7 +145,7 @@ export default function LoginScreen({ navigation }) {
                                 keyboardType="email-address"
                                 autoCapitalize="none"
                                 style={styles.inputSpacing}
-                                editable={!isSubmitting}
+                                editable={!isSubmitting && !hasNavigated.current}
                             />
 
                             {/* Input de contraseña */}
@@ -130,7 +160,7 @@ export default function LoginScreen({ navigation }) {
                                 eyeIcon={eyeIcon}
                                 eyeOffIcon={eyeOffIcon}
                                 style={styles.inputSpacing}
-                                editable={!isSubmitting}
+                                editable={!isSubmitting && !hasNavigated.current}
                             />
 
                             {/* Enlace olvidé contraseña */}
@@ -138,7 +168,7 @@ export default function LoginScreen({ navigation }) {
                                 onPress={handleForgotPassword}
                                 style={styles.forgotPasswordContainer}
                                 activeOpacity={0.7}
-                                disabled={isSubmitting}
+                                disabled={isSubmitting || hasNavigated.current}
                             >
                                 <Text style={styles.forgotPasswordText}>
                                     ¿Olvidaste tu contraseña?
@@ -150,7 +180,7 @@ export default function LoginScreen({ navigation }) {
                                 title={isSubmitting ? "Iniciando Sesión..." : "Iniciar Sesión"}
                                 onPress={handleLogin}
                                 style={styles.loginButtonSpacing}
-                                disabled={isSubmitting}
+                                disabled={isSubmitting || hasNavigated.current}
                             />
 
                             {/* Texto registro */}
@@ -159,12 +189,40 @@ export default function LoginScreen({ navigation }) {
                                 linkText="Regístrate"
                                 onPress={handleRegister}
                                 style={styles.registerTextSpacing}
-                                disabled={isSubmitting}
+                                disabled={isSubmitting || hasNavigated.current}
                             />
                         </View>
                     </View>
                 </View>
             </ImageBackground>
+
+            {/* Todos los dialogs personalizados */}
+            <CustomAlert
+                visible={alertState.basicAlert.visible}
+                title={alertState.basicAlert.title}
+                message={alertState.basicAlert.message}
+                type={alertState.basicAlert.type}
+                onConfirm={alertState.basicAlert.onConfirm}
+                onCancel={alertState.basicAlert.onCancel}
+                confirmText={alertState.basicAlert.confirmText}
+                cancelText={alertState.basicAlert.cancelText}
+                showCancel={alertState.basicAlert.showCancel}
+            />
+
+            <LoadingDialog
+                visible={alertState.loading.visible}
+                title={alertState.loading.title}
+                message={alertState.loading.message}
+                color={alertState.loading.color}
+            />
+
+            <ToastDialog
+                visible={alertState.toast.visible}
+                message={alertState.toast.message}
+                type={alertState.toast.type}
+                duration={alertState.toast.duration}
+                onHide={hideToast}
+            />
         </View>
     );
 }
@@ -172,16 +230,6 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-    },
-    loadingContainer: {
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#F5F5F5',
-    },
-    loadingText: {
-        fontSize: 16,
-        color: '#666666',
-        fontFamily: 'Poppins-Regular',
     },
     backgroundImage: {
         flex: 1,

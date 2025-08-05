@@ -1,62 +1,13 @@
 import React from "react";
-import { View, TouchableOpacity, Image, StyleSheet, Text, Alert } from "react-native";
+import { View, TouchableOpacity, Image, StyleSheet, Text } from "react-native";
 import { useAuth } from "../context/AuthContext";
 import perfilIcon from "../images/perfilIcon.png";
 
 export default function HomeScreen({ navigation }) {
-    const { user, userInfo, logout, isLoggingOut } = useAuth();
+    const { user, userInfo } = useAuth();
 
     const handleProfilePress = () => {
-        if (userInfo) {
-            Alert.alert(
-                "Información del Usuario",
-                `Nombre: ${userInfo.name || 'No disponible'}\nEmail: ${userInfo.email || 'No disponible'}\nTipo: ${user?.userType || 'user'}`,
-                [
-                    {
-                        text: "Cerrar Sesión",
-                        style: "destructive",
-                        onPress: handleLogout
-                    }, {
-                        text: "Cancelar",
-                        style: "cancel"
-                    }
-                ]
-            );
-        } else {
-            Alert.alert(
-                "Opciones",
-                "¿Qué deseas hacer?",
-                [
-                    {
-                        text: "Cerrar Sesión",
-                        style: "destructive",
-                        onPress: handleLogout
-                    },
-                    {
-                        text: "Cancelar",
-                        style: "cancel"
-                    }
-                ]
-            );
-        }
-    };
-
-    const handleLogout = async () => {
-        try {
-            console.log("Iniciando logout desde HomeScreen...");
-            const result = await logout();
-
-            if (result.success) {
-                console.log('Logout exitoso, navegando a Welcome...');
-                navigation.reset({
-                    index: 0,
-                    routes: [{ name: 'Login' }],
-                });
-            }
-        } catch (error) {
-            console.error('Error durante logout: ', error);
-            Alert.alert("Error", "Hubo un problema al cerrar sesión");
-        }
+        navigation.navigate('Profile');
     };
 
     return (
@@ -66,7 +17,6 @@ export default function HomeScreen({ navigation }) {
                 <TouchableOpacity
                     style={styles.profileButton}
                     onPress={handleProfilePress}
-                    disabled={isLoggingOut}
                 >
                     <Image source={perfilIcon} style={styles.icon} />
                 </TouchableOpacity>
@@ -75,29 +25,20 @@ export default function HomeScreen({ navigation }) {
             {/* Contenido principal */}
             <View style={styles.content}>
                 <Text style={styles.welcomeText}>
-                    ¡Bienvenido!
+                    ¡Bienvenido{userInfo?.fullName ? `, ${userInfo.fullName}` : ''}!
                 </Text>
 
-                {userInfo && (
-                    <View style={styles.userInfoCard}>
-                        <Text style={styles.userInfoTitle}>Información del Usuario</Text>
-                        <Text style={styles.userInfoText}>
-                            Nombre: {userInfo.name || 'No disponible'}
-                        </Text>
-                        <Text style={styles.userInfoText}>
-                            Email: {userInfo.email || 'No disponible'}
-                        </Text>
-                        <Text style={styles.userInfoText}>
-                            Tipo: {user?.userType || 'user'}
-                        </Text>
-                    </View>
-                )}
+                <Text style={styles.instructionText}>
+                    Toca el ícono de perfil para acceder a tu información y configuraciones
+                </Text>
 
-                {isLoggingOut && (
-                    <View style={styles.loadingContainer}>
-                        <Text style={styles.loadingText}>Cerrando sesión...</Text>
-                    </View>
-                )}
+                {/* Aquí se agregará el contenido de la página de Home */}
+                <View style={styles.homeContentCard}>
+                    <Text style={styles.cardTitle}>Panel Principal</Text>
+                    <Text style={styles.cardDescription}>
+                        Desde aquí puedes navegar a todas las funciones de la aplicación
+                    </Text>
+                </View>
             </View>
         </View>
     );
@@ -138,7 +79,15 @@ const styles = StyleSheet.create({
         marginBottom: 30,
         textAlign: 'center',
     },
-    userInfoCard: {
+    instructionText: {
+        fontSize: 16,
+        fontFamily: 'Poppins-Regular',
+        color: '#666666',
+        marginBottom: 40,
+        textAlign: 'center',
+        lineHeight: 24,
+    },
+    homeContentCard: {
         backgroundColor: '#F8F9FA',
         borderRadius: 15,
         padding: 20,
@@ -154,30 +103,18 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 3,
     },
-    userInfoTitle: {
+    cardTitle: {
         fontSize: 18,
         fontFamily: 'Poppins-SemiBold',
         color: '#333333',
-        marginBottom: 15,
+        marginBottom: 10,
         textAlign: 'center',
     },
-    userInfoText: {
-        fontSize: 14,
-        fontFamily: 'Poppins-Regular',
-        color: '#666666',
-        marginBottom: 8,
-        textAlign: 'center',
-    },
-    loadingContainer: {
-        marginTop: 20,
-        padding: 15,
-        backgroundColor: '#F0F0F0',
-        borderRadius: 10,
-    },
-    loadingText: {
+    cardDescription: {
         fontSize: 14,
         fontFamily: 'Poppins-Regular',
         color: '#666666',
         textAlign: 'center',
+        lineHeight: 20,
     },
 });

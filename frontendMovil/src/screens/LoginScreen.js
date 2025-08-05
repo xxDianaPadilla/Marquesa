@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, Text, StyleSheet, Dimensions, StatusBar, ImageBackground, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, Dimensions, StatusBar, ImageBackground, TouchableOpacity, KeyboardAvoidingView, ScrollView, Platform } from "react-native";
 import { useAuth } from "../context/AuthContext";
 import { useAlert } from "../hooks/useAlert";
-import {CustomAlert, LoadingDialog, ToastDialog } from "../components/CustomAlerts";
+import { CustomAlert, LoadingDialog, ToastDialog } from "../components/CustomAlerts";
 import loginBg from "../images/loginBg.png";
 import PinkInputs from "../components/PinkInputs";
 import emailIcon from "../images/emailIcon.png";
@@ -19,7 +19,7 @@ export default function LoginScreen({ navigation }) {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    
+
     const hasNavigated = useRef(false);
 
     const { login, isAuthenticated, authError, clearAuthError, loading } = useAuth();
@@ -34,7 +34,7 @@ export default function LoginScreen({ navigation }) {
     } = useAlert();
 
     useEffect(() => {
-        if(loading){
+        if (loading) {
             showLoading({
                 title: 'Verificando autenticación',
                 message: 'Comprobando credenciales...'
@@ -45,7 +45,7 @@ export default function LoginScreen({ navigation }) {
 
         if (isAuthenticated && !loading && !hasNavigated.current) {
             console.log('Usuario autenticado, navegando a Home');
-            hasNavigated.current = true; 
+            hasNavigated.current = true;
             hideLoading();
             showSuccessToast('¡Bienvenid@ de vuelta!');
 
@@ -128,71 +128,82 @@ export default function LoginScreen({ navigation }) {
 
             <ImageBackground source={loginBg} style={styles.backgroundImage}>
                 <View style={styles.overlay}>
-                    <View style={styles.content}>
-                        {/* Card principal */}
-                        <View style={styles.loginCard}>
-                            {/* Título */}
-                            <Text style={styles.title}>
-                                Dedicados a realizar{'\n'}detalles únicos
-                            </Text>
+                    <KeyboardAvoidingView
+                        style={{ flex: 1 }}
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    >
+                        <ScrollView
+                            contentContainerStyle={styles.scrollContent}
+                            showsVerticalScrollIndicator={false}
+                            keyboardShouldPersistTaps="handled"
+                        >
+                            <View style={styles.content}>
+                                {/* Card principal */}
+                                <View style={styles.loginCard}>
+                                    {/* Título */}
+                                    <Text style={styles.title}>
+                                        Dedicados a realizar{'\n'}detalles únicos
+                                    </Text>
 
-                            {/* Input de email */}
-                            <PinkInputs
-                                placeholder="Correo electrónico"
-                                value={email}
-                                onChangeText={setEmail}
-                                icon={emailIcon}
-                                keyboardType="email-address"
-                                autoCapitalize="none"
-                                style={styles.inputSpacing}
-                                editable={!isSubmitting && !hasNavigated.current}
-                            />
+                                    {/* Input de email */}
+                                    <PinkInputs
+                                        placeholder="Correo electrónico"
+                                        value={email}
+                                        onChangeText={setEmail}
+                                        icon={emailIcon}
+                                        keyboardType="email-address"
+                                        autoCapitalize="none"
+                                        style={styles.inputSpacing}
+                                        editable={!isSubmitting && !hasNavigated.current}
+                                    />
 
-                            {/* Input de contraseña */}
-                            <PinkInputs
-                                placeholder="Contraseña"
-                                value={password}
-                                onChangeText={setPassword}
-                                icon={lockIcon}
-                                secureTextEntry={!showPassword}
-                                showPasswordToggle={true}
-                                onTogglePassword={() => setShowPassword(!showPassword)}
-                                eyeIcon={eyeIcon}
-                                eyeOffIcon={eyeOffIcon}
-                                style={styles.inputSpacing}
-                                editable={!isSubmitting && !hasNavigated.current}
-                            />
+                                    {/* Input de contraseña */}
+                                    <PinkInputs
+                                        placeholder="Contraseña"
+                                        value={password}
+                                        onChangeText={setPassword}
+                                        icon={lockIcon}
+                                        secureTextEntry={!showPassword}
+                                        showPasswordToggle={true}
+                                        onTogglePassword={() => setShowPassword(!showPassword)}
+                                        eyeIcon={eyeIcon}
+                                        eyeOffIcon={eyeOffIcon}
+                                        style={styles.inputSpacing}
+                                        editable={!isSubmitting && !hasNavigated.current}
+                                    />
 
-                            {/* Enlace olvidé contraseña */}
-                            <TouchableOpacity
-                                onPress={handleForgotPassword}
-                                style={styles.forgotPasswordContainer}
-                                activeOpacity={0.7}
-                                disabled={isSubmitting || hasNavigated.current}
-                            >
-                                <Text style={styles.forgotPasswordText}>
-                                    ¿Olvidaste tu contraseña?
-                                </Text>
-                            </TouchableOpacity>
+                                    {/* Enlace olvidé contraseña */}
+                                    <TouchableOpacity
+                                        onPress={handleForgotPassword}
+                                        style={styles.forgotPasswordContainer}
+                                        activeOpacity={0.7}
+                                        disabled={isSubmitting || hasNavigated.current}
+                                    >
+                                        <Text style={styles.forgotPasswordText}>
+                                            ¿Olvidaste tu contraseña?
+                                        </Text>
+                                    </TouchableOpacity>
 
-                            {/* Botón iniciar sesión */}
-                            <PinkButton
-                                title={isSubmitting ? "Iniciando Sesión..." : "Iniciar Sesión"}
-                                onPress={handleLogin}
-                                style={styles.loginButtonSpacing}
-                                disabled={isSubmitting || hasNavigated.current}
-                            />
+                                    {/* Botón iniciar sesión */}
+                                    <PinkButton
+                                        title={isSubmitting ? "Iniciando Sesión..." : "Iniciar Sesión"}
+                                        onPress={handleLogin}
+                                        style={styles.loginButtonSpacing}
+                                        disabled={isSubmitting || hasNavigated.current}
+                                    />
 
-                            {/* Texto registro */}
-                            <QuestionText
-                                questionText="¿No tienes una cuenta?"
-                                linkText="Regístrate"
-                                onPress={handleRegister}
-                                style={styles.registerTextSpacing}
-                                disabled={isSubmitting || hasNavigated.current}
-                            />
-                        </View>
-                    </View>
+                                    {/* Texto registro */}
+                                    <QuestionText
+                                        questionText="¿No tienes una cuenta?"
+                                        linkText="Regístrate"
+                                        onPress={handleRegister}
+                                        style={styles.registerTextSpacing}
+                                        disabled={isSubmitting || hasNavigated.current}
+                                    />
+                                </View>
+                            </View>
+                        </ScrollView>
+                    </KeyboardAvoidingView>
                 </View>
             </ImageBackground>
 
@@ -240,11 +251,20 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: 'rgba(255, 255, 255, 0.1)',
     },
+    keyboardAvoidingView: {
+        flex: 1,
+    },
+    scrollContent: {
+        flexGrow: 1,
+        justifyContent: 'center',
+        minHeight: height, // Asegura que ocupe toda la pantalla
+    },
     content: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: 30,
+        paddingVertical: 20, // Añadido padding vertical
     },
     loginCard: {
         backgroundColor: 'rgba(255, 255, 255, 0.95)',

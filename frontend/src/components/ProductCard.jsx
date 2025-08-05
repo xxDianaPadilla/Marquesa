@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast"; // Importar react-hot-toast
 import { useFavorites } from "../context/FavoritesContext"; // Importar el contexto de favoritos
 
-const ProductCard = ({ 
-    product, 
+const ProductCard = ({
+    product,
     onRemove,
     showFavoriteButton = false, // Nueva prop para controlar si mostrar el botón de favoritos
     isFavorite = false, // Estado de favorito pasado desde el padre
@@ -46,16 +46,16 @@ const ProductCard = ({
      */
     const handleToggleFavorite = (e) => {
         e.stopPropagation();
-        
+
         try {
             if (onToggleFavorite) {
                 // Ejecutar la función de toggle pasada como prop
                 onToggleFavorite();
-                
+
                 // Determinar si fue agregado o eliminado
                 // Como el estado cambia después del toggle, verificamos el estado contrario
                 const wasAdded = !isProductFavorite;
-                
+
                 // Mostrar toast según la acción realizada
                 if (wasAdded) {
                     toast.success(`¡${product.name} agregado a favoritos!`, {
@@ -99,37 +99,55 @@ const ProductCard = ({
         if (typeof price === 'string' && price.includes('$')) {
             return price;
         }
-        
+
         // Si es un número, formatearlo
         if (typeof price === 'number') {
             return `$${price.toFixed(2)}`;
         }
-        
+
         // Si es un string numérico, convertirlo y formatearlo
         const numericPrice = parseFloat(price);
         if (!isNaN(numericPrice)) {
             return `$${numericPrice.toFixed(2)}`;
         }
-        
+
         // Fallback
         return `$${price}`;
     };
 
+    const getProductImage = (product) => {
+        if (product.image) {
+            return product.image;
+        }
+
+        if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+            if (product.images[0] && typeof product.images[0] === 'object' && product.images[0].image) {
+                return product.images[0].image;
+            }
+
+            if (typeof product.images[0] === 'string') {
+                return product.images[0];
+            }
+        }
+
+        return null;
+    };
+
     // Obtener el ID del producto de manera segura
     const productId = product._id || product.id;
-    
+
     // Determinar si es favorito usando el prop o el contexto como fallback
     const isProductFavorite = isFavorite !== undefined ? isFavorite : (productId ? contextIsFavorite(productId) : false);
 
     return (
-        <div 
+        <div
             className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer group"
             onClick={handleCardClick}
         >
             {/* Contenedor de la imagen del producto */}
             <div className="relative">
                 <img
-                    src={product.image || "/api/placeholder/280/200"}
+                    src={getProductImage(product)}
                     alt={product.name}
                     className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                     onError={(e) => {
@@ -172,38 +190,38 @@ const ProductCard = ({
                         className={`absolute top-2 sm:top-3 left-2 sm:left-3 rounded-full p-1.5 sm:p-2 
                                    transition-all duration-200 shadow-md hover:shadow-lg 
                                    transform hover:scale-105 cursor-pointer
-                                   ${isProductFavorite 
-                                     ? 'bg-pink-500 bg-opacity-90 hover:bg-opacity-100' 
-                                     : 'bg-white bg-opacity-80 hover:bg-opacity-100'
-                                   }`}
+                                   ${isProductFavorite
+                                ? 'bg-pink-500 bg-opacity-90 hover:bg-opacity-100'
+                                : 'bg-white bg-opacity-80 hover:bg-opacity-100'
+                            }`}
                         aria-label={isProductFavorite ? "Eliminar de favoritos" : "Añadir a favoritos"}
                     >
                         {isProductFavorite ? (
-                            <svg 
-                                className="w-3 h-3 sm:w-4 sm:h-4 text-white" 
-                                fill="currentColor" 
-                                stroke="currentColor" 
+                            <svg
+                                className="w-3 h-3 sm:w-4 sm:h-4 text-white"
+                                fill="currentColor"
+                                stroke="currentColor"
                                 viewBox="0 0 24 24"
                             >
-                                <path 
-                                    strokeLinecap="round" 
-                                    strokeLinejoin="round" 
-                                    strokeWidth={2} 
-                                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" 
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
                                 />
                             </svg>
                         ) : (
-                            <svg 
-                                className="w-3 h-3 sm:w-4 sm:h-4 text-gray-600 hover:text-red-500" 
-                                fill="none" 
-                                stroke="currentColor" 
+                            <svg
+                                className="w-3 h-3 sm:w-4 sm:h-4 text-gray-600 hover:text-red-500"
+                                fill="none"
+                                stroke="currentColor"
                                 viewBox="0 0 24 24"
                             >
-                                <path 
-                                    strokeLinecap="round" 
-                                    strokeLinejoin="round" 
-                                    strokeWidth={2} 
-                                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" 
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
                                 />
                             </svg>
                         )}
@@ -213,24 +231,15 @@ const ProductCard = ({
                 {/* Indicador de favorito (solo visual cuando no hay botón interactivo) */}
                 {!showFavoriteButton && isProductFavorite && (
                     <div className="absolute top-2 left-2 bg-pink-500 bg-opacity-90 rounded-full p-2 shadow-md">
-                        <svg 
-                            className="w-4 h-4 text-white" 
-                            fill="currentColor" 
+                        <svg
+                            className="w-4 h-4 text-white"
+                            fill="currentColor"
                             viewBox="0 0 24 24"
                         >
-                            <path 
-                                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" 
+                            <path
+                                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
                             />
                         </svg>
-                    </div>
-                )}
-
-                {/* Badge de personalizable */}
-                {product.isPersonalizable && (
-                    <div className="absolute bottom-2 left-2">
-                        <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full font-medium shadow-md">
-                            Personalizable
-                        </span>
                     </div>
                 )}
 
@@ -293,7 +302,7 @@ const ProductCard = ({
                     >
                         {formatPrice(product.price)}
                     </span>
-                    
+
                     {product.stock !== undefined && product.stock > 0 && (
                         <span className="text-xs text-gray-500">
                             Stock: {product.stock}
@@ -310,10 +319,10 @@ const ProductCard = ({
                     disabled={product.stock === 0}
                     className={`w-full px-4 py-2 rounded-lg transition-all duration-200 text-sm font-medium
                              hover:scale-105 transform transition-transform
-                             ${product.stock === 0 
-                                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed hover:scale-100' 
-                                 : 'bg-[#FDB4B7] hover:bg-[#FCA5A9] text-white cursor-pointer'
-                             }`}
+                             ${product.stock === 0
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed hover:scale-100'
+                            : 'bg-[#FDB4B7] hover:bg-[#FCA5A9] text-white cursor-pointer'
+                        }`}
                     style={{ fontFamily: 'Poppins, sans-serif' }}
                 >
                     {product.stock === 0 ? 'Sin stock' : 'Ver producto'}

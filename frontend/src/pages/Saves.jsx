@@ -29,21 +29,21 @@ const Saves = () => {
     };
 
     const handleExploreProducts = () => {
-        navigate('/');
+        navigate('/categoryProducts');
     };
 
     const handleViewCart = () => {
-        navigate('/shopping-cart');
+        navigate('/shoppingCart');
     };
 
     // Mostrar loading mientras se cargan los datos
     if (localLoading || isLoading) {
         return (
-            <div className="min-h-screen bg-gray-50">
+            <div className="min-h-screen bg-white-50">
                 <Header />
                 <main className="py-8">
                     <Container>
-                        <LoadingSpinner 
+                        <LoadingSpinner
                             text="Cargando productos guardados..."
                             className="min-h-[400px]"
                         />
@@ -55,36 +55,28 @@ const Saves = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-white-50">
             <Header />
 
             <main className="py-8">
                 <Container>
                     {/* Título de la página */}
                     <div className="text-center mb-8">
-                        <h1 
+                        <h1
                             className="text-3xl font-bold text-gray-800 mb-2"
                             style={{ fontFamily: 'Poppins, sans-serif' }}
                         >
                             Mis guardados
                         </h1>
-                        <p 
+                        <p
                             className="text-gray-600"
                             style={{ fontFamily: 'Poppins, sans-serif' }}
                         >
-                            {favorites.length > 0 
+                            {favorites.length > 0
                                 ? `Tienes ${favorites.length} producto${favorites.length === 1 ? '' : 's'} en tu lista de favoritos`
                                 : "Aquí encontrarás tus productos favoritos"
                             }
                         </p>
-                        {isAuthenticated && user && (
-                            <p 
-                                className="text-sm text-gray-500 mt-1"
-                                style={{ fontFamily: 'Poppins, sans-serif' }}
-                            >
-                                Guardados para: {user.userType === 'Customer' ? 'Cliente' : user.userType}
-                            </p>
-                        )}
                     </div>
 
                     {/* Contenido principal */}
@@ -92,8 +84,8 @@ const Saves = () => {
                         <EmptyState
                             icon={
                                 <svg className="w-20 h-20 text-gray-300 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} 
-                                          d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
+                                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                                 </svg>
                             }
                             title="No tienes productos guardados"
@@ -117,13 +109,13 @@ const Saves = () => {
                             {/* Sección de acciones */}
                             <div className="text-center">
                                 <div className="bg-white rounded-lg shadow-sm p-6 max-w-md mx-auto">
-                                    <h3 
+                                    <h3
                                         className="text-lg font-semibold text-gray-800 mb-2"
                                         style={{ fontFamily: 'Poppins, sans-serif' }}
                                     >
                                         ¿Listo para comprar?
                                     </h3>
-                                    <p 
+                                    <p
                                         className="text-gray-600 mb-4 text-sm"
                                         style={{ fontFamily: 'Poppins, sans-serif' }}
                                     >

@@ -5,7 +5,7 @@
  * Funcionalidades principales:
  * - Landing page con diseño atractivo y responsivo
  * - Navegación de categorías con filtros
- * - Productos destacados con sistema de favoritos
+ * - Productos destacados con sistema de favoritos integrado
  * - Gestión de carrito de compras
  * - Sección de testimonios de clientes
  * - Chat button integrado para soporte
@@ -26,6 +26,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useFavorites } from "../context/FavoritesContext"; // Importar el contexto de favoritos
+import toast from 'react-hot-toast'; // Para notificaciones mejoradas
 
 // Componentes principales existentes
 import Header from "../components/Header/Header";
@@ -58,19 +60,22 @@ import iconFavorites from '../assets/favoritesIcon.png';
 const HomePage = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
+  const { toggleFavorite, isFavorite } = useFavorites(); // Usar el contexto de favoritos
 
   // Estados para funcionalidades interactivas
-  const [favorites, setFavorites] = useState(new Set());
   const [cart, setCart] = useState([]);
   const [showCartMessage, setShowCartMessage] = useState(false);
   const [showFavoriteMessage, setShowFavoriteMessage] = useState(false);
 
   /**
    * Datos de productos destacados
+   * NOTA: Estos productos tienen un formato diferente al resto de la app
+   * Se normalizan para ser compatibles con el sistema de favoritos
    */
   const featuredProducts = [
     {
       id: "p1",
+      _id: "p1", // Agregar _id para compatibilidad
       name: "Ramo de flores secas lavanda",
       description: "Arreglos con flores secas",
       price: 10.0,
@@ -79,6 +84,7 @@ const HomePage = () => {
     },
     {
       id: "p2",
+      _id: "p2", // Agregar _id para compatibilidad
       name: "Cuadro sencillo de hogar",
       description: "Cuadros decorativos",
       price: 34.0,
@@ -87,6 +93,7 @@ const HomePage = () => {
     },
     {
       id: "p3",
+      _id: "p3", // Agregar _id para compatibilidad
       name: "Ramo de rosas frescas",
       description: "Arreglos con flores naturales",
       price: 23.0,
@@ -153,17 +160,53 @@ const HomePage = () => {
   };
 
   /**
-   * Maneja la funcionalidad de favoritos
+   * Maneja la funcionalidad de favoritos usando el contexto
    */
-  const handleToggleFavorite = (productId) => {
-    const newFavorites = new Set(favorites);
-    if (newFavorites.has(productId)) {
-      newFavorites.delete(productId);
-    } else {
-      newFavorites.add(productId);
-      setShowFavoriteMessage(true);
+  const handleToggleFavorite = (product) => {
+    try {
+      // Preparar el objeto del producto para favoritos
+      const productForFavorites = {
+        _id: product._id || product.id,
+        id: product.id || product._id, // Para compatibilidad
+        name: product.name,
+        price: product.price,
+        description: product.description,
+        category: product.category,
+        image: product.image
+      };
+
+      const wasAdded = toggleFavorite(productForFavorites);
+
+      if (wasAdded) {
+        toast.success(`¡${product.name} agregado a favoritos!`, {
+          duration: 2000,
+          position: 'top-center',
+          icon: '❤️',
+          style: {
+            background: '#EC4899',
+            color: '#fff',
+          },
+        });
+        setShowFavoriteMessage(true);
+      } else {
+        toast.success(`${product.name} eliminado de favoritos`, {
+          duration: 2000,
+          position: 'top-center',
+          icon: '💔',
+          style: {
+            background: '#6B7280',
+            color: '#fff',
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Error al manejar favoritos:', error);
+      toast.error('Error al actualizar favoritos', {
+        duration: 2000,
+        position: 'top-center',
+        icon: '❌'
+      });
     }
-    setFavorites(newFavorites);
   };
 
   /**
@@ -180,6 +223,17 @@ const HomePage = () => {
     } else {
       setCart([...cart, { ...product, quantity: 1 }]);
     }
+    
+    toast.success(`¡${product.name} agregado al carrito!`, {
+      duration: 2000,
+      position: 'top-center',
+      icon: '🛒',
+      style: {
+        background: '#10B981',
+        color: '#fff',
+      },
+    });
+    
     setShowCartMessage(true);
   };
 
@@ -187,7 +241,7 @@ const HomePage = () => {
    * Navegación a la página de todos los productos
    */
   const handleViewAll = () => {
-    navigate('/categoria/flores-naturales');
+    navigate('/categoria/688175a69579a7cde1657aaa'); // ID real de flores naturales
   };
 
   /**
@@ -198,6 +252,20 @@ const HomePage = () => {
     if (productsSection) {
       productsSection.scrollIntoView({ behavior: 'smooth' });
     }
+  };
+
+  /**
+   * Mapeo de categorías para navegación
+   */
+  const getCategoryId = (categorySlug) => {
+    const categoryMap = {
+      'flores-naturales': '688175a69579a7cde1657aaa',
+      'flores-secas': '688175d89579a7cde1657ac2',
+      'cuadros-decorativos': '688175fd9579a7cde1657aca',
+      'giftboxes': '688176179579a7cde1657ace',
+      'tarjetas': '688175e79579a7cde1657ac6'
+    };
+    return categoryMap[categorySlug] || categorySlug;
   };
 
   return (
@@ -292,15 +360,29 @@ const HomePage = () => {
 
           {/* Grid de categorías */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-            {[cat1, cat2, cat3, cat4, cat5].map((categoryImg, index) => (
-              <div key={index} className="rounded-lg overflow-hidden shadow-sm group cursor-pointer">
-                <img
-                  src={categoryImg}
-                  alt={`Categoría ${index + 1}`}
-                  className="w-full h-32 sm:h-40 lg:h-57 object-cover"
-                />
-              </div>
-            ))}
+            {[cat1, cat2, cat3, cat4, cat5].map((categoryImg, index) => {
+              const categoryIds = [
+                '688175a69579a7cde1657aaa', // flores naturales
+                '688175d89579a7cde1657ac2', // flores secas
+                '688175fd9579a7cde1657aca', // cuadros decorativos
+                '688176179579a7cde1657ace', // giftboxes
+                '688175e79579a7cde1657ac6'  // tarjetas
+              ];
+              
+              return (
+                <div 
+                  key={index} 
+                  className="rounded-lg overflow-hidden shadow-sm group cursor-pointer hover:shadow-md transition-all duration-300"
+                  onClick={() => navigate(`/categoria/${categoryIds[index]}`)}
+                >
+                  <img
+                    src={categoryImg}
+                    alt={`Categoría ${index + 1}`}
+                    className="w-full h-32 sm:h-40 lg:h-57 object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                </div>
+              );
+            })}
           </div>
         </Container>
       </section>
@@ -321,71 +403,96 @@ const HomePage = () => {
 
           {/* Grid de productos destacados */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8" style={{ cursor: 'pointer' }}>
-            {featuredProducts.map((product) => (
-              <div
-                key={product.id}
-                className="bg-white rounded-lg shadow-md hover:shadow-lg transition-transform transform hover:scale-105 cursor-pointer"
-                onClick={() => navigate(`/categoria/${product.category}`)}
-              >
-                <div className="relative">
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-48 sm:h-64 lg:h-85 object-cover rounded-t-lg"
-                  />
+            {featuredProducts.map((product) => {
+              const productId = product._id || product.id;
+              const isProductFavorite = isFavorite(productId);
 
-                  {/* Badge de precio usando componente nuevo */}
-                  <div className="absolute top-3 right-3 bg-white bg-opacity-90 rounded-full px-3 py-1 shadow-md">
-                    <PriceDisplay price={product.price} size="sm" />
-                  </div>
-                </div>
+              return (
+                <div
+                  key={product.id}
+                  className="bg-white rounded-lg shadow-md hover:shadow-lg transition-transform transform hover:scale-105 cursor-pointer"
+                  onClick={() => navigate(`/categoria/${getCategoryId(product.category)}`)}
+                >
+                  <div className="relative">
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      className="w-full h-48 sm:h-64 lg:h-85 object-cover rounded-t-lg"
+                    />
 
-                <div className="p-4">
-                  <h3 className="text-lg font-semibold mb-1" style={{ fontFamily: "Poppins" }}>
-                    {product.name}
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-2" style={{ fontFamily: "Poppins" }}>
-                    {product.description}
-                  </p>
+                    {/* Badge de precio usando componente nuevo */}
+                    <div className="absolute top-3 right-3 bg-white bg-opacity-90 rounded-full px-3 py-1 shadow-md">
+                      <PriceDisplay price={product.price} size="sm" />
+                    </div>
 
-                  <div className="flex items-center justify-between mb-3">
-                    <PriceDisplay price={product.price} />
-
+                    {/* Botón de favorito mejorado */}
                     <button
                       style={{ cursor: 'pointer' }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleToggleFavorite(product.id);
+                        handleToggleFavorite(product);
                       }}
-                      className={`p-1 rounded-full transition-all duration-200 transform hover:scale-110 ${favorites.has(product.id)
-                          ? 'bg-red-100 hover:bg-red-200'
-                          : 'hover:bg-gray-100'
+                      className={`absolute top-3 left-3 p-2 rounded-full transition-all duration-200 transform hover:scale-110 shadow-md
+                        ${isProductFavorite
+                          ? 'bg-pink-500 bg-opacity-90 hover:bg-opacity-100'
+                          : 'bg-white bg-opacity-80 hover:bg-opacity-100'
                         }`}
                     >
-                      <img
-                        src={iconFavorites}
-                        alt="Agregar a favoritos"
-                        className={`w-5 h-6 transition-all duration-200 ${favorites.has(product.id) ? 'filter-red' : ''
-                          }`}
-                        style={favorites.has(product.id) ? { filter: 'hue-rotate(320deg) saturate(2)' } : {}}
-                      />
+                      {isProductFavorite ? (
+                        <svg 
+                          className="w-5 h-5 text-white" 
+                          fill="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                        </svg>
+                      ) : (
+                        <img
+                          src={iconFavorites}
+                          alt="Agregar a favoritos"
+                          className="w-5 h-6 transition-all duration-200"
+                        />
+                      )}
                     </button>
                   </div>
 
-                  <ActionButton
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAddToCart(product);
-                    }}
-                    variant="primary"
-                    size="md"
-                    className="w-full"
-                  >
-                    Añadir al carrito
-                  </ActionButton>
+                  <div className="p-4">
+                    <h3 className="text-lg font-semibold mb-1" style={{ fontFamily: "Poppins" }}>
+                      {product.name}
+                    </h3>
+                    <p className="text-sm text-gray-600 mb-2" style={{ fontFamily: "Poppins" }}>
+                      {product.description}
+                    </p>
+
+                    <div className="flex items-center justify-between mb-3">
+                      <PriceDisplay price={product.price} />
+
+                      {/* Indicador visual de favorito */}
+                      <div className={`flex items-center gap-2 ${isProductFavorite ? 'text-pink-500' : 'text-gray-400'}`}>
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                        </svg>
+                        <span className="text-xs font-medium">
+                          {isProductFavorite ? 'En favoritos' : 'Guardar'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <ActionButton
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddToCart(product);
+                      }}
+                      variant="primary"
+                      size="md"
+                      className="w-full"
+                    >
+                      Añadir al carrito
+                    </ActionButton>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Botón para ver todos los productos */}

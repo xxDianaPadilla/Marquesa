@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useFavorites } from "../context/FavoritesContext"; // Importar el hook de favoritos
 import Header from "../components/Header/Header";
 import Footer from "../components/Footer";
 import CategoryNavigation from "../components/CategoryNavigation";
 import CategorySection from "../components/CategorySection";
-import PersonalizableSection from "../components/PersonalizableSection"; // Nuevo componente
+import PersonalizableSection from "../components/PersonalizableSection";
 import LoadingSpinner from "../components/LoadingSpinner";
 import Container from "../components/Container";
+import ProductCard from "../components/ProductCard"; // Importar el componente ProductCard
 
 const CategoryProducts = () => {
     const navigate = useNavigate();
@@ -18,13 +20,22 @@ const CategoryProducts = () => {
     const [products, setProducts] = useState([]);
     const [error, setError] = useState(null);
 
-    // URL base de la API - Tu backend en puerto 4000
+    // Hook de favoritos
+    const { 
+        favorites, 
+        addToFavorites, 
+        removeFromFavorites, 
+        isFavorite, 
+        toggleFavorite 
+    } = useFavorites();
+
+    // URL base de la API
     const API_BASE_URL = process.env.NODE_ENV === 'production' 
         ? '/api' 
         : 'http://localhost:4000/api';
 
     /**
-     * Configuración de categorías disponibles (igual que CategoryProductsPage)
+     * Configuración de categorías disponibles
      */
     const categories = [
         { _id: 'todos', name: 'Todos' },
@@ -60,7 +71,6 @@ const CategoryProducts = () => {
             const data = await response.json();
             console.log('📦 All products response:', data);
             
-            // Manejar diferentes estructuras de respuesta
             const productsData = Array.isArray(data) ? data : (data.products || data.data || []);
             
             console.log('📊 Total products loaded:', productsData.length);
@@ -78,7 +88,6 @@ const CategoryProducts = () => {
 
     /**
      * Función para obtener productos por categoría específica
-     * Usa el mismo endpoint que CategoryProductsPage
      */
     const fetchProductsByCategory = async (categoryId) => {
         try {
@@ -94,7 +103,6 @@ const CategoryProducts = () => {
             const data = await response.json();
             console.log(`📦 Products for category ${categoryId}:`, data);
             
-            // Manejar diferentes estructuras de respuesta
             const productsData = Array.isArray(data) ? data : (data.products || data.data || []);
             
             console.log(`📊 Products loaded for category ${categoryId}:`, productsData.length);
@@ -107,6 +115,21 @@ const CategoryProducts = () => {
             setProducts([]);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    /**
+     * Maneja el toggle de favorito para un producto específico
+     */
+    const handleToggleFavorite = (product) => {
+        console.log('❤️ Toggle favorite for product:', product.name);
+        const wasAdded = toggleFavorite(product);
+        
+        // Opcional: mostrar notificación
+        if (wasAdded) {
+            console.log('✅ Producto agregado a favoritos');
+        } else {
+            console.log('❌ Producto removido de favoritos');
         }
     };
 
@@ -152,7 +175,6 @@ const CategoryProducts = () => {
             navigate(`/categoria/${categoryId}`, { replace: true });
         }
         
-        // Scroll suave al top
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -187,19 +209,15 @@ const CategoryProducts = () => {
         const safeProducts = Array.isArray(products) ? products : [];
         
         if (activeCategory === 'todos') {
-            // Agrupar todos los productos por categoría
             const groupedProducts = {};
             
             safeProducts.forEach(product => {
-                // Obtener el categoryId - puede ser string directo o objeto poblado
                 let categoryId, categoryName;
                 
                 if (typeof product.categoryId === 'object' && product.categoryId._id) {
-                    // Si está poblado (objeto)
                     categoryId = product.categoryId._id;
                     categoryName = product.categoryId.name;
                 } else {
-                    // Si es solo el ID (string)
                     categoryId = product.categoryId;
                     categoryName = categoryMap[categoryId] || 'Sin categoría';
                 }
@@ -222,7 +240,6 @@ const CategoryProducts = () => {
             
             return groupedProducts;
         } else {
-            // Mostrar solo la categoría activa
             const categoryName = categoryMap[activeCategory] || categories.find(cat => cat._id === activeCategory)?.name || 'Categoría';
             return {
                 [activeCategory]: {
@@ -234,32 +251,43 @@ const CategoryProducts = () => {
     };
 
     /**
-     * Formatea los productos para el componente CategorySection
+     * Formatea los productos para usar con ProductCard
+     * Incluye toda la información necesaria para el componente
      */
-    const formatProductForSection = (product) => {
-        console.log("🎨 Formateando producto:", product);
+    const formatProductForCard = (product) => {
+        console.log("🎨 Formateando producto para ProductCard:", product);
 
         const fallbackImage = '/placeholder-image.jpg';
-
-        // Verificamos que haya al menos una imagen válida
         let image = fallbackImage;
-        if (
-            product.images &&
-            Array.isArray(product.images) &&
-            product.images.length > 0 &&
-            product.images[0].image
-        ) {
-            image = product.images[0].image;
+        
+        // Extraer la imagen del producto
+        if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+            if (product.images[0].image) {
+                image = product.images[0].image;
+            }
         }
 
+        // Extraer información de la categoría
+        let categoryName = 'Sin categoría';
+        if (typeof product.categoryId === 'object' && product.categoryId.name) {
+            categoryName = product.categoryId.name;
+        } else if (product.categoryId && categoryMap[product.categoryId]) {
+            categoryName = categoryMap[product.categoryId];
+        }
+
+        const productId = product._id || product.id;
+
         return {
-            id: product._id || product.id,
+            ...product, // Incluir todos los datos originales del producto
+            id: productId,
+            _id: productId,
             name: product.name,
             description: product.description,
             price: product.price,
             image: image,
             stock: product.stock,
-            isPersonalizable: product.isPersonalizable
+            category: categoryName,
+            isPersonalizable: product.isPersonalizable || false
         };
     };
 
@@ -273,6 +301,39 @@ const CategoryProducts = () => {
         } else {
             fetchProductsByCategory(activeCategory);
         }
+    };
+
+    /**
+     * Renderiza la grilla de productos usando ProductCard
+     */
+    const renderProductGrid = (products, categoryId) => {
+        if (!products || products.length === 0) {
+            return (
+                <div className="text-center py-8">
+                    <p className="text-gray-500">No hay productos disponibles en esta categoría</p>
+                </div>
+            );
+        }
+
+        return (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+                {products.map((product) => {
+                    const formattedProduct = formatProductForCard(product);
+                    const productId = formattedProduct._id || formattedProduct.id;
+                    
+                    return (
+                        <ProductCard
+                            key={productId}
+                            product={formattedProduct}
+                            showFavoriteButton={true} // Mostrar botón de favoritos
+                            showRemoveButton={false} // No mostrar botón de eliminar en esta vista
+                            isFavorite={isFavorite(productId)}
+                            onToggleFavorite={() => handleToggleFavorite(formattedProduct)}
+                        />
+                    );
+                })}
+            </div>
+        );
     };
 
     // Mostrar error si existe
@@ -300,10 +361,8 @@ const CategoryProducts = () => {
 
     return (
         <div className="min-h-screen bg-white-50">
-            {/* Header de la página */}
             <Header />
 
-            {/* Navegación de categorías */}
             <section className="bg-white pt-2 sm:pt-4 pb-4 sm:pb-6">
                 <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
                     <CategoryNavigation
@@ -314,7 +373,6 @@ const CategoryProducts = () => {
                 </div>
             </section>
 
-            {/* Contenido principal */}
             <main className="py-4 sm:py-8">
                 <Container>
                     {isLoading ? (
@@ -323,28 +381,41 @@ const CategoryProducts = () => {
                             className="min-h-[300px] sm:min-h-[400px]"
                         />
                     ) : (
-                        <div className="space-y-6 sm:space-y-8">
-                            {/* Sección de productos personalizables - Solo mostrar en "todos" */}
+                        <div className="space-y-8 sm:space-y-12">
                             {activeCategory === 'todos' && (
                                 <PersonalizableSection
                                     onPersonalizeClick={handlePersonalizeClick}
                                 />
                             )}
                             
-                            {/* Renderizar secciones de productos */}
                             {Object.entries(getProductsByCategory()).map(([categoryId, categoryData]) => (
-                                <div key={categoryId} id={`section-${categoryId}`}>
-                                    <CategorySection
-                                        title={categoryData.name}
-                                        products={categoryData.products.map(formatProductForSection)}
-                                        categoryId={categoryId}
-                                        onProductClick={handleProductDetailClick}
-                                        onViewAll={handleViewAll}
-                                    />
-                                </div>
+                                <section key={categoryId} id={`section-${categoryId}`} className="space-y-4 sm:space-y-6">
+                                    {/* Título de la categoría */}
+                                    <div className="flex items-center justify-between">
+                                        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                            {categoryData.name}
+                                        </h2>
+                                        {activeCategory === 'todos' && categoryData.products.length > 4 && (
+                                            <button
+                                                onClick={() => handleViewAll(categoryId)}
+                                                className="text-pink-500 hover:text-pink-600 font-medium transition-colors duration-200"
+                                                style={{ fontFamily: 'Poppins, sans-serif' }}
+                                            >
+                                                Ver todos
+                                            </button>
+                                        )}
+                                    </div>
+                                    
+                                    {/* Grilla de productos usando ProductCard */}
+                                    {renderProductGrid(
+                                        activeCategory === 'todos' 
+                                            ? categoryData.products.slice(0, 4) // Mostrar solo 4 en vista de todos
+                                            : categoryData.products, // Mostrar todos en vista de categoría específica
+                                        categoryId
+                                    )}
+                                </section>
                             ))}
                             
-                            {/* Mensaje si no hay productos */}
                             {products.length === 0 && !isLoading && (
                                 <div className="text-center py-12">
                                     <div className="text-gray-500 text-lg">
@@ -366,7 +437,6 @@ const CategoryProducts = () => {
                 </Container>
             </main>
 
-            {/* Footer de la página */}
             <Footer />
         </div>
     );

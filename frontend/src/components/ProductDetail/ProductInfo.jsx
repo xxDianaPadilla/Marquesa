@@ -3,10 +3,13 @@ import toast from 'react-hot-toast';
 import carrito from '../../assets/carritoP.png';
 import guardar from '../../assets/guardarP.png';
 import useCustomization from '../CustomProducts/Hooks/useCustomization'; 
+import { useFavorites } from '../../context/FavoritesContext'; // Importar el contexto de favoritos
 
 const ProductInfo = ({ product, quantity, setQuantity, handleCustomProductClick, user, userInfo, isAuthenticated }) => {
   const { addItemToCart, isLoading } = useCustomization();
+  const { addToFavorites, removeFromFavorites, isFavorite, toggleFavorite } = useFavorites(); // Usar el contexto de favoritos
   const [addingToCart, setAddingToCart] = useState(false);
+  const [addingToFavorites, setAddingToFavorites] = useState(false);
 
   // Función para manejar la adición al carrito
   const handleAddToCart = async () => {
@@ -112,6 +115,62 @@ const ProductInfo = ({ product, quantity, setQuantity, handleCustomProductClick,
     }
   };
 
+  // Función para manejar la adición/eliminación de favoritos
+  const handleToggleFavorites = async () => {
+    try {
+      setAddingToFavorites(true);
+
+      // Preparar el objeto del producto para favoritos
+      const productForFavorites = {
+        _id: product._id,
+        id: product._id, // Para consistencia
+        name: product.name,
+        price: product.price,
+        description: product.description,
+        category: product.category,
+        image: product.images && product.images.length > 0 ? product.images[0].image : '/placeholder-image.jpg',
+        images: product.images
+      };
+
+      const wasAdded = toggleFavorite(productForFavorites);
+
+      if (wasAdded) {
+        toast.success(`¡${product.name} agregado a favoritos!`, {
+          duration: 3000,
+          position: 'top-center',
+          icon: '❤️',
+          style: {
+            background: '#EC4899',
+            color: '#fff',
+          },
+        });
+      } else {
+        toast.success(`${product.name} eliminado de favoritos`, {
+          duration: 3000,
+          position: 'top-center',
+          icon: '💔',
+          style: {
+            background: '#6B7280',
+            color: '#fff',
+          },
+        });
+      }
+
+    } catch (error) {
+      console.error('Error al manejar favoritos:', error);
+      toast.error('Error al actualizar favoritos', {
+        duration: 3000,
+        position: 'top-center',
+        icon: '❌'
+      });
+    } finally {
+      setAddingToFavorites(false);
+    }
+  };
+
+  // Verificar si el producto está en favoritos
+  const isProductFavorite = product && product._id ? isFavorite(product._id) : false;
+
   return (
     <div className="space-y-4">
       <span className="inline-block bg-[#F7E8F2] text-[#CD5277] text-xs font-medium italic px-2 py-1 rounded">
@@ -155,11 +214,23 @@ const ProductInfo = ({ product, quantity, setQuantity, handleCustomProductClick,
         </button>
         
         <button
-          className="border border-[#c1c1c1] hover:bg-pink-200 text-[#000000] px-4 py-2 rounded-md text-sm flex items-center gap-2
-                     transition-transform duration-200 ease-in-out hover:scale-105 cursor-pointer"
+          onClick={handleToggleFavorites}
+          disabled={addingToFavorites}
+          className={`border px-4 py-2 rounded-md text-sm flex items-center gap-2
+                     transition-all duration-200 ease-in-out hover:scale-105 cursor-pointer
+                     disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
+                     ${isProductFavorite 
+                       ? 'border-pink-400 bg-pink-50 text-pink-600 hover:bg-pink-100' 
+                       : 'border-[#c1c1c1] hover:bg-pink-200 text-[#000000]'
+                     }`}
         >
           <img src={guardar} alt="Guardar" className="w-5 h-5" />
-          Añadir a favoritos
+          {addingToFavorites 
+            ? 'Procesando...' 
+            : isProductFavorite 
+              ? 'En favoritos' 
+              : 'Añadir a favoritos'
+          }
         </button>
       </div>
 

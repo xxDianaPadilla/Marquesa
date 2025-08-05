@@ -7,15 +7,15 @@ import { useAuth } from '../../../context/AuthContext';
  */
 const useEditProfile = () => {
     const { userInfo, getUserInfo } = useAuth();
-    
+
     // Estados del formulario
     const [formData, setFormData] = useState({
-        phone: userInfo?.phone || '',
-        address: userInfo?.address || '',
-        fullName: userInfo?.fullName || '', // Agregado nombre
+        phone: userInfo?.displayPhone || '',
+        address: userInfo?.displayAddress || '',
+        fullName: userInfo?.displayName || '',
         profilePicture: null
     });
-    
+
     // Estados de UI
     const [errors, setErrors] = useState({});
     const [isLoading, setIsLoading] = useState(false);
@@ -28,9 +28,9 @@ const useEditProfile = () => {
         if (!name || !name.trim()) {
             return { isValid: false, error: "El nombre es requerido" };
         }
-        
+
         const trimmed = name.trim();
-        
+
         if (trimmed.length < 3) {
             return { isValid: false, error: "El nombre debe tener al menos 3 caracteres" };
         }
@@ -43,7 +43,7 @@ const useEditProfile = () => {
         if (!nameRegex.test(trimmed)) {
             return { isValid: false, error: "El nombre solo puede contener letras" };
         }
-        
+
         return { isValid: true, error: null };
     }, []);
 
@@ -51,22 +51,22 @@ const useEditProfile = () => {
      * Función de validación para el teléfono salvadoreño
      */
     const validatePhone = useCallback((phone) => {
-    if (!phone || !phone.trim()) {
-        return { isValid: false, error: "El teléfono es requerido" };
-    }
-    
-    // Eliminar espacios y caracteres no numéricos
-    const cleaned = phone.trim().replace(/\D/g, '');
-    
-    if (cleaned.length !== 8) {
-        return { isValid: false, error: "El teléfono debe tener 8 dígitos" };
-    }
-    
-    // Formatear el número con guion después de los primeros 4 dígitos
-    const formatted = cleaned.slice(0, 4) + "-" + cleaned.slice(4);
-    
-    return { isValid: true, formatted };
-}, []);
+        if (!phone || !phone.trim()) {
+            return { isValid: false, error: "El teléfono es requerido" };
+        }
+
+        // Eliminar espacios y caracteres no numéricos
+        const cleaned = phone.trim().replace(/\D/g, '');
+
+        if (cleaned.length !== 8) {
+            return { isValid: false, error: "El teléfono debe tener 8 dígitos" };
+        }
+
+        // Formatear el número con guion después de los primeros 4 dígitos
+        const formatted = cleaned.slice(0, 4) + "-" + cleaned.slice(4);
+
+        return { isValid: true, formatted };
+    }, []);
 
     /**
      * Función de validación para la dirección
@@ -75,12 +75,12 @@ const useEditProfile = () => {
         if (!address || !address.trim()) {
             return { isValid: false, error: "La dirección es requerida" };
         }
-        
+
         const trimmed = address.trim();
         if (trimmed.length < 10) {
             return { isValid: false, error: "La dirección debe tener al menos 10 caracteres" };
         }
-        
+
         return { isValid: true, error: null };
     }, []);
 
@@ -89,24 +89,24 @@ const useEditProfile = () => {
      */
     const validateImage = useCallback((file) => {
         if (!file) return { isValid: true, error: null };
-        
+
         const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
         const maxSize = 5 * 1024 * 1024; // 5MB
-        
+
         if (!allowedTypes.includes(file.type)) {
-            return { 
-                isValid: false, 
-                error: "Formato de imagen no válido. Solo se permiten JPG, PNG y WEBP" 
+            return {
+                isValid: false,
+                error: "Formato de imagen no válido. Solo se permiten JPG, PNG y WEBP"
             };
         }
-        
+
         if (file.size > maxSize) {
-            return { 
-                isValid: false, 
-                error: "La imagen es demasiado grande. Máximo 5MB" 
+            return {
+                isValid: false,
+                error: "La imagen es demasiado grande. Máximo 5MB"
             };
         }
-        
+
         return { isValid: true, error: null };
     }, []);
 
@@ -114,42 +114,42 @@ const useEditProfile = () => {
      * Maneja los cambios en los campos de texto
      */
     const handleInputChange = useCallback((e) => {
-    const { name, value } = e.target;
-    let processedValue = value;
+        const { name, value } = e.target;
+        let processedValue = value;
 
-    if (name === 'phone') {
-        // Solo permitir números y guion
-        const cleaned = value.replace(/\D/g, '');
-        if (cleaned.length <= 8) {
-            // Aplicar formato automáticamente
-            processedValue = cleaned.length > 4 
-                ? cleaned.slice(0, 4) + "-" + cleaned.slice(4)
-                : cleaned;
-        } else {
-            return; // No actualizar si excede 8 dígitos
+        if (name === 'phone') {
+            // Solo permitir números y guion
+            const cleaned = value.replace(/\D/g, '');
+            if (cleaned.length <= 8) {
+                // Aplicar formato automáticamente
+                processedValue = cleaned.length > 4
+                    ? cleaned.slice(0, 4) + "-" + cleaned.slice(4)
+                    : cleaned;
+            } else {
+                return; // No actualizar si excede 8 dígitos
+            }
         }
-    }
-    
-    setFormData(prev => ({
-        ...prev,
-        [name]: processedValue
-    }));
 
-    if (errors[name]) {
-        setErrors(prev => {
-            const newErrors = { ...prev };
-            delete newErrors[name];
-            return newErrors;
-        });
-    }
-}, [errors]);
+        setFormData(prev => ({
+            ...prev,
+            [name]: processedValue
+        }));
+
+        if (errors[name]) {
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors[name];
+                return newErrors;
+            });
+        }
+    }, [errors]);
 
     /**
      * Maneja el cambio de imagen
      */
     const handleImageChange = useCallback((e) => {
         const file = e.target.files[0];
-        
+
         if (!file) {
             setFormData(prev => ({ ...prev, profilePicture: null }));
             setPreviewImage(null);
@@ -163,7 +163,7 @@ const useEditProfile = () => {
         }
 
         setFormData(prev => ({ ...prev, profilePicture: file }));
-        
+
         // Crear preview
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -187,7 +187,7 @@ const useEditProfile = () => {
     const removeImage = useCallback(() => {
         setFormData(prev => ({ ...prev, profilePicture: null }));
         setPreviewImage(null);
-        
+
         // Limpiar input file
         const fileInput = document.querySelector('input[type="file"]');
         if (fileInput) {
@@ -243,7 +243,7 @@ const useEditProfile = () => {
             formDataToSend.append('fullName', formData.fullName.trim());
             formDataToSend.append('phone', formData.phone.trim());
             formDataToSend.append('address', formData.address.trim());
-            
+
             if (formData.profilePicture) {
                 formDataToSend.append('profilePicture', formData.profilePicture);
             }
@@ -260,21 +260,21 @@ const useEditProfile = () => {
 
             if (data.success) {
                 await getUserInfo();
-                return { 
-                    success: true, 
-                    message: 'Perfil actualizado exitosamente' 
+                return {
+                    success: true,
+                    message: 'Perfil actualizado exitosamente'
                 };
             } else {
-                return { 
-                    success: false, 
-                    message: data.message || 'Error al actualizar el perfil' 
+                return {
+                    success: false,
+                    message: data.message || 'Error al actualizar el perfil'
                 };
             }
         } catch (error) {
             console.error('Error actualizando perfil:', error);
-            return { 
-                success: false, 
-                message: 'Error de conexión. Verifica tu internet e inténtalo nuevamente.' 
+            return {
+                success: false,
+                message: 'Error de conexión. Verifica tu internet e inténtalo nuevamente.'
             };
         } finally {
             setIsLoading(false);
@@ -286,10 +286,11 @@ const useEditProfile = () => {
      */
     const initializeForm = useCallback(() => {
         if (userInfo) {
+            console.log('userInfo completo:', userInfo); 
             setFormData({
-                fullName: userInfo.fullName || '',
-                phone: userInfo.phone || '',
-                address: userInfo.address || '',
+                fullName: userInfo.fullName || userInfo.name || '', 
+                phone: userInfo.phone || '',                       
+                address: userInfo.address || '',                    
                 profilePicture: null
             });
             setPreviewImage(null);
@@ -303,7 +304,7 @@ const useEditProfile = () => {
         errors,
         isLoading,
         previewImage,
-        
+
         // Funciones
         handleInputChange,
         handleImageChange,

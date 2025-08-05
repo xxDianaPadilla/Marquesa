@@ -1,8 +1,7 @@
 import React, { useEffect } from 'react';
-import { X, Edit, User, Phone, MapPin, Camera } from 'lucide-react';
+import { X, Edit, User, Phone, MapPin } from 'lucide-react';
 import { FaEdit } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
-import UserAvatar from './UserAvatar';
 import useEditProfile from './hooks/useEditProfile';
 
 /**
@@ -15,7 +14,7 @@ import useEditProfile from './hooks/useEditProfile';
  */
 const EditProfileModal = ({ isOpen, onClose, onSuccess }) => {
     const { userInfo } = useAuth();
-    
+
     const {
         formData,
         errors,
@@ -57,19 +56,6 @@ const EditProfileModal = ({ isOpen, onClose, onSuccess }) => {
 
     const handleClose = () => {
         if (isLoading) return;
-        
-        const hasChanges = 
-            formData.phone !== (userInfo?.phone || '') ||
-            formData.address !== (userInfo?.address || '') ||
-            formData.fullName !== (userInfo?.fullName || '') ||
-            formData.profilePicture !== null;
-
-        if (hasChanges) {
-            const shouldClose = window.confirm(
-                '¿Estás seguro de que quieres cerrar? Se perderán los cambios no guardados.'
-            );
-            if (!shouldClose) return;
-        }
 
         setErrors({});
         onClose();
@@ -77,9 +63,9 @@ const EditProfileModal = ({ isOpen, onClose, onSuccess }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         const result = await submitForm();
-        
+
         if (result.success) {
             onSuccess?.(result.message);
             onClose();
@@ -90,19 +76,19 @@ const EditProfileModal = ({ isOpen, onClose, onSuccess }) => {
 
     const getInitials = (name) => {
         if (!name) return 'U';
-        
+
         const words = name.trim().split(' ');
         if (words.length === 1) {
             return words[0].substring(0, 2).toUpperCase();
         }
-        
+
         return (words[0].charAt(0) + words[1].charAt(0)).toUpperCase();
     };
 
     if (!isOpen) return null;
 
     return (
-        <div 
+        <div
             className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm"
             onClick={handleBackdropClick}
         >
@@ -117,11 +103,12 @@ const EditProfileModal = ({ isOpen, onClose, onSuccess }) => {
                             Editar Perfil
                         </h3>
                     </div>
-                    
+
                     <button
                         onClick={handleClose}
                         disabled={isLoading}
-                        className="p-2 hover:bg-white hover:bg-opacity-20 rounded-full transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ cursor: 'pointer' }}
+                        className="p-2 rounded-full transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <X className="w-5 h-5 text-white" />
                     </button>
@@ -130,7 +117,7 @@ const EditProfileModal = ({ isOpen, onClose, onSuccess }) => {
                 {/* Contenido del modal con scroll */}
                 <div className="flex-1 overflow-y-auto">
                     <form onSubmit={handleSubmit} className="p-6 space-y-6" style={{ backgroundColor: '#FFEEF0' }}>
-                        
+
                         {/* Sección de foto de perfil */}
                         <div className="text-center">
                             <div className="relative inline-block">
@@ -149,17 +136,17 @@ const EditProfileModal = ({ isOpen, onClose, onSuccess }) => {
                                         />
                                     ) : (
                                         <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gray-300 flex items-center justify-center font-bold text-gray-700 text-2xl md:text-3xl border-4 border-white shadow-lg">
-                                            {getInitials(userInfo?.name || userInfo?.fullName)}
+                                            {getInitials(userInfo?.displayName)}
                                         </div>
                                     )}
-                                    
-                                    <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer">
+
+                                    <div className="absolute inset-0 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
                                         <label htmlFor="profilePicture" className="cursor-pointer">
                                             <FaEdit className="w-6 h-6 text-white" />
                                         </label>
                                     </div>
                                 </div>
-                                
+
                                 <input
                                     id="profilePicture"
                                     type="file"
@@ -168,7 +155,7 @@ const EditProfileModal = ({ isOpen, onClose, onSuccess }) => {
                                     disabled={isLoading}
                                     className="hidden"
                                 />
-                                
+
                                 {previewImage && (
                                     <button
                                         type="button"
@@ -180,11 +167,11 @@ const EditProfileModal = ({ isOpen, onClose, onSuccess }) => {
                                     </button>
                                 )}
                             </div>
-                            
+
                             <p className="text-sm text-gray-600 mt-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                 Haz clic en la imagen para cambiarla
                             </p>
-                            
+
                             {errors.profilePicture && (
                                 <p className="text-red-500 text-sm mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                     {errors.profilePicture}
@@ -205,9 +192,8 @@ const EditProfileModal = ({ isOpen, onClose, onSuccess }) => {
                                 onChange={handleInputChange}
                                 disabled={isLoading}
                                 placeholder="Tu nombre completo"
-                                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                                    errors.fullName ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                                }`}
+                                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${errors.fullName ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                                    }`}
                                 style={{ fontFamily: 'Poppins, sans-serif' }}
                                 maxLength={100}
                             />
@@ -231,9 +217,8 @@ const EditProfileModal = ({ isOpen, onClose, onSuccess }) => {
                                 onChange={handleInputChange}
                                 disabled={isLoading}
                                 placeholder="7123-4567"
-                                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                                    errors.phone ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                                }`}
+                                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${errors.phone ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                                    }`}
                                 style={{ fontFamily: 'Poppins, sans-serif' }}
                                 maxLength={9}
                             />
@@ -257,9 +242,8 @@ const EditProfileModal = ({ isOpen, onClose, onSuccess }) => {
                                 disabled={isLoading}
                                 placeholder="Ingresa tu dirección completa"
                                 rows={3}
-                                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent resize-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                                    errors.address ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                                }`}
+                                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#FF7260] focus:border-transparent resize-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${errors.address ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                                    }`}
                                 style={{ fontFamily: 'Poppins, sans-serif' }}
                                 maxLength={200}
                             />
@@ -277,16 +261,16 @@ const EditProfileModal = ({ isOpen, onClose, onSuccess }) => {
                                 onClick={handleClose}
                                 disabled={isLoading}
                                 className="flex-1 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                style={{ fontFamily: 'Poppins, sans-serif' }}
+                                style={{ fontFamily: 'Poppins, sans-serif', cursor: 'pointer' }}
                             >
                                 Cancelar
                             </button>
-                            
+
                             <button
                                 type="submit"
                                 disabled={isLoading}
                                 className="flex-1 bg-[#FDB4B7] hover:bg-pink-300 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                style={{ fontFamily: 'Poppins, sans-serif' }}
+                                style={{ fontFamily: 'Poppins, sans-serif', cursor: 'pointer' }}
                             >
                                 {isLoading ? (
                                     <>

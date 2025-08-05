@@ -1,20 +1,19 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import toast from "react-hot-toast"; // Importar react-hot-toast
-import { useFavorites } from "../context/FavoritesContext"; // Importar el hook de favoritos
+import toast from "react-hot-toast";
+import { useFavorites } from "../context/FavoritesContext";
 import Header from "../components/Header/Header";
 import Footer from "../components/Footer";
 import CategoryNavigation from "../components/CategoryNavigation";
-import CategorySection from "../components/CategorySection";
 import PersonalizableSection from "../components/PersonalizableSection";
 import LoadingSpinner from "../components/LoadingSpinner";
 import Container from "../components/Container";
-import ProductCard from "../components/ProductCard"; // Importar el componente ProductCard
+import ProductCard from "../components/ProductCard";
 
 const CategoryProducts = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    
+
     // Estados para el manejo de la página
     const [activeCategory, setActiveCategory] = useState('todos');
     const [isLoading, setIsLoading] = useState(true);
@@ -22,17 +21,17 @@ const CategoryProducts = () => {
     const [error, setError] = useState(null);
 
     // Hook de favoritos
-    const { 
-        favorites, 
-        addToFavorites, 
-        removeFromFavorites, 
-        isFavorite, 
-        toggleFavorite 
+    const {
+        favorites,
+        addToFavorites,
+        removeFromFavorites,
+        isFavorite,
+        toggleFavorite
     } = useFavorites();
 
     // URL base de la API
-    const API_BASE_URL = process.env.NODE_ENV === 'production' 
-        ? '/api' 
+    const API_BASE_URL = process.env.NODE_ENV === 'production'
+        ? '/api'
         : 'http://localhost:4000/api';
 
     /**
@@ -62,22 +61,22 @@ const CategoryProducts = () => {
         try {
             setIsLoading(true);
             console.log('🔄 Fetching all products...');
-            
+
             const response = await fetch(`${API_BASE_URL}/products`);
-            
+
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            
+
             const data = await response.json();
             console.log('📦 All products response:', data);
-            
+
             const productsData = Array.isArray(data) ? data : (data.products || data.data || []);
-            
+
             console.log('📊 Total products loaded:', productsData.length);
             setProducts(productsData);
             setError(null);
-            
+
         } catch (error) {
             console.error('❌ Error fetching all products:', error);
             setError('Error al cargar todos los productos');
@@ -94,22 +93,22 @@ const CategoryProducts = () => {
         try {
             setIsLoading(true);
             console.log('🔄 Fetching products for category:', categoryId);
-            
+
             const response = await fetch(`${API_BASE_URL}/products/by-category/${categoryId}`);
-            
+
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            
+
             const data = await response.json();
             console.log(`📦 Products for category ${categoryId}:`, data);
-            
+
             const productsData = Array.isArray(data) ? data : (data.products || data.data || []);
-            
+
             console.log(`📊 Products loaded for category ${categoryId}:`, productsData.length);
             setProducts(productsData);
             setError(null);
-            
+
         } catch (error) {
             console.error(`❌ Error fetching products for category ${categoryId}:`, error);
             setError(`Error al cargar los productos de la categoría`);
@@ -120,13 +119,24 @@ const CategoryProducts = () => {
     };
 
     /**
+     * Determina la categoría inicial basada en la URL
+     */
+    const getInitialCategory = () => {
+        const pathParts = location.pathname.split('/');
+        if (pathParts[1] === 'categoria' && pathParts[2]) {
+            return pathParts[2];
+        }
+        return 'todos';
+    };
+
+    /**
      * Maneja el toggle de favorito para un producto específico
      */
     const handleToggleFavorite = (product) => {
         try {
             console.log('❤️ Toggle favorite for product:', product.name);
             const wasAdded = toggleFavorite(product);
-            
+
             // Mostrar toast según la acción realizada
             if (wasAdded) {
                 toast.success(`¡${product.name} agregado a favoritos!`, {
@@ -162,49 +172,47 @@ const CategoryProducts = () => {
     };
 
     /**
-     * useEffect para cargar datos iniciales
+     * useEffect ÚNICO para manejar la carga inicial y cambios de URL
+     * SOLUCIÓN: Combinar ambos useEffect en uno solo para evitar conflictos
      */
     useEffect(() => {
-        console.log('🚀 Loading initial data...');
-        fetchAllProducts();
-    }, []);
+        console.log('🚀 Loading data based on URL...');
 
-    /**
-     * useEffect para detectar cambios en la URL
-     */
-    useEffect(() => {
-        const pathParts = location.pathname.split('/');
-        if (pathParts[1] === 'categoria' && pathParts[2]) {
-            const categoryFromUrl = pathParts[2];
-            if (categoryFromUrl !== activeCategory) {
-                console.log('🌐 URL category change detected:', categoryFromUrl);
-                setActiveCategory(categoryFromUrl);
-                fetchProductsByCategory(categoryFromUrl);
-            }
-        } else if (location.pathname === '/' && activeCategory !== 'todos') {
-            console.log('🏠 Home page detected, setting to todos');
-            setActiveCategory('todos');
+        const initialCategory = getInitialCategory();
+        console.log('🎯 Initial category from URL:', initialCategory);
+
+        setActiveCategory(initialCategory);
+
+        if (initialCategory === 'todos') {
             fetchAllProducts();
+        } else {
+            fetchProductsByCategory(initialCategory);
         }
-    }, [location.pathname]);
+    }, [location.pathname]); // Solo depende de location.pathname
 
     /**
      * Maneja el cambio de categoría en la navegación
      */
-    const handleCategoryChange = async (categoryId) => {
+    // En CategoryProducts, asegúrate de que handleCategoryChange sea estable
+    const handleCategoryChange = useCallback(async (categoryId) => {
+        // Prevenir cambios innecesarios
+        if (categoryId === activeCategory || isLoading) {
+            return;
+        }
+
         console.log('🎯 Category changed to:', categoryId);
         setActiveCategory(categoryId);
-        
+
         if (categoryId === 'todos') {
             await fetchAllProducts();
-            navigate('/', { replace: true });
+            navigate('/categoryProducts', { replace: true });
         } else {
             await fetchProductsByCategory(categoryId);
             navigate(`/categoria/${categoryId}`, { replace: true });
         }
-        
+
         window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
+    }, [activeCategory, isLoading, fetchAllProducts, fetchProductsByCategory, navigate]);
 
     /**
      * Maneja el click en "Ver todos" de una categoría
@@ -235,13 +243,13 @@ const CategoryProducts = () => {
      */
     const getProductsByCategory = () => {
         const safeProducts = Array.isArray(products) ? products : [];
-        
+
         if (activeCategory === 'todos') {
             const groupedProducts = {};
-            
+
             safeProducts.forEach(product => {
                 let categoryId, categoryName;
-                
+
                 if (typeof product.categoryId === 'object' && product.categoryId._id) {
                     categoryId = product.categoryId._id;
                     categoryName = product.categoryId.name;
@@ -249,23 +257,23 @@ const CategoryProducts = () => {
                     categoryId = product.categoryId;
                     categoryName = categoryMap[categoryId] || 'Sin categoría';
                 }
-                
+
                 if (!groupedProducts[categoryId]) {
                     groupedProducts[categoryId] = {
                         name: categoryName,
                         products: []
                     };
                 }
-                
+
                 groupedProducts[categoryId].products.push(product);
             });
-            
+
             console.log('📊 Grouped products:', Object.keys(groupedProducts).map(key => ({
                 categoryId: key,
                 name: groupedProducts[key].name,
                 count: groupedProducts[key].products.length
             })));
-            
+
             return groupedProducts;
         } else {
             const categoryName = categoryMap[activeCategory] || categories.find(cat => cat._id === activeCategory)?.name || 'Categoría';
@@ -287,7 +295,7 @@ const CategoryProducts = () => {
 
         const fallbackImage = '/placeholder-image.jpg';
         let image = fallbackImage;
-        
+
         // Extraer la imagen del producto
         if (product.images && Array.isArray(product.images) && product.images.length > 0) {
             if (product.images[0].image) {
@@ -348,7 +356,7 @@ const CategoryProducts = () => {
                 {products.map((product) => {
                     const formattedProduct = formatProductForCard(product);
                     const productId = formattedProduct._id || formattedProduct.id;
-                    
+
                     return (
                         <ProductCard
                             key={productId}
@@ -373,7 +381,7 @@ const CategoryProducts = () => {
                     <div className="flex items-center justify-center min-h-[400px]">
                         <div className="text-center">
                             <div className="text-red-500 text-lg mb-4">⚠️ {error}</div>
-                            <button 
+                            <button
                                 onClick={handleRetry}
                                 className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
                             >
@@ -404,7 +412,7 @@ const CategoryProducts = () => {
             <main className="py-4 sm:py-8">
                 <Container>
                     {isLoading ? (
-                        <LoadingSpinner 
+                        <LoadingSpinner
                             text="Cargando productos..."
                             className="min-h-[300px] sm:min-h-[400px]"
                         />
@@ -415,7 +423,7 @@ const CategoryProducts = () => {
                                     onPersonalizeClick={handlePersonalizeClick}
                                 />
                             )}
-                            
+
                             {Object.entries(getProductsByCategory()).map(([categoryId, categoryData]) => (
                                 <section key={categoryId} id={`section-${categoryId}`} className="space-y-4 sm:space-y-6">
                                     {/* Título de la categoría */}
@@ -433,17 +441,17 @@ const CategoryProducts = () => {
                                             </button>
                                         )}
                                     </div>
-                                    
+
                                     {/* Grilla de productos usando ProductCard */}
                                     {renderProductGrid(
-                                        activeCategory === 'todos' 
+                                        activeCategory === 'todos'
                                             ? categoryData.products.slice(0, 4) // Mostrar solo 4 en vista de todos
                                             : categoryData.products, // Mostrar todos en vista de categoría específica
                                         categoryId
                                     )}
                                 </section>
                             ))}
-                            
+
                             {products.length === 0 && !isLoading && (
                                 <div className="text-center py-12">
                                     <div className="text-gray-500 text-lg">

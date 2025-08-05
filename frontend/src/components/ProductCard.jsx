@@ -1,121 +1,110 @@
-import React from "react";
+import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast"; // Importar react-hot-toast
-import { useFavorites } from "../context/FavoritesContext"; // Importar el contexto de favoritos
+import toast from "react-hot-toast";
+import { useFavorites } from "../context/FavoritesContext";
 
 const ProductCard = ({
     product,
     onRemove,
-    showFavoriteButton = false, // Nueva prop para controlar si mostrar el botón de favoritos
-    isFavorite = false, // Estado de favorito pasado desde el padre
-    onToggleFavorite, // Función de toggle pasada desde el padre
-    showRemoveButton = true // Nueva prop para controlar el botón de remover
+    showFavoriteButton = false,
+    isFavorite = false,
+    onToggleFavorite,
+    showRemoveButton = true,
+    onImageLoad // Nueva prop para manejar la carga de imagen
 }) => {
     const navigate = useNavigate();
-    const { isFavorite: contextIsFavorite } = useFavorites(); // Usar el contexto de favoritos como fallback
+    const { isFavorite: contextIsFavorite } = useFavorites();
+    const [imageLoaded, setImageLoaded] = useState(false);
+    const [imageError, setImageError] = useState(false);
 
     /**
      * Maneja el click del botón eliminar
-     * Llama a la función onRemove pasada como prop
      */
-    const handleRemoveClick = () => {
+    const handleRemoveClick = useCallback(() => {
         if (onRemove) {
-            // Usar el ID correcto del producto
             const productId = product._id || product.id;
             onRemove(productId);
         }
-    };
+    }, [onRemove, product._id, product.id]);
 
     /**
      * Maneja el click en "Ver producto" para navegar al detalle
      */
-    const handleViewProduct = () => {
+    const handleViewProduct = useCallback(() => {
         const productId = product._id || product.id;
         navigate(`/ProductDetail/${productId}`);
-    };
+    }, [navigate, product._id, product.id]);
 
     /**
      * Maneja el click en toda la tarjeta para navegar al detalle
      */
-    const handleCardClick = () => {
+    const handleCardClick = useCallback(() => {
         handleViewProduct();
-    };
+    }, [handleViewProduct]);
 
     /**
-     * Maneja el toggle de favorito mejorado
+     * Maneja el toggle de favorito - REMOVIDO el toast ya que se maneja en el padre
      */
-    const handleToggleFavorite = (e) => {
+    const handleToggleFavorite = useCallback((e) => {
         e.stopPropagation();
-
-        try {
-            if (onToggleFavorite) {
-                // Ejecutar la función de toggle pasada como prop
-                onToggleFavorite();
-
-                // Determinar si fue agregado o eliminado
-                // Como el estado cambia después del toggle, verificamos el estado contrario
-                const wasAdded = !isProductFavorite;
-
-                // Mostrar toast según la acción realizada
-                if (wasAdded) {
-                    toast.success(`¡${product.name} agregado a favoritos!`, {
-                        duration: 2000,
-                        position: 'top-center',
-                        icon: '❤️',
-                        style: {
-                            background: '#EC4899',
-                            color: '#fff',
-                        },
-                    });
-                } else {
-                    toast.success(`${product.name} eliminado de favoritos`, {
-                        duration: 2000,
-                        position: 'top-center',
-                        icon: '💔',
-                        style: {
-                            background: '#6B7280',
-                            color: '#fff',
-                        },
-                    });
-                }
-            }
-        } catch (error) {
-            console.error('Error al manejar favoritos:', error);
-            toast.error('Error al actualizar favoritos', {
-                duration: 2000,
-                position: 'top-center',
-                icon: '❌'
-            });
+        
+        if (onToggleFavorite) {
+            onToggleFavorite();
         }
-    };
+    }, [onToggleFavorite]);
+
+    /**
+     * Maneja la carga exitosa de la imagen
+     */
+    const handleImageLoad = useCallback(() => {
+        setImageLoaded(true);
+        setImageError(false);
+        
+        // Notificar al componente padre que la imagen se cargó
+        if (onImageLoad) {
+            const productId = product._id || product.id;
+            onImageLoad(productId);
+        }
+    }, [onImageLoad, product._id, product.id]);
+
+    /**
+     * Maneja el error de carga de imagen
+     */
+    const handleImageError = useCallback((e) => {
+        setImageError(true);
+        e.target.src = '/placeholder-image.jpg';
+        
+        // Aún notificar que "cargó" para evitar que se quede invisible
+        if (onImageLoad) {
+            const productId = product._id || product.id;
+            onImageLoad(productId);
+        }
+    }, [onImageLoad, product._id, product.id]);
 
     /**
      * Formatea el precio del producto a formato de moneda
-     * @param {number|string} price - Precio a formatear
-     * @returns {string} Precio formateado
      */
-    const formatPrice = (price) => {
-        // Si el precio ya es un string con formato, devolverlo tal como está
+    const formatPrice = useCallback((price) => {
         if (typeof price === 'string' && price.includes('$')) {
             return price;
         }
 
-        // Si es un número, formatearlo
         if (typeof price === 'number') {
             return `$${price.toFixed(2)}`;
         }
 
-        // Si es un string numérico, convertirlo y formatearlo
         const numericPrice = parseFloat(price);
         if (!isNaN(numericPrice)) {
             return `$${numericPrice.toFixed(2)}`;
         }
 
-        // Fallback
         return `$${price}`;
-    };
+    }, []);
 
-    const getProductImage = (product) => {
+    /**
+     * Obtiene la imagen del producto con fallback mejorado
+     */
+    const getProductImage = useCallback((product) => {
         if (product.image) {
             return product.image;
         }
@@ -130,41 +119,50 @@ const ProductCard = ({
             }
         }
 
-        return null;
-    };
+        return '/placeholder-image.jpg'; // Fallback directo
+    }, []);
 
     // Obtener el ID del producto de manera segura
     const productId = product._id || product.id;
-
+    
     // Determinar si es favorito usando el prop o el contexto como fallback
     const isProductFavorite = isFavorite !== undefined ? isFavorite : (productId ? contextIsFavorite(productId) : false);
 
     return (
         <div
-            className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer group"
+            className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer group h-full flex flex-col"
             onClick={handleCardClick}
         >
             {/* Contenedor de la imagen del producto */}
-            <div className="relative">
+            <div className="relative flex-shrink-0">
+                {/* Placeholder mientras carga la imagen */}
+                {!imageLoaded && !imageError && (
+                    <div className="w-full h-48 bg-gray-200 animate-pulse flex items-center justify-center">
+                        <div className="text-gray-400 text-sm">Cargando...</div>
+                    </div>
+                )}
+                
                 <img
                     src={getProductImage(product)}
                     alt={product.name}
-                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                    onError={(e) => {
-                        e.target.src = '/placeholder-image.jpg';
-                    }}
+                    className={`w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300 ${
+                        imageLoaded ? 'opacity-100' : 'opacity-0 absolute'
+                    }`}
+                    onLoad={handleImageLoad}
+                    onError={handleImageError}
+                    loading="lazy" // Lazy loading nativo
                 />
 
-                {/* Botón de eliminar - Solo mostrar si showRemoveButton es true */}
+                {/* Botón de eliminar */}
                 {showRemoveButton && onRemove && (
                     <button
                         onClick={(e) => {
-                            e.stopPropagation(); // Prevenir que se active el click de la tarjeta
+                            e.stopPropagation();
                             handleRemoveClick();
                         }}
                         className="absolute top-2 right-2 bg-white bg-opacity-80 hover:bg-opacity-100 
                                  rounded-full p-2 transition-all duration-200 shadow-md
-                                 hover:shadow-lg transform hover:scale-105"
+                                 hover:shadow-lg transform hover:scale-105 z-10"
                         aria-label="Eliminar de guardados"
                     >
                         <svg
@@ -183,13 +181,13 @@ const ProductCard = ({
                     </button>
                 )}
 
-                {/* Botón de favorito mejorado - Solo mostrar si showFavoriteButton es true */}
+                {/* Botón de favorito */}
                 {showFavoriteButton && onToggleFavorite && (
                     <button
                         onClick={handleToggleFavorite}
                         className={`absolute top-2 sm:top-3 left-2 sm:left-3 rounded-full p-1.5 sm:p-2 
                                    transition-all duration-200 shadow-md hover:shadow-lg 
-                                   transform hover:scale-105 cursor-pointer
+                                   transform hover:scale-105 cursor-pointer z-10
                                    ${isProductFavorite
                                 ? 'bg-pink-500 bg-opacity-90 hover:bg-opacity-100'
                                 : 'bg-white bg-opacity-80 hover:bg-opacity-100'
@@ -228,9 +226,9 @@ const ProductCard = ({
                     </button>
                 )}
 
-                {/* Indicador de favorito (solo visual cuando no hay botón interactivo) */}
+                {/* Indicador de favorito (solo visual) */}
                 {!showFavoriteButton && isProductFavorite && (
-                    <div className="absolute top-2 left-2 bg-pink-500 bg-opacity-90 rounded-full p-2 shadow-md">
+                    <div className="absolute top-2 left-2 bg-pink-500 bg-opacity-90 rounded-full p-2 shadow-md z-10">
                         <svg
                             className="w-4 h-4 text-white"
                             fill="currentColor"
@@ -247,14 +245,14 @@ const ProductCard = ({
                 {product.stock !== undefined && (
                     <>
                         {product.stock <= 5 && product.stock > 0 && (
-                            <div className="absolute bottom-2 right-2">
+                            <div className="absolute bottom-2 right-2 z-10">
                                 <span className="bg-orange-500 text-white text-xs px-2 py-1 rounded-full font-medium shadow-md">
                                     ¡Solo {product.stock}!
                                 </span>
                             </div>
                         )}
                         {product.stock === 0 && (
-                            <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                            <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-10">
                                 <span className="bg-red-500 text-white px-3 py-1 rounded-full font-medium">
                                     Sin stock
                                 </span>
@@ -265,7 +263,7 @@ const ProductCard = ({
             </div>
 
             {/* Contenido de información del producto */}
-            <div className="p-4">
+            <div className="p-4 flex flex-col flex-grow">
                 {/* Categoría del producto */}
                 {product.category && (
                     <p
@@ -278,7 +276,7 @@ const ProductCard = ({
 
                 {/* Nombre del producto */}
                 <h3
-                    className="text-lg font-semibold text-gray-800 mb-2 line-clamp-2"
+                    className="text-lg font-semibold text-gray-800 mb-2 line-clamp-2 flex-grow"
                     style={{ fontFamily: 'Poppins, sans-serif' }}
                 >
                     {product.name}
@@ -295,7 +293,7 @@ const ProductCard = ({
                 )}
 
                 {/* Precio y stock info */}
-                <div className="flex justify-between items-start mb-3">
+                <div className="flex justify-between items-start mb-3 mt-auto">
                     <span
                         className="text-xl font-bold text-gray-900"
                         style={{ fontFamily: 'Poppins, sans-serif' }}
@@ -313,12 +311,12 @@ const ProductCard = ({
                 {/* Botón de acción */}
                 <button
                     onClick={(e) => {
-                        e.stopPropagation(); // Prevenir que se active el click de la tarjeta
+                        e.stopPropagation();
                         handleViewProduct();
                     }}
                     disabled={product.stock === 0}
                     className={`w-full px-4 py-2 rounded-lg transition-all duration-200 text-sm font-medium
-                             hover:scale-105 transform transition-transform
+                             hover:scale-105 transform transition-transform mt-auto
                              ${product.stock === 0
                             ? 'bg-gray-300 text-gray-500 cursor-not-allowed hover:scale-100'
                             : 'bg-[#FDB4B7] hover:bg-[#FCA5A9] text-white cursor-pointer'

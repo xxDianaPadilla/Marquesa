@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 /**
  * Componente de navegación por categorías optimizado
@@ -8,24 +9,32 @@ const CategoryNavigation = ({ categories, activeCategory, onCategoryChange }) =>
     const [isScrolling, setIsScrolling] = useState(false);
     const scrollTimeoutRef = useRef(null);
     const containerRef = useRef(null);
+    const navigate = useNavigate();
 
     /**
      * Maneja el click en una categoría de forma optimizada
      * Previene clicks múltiples durante el cambio
+     * Navega a /categoryProducts si se selecciona "Todos"
      */
-    const handleCategoryClick = useCallback((categoryId) => {
+    const handleCategoryClick = useCallback((categoryId, categoryName) => {
         // Prevenir clicks si ya estamos en esa categoría
         if (categoryId === activeCategory || isScrolling) {
             return;
         }
 
-        console.log('🎯 CategoryNavigation: Click en categoría:', categoryId);
+        console.log('🎯 CategoryNavigation: Click en categoría:', categoryId, categoryName);
         
         // Marcar como scrolling para prevenir clicks múltiples
         setIsScrolling(true);
         
-        if (onCategoryChange) {
-            onCategoryChange(categoryId);
+        // Si la categoría es "Todos", navegar a la página de categoryProducts
+        if (categoryName?.toLowerCase() === 'todos' || categoryName?.toLowerCase() === 'all') {
+            navigate('/categoryProducts');
+        } else {
+            // Para otras categorías, usar el callback normal
+            if (onCategoryChange) {
+                onCategoryChange(categoryId);
+            }
         }
 
         // Reset del estado de scrolling después de un breve delay
@@ -36,7 +45,7 @@ const CategoryNavigation = ({ categories, activeCategory, onCategoryChange }) =>
         scrollTimeoutRef.current = setTimeout(() => {
             setIsScrolling(false);
         }, 300);
-    }, [activeCategory, onCategoryChange, isScrolling]);
+    }, [activeCategory, onCategoryChange, isScrolling, navigate]);
 
     /**
      * Cleanup del timeout al desmontar el componente
@@ -150,14 +159,18 @@ const CategoryNavigation = ({ categories, activeCategory, onCategoryChange }) =>
                         }}
                     >
                         {validCategories.map((category) => {
-                            const isActive = activeCategory === category.categoryId;
+                            // Solo marcar como activo si activeCategory coincide exactamente
+                            // Esto previene que "Todos" esté activo por defecto
+                            const isActive = activeCategory !== null && 
+                                            activeCategory !== undefined && 
+                                            activeCategory === category.categoryId;
                             
                             return (
                                 <button
                                     key={category.uniqueKey}
                                     data-category={category.categoryId}
-                                    onClick={() => handleCategoryClick(category.categoryId)}
-                                    disabled={isScrolling || isActive}
+                                    onClick={() => handleCategoryClick(category.categoryId, category.name)}
+                                    disabled={isScrolling}
                                     className={`
                                         category-button flex-shrink-0 px-3 sm:px-6 py-2 sm:py-3
                                         rounded-full text-xs sm:text-sm
@@ -167,9 +180,9 @@ const CategoryNavigation = ({ categories, activeCategory, onCategoryChange }) =>
                                         disabled:cursor-not-allowed
                                         ${isActive
                                             ? 'border-transparent shadow-md ring-2 ring-pink-200 ring-opacity-50'
-                                            : 'bg-white border-white-200 hover:border-white-300 hover:bg-white-50 hover:shadow-sm'
+                                            : 'bg-white border-white-200 hover:border-white-300 hover:bg-white-50 hover:shadow-sm cursor-pointer'
                                         }
-                                        ${isScrolling ? 'pointer-events-none' : 'cursor-pointer'}
+                                        ${isScrolling ? 'pointer-events-none' : ''}
                                     `}
                                     style={getButtonStyles(category.categoryId, isActive)}
                                     aria-pressed={isActive}

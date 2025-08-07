@@ -514,8 +514,8 @@ salesController.getUserOrders = async (req, res) => {
             formattedDate: order.createdAt ? new Date(order.createdAt).toLocaleDateString('es-ES') : 'N/A',
             cancellableUntil: order.createdAt ? new Date(new Date(order.createdAt).getTime() + (3 * 24 * 60 * 60 * 1000)) : null,
             trackingStatusLabel: order.trackingStatus === 'Agendado' ? 'Preparando' :
-                                 order.trackingStatus === 'En proceso' ? 'En camino' :
-                                 order.trackingStatus === 'Entregado' ? 'Entregado' : order.trackingStatus
+                order.trackingStatus === 'En proceso' ? 'En camino' :
+                    order.trackingStatus === 'Entregado' ? 'Entregado' : order.trackingStatus
         }));
 
         console.log('Primer pedido procesado (si existe): ', enrichedOrders[0]);
@@ -531,6 +531,380 @@ salesController.getUserOrders = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Error interno del servidor al obtener los pedidos del usuario",
+            error: error.message
+        });
+    }
+};
+
+// Versión mejorada del controlador para manejar imágenes correctamente
+// Versión mejorada del controlador para manejar imágenes correctamente
+salesController.getOrderDetails = async (req, res) => {
+    try {
+        const { saleId } = req.params;
+
+        if (!saleId) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de venta requerido"
+            });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(saleId)) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de venta no válido"
+            });
+        }
+
+        // Obtener datos de la venta con populate del carrito y cliente
+        const orderDetails = await salesModel.findById(saleId)
+            .populate({
+                path: 'ShoppingCartId',
+                populate: {
+                    path: 'clientId',
+                    model: 'clients',
+                    select: 'fullName email phone address profilePicture'
+                }
+            })
+            .lean();
+
+        if (!orderDetails) {
+            return res.status(404).json({
+                success: false,
+                message: "Pedido no encontrado"
+            });
+        }
+
+        let productsData = [];
+        if (orderDetails.ShoppingCartId?.items && orderDetails.ShoppingCartId.items.length > 0) {
+            const productPromises = orderDetails.ShoppingCartId.items.map(async (item) => {
+                try {
+                    let productData = null;
+
+                    if (item.itemType === 'product') {
+                        // Buscar en productos regulares
+                        const product = await mongoose.model('products').findById(item.itemId).lean();
+                        if (product) {
+                            console.log('=== PRODUCTO REGULAR ENCONTRADO ===');
+                            console.log('ID:', product._id);
+                            console.log('Nombre:', product.name);
+                            console.log('Images array completo:', JSON.stringify(product.images, null, 2));
+                            console.log('Primer elemento del array:', product.images?.[0]);
+                            console.log('Tipo del primer elemento:', typeof product.images?.[0]);
+
+                            // FUNCIÓN MEJORADA PARA EXTRAER IMAGEN
+                            let imageUrl = extractImageUrl(product.images);
+
+                            console.log('URL final extraída para el frontend:', imageUrl);
+                            console.log('Tipo de URL final:', typeof imageUrl);
+                            console.log('=== FIN PRODUCTO REGULAR ===\n');
+
+                            productData = {
+                                name: product.name,
+                                description: product.description,
+                                image: imageUrl,
+                                price: product.price
+                            };
+                        }
+                    } else if (item.itemType === 'custom') {
+                        // Buscar en productos personalizados
+                        const customProduct = await mongoose.model('CustomProducts').findById(item.itemId).lean();
+                        if (customProduct) {
+                            productData = {
+                                name: customProduct.productToPersonalize,
+                                description: customProduct.extraComments,
+                                image: validateImageUrl(customProduct.referenceImage),
+                                price: customProduct.totalPrice
+                            };
+                        }
+                    }
+
+                    return {
+                        ...item,
+                        name: productData?.name || 'Producto no disponible',
+                        description: productData?.description || 'Sin descripción',
+                        image: productData?.image || null,
+                        price: productData?.price || 0,
+                        subtotal: item.subtotal || (productData?.price || 0) * (item.quantity || 1)
+                    };
+                } catch (error) {
+                    console.error('Error al obtener producto:', item.itemId, error);
+                    return {
+                        ...item,
+                        name: 'Error al cargar producto',
+                        description: 'No se pudo cargar la información',
+                        image: null,
+                        price: 0,
+                        subtotal: 0
+                    };
+                }
+            });
+
+            productsData = await Promise.all(productPromises);
+        }
+
+        // Estructurar la respuesta
+        const response = {
+            order: {
+                _id: orderDetails._id,
+                paymentType: orderDetails.paymentType,
+                paymentProofImage: orderDetails.paymentProofImage,
+                status: orderDetails.status,
+                trackingStatus: orderDetails.trackingStatus,
+                deliveryAddress: orderDetails.deliveryAddress,
+                receiverName: orderDetails.receiverName,
+                receiverPhone: orderDetails.receiverPhone,
+                deliveryPoint: orderDetails.deliveryPoint,
+                deliveryDate: orderDetails.deliveryDate,
+                createdAt: orderDetails.createdAt,
+                updatedAt: orderDetails.updatedAt,
+                shoppingCart: {
+                    _id: orderDetails.ShoppingCartId?._id,
+                    clientId: orderDetails.ShoppingCartId?.clientId?._id,
+                    items: orderDetails.ShoppingCartId?.items || [],
+                    total: orderDetails.ShoppingCartId?.total || 0,
+                    createdAt: orderDetails.ShoppingCartId?.createdAt
+                }
+            },
+            customer: orderDetails.ShoppingCartId?.clientId || null,
+            products: productsData
+        };
+
+        // Debug final
+        console.log('Respuesta final - productos con imágenes:', productsData.map(p => ({
+            name: p.name,
+            image: p.image,
+            hasValidImage: isValidImageUrl(p.image)
+        })));
+
+        res.status(200).json({
+            success: true,
+            data: response,
+            message: 'Detalles del pedido obtenidos exitosamente'
+        });
+
+    } catch (error) {
+        console.error('Error completo en getOrderDetails:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor al obtener los detalles del pedido",
+            error: error.message
+        });
+    }
+};
+
+// FUNCIONES AUXILIARES PARA MANEJAR IMÁGENES
+function extractImageUrl(images) {
+    if (!images || !Array.isArray(images) || images.length === 0) {
+        console.log('No hay imágenes disponibles');
+        return null;
+    }
+
+    const firstImage = images[0];
+    console.log('Primera imagen encontrada - tipo:', typeof firstImage, 'contenido:', firstImage);
+
+    let imageUrl = null;
+
+    // Caso 1: Es un string directo
+    if (typeof firstImage === 'string') {
+        imageUrl = firstImage;
+        console.log('Imagen es string directo:', imageUrl);
+    }
+    // Caso 2: Es un objeto con la propiedad 'image'
+    else if (typeof firstImage === 'object' && firstImage !== null) {
+        // Según tu esquema, la imagen debería estar en firstImage.image
+        imageUrl = firstImage.image;
+
+        console.log('Imagen extraída del objeto:', {
+            objetoCompleto: firstImage,
+            imagenExtraida: imageUrl,
+            tipoImagenExtraida: typeof imageUrl
+        });
+
+        // Si no está en .image, buscar en otras propiedades comunes
+        if (!imageUrl) {
+            imageUrl = firstImage.url ||
+                firstImage.src ||
+                firstImage.path ||
+                firstImage.href;
+            console.log('Imagen encontrada en propiedad alternativa:', imageUrl);
+        }
+    }
+
+    const validatedUrl = validateImageUrl(imageUrl);
+    console.log('URL final validada:', validatedUrl);
+
+    return validatedUrl;
+}
+
+function validateImageUrl(url) {
+    if (!url || typeof url !== 'string') {
+        return null;
+    }
+
+    const trimmedUrl = url.trim();
+
+    // Verificar que no sea una string vacía o valores inválidos
+    if (!trimmedUrl ||
+        trimmedUrl === '' ||
+        trimmedUrl === 'null' ||
+        trimmedUrl === 'undefined' ||
+        trimmedUrl.toLowerCase() === 'none') {
+        return null;
+    }
+
+    // Verificar que parezca una URL válida
+    try {
+        new URL(trimmedUrl);
+        return trimmedUrl;
+    } catch (error) {
+        console.warn('URL inválida:', trimmedUrl);
+        return null;
+    }
+}
+
+function isValidImageUrl(url) {
+    return validateImageUrl(url) !== null;
+}
+
+// Método mejorado para cancelar pedido con validación de fecha
+salesController.cancelOrder = async (req, res) => {
+    try {
+        const { saleId } = req.params;
+
+        if (!saleId) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de venta requerido"
+            });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(saleId)) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de venta no válido"
+            });
+        }
+
+        // Verificar que el pedido existe
+        const order = await salesModel.findById(saleId);
+
+        if (!order) {
+            return res.status(404).json({
+                success: false,
+                message: "Pedido no encontrado"
+            });
+        }
+
+        // Validaciones de estado
+        if (order.trackingStatus === 'Entregado') {
+            return res.status(400).json({
+                success: false,
+                message: "No se puede cancelar un pedido ya entregado"
+            });
+        }
+
+        if (order.trackingStatus === 'Cancelado') {
+            return res.status(400).json({
+                success: false,
+                message: "El pedido ya está cancelado"
+            });
+        }
+
+        // Verificar que no han pasado más de 3 días desde la creación
+        const now = new Date();
+        const createdAt = new Date(order.createdAt);
+        const threeDaysInMs = 3 * 24 * 60 * 60 * 1000; // 3 días en milisegundos
+        const timeDifference = now - createdAt;
+
+        if (timeDifference > threeDaysInMs) {
+            const cancellableDate = new Date(createdAt.getTime() + threeDaysInMs);
+            return res.status(400).json({
+                success: false,
+                message: `No se puede cancelar el pedido después de 3 días. El límite de cancelación era el ${cancellableDate.toLocaleDateString('es-ES', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                })}`
+            });
+        }
+
+        // Actualizar el estado del pedido
+        const updatedOrder = await salesModel.findByIdAndUpdate(
+            saleId,
+            {
+                status: 'Cancelado',
+                trackingStatus: 'Cancelado',
+                updatedAt: new Date()
+            },
+            { new: true }
+        );
+
+        res.status(200).json({
+            success: true,
+            data: updatedOrder,
+            message: 'Pedido cancelado exitosamente'
+        });
+
+    } catch (error) {
+        console.error('Error al cancelar pedido:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor al cancelar el pedido",
+            error: error.message
+        });
+    }
+};
+
+// Método auxiliar para verificar si un pedido es cancelable
+salesController.checkCancellationEligibility = async (req, res) => {
+    try {
+        const { saleId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(saleId)) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de venta no válido"
+            });
+        }
+
+        const order = await salesModel.findById(saleId);
+
+        if (!order) {
+            return res.status(404).json({
+                success: false,
+                message: "Pedido no encontrado"
+            });
+        }
+
+        const now = new Date();
+        const createdAt = new Date(order.createdAt);
+        const threeDaysInMs = 3 * 24 * 60 * 60 * 1000;
+        const timeDifference = now - createdAt;
+        const cancellableDate = new Date(createdAt.getTime() + threeDaysInMs);
+
+        const isCancellable =
+            order.trackingStatus !== 'Entregado' &&
+            order.trackingStatus !== 'Cancelado' &&
+            timeDifference <= threeDaysInMs;
+
+        res.status(200).json({
+            success: true,
+            data: {
+                isCancellable,
+                currentStatus: order.trackingStatus,
+                createdAt: order.createdAt,
+                cancellableUntil: cancellableDate,
+                remainingHours: isCancellable ? Math.max(0, Math.ceil((threeDaysInMs - timeDifference) / (1000 * 60 * 60))) : 0
+            },
+            message: 'Información de cancelación obtenida exitosamente'
+        });
+
+    } catch (error) {
+        console.error('Error al verificar elegibilidad de cancelación:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor",
             error: error.message
         });
     }

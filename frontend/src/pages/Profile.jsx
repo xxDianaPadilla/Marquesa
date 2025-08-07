@@ -42,7 +42,7 @@ const Perfil = () => {
     try {
       console.log('Obteniendo pedidos para usuario:', userId);
       setLoadingOrders(true);
-      
+
       if (!userId) {
         console.warn('No se proporcionó userId para obtener pedidos');
         return;
@@ -156,6 +156,100 @@ const Perfil = () => {
    */
   const handleEditSuccess = (message) => {
     toast.success(message || 'Perfil actualizado exitosamente');
+  };
+
+  const handleOrderDetails = async (pedido) => {
+    try {
+      // Obtener datos del cliente
+      const customerResponse = await fetch(`http://localhost:4000/api/users/${pedido.shoppingCart.clientId}`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      let customerData = null;
+      if (customerResponse.ok) {
+        const customerResult = await customerResponse.json();
+        customerData = customerResult.data;
+      }
+
+      // Obtener datos de los productos del carrito
+      let productsData = [];
+      if (pedido.shoppingCart.items && pedido.shoppingCart.items.length > 0) {
+        // Crear array de promesas para obtener detalles de cada producto
+        const productPromises = pedido.shoppingCart.items.map(async (item) => {
+          try {
+            let productResponse;
+
+            // Determinar el endpoint según el tipo de item
+            if (item.itemType === 'product') {
+              productResponse = await fetch(`http://localhost:4000/api/products/${item.itemId}`, {
+                method: 'GET',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+              });
+            } else if (item.itemType === 'custom') {
+              productResponse = await fetch(`http://localhost:4000/api/customproducts/${item.itemId}`, {
+                method: 'GET',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+              });
+            }
+
+            if (productResponse && productResponse.ok) {
+              const productResult = await productResponse.json();
+              const productData = productResult.data;
+
+              return {
+                ...item,
+                name: productData.name || productData.productToPersonalize || 'Producto sin nombre',
+                description: productData.description || productData.extraComments || 'Sin descripción',
+                image: productData.images?.[0] || productData.referenceImage || null,
+                price: productData.price || 0
+              };
+            } else {
+              // Si no se puede obtener el producto, devolver datos básicos
+              return {
+                ...item,
+                name: 'Producto no disponible',
+                description: 'Información no disponible',
+                image: null,
+                price: 0
+              };
+            }
+          } catch (error) {
+            console.error('Error al obtener producto:', item.itemId, error);
+            return {
+              ...item,
+              name: 'Error al cargar producto',
+              description: 'No se pudo cargar la información',
+              image: null,
+              price: 0
+            };
+          }
+        });
+
+        // Esperar a que se resuelvan todas las promesas
+        productsData = await Promise.all(productPromises);
+      }
+
+      // Navegar con todos los datos
+      navigate('/orderdetails', {
+        state: {
+          orderData: pedido,
+          customerData: customerData,
+          productsData: productsData
+        }
+      });
+
+    } catch (error) {
+      console.error('Error al preparar datos para OrderDetail:', error);
+      toast.error('Error al cargar los detalles del pedido');
+      // Navegar sin datos adicionales como fallback
+      navigate('/orderdetails');
+    }
   };
 
   // Combinamos la información del usuario de ambas fuentes disponibles en AuthContext
@@ -272,7 +366,7 @@ const Perfil = () => {
                               </div>
                               <div className="flex flex-col sm:flex-row justify-between text-sm text-gray-600 gap-1">
                                 <span>
-                                  {pedido.shoppingCart?.items?.length || 0} productos · 
+                                  {pedido.shoppingCart?.items?.length || 0} productos ·
                                   Total: ${pedido.shoppingCart?.total?.toFixed(2) || '0.00'}
                                 </span>
                                 <div className="flex items-center gap-1">
@@ -280,9 +374,9 @@ const Perfil = () => {
                                   <span>Cancelable hasta: {getCancellableDate(pedido.createdAt)}</span>
                                 </div>
                               </div>
-                              <Button 
-                                className="w-full hover:bg-pink-400 text-white py-2 text-sm" 
-                                onClick={handleSavesClick} 
+                              <Button
+                                className="w-full hover:bg-pink-400 text-white py-2 text-sm"
+                                onClick={() => handleOrderDetails(pedido)} 
                                 style={{ backgroundColor: '#E8ACD2' }}
                               >
                                 Detalles pedidos

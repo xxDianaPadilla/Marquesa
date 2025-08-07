@@ -57,9 +57,6 @@ const upload = multer({
     }
 });
 
-// ===== RUTAS ESPECÍFICAS PRIMERO (para evitar conflictos con :id) =====
-
-// Ruta para obtener estadísticas de productos vendidos
 router.get("/soldProductsStats", salesController.getSoldProductsStats);
 
 // Ruta para obtener el total de ventas
@@ -71,8 +68,8 @@ router.get("/dashboardStats", salesController.getDashboardStats);
 // Ruta para obtener ventas con información detallada
 router.get("/detailed", salesController.getSalesDetailed);
 
+// Rutas de usuarios específicos
 router.get("/user/:userId/stats", salesController.getUserOrderStats);
-
 router.get("/user/:userId/orders", salesController.getUserOrders);
 
 // Ruta para obtener ventas por estado de pago específico
@@ -80,6 +77,17 @@ router.get("/paymentStatus/:status", salesController.getSalesByPaymentStatus);
 
 // Ruta para obtener ventas por estado de seguimiento/tracking específico
 router.get("/trackingStatus/:trackingStatus", salesController.getSalesByTrackingStatus);
+
+// ===== NUEVAS RUTAS PARA DETALLES Y CANCELACIÓN DE PEDIDOS =====
+
+// Ruta para obtener detalles completos del pedido
+router.get("/:saleId/details", salesController.getOrderDetails);
+
+// Ruta para cancelar un pedido
+router.put("/:saleId/cancel", salesController.cancelOrder);
+
+// Ruta para verificar si un pedido puede ser cancelado
+router.get("/:saleId/cancellation-eligibility", salesController.checkCancellationEligibility);
 
 // ===== RUTAS CON PARÁMETROS :id =====
 

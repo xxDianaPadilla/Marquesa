@@ -45,13 +45,12 @@ import PriceDisplay from "../components/PriceDisplay";
 // NUEVO: Carrusel de testimonios
 import TestimonialsCarousel from "../components/TestimonialCarousel";
 
+// NUEVO: Sección de categorías
+import CategoriesSection from '../components/CategoriesSectionHome';
+
+
 // Recursos visuales
 import heroImage from "../assets/postfebruaryhome.png";
-import cat1 from "../assets/naturalcatflowers.png";
-import cat2 from "../assets/driedflowerscat.png";
-import cat3 from "../assets/decorativepaintings.png";
-import cat4 from "../assets/giftboxescat.png";
-import cat5 from "../assets/cardscat.png";
 import flower1 from "../assets/savesFlower1.png";
 import flower2 from "../assets/savesFlower2.png";
 import flower3 from "../assets/savesFlower3.png";
@@ -241,7 +240,7 @@ const HomePage = () => {
    * Navegación a la página de todos los productos
    */
   const handleViewAll = () => {
-    navigate('/categoria/688175a69579a7cde1657aaa'); // ID real de flores naturales
+    navigate('/categoryProducts');
   };
 
   /**
@@ -304,7 +303,7 @@ const HomePage = () => {
               { _id: '688176179579a7cde1657ace', name: 'Giftboxes' },
               { _id: '688175e79579a7cde1657ac6', name: 'Tarjetas' }
             ]}
-            activeCategory={null} 
+            activeCategory={null}
             onCategoryChange={handleCategoryChange}
           />
         </div>
@@ -346,46 +345,36 @@ const HomePage = () => {
       </section>
 
       {/* Sección de categorías visuales */}
-      <section className="bg-white py-8 sm:py-14">
-        <Container className="text-center">
-          <h2
-            className="text-2xl sm:text-3xl lg:text-4xl font-medium text-gray-900 text-center mb-2"
-            style={{ fontFamily: "Poppins" }}
-          >
-            Nuestras categorías
-          </h2>
-          <p className="text-center text-gray-600 mb-8 sm:mb-10 text-sm sm:text-base lg:text-lg max-w-xs sm:max-w-2xl lg:max-w-4xl mx-auto" style={{ fontFamily: "Poppins" }}>
-            Explora nuestra selección de productos cuidadosamente curados para cada ocasión.
-          </p>
+      <CategoriesSection
+        maxCategories={5}
+        onCategoryClick={(category) => {
+          // Mapeo específico de categorías a sus rutas
+          const categoryRoutes = {
+            // Flores Naturales
+            '688175a69579a7cde1657aaa': '/categoria/688175a69579a7cde1657aaa',
+            // Flores Secas  
+            '688175d89579a7cde1657ac2': '/categoria/688175d89579a7cde1657ac2',
+            // Cuadros Decorativos
+            '688175fd9579a7cde1657aca': '/categoria/688175fd9579a7cde1657aca',
+            // Giftboxes
+            '688176179579a7cde1657ace': '/categoria/688176179579a7cde1657ace',
+            // Tarjetas
+            '688175e79579a7cde1657ac6': '/categoria/688175e79579a7cde1657ac6'
+          };
 
-          {/* Grid de categorías */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-            {[cat1, cat2, cat3, cat4, cat5].map((categoryImg, index) => {
-              const categoryIds = [
-                '688175a69579a7cde1657aaa', // flores naturales
-                '688175d89579a7cde1657ac2', // flores secas
-                '688175fd9579a7cde1657aca', // cuadros decorativos
-                '688176179579a7cde1657ace', // giftboxes
-                '688175e79579a7cde1657ac6'  // tarjetas
-              ];
+          const categoryRoute = categoryRoutes[category._id];
 
-              return (
-                <div
-                  key={index}
-                  className="rounded-lg overflow-hidden shadow-sm group cursor-pointer hover:shadow-md transition-all duration-300"
-                  onClick={() => navigate(`/categoria/${categoryIds[index]}`)}
-                >
-                  <img
-                    src={categoryImg}
-                    alt={`Categoría ${index + 1}`}
-                    className="w-full h-32 sm:h-40 lg:h-57 object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </Container>
-      </section>
+          if (categoryRoute) {
+            console.log(`Navegando a: ${categoryRoute} para categoría: ${category.name}`);
+            navigate(categoryRoute);
+          } else {
+            console.warn(`Ruta no encontrada para categoría: ${category.name} (ID: ${category._id})`);
+            navigate(`/categoria/${category._id}`);
+          }
+        }}
+        title="Nuestras Categorías"
+        subtitle="Explora nuestra selección de productos para cada ocasión."
+      />
 
       {/* Sección de productos destacados */}
       <section id="productos-destacados" className="bg-pink-50 py-8 sm:py-14">

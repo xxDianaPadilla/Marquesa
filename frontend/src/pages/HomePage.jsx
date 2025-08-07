@@ -48,6 +48,9 @@ import TestimonialsCarousel from "../components/TestimonialCarousel";
 // NUEVO: Sección de categorías
 import CategoriesSection from '../components/CategoriesSectionHome';
 
+// NUEVO: Sección de productos destacadis
+import TopRatedProducts from '../components/RecommendedProducts ';
+
 
 // Recursos visuales
 import heroImage from "../assets/postfebruaryhome.png";

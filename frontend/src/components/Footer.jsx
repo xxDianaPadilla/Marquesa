@@ -14,7 +14,23 @@ const Footer = () => {
   // Hook para la navegación
   const navigate = useNavigate();
 
-// Función para navegar a la página de medios
+  // Función para manejar la navegación de categorías
+  const handleCategoryNavigation = (categoryName) => {
+    const categoryRoutes = {
+      'flores-naturales': '/categoria/688175a69579a7cde1657aaa',
+      'flores-secas': '/categoria/688175d89579a7cde1657ac2',
+      'cuadros-decorativos': '/categoria/688175fd9579a7cde1657aca',
+      'giftboxes': '/categoria/688176179579a7cde1657ace',
+      'tarjetas': '/categoria/688175e79579a7cde1657ac6'
+    };
+
+    const route = categoryRoutes[categoryName];
+    if (route) {
+      navigate(route);
+    }
+  };
+
+  // Función para navegar a la página de medios
   const handleMediaClick = () => {
     navigate('/mediaPage');
   };
@@ -24,32 +40,32 @@ const Footer = () => {
     navigate('/ruleta');
   };
 
-// Función para navegar a las condiciones de promociones
+  // Función para navegar a las condiciones de promociones
   const handleConditionsPromotionsClick = () => {
     navigate('/conditionsPromotions');
   };
 
-// Función para navegar a la información de envío
+  // Función para navegar a la información de envío
   const handleShippingInformationClick = () => {
     navigate('/shippingInformation');
   };
 
-// Función para navegar a la página "Sobre nosotros"
+  // Función para navegar a la página "Sobre nosotros"
   const handleAboutUsClick = () => {
     navigate('/aboutUs');
   };
 
-// Función para navegar a la página de políticas de privacidad
+  // Función para navegar a la página de políticas de privacidad
   const handlePrivacyPoliciesClick = () => {
     navigate('/privacyPolicies');
   };
 
-// Función para navegar a la página de términos y condiciones
+  // Función para navegar a la página de términos y condiciones
   const handleTermsandConditionsClick = () => {
     navigate('/termsandConditions');
   };
 
-// Función para navegar a la página de servicios
+  // Función para navegar a la página de servicios
   const handleServicesClick = () => {
     navigate('/home');
   };
@@ -102,31 +118,46 @@ const Footer = () => {
           <div className="text-center sm:text-left">
             <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-4 sm:mb-6 italic">Categorías</h3>
             <div className="space-y-2 sm:space-y-3">
-              <div className="flex items-center justify-center sm:justify-start space-x-3">
+              <div
+                className="flex items-center justify-center sm:justify-start space-x-3"
+                onClick={() => handleCategoryNavigation('flores-naturales')}
+              >
                 <img src={footerFlowerIcon} alt="Flores" className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                 <p className="text-xs sm:text-sm text-gray-600 hover:text-gray-800 cursor-pointer transition-colors">
                   Arreglos con flores naturales
                 </p>
               </div>
-              <div className="flex items-center justify-center sm:justify-start space-x-3">
+              <div
+                className="flex items-center justify-center sm:justify-start space-x-3"
+                onClick={() => handleCategoryNavigation('flores-secas')}
+              >
                 <img src={footerFlowerIcon} alt="Flores secas" className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                 <p className="text-xs sm:text-sm text-gray-600 hover:text-gray-800 cursor-pointer transition-colors">
                   Arreglos con flores secas
                 </p>
               </div>
-              <div className="flex items-center justify-center sm:justify-start space-x-3">
+              <div
+                className="flex items-center justify-center sm:justify-start space-x-3"
+                onClick={() => handleCategoryNavigation('cuadros-decorativos')}
+              >
                 <img src={footerFlowerIcon} alt="Cuadros" className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                 <p className="text-xs sm:text-sm text-gray-600 hover:text-gray-800 cursor-pointer transition-colors">
                   Cuadros Decorativos
                 </p>
               </div>
-              <div className="flex items-center justify-center sm:justify-start space-x-3">
+              <div
+                className="flex items-center justify-center sm:justify-start space-x-3"
+                onClick={() => handleCategoryNavigation('giftboxes')}
+              >
                 <img src={footerFlowerIcon} alt="Giftboxes" className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                 <p className="text-xs sm:text-sm text-gray-600 hover:text-gray-800 cursor-pointer transition-colors">
                   Giftboxes
                 </p>
               </div>
-              <div className="flex items-center justify-center sm:justify-start space-x-3">
+              <div
+                className="flex items-center justify-center sm:justify-start space-x-3"
+                onClick={() => handleCategoryNavigation('tarjetas')}
+              >
                 <img src={footerFlowerIcon} alt="Tarjetas" className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                 <p className="text-xs sm:text-sm text-gray-600 hover:text-gray-800 cursor-pointer transition-colors">
                   Tarjetas

@@ -239,6 +239,7 @@ export const AuthProvider = ({ children }) => {
     // NUEVOS ESTADOS para el sistema de límite de intentos
     const [attemptsStorage, setAttemptsStorage] = useState({}); // Almacenamiento en memoria de intentos
     const [lockoutInfo, setLockoutInfo] = useState(null); // Info de bloqueo para mostrar al usuario
+    const [userOrderStats, setUserOrderStats] = useState(null);
 
     /**
      * Obtiene el token de autenticación de las cookies
@@ -311,45 +312,136 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    /**
-     * Obtiene información completa del usuario desde el servidor
-     * (FUNCIÓN EXISTENTE - Sin cambios)
-     */
-    const getUserInfo = async () => {
-        try {
-            console.log('Obteniendo información del usuario...');
-
-            const response = await fetch('http://localhost:4000/api/login/user-info', {
-                method: 'GET',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                console.log('Respuesta getUserInfo:', data);
-
-                if (data && data.success && data.user) {
-                    console.log('Información del usuario obtenida:', data.user);
-                    setUserInfo(data.user);
-                    setAuthError(null);
-                    return data.user;
-                } else {
-                    console.warn('Respuesta sin éxito:', data?.message);
-                    return null;
-                }
-            } else {
-                console.error('Error en respuesta del servidor:', response.status);
-                return null;
-            }
-        } catch (error) {
-            console.error('Error al obtener información del usuario:', error);
-            setAuthError('Error al obtener información del usuario');
+    const getUserOrderStats = async (userId) => {
+    try {
+        console.log('Obteniendo estadísticas de pedidos para usuario: ', userId);
+        
+        // Validar que tenemos un userId
+        if (!userId) {
+            console.warn('No se proporcionó userId para obtener estadísticas');
             return null;
         }
-    };
+
+        const response = await fetch(`http://localhost:4000/api/sales/user/${userId}/stats`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        console.log('Status de respuesta getUserOrderStats:', response.status);
+
+        if (response.ok) {
+            const data = await response.json();
+            console.log('Respuesta completa getUserOrderStats:', data);
+
+            if (data && data.success && data.data && data.data.orderStats) {
+                console.log('Estadísticas de pedidos obtenidas exitosamente:', data.data.orderStats);
+                setUserOrderStats(data.data.orderStats);
+                return data.data.orderStats;
+            } else {
+                console.warn('Respuesta sin estructura esperada:', data);
+                // Aún así, intentar establecer estadísticas vacías
+                const emptyStats = {
+                    totalOrders: 0,
+                    pendingOrders: 0,
+                    cancelledOrders: 0,
+                    scheduledOrders: 0,
+                    inProcessOrders: 0,
+                    deliveredOrders: 0
+                };
+                setUserOrderStats(emptyStats);
+                return emptyStats;
+            }
+        } else {
+            const errorText = await response.text();
+            console.error('Error en respuesta del servidor:', response.status, errorText);
+            
+            // Si es 404 o error del servidor, establecer estadísticas vacías
+            if (response.status === 404 || response.status >= 500) {
+                const emptyStats = {
+                    totalOrders: 0,
+                    pendingOrders: 0,
+                    cancelledOrders: 0,
+                    scheduledOrders: 0,
+                    inProcessOrders: 0,
+                    deliveredOrders: 0
+                };
+                setUserOrderStats(emptyStats);
+                return emptyStats;
+            }
+            
+            return null;
+        }
+    } catch (error) {
+        console.error('Error al obtener estadísticas de pedidos:', error);
+        
+        // En caso de error de red, establecer estadísticas vacías
+        const emptyStats = {
+            totalOrders: 0,
+            pendingOrders: 0,
+            cancelledOrders: 0,
+            scheduledOrders: 0,
+            inProcessOrders: 0,
+            deliveredOrders: 0
+        };
+        setUserOrderStats(emptyStats);
+        return emptyStats;
+    }
+};
+
+/**
+ * Obtiene información completa del usuario desde el servidor
+ * MEJORADO para mejor manejo de errores
+ */
+const getUserInfo = async () => {
+    try {
+        console.log('Obteniendo información del usuario...');
+
+        const response = await fetch('http://localhost:4000/api/login/user-info', {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            console.log('Respuesta getUserInfo:', data);
+
+            if (data && data.success && data.user) {
+                console.log('Información del usuario obtenida:', data.user);
+                setUserInfo(data.user);
+                setAuthError(null);
+
+                // Intentar obtener estadísticas si tenemos el ID del usuario
+                const userId = data.user._id || data.user.id;
+                if (userId) {
+                    console.log('Llamando a getUserOrderStats con userId:', userId);
+                    await getUserOrderStats(userId);
+                } else {
+                    console.warn('Usuario sin ID válido:', data.user);
+                }
+
+                return data.user;
+            } else {
+                console.warn('Respuesta sin éxito:', data?.message);
+                return null;
+            }
+        } else {
+            console.error('Error en respuesta del servidor:', response.status);
+            const errorText = await response.text();
+            console.error('Texto del error:', errorText);
+            return null;
+        }
+    } catch (error) {
+        console.error('Error al obtener información del usuario:', error);
+        setAuthError('Error al obtener información del usuario');
+        return null;
+    }
+};
 
     /**
      * Limpia todos los datos de autenticación
@@ -773,6 +865,7 @@ export const AuthProvider = ({ children }) => {
 
         // NUEVOS ESTADOS para límite de intentos
         lockoutInfo,                    // Información sobre bloqueo actual
+        userOrderStats,
 
         // Funciones existentes
         login,
@@ -785,6 +878,7 @@ export const AuthProvider = ({ children }) => {
         checkAccountLockStatus,         // Verificar si una cuenta está bloqueada
         getAttemptsWarning,            // Obtener advertencia sobre intentos restantes
         clearLoginAttempts,            // Limpiar intentos manualmente (uso administrativo)
+        getUserOrderStats,
 
         // NUEVAS CONSTANTES útiles para la UI
         rateLimitConfig: RATE_LIMIT_CONFIG  // Configuración del sistema para mostrar en UI

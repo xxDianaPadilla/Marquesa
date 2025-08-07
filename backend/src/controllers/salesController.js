@@ -18,9 +18,9 @@ const isValidObjectId = (id) => {
 const validatePaymentType = (paymentType) => {
     const validTypes = ["Transferencia", "Efectivo", "Débito", "Crédito"];
     if (!paymentType || !validTypes.includes(paymentType)) {
-        return { 
-            isValid: false, 
-            error: "Tipo de pago inválido. Debe ser: " + validTypes.join(", ") 
+        return {
+            isValid: false,
+            error: "Tipo de pago inválido. Debe ser: " + validTypes.join(", ")
         };
     }
     return { isValid: true, value: paymentType };
@@ -30,9 +30,9 @@ const validatePaymentType = (paymentType) => {
 const validatePaymentStatus = (status) => {
     const validStatuses = ["Pendiente", "Pagado"];
     if (!status || !validStatuses.includes(status)) {
-        return { 
-            isValid: false, 
-            error: "Estado de pago inválido. Debe ser: " + validStatuses.join(", ") 
+        return {
+            isValid: false,
+            error: "Estado de pago inválido. Debe ser: " + validStatuses.join(", ")
         };
     }
     return { isValid: true, value: status };
@@ -42,9 +42,9 @@ const validatePaymentStatus = (status) => {
 const validateTrackingStatus = (status) => {
     const validStatuses = ["Agendado", "En proceso", "Entregado"];
     if (!status || !validStatuses.includes(status)) {
-        return { 
-            isValid: false, 
-            error: "Estado de seguimiento inválido. Debe ser: " + validStatuses.join(", ") 
+        return {
+            isValid: false,
+            error: "Estado de seguimiento inválido. Debe ser: " + validStatuses.join(", ")
         };
     }
     return { isValid: true, value: status };
@@ -55,17 +55,17 @@ const validateAddress = (address) => {
     if (!address || typeof address !== 'string') {
         return { isValid: false, error: "La dirección de entrega es requerida" };
     }
-    
+
     const trimmedAddress = address.trim();
-    
+
     if (trimmedAddress.length < 20) {
         return { isValid: false, error: "La dirección debe tener al menos 20 caracteres" };
     }
-    
+
     if (trimmedAddress.length > 200) {
         return { isValid: false, error: "La dirección no puede exceder 200 caracteres" };
     }
-    
+
     return { isValid: true, value: trimmedAddress };
 };
 
@@ -74,22 +74,22 @@ const validateReceiverName = (name) => {
     if (!name || typeof name !== 'string') {
         return { isValid: false, error: "El nombre del receptor es requerido" };
     }
-    
+
     const trimmedName = name.trim();
-    
+
     if (trimmedName.length < 12) {
         return { isValid: false, error: "El nombre del receptor debe tener al menos 12 caracteres" };
     }
-    
+
     if (trimmedName.length > 100) {
         return { isValid: false, error: "El nombre del receptor no puede exceder 100 caracteres" };
     }
-    
+
     // Validar que no contenga números
     if (/\d/.test(trimmedName)) {
         return { isValid: false, error: "El nombre del receptor no puede contener números" };
     }
-    
+
     return { isValid: true, value: trimmedName };
 };
 
@@ -98,17 +98,17 @@ const validatePhone = (phone) => {
     if (!phone || typeof phone !== 'string') {
         return { isValid: false, error: "El teléfono es requerido" };
     }
-    
+
     const trimmedPhone = phone.trim();
-    
+
     if (trimmedPhone.length !== 9) {
         return { isValid: false, error: "El teléfono debe tener exactamente 9 dígitos" };
     }
-    
+
     if (!/^\d{9}$/.test(trimmedPhone)) {
         return { isValid: false, error: "El teléfono debe contener solo números" };
     }
-    
+
     return { isValid: true, value: trimmedPhone };
 };
 
@@ -117,17 +117,17 @@ const validateDeliveryPoint = (point) => {
     if (!point || typeof point !== 'string') {
         return { isValid: false, error: "El punto de referencia es requerido" };
     }
-    
+
     const trimmedPoint = point.trim();
-    
+
     if (trimmedPoint.length < 20) {
         return { isValid: false, error: "El punto de referencia debe tener al menos 20 caracteres" };
     }
-    
+
     if (trimmedPoint.length > 200) {
         return { isValid: false, error: "El punto de referencia no puede exceder 200 caracteres" };
     }
-    
+
     return { isValid: true, value: trimmedPoint };
 };
 
@@ -136,30 +136,30 @@ const validateDeliveryDate = (date) => {
     if (!date) {
         return { isValid: false, error: "La fecha de entrega es requerida" };
     }
-    
+
     const deliveryDate = new Date(date);
-    
+
     if (isNaN(deliveryDate.getTime())) {
         return { isValid: false, error: "Fecha de entrega no válida" };
     }
-    
+
     // Validar que la fecha no sea en el pasado
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     deliveryDate.setHours(0, 0, 0, 0);
-    
+
     if (deliveryDate < today) {
         return { isValid: false, error: "La fecha de entrega no puede ser en el pasado" };
     }
-    
+
     // Validar que no sea más de 1 año en el futuro
     const oneYearFromNow = new Date();
     oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
-    
+
     if (deliveryDate > oneYearFromNow) {
         return { isValid: false, error: "La fecha de entrega no puede ser más de 1 año en el futuro" };
     }
-    
+
     return { isValid: true, value: deliveryDate };
 };
 
@@ -168,21 +168,21 @@ const validatePaymentProofImage = (file) => {
     if (!file) {
         return { isValid: false, error: "La imagen del comprobante de pago es requerida" };
     }
-    
+
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
     const maxSize = 10 * 1024 * 1024; // 10MB
-    
+
     if (!allowedTypes.includes(file.mimetype)) {
-        return { 
-            isValid: false, 
-            error: "Formato de archivo no válido. Solo se permiten JPG, PNG, WEBP y PDF" 
+        return {
+            isValid: false,
+            error: "Formato de archivo no válido. Solo se permiten JPG, PNG, WEBP y PDF"
         };
     }
-    
+
     if (file.size > maxSize) {
         return { isValid: false, error: "El archivo es demasiado grande. Máximo 10MB" };
     }
-    
+
     return { isValid: true };
 };
 
@@ -196,44 +196,44 @@ cloudinary.config({
 salesController.getSales = async (req, res) => {
     try {
         const { page = 1, limit = 10, status, trackingStatus } = req.query;
-        
+
         // Validar parámetros de paginación
         const pageNum = parseInt(page);
         const limitNum = parseInt(limit);
-        
+
         if (isNaN(pageNum) || pageNum < 1) {
             return res.status(400).json({
                 success: false,
                 message: "Número de página inválido"
             });
         }
-        
+
         if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
             return res.status(400).json({
                 success: false,
                 message: "Límite inválido (1-100)"
             });
         }
-        
+
         // Construir filtros
         const filters = {};
-        
+
         if (status) {
             const statusValidation = validatePaymentStatus(status);
             if (statusValidation.isValid) {
                 filters.status = statusValidation.value;
             }
         }
-        
+
         if (trackingStatus) {
             const trackingValidation = validateTrackingStatus(trackingStatus);
             if (trackingValidation.isValid) {
                 filters.trackingStatus = trackingValidation.value;
             }
         }
-        
+
         const skip = (pageNum - 1) * limitNum;
-        
+
         const [sales, totalCount] = await Promise.all([
             salesModel.find(filters)
                 .populate('ShoppingCartId')
@@ -242,7 +242,7 @@ salesController.getSales = async (req, res) => {
                 .limit(limitNum),
             salesModel.countDocuments(filters)
         ]);
-        
+
         res.status(200).json({
             success: true,
             data: sales,
@@ -257,10 +257,10 @@ salesController.getSales = async (req, res) => {
         });
     } catch (error) {
         console.error('Error en getSales:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             success: false,
-            message: "Error interno del servidor al obtener las ventas", 
-            error: error.message 
+            message: "Error interno del servidor al obtener las ventas",
+            error: error.message
         });
     }
 };
@@ -269,33 +269,269 @@ salesController.getSales = async (req, res) => {
 salesController.getSaleById = async (req, res) => {
     try {
         const { id } = req.params;
-        
+
         if (!isValidObjectId(id)) {
             return res.status(400).json({
                 success: false,
                 message: "ID de venta no válido"
             });
         }
-        
+
         const sale = await salesModel.findById(id).populate('ShoppingCartId');
-        
+
         if (!sale) {
-            return res.status(404).json({ 
+            return res.status(404).json({
                 success: false,
-                message: "Venta no encontrada" 
+                message: "Venta no encontrada"
             });
         }
-        
+
         res.status(200).json({
             success: true,
             data: sale
         });
     } catch (error) {
         console.error('Error en getSaleById:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             success: false,
-            message: "Error interno del servidor al obtener la venta", 
-            error: error.message 
+            message: "Error interno del servidor al obtener la venta",
+            error: error.message
+        });
+    }
+};
+
+salesController.getUserOrderStats = async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        console.log('=== getUserOrderStats iniciado ===');
+        console.log('UserId recibido:', userId);
+
+        // Validar que se proporcione el ID del usuario
+        if (!userId) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de usuario requerido"
+            });
+        }
+
+        // Validar que el userId sea un ObjectId válido
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            console.log('UserId no es válido:', userId);
+            return res.status(400).json({
+                success: false,
+                message: "ID de usuario no válido"
+            });
+        }
+
+        // Convertir userId a ObjectId
+        const userObjectId = new mongoose.Types.ObjectId(userId);
+        console.log('UserId convertido a ObjectId:', userObjectId);
+
+        // Obtener todas las ventas del usuario a través del ShoppingCart
+        const userSales = await salesModel.aggregate([
+            {
+                // Hacer lookup con ShoppingCart para obtener el clientId
+                $lookup: {
+                    from: 'shoppingcarts', // Nombre de la colección (debe ser en minúsculas y plural)
+                    localField: 'ShoppingCartId',
+                    foreignField: '_id',
+                    as: 'shoppingCart'
+                }
+            },
+            {
+                // Filtrar documentos que tienen shoppingCart
+                $match: {
+                    'shoppingCart': { $ne: [] }
+                }
+            },
+            {
+                // Descomponer el array del shoppingCart
+                $unwind: '$shoppingCart'
+            },
+            {
+                // Filtrar por el clientId del usuario
+                $match: {
+                    'shoppingCart.clientId': userObjectId
+                }
+            },
+            {
+                // Proyecto para mantener solo campos necesarios
+                $project: {
+                    status: 1,
+                    trackingStatus: 1,
+                    createdAt: 1,
+                    ShoppingCartId: 1
+                }
+            }
+        ]);
+
+        console.log('Ventas encontradas por aggregation:', userSales.length);
+        console.log('Primer documento (si existe):', userSales[0]);
+
+        // Si no hay ventas, devolver estadísticas en cero
+        if (userSales.length === 0) {
+            console.log('No se encontraron ventas para el usuario');
+            const emptyStats = {
+                totalOrders: 0,
+                pendingOrders: 0,
+                cancelledOrders: 0,
+                scheduledOrders: 0,
+                inProcessOrders: 0,
+                deliveredOrders: 0
+            };
+
+            return res.status(200).json({
+                success: true,
+                data: {
+                    userId,
+                    orderStats: emptyStats
+                }
+            });
+        }
+
+        // Calcular estadísticas - LÓGICA CORREGIDA
+        const stats = {
+            totalOrders: userSales.length,
+            // Pedidos pendientes: status "Pendiente"
+            pendingOrders: userSales.filter(sale => sale.status === 'Pendiente').length,
+            // Pedidos cancelados: según tu especificación, son los "Pagado"
+            cancelledOrders: userSales.filter(sale => sale.status === 'Pagado').length,
+            // Estadísticas por trackingStatus
+            scheduledOrders: userSales.filter(sale => sale.trackingStatus === 'Agendado').length,
+            inProcessOrders: userSales.filter(sale => sale.trackingStatus === 'En proceso').length,
+            deliveredOrders: userSales.filter(sale => sale.trackingStatus === 'Entregado').length
+        };
+
+        console.log('Estadísticas calculadas:', stats);
+        console.log('Detalle de estados encontrados:', {
+            statusCounts: {
+                Pendiente: userSales.filter(s => s.status === 'Pendiente').length,
+                Pagado: userSales.filter(s => s.status === 'Pagado').length
+            },
+            trackingCounts: {
+                Agendado: userSales.filter(s => s.trackingStatus === 'Agendado').length,
+                'En proceso': userSales.filter(s => s.trackingStatus === 'En proceso').length,
+                Entregado: userSales.filter(s => s.trackingStatus === 'Entregado').length
+            }
+        });
+
+        res.status(200).json({
+            success: true,
+            data: {
+                userId,
+                orderStats: stats
+            }
+        });
+
+    } catch (error) {
+        console.error('Error completo en getUserOrderStats:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor al obtener estadísticas de pedidos",
+            error: error.message
+        });
+    }
+};
+
+salesController.getUserOrders = async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        if (!userId) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de usuario requerido"
+            });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            console.log('UserId no es válido: ', userId);
+            return res.status(400).json({
+                success: false,
+                message: "ID de usuario no válido"
+            });
+        }
+
+        const userObjectId = new mongoose.Types.ObjectId(userId);
+        console.log('UserId convertido a ObjectId: ', userObjectId);
+
+        const userOrders = await salesModel.aggregate([
+            {
+                $lookup: {
+                    from: 'shoppingcarts',
+                    localField: 'ShoppingCartId',
+                    foreignField: '_id',
+                    as: 'shoppingCart'
+                }
+            },
+            {
+                $match: {
+                    'shoppingCart': { $ne: [] }
+                }
+            },
+            {
+                $unwind: '$shoppingCart'
+            },
+            {
+                $match: {
+                    'shoppingCart.clientId': userObjectId
+                }
+            },
+            {
+                $sort: { createdAt: -1 }
+            },
+            {
+                $limit: 10
+            },
+            {
+                $project: {
+                    _id: 1,
+                    paymentType: 1,
+                    paymentProofImage: 1,
+                    status: 1,
+                    trackingStatus: 1,
+                    deliveryAddress: 1,
+                    receiverName: 1,
+                    receiverPhone: 1,
+                    deliveryPoint: 1,
+                    deliveryDate: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
+                    'shoppingCart._id': 1,
+                    'shoppingCart.items': 1,
+                    'shoppingCart.total': 1,
+                    'shoppingCart.createdAt': 1
+                }
+            }
+        ]);
+
+        console.log('Pedidos encontrados: ', userOrders.length);
+
+        const enrichedOrders = userOrders.map(order => ({
+            ...order,
+            productCount: order.shoppingCart?.items?.length || 0,
+            formattedDate: order.createdAt ? new Date(order.createdAt).toLocaleDateString('es-ES') : 'N/A',
+            cancellableUntil: order.createdAt ? new Date(new Date(order.createdAt).getTime() + (3 * 24 * 60 * 60 * 1000)) : null,
+            trackingStatusLabel: order.trackingStatus === 'Agendado' ? 'Preparando' :
+                                 order.trackingStatus === 'En proceso' ? 'En camino' :
+                                 order.trackingStatus === 'Entregado' ? 'Entregado' : order.trackingStatus
+        }));
+
+        console.log('Primer pedido procesado (si existe): ', enrichedOrders[0]);
+
+        res.status(200).json({
+            success: true,
+            data: enrichedOrders,
+            count: enrichedOrders.length,
+            message: `Se encontraron ${enrichedOrders.length} pedidos para el usuario`
+        });
+    } catch (error) {
+        console.log('Error completo en getUserOrders: ', error);
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor al obtener los pedidos del usuario",
+            error: error.message
         });
     }
 };
@@ -459,37 +695,37 @@ salesController.createSale = async (req, res) => {
         });
 
         await newSale.save();
-        
+
         // Poblar carrito en la respuesta
         const populatedSale = await salesModel.findById(newSale._id).populate('ShoppingCartId');
-        
-        res.status(201).json({ 
+
+        res.status(201).json({
             success: true,
-            message: "Venta creada exitosamente", 
-            data: populatedSale 
+            message: "Venta creada exitosamente",
+            data: populatedSale
         });
     } catch (error) {
         console.error('Error en createSale:', error);
-        
+
         if (error.name === 'ValidationError') {
-            return res.status(400).json({ 
+            return res.status(400).json({
                 success: false,
-                message: "Error de validación", 
+                message: "Error de validación",
                 details: Object.values(error.errors).map(err => err.message)
             });
         }
-        
+
         if (error.name === 'CastError') {
             return res.status(400).json({
                 success: false,
                 message: "Datos con formato incorrecto"
             });
         }
-        
-        res.status(500).json({ 
+
+        res.status(500).json({
             success: false,
-            message: "Error interno del servidor al crear la venta", 
-            error: error.message 
+            message: "Error interno del servidor al crear la venta",
+            error: error.message
         });
     }
 };
@@ -624,7 +860,7 @@ salesController.updateSale = async (req, res) => {
                     message: "ID de carrito de compras inválido"
                 });
             }
-            
+
             const cartExists = await ShoppingCart.findById(ShoppingCartId);
             if (!cartExists) {
                 return res.status(404).json({
@@ -632,7 +868,7 @@ salesController.updateSale = async (req, res) => {
                     message: "Carrito de compras no encontrado"
                 });
             }
-            
+
             updateData.ShoppingCartId = ShoppingCartId;
         }
 
@@ -645,7 +881,7 @@ salesController.updateSale = async (req, res) => {
                     message: imageValidation.error
                 });
             }
-            
+
             try {
                 // Eliminar imagen anterior de Cloudinary
                 if (existingSale.paymentProofImage) {
@@ -690,33 +926,33 @@ salesController.updateSale = async (req, res) => {
             { new: true, runValidators: true }
         ).populate('ShoppingCartId');
 
-        res.status(200).json({ 
+        res.status(200).json({
             success: true,
-            message: "Venta actualizada exitosamente", 
-            data: updatedSale 
+            message: "Venta actualizada exitosamente",
+            data: updatedSale
         });
     } catch (error) {
         console.error('Error en updateSale:', error);
-        
+
         if (error.name === 'ValidationError') {
-            return res.status(400).json({ 
+            return res.status(400).json({
                 success: false,
-                message: "Error de validación", 
+                message: "Error de validación",
                 details: Object.values(error.errors).map(err => err.message)
             });
         }
-        
+
         if (error.name === 'CastError') {
             return res.status(400).json({
                 success: false,
                 message: "Datos con formato incorrecto"
             });
         }
-        
-        res.status(500).json({ 
+
+        res.status(500).json({
             success: false,
-            message: "Error interno del servidor al actualizar la venta", 
-            error: error.message 
+            message: "Error interno del servidor al actualizar la venta",
+            error: error.message
         });
     }
 };
@@ -725,20 +961,20 @@ salesController.updateSale = async (req, res) => {
 salesController.deleteSale = async (req, res) => {
     try {
         const { id } = req.params;
-        
+
         if (!isValidObjectId(id)) {
             return res.status(400).json({
                 success: false,
                 message: "ID de venta no válido"
             });
         }
-        
+
         const deletedSale = await salesModel.findByIdAndDelete(id);
 
         if (!deletedSale) {
-            return res.status(404).json({ 
+            return res.status(404).json({
                 success: false,
-                message: "Venta no encontrada" 
+                message: "Venta no encontrada"
             });
         }
 
@@ -755,7 +991,7 @@ salesController.deleteSale = async (req, res) => {
             }
         }
 
-        res.status(200).json({ 
+        res.status(200).json({
             success: true,
             message: "Venta eliminada exitosamente",
             data: {
@@ -764,10 +1000,10 @@ salesController.deleteSale = async (req, res) => {
         });
     } catch (error) {
         console.error('Error en deleteSale:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             success: false,
-            message: "Error interno del servidor al eliminar la venta", 
-            error: error.message 
+            message: "Error interno del servidor al eliminar la venta",
+            error: error.message
         });
     }
 };
@@ -800,23 +1036,23 @@ salesController.updatePaymentStatus = async (req, res) => {
         ).populate('ShoppingCartId');
 
         if (!updatedSale) {
-            return res.status(404).json({ 
+            return res.status(404).json({
                 success: false,
-                message: "Venta no encontrada" 
+                message: "Venta no encontrada"
             });
         }
 
-        res.status(200).json({ 
+        res.status(200).json({
             success: true,
-            message: "Estado de pago actualizado exitosamente", 
-            data: updatedSale 
+            message: "Estado de pago actualizado exitosamente",
+            data: updatedSale
         });
     } catch (error) {
         console.error('Error en updatePaymentStatus:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             success: false,
-            message: "Error interno del servidor al actualizar el estado de pago", 
-            error: error.message 
+            message: "Error interno del servidor al actualizar el estado de pago",
+            error: error.message
         });
     }
 };
@@ -874,7 +1110,7 @@ salesController.updateTrackingStatus = async (req, res) => {
 salesController.updatePaymentProof = async (req, res) => {
     try {
         const { id } = req.params;
-        
+
         if (!isValidObjectId(id)) {
             return res.status(400).json({
                 success: false,
@@ -893,9 +1129,9 @@ salesController.updatePaymentProof = async (req, res) => {
         // Obtener la venta actual para eliminar la imagen anterior
         const currentSale = await salesModel.findById(id);
         if (!currentSale) {
-            return res.status(404).json({ 
+            return res.status(404).json({
                 success: false,
-                message: "Venta no encontrada" 
+                message: "Venta no encontrada"
             });
         }
 
@@ -937,17 +1173,17 @@ salesController.updatePaymentProof = async (req, res) => {
             { new: true, runValidators: true }
         ).populate('ShoppingCartId');
 
-        res.status(200).json({ 
+        res.status(200).json({
             success: true,
-            message: "Comprobante de pago actualizado exitosamente", 
-            data: updatedSale 
+            message: "Comprobante de pago actualizado exitosamente",
+            data: updatedSale
         });
     } catch (error) {
         console.error('Error en updatePaymentProof:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             success: false,
-            message: "Error interno del servidor al actualizar el comprobante de pago", 
-            error: error.message 
+            message: "Error interno del servidor al actualizar el comprobante de pago",
+            error: error.message
         });
     }
 };
@@ -957,7 +1193,7 @@ salesController.getSalesByPaymentStatus = async (req, res) => {
     try {
         const { status } = req.params;
         const { page = 1, limit = 10 } = req.query;
-        
+
         const statusValidation = validatePaymentStatus(status);
         if (!statusValidation.isValid) {
             return res.status(400).json({
@@ -965,19 +1201,19 @@ salesController.getSalesByPaymentStatus = async (req, res) => {
                 message: statusValidation.error
             });
         }
-        
+
         const pageNum = parseInt(page);
         const limitNum = parseInt(limit);
-        
+
         if (isNaN(pageNum) || pageNum < 1 || isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
             return res.status(400).json({
                 success: false,
                 message: "Parámetros de paginación inválidos"
             });
         }
-        
+
         const skip = (pageNum - 1) * limitNum;
-        
+
         const [sales, totalCount] = await Promise.all([
             salesModel.find({ status: statusValidation.value })
                 .populate('ShoppingCartId')
@@ -986,7 +1222,7 @@ salesController.getSalesByPaymentStatus = async (req, res) => {
                 .limit(limitNum),
             salesModel.countDocuments({ status: statusValidation.value })
         ]);
-        
+
         res.status(200).json({
             success: true,
             data: sales,
@@ -998,10 +1234,10 @@ salesController.getSalesByPaymentStatus = async (req, res) => {
         });
     } catch (error) {
         console.error('Error en getSalesByPaymentStatus:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             success: false,
-            message: "Error interno del servidor al obtener las ventas por estado de pago", 
-            error: error.message 
+            message: "Error interno del servidor al obtener las ventas por estado de pago",
+            error: error.message
         });
     }
 };
@@ -1011,7 +1247,7 @@ salesController.getSalesByTrackingStatus = async (req, res) => {
     try {
         const { trackingStatus } = req.params;
         const { page = 1, limit = 10 } = req.query;
-        
+
         const trackingValidation = validateTrackingStatus(trackingStatus);
         if (!trackingValidation.isValid) {
             return res.status(400).json({
@@ -1019,19 +1255,19 @@ salesController.getSalesByTrackingStatus = async (req, res) => {
                 message: trackingValidation.error
             });
         }
-        
+
         const pageNum = parseInt(page);
         const limitNum = parseInt(limit);
-        
+
         if (isNaN(pageNum) || pageNum < 1 || isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
             return res.status(400).json({
                 success: false,
                 message: "Parámetros de paginación inválidos"
             });
         }
-        
+
         const skip = (pageNum - 1) * limitNum;
-        
+
         const [sales, totalCount] = await Promise.all([
             salesModel.find({ trackingStatus: trackingValidation.value })
                 .populate('ShoppingCartId')
@@ -1040,7 +1276,7 @@ salesController.getSalesByTrackingStatus = async (req, res) => {
                 .limit(limitNum),
             salesModel.countDocuments({ trackingStatus: trackingValidation.value })
         ]);
-        
+
         res.status(200).json({
             success: true,
             data: sales,
@@ -1052,10 +1288,10 @@ salesController.getSalesByTrackingStatus = async (req, res) => {
         });
     } catch (error) {
         console.error('Error en getSalesByTrackingStatus:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             success: false,
-            message: "Error interno del servidor al obtener las ventas por estado de seguimiento", 
-            error: error.message 
+            message: "Error interno del servidor al obtener las ventas por estado de seguimiento",
+            error: error.message
         });
     }
 };
@@ -1126,10 +1362,10 @@ salesController.getSoldProductsStats = async (req, res) => {
 salesController.getTotalSales = async (req, res) => {
     try {
         const totalSales = await salesModel.countDocuments();
-        
-        res.status(200).json({ 
+
+        res.status(200).json({
             success: true,
-            total: totalSales 
+            total: totalSales
         });
     } catch (error) {
         console.error('Error en getTotalSales:', error);
@@ -1193,19 +1429,19 @@ salesController.getDashboardStats = async (req, res) => {
 salesController.getSalesDetailed = async (req, res) => {
     try {
         const { page = 1, limit = 10 } = req.query;
-        
+
         const pageNum = parseInt(page);
         const limitNum = parseInt(limit);
-        
+
         if (isNaN(pageNum) || pageNum < 1 || isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
             return res.status(400).json({
                 success: false,
                 message: "Parámetros de paginación inválidos"
             });
         }
-        
+
         const skip = (pageNum - 1) * limitNum;
-        
+
         // Obtener ventas con populate completo
         const [sales, totalCount] = await Promise.all([
             salesModel.find()
@@ -1267,7 +1503,7 @@ salesController.getSalesDetailed = async (req, res) => {
 
                     // Obtener información del cliente
                     const client = saleObj.ShoppingCartId.clientId;
-                    
+
                     // Si no hay cliente poblado, intentar obtenerlo manualmente
                     let clientInfo = null;
                     if (!client && saleObj.ShoppingCartId.clientId) {

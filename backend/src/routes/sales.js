@@ -71,6 +71,10 @@ router.get("/dashboardStats", salesController.getDashboardStats);
 // Ruta para obtener ventas con información detallada
 router.get("/detailed", salesController.getSalesDetailed);
 
+router.get("/user/:userId/stats", salesController.getUserOrderStats);
+
+router.get("/user/:userId/orders", salesController.getUserOrders);
+
 // Ruta para obtener ventas por estado de pago específico
 router.get("/paymentStatus/:status", salesController.getSalesByPaymentStatus);
 

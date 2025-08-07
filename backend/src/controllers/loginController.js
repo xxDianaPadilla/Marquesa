@@ -631,7 +631,8 @@ loginController.getUserInfo = async (req, res) => {
                     profilePicture: client.profilePicture,
                     favorites: client.favorites,
                     discount: client.discount,
-                    userType: 'Customer'
+                    userType: 'Customer',
+                    createdAt: client.createdAt
                 };
 
                 return res.status(200).json({

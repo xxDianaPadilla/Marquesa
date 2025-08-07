@@ -6,7 +6,7 @@ import { Card } from '../components/Card';
 import { Button } from '../components/ButtonRosa';
 import { FaEdit } from 'react-icons/fa';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/Tabs';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import toast from 'react-hot-toast';
 import EditProfileModal from '../components/Profile/EditProfileModal';
 
@@ -22,7 +22,9 @@ const Perfil = () => {
   const navigate = useNavigate();
   const { logout, userInfo, user, isAuthenticated, loading } = useAuth();
   const [showEditModal, setShowEditModal] = useState(false);
-  
+  const [userOrders, setUserOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+
   // DEBUG: Información del contexto de autenticación
   console.log('Profile - Estado del contexto:', {
     isAuthenticated,
@@ -32,7 +34,103 @@ const Perfil = () => {
     user,
     userInfo
   });
-  
+
+  /**
+   * Función para obtener los pedidos del usuario
+   */
+  const getUserOrders = async (userId) => {
+    try {
+      console.log('Obteniendo pedidos para usuario:', userId);
+      setLoadingOrders(true);
+      
+      if (!userId) {
+        console.warn('No se proporcionó userId para obtener pedidos');
+        return;
+      }
+
+      const response = await fetch(`http://localhost:4000/api/sales/user/${userId}/orders`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('Status de respuesta getUserOrders:', response.status);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Respuesta completa getUserOrders:', data);
+
+        if (data && data.success && data.data) {
+          console.log('Pedidos obtenidos exitosamente:', data.data);
+          setUserOrders(data.data);
+        } else {
+          console.warn('Respuesta sin estructura esperada:', data);
+          setUserOrders([]);
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('Error en respuesta del servidor:', response.status, errorText);
+        setUserOrders([]);
+      }
+    } catch (error) {
+      console.error('Error al obtener pedidos del usuario:', error);
+      setUserOrders([]);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
+  /**
+   * Función para formatear fecha
+   */
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  /**
+   * Función para calcular fecha de cancelación (3 días después de createdAt)
+   */
+  const getCancellableDate = (createdAt) => {
+    const date = new Date(createdAt);
+    date.setDate(date.getDate() + 3);
+    return date.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  /**
+   * Función para mapear trackingStatus a etiquetas en español
+   */
+  const getTrackingStatusLabel = (trackingStatus) => {
+    const statusMap = {
+      'Agendado': 'Preparando',
+      'En proceso': 'En camino',
+      'Entregado': 'Entregado'
+    };
+    return statusMap[trackingStatus] || trackingStatus;
+  };
+
+  /**
+   * Función para obtener el color de la etiqueta según el estado
+   */
+  const getStatusColor = (trackingStatus) => {
+    const colorMap = {
+      'Agendado': 'text-yellow-500 border-yellow-300',
+      'En proceso': 'text-blue-500 border-blue-300',
+      'Entregado': 'text-green-500 border-green-300'
+    };
+    return colorMap[trackingStatus] || 'text-gray-500 border-gray-300';
+  };
+
   /**
    * Función para manejar el cierre de sesión
    */
@@ -63,8 +161,16 @@ const Perfil = () => {
   // Combinamos la información del usuario de ambas fuentes disponibles en AuthContext
   // Priorizar userInfo sobre user ya que tiene más detalles
   const userData = userInfo || user || {};
-  
+
   console.log('Profile - Datos del usuario combinados:', userData);
+
+  // Effect para cargar los pedidos cuando el usuario esté disponible
+  useEffect(() => {
+    if (userData && (userData._id || userData.id)) {
+      const userId = userData._id || userData.id;
+      getUserOrders(userId);
+    }
+  }, [userData]);
 
   // Si está cargando, mostrar indicador
   if (loading) {
@@ -98,9 +204,9 @@ const Perfil = () => {
             <h1 className="text-3xl md:text-4xl font-bold text-gray-800">Configuración</h1>
             <p className="text-sm text-gray-500 mt-2">Administra tu información personal y preferencias</p>
           </div>
-          <Button 
+          <Button
             onClick={() => setShowEditModal(true)}
-            className="hover:bg-pink-400 text-white flex items-center text-sm px-4 py-2" 
+            className="hover:bg-pink-400 text-white flex items-center text-sm px-4 py-2"
             style={{ backgroundColor: '#E8ACD2' }}
           >
             <FaEdit className="mr-2" /> Editar perfil
@@ -111,7 +217,7 @@ const Perfil = () => {
           {/* Información personal - USANDO COMPONENTES NUEVOS */}
           <Card className="p-6">
             <h2 className="text-2xl md:text-4xl font-semibold mb-4">Información personal</h2>
-            
+
             {/* Componente de información del usuario */}
             <UserInfo user={userData} />
 
@@ -125,14 +231,14 @@ const Perfil = () => {
             </div>
           </Card>
 
-          {/* Tabs contenido - SIN CAMBIOS */}
+          {/* Tabs contenido - CON DATOS REALES */}
           <div className="md:col-span-2">
             <Card className="p-6">
               <Tabs defaultValue="pedidos">
-              <TabsList className="flex gap-2 bg-gray-100 rounded-md text-sm font-medium overflow-hidden w-full">
-  <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
-  <TabsTrigger value="descuentos">Códigos de descuento</TabsTrigger>
-</TabsList>
+                <TabsList className="flex gap-2 bg-gray-100 rounded-md text-sm font-medium overflow-hidden w-full">
+                  <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
+                  <TabsTrigger value="descuentos">Códigos de descuento</TabsTrigger>
+                </TabsList>
 
                 <div className="mt-6">
                   <TabsContent value="pedidos">
@@ -142,52 +248,53 @@ const Perfil = () => {
                     </div>
 
                     <div className="flex flex-col gap-4">
-                      {[{
-                        id: 1234,
-                        date: '05/05/2025',
-                        productos: 3,
-                        total: '$144,00',
-                        estado: 'Preparando',
-                        cancelable: '07/05/2025'
-                      }, {
-                        id: 5692,
-                        date: '02/05/2025',
-                        productos: 6,
-                        total: '$375,00',
-                        estado: 'Entregado',
-                        cancelable: '04/05/2025'
-                      }, {
-                        id: 5234,
-                        date: '29/04/2025',
-                        productos: 2,
-                        total: '$120,00',
-                        estado: 'En camino',
-                        cancelable: '01/05/2025'
-                      }].map((pedido, idx) => (
-                        <Card key={idx} className="border border-gray-200">
-                          <div className="p-4 space-y-2">
-                            <div className="flex flex-col sm:flex-row justify-between gap-2">
-                              <div>
-                                <p className="font-semibold text-sm sm:text-base">Pedido #{pedido.id}</p>
-                                <p className="text-xs text-gray-500">Realizado el {pedido.date}</p>
+                      {loadingOrders ? (
+                        <div className="text-center py-8">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500 mx-auto mb-4"></div>
+                          <p className="text-gray-600">Cargando pedidos...</p>
+                        </div>
+                      ) : userOrders.length > 0 ? (
+                        userOrders.map((pedido, idx) => (
+                          <Card key={idx} className="border border-gray-200">
+                            <div className="p-4 space-y-2">
+                              <div className="flex flex-col sm:flex-row justify-between gap-2">
+                                <div>
+                                  <p className="font-semibold text-sm sm:text-base">
+                                    Pedido #{pedido._id?.slice(-6) || 'N/A'}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    Realizado el {formatDate(pedido.createdAt)}
+                                  </p>
+                                </div>
+                                <span className={`border px-2 py-0.5 rounded-full text-xs h-fit ${getStatusColor(pedido.trackingStatus)}`}>
+                                  {getTrackingStatusLabel(pedido.trackingStatus)}
+                                </span>
                               </div>
-                              <span className="text-pink-500 border border-pink-300 px-2 py-0.5 rounded-full text-xs h-fit">
-                                {pedido.estado}
-                              </span>
-                            </div>
-                            <div className="flex flex-col sm:flex-row justify-between text-sm text-gray-600 gap-1">
-                              <span>{pedido.productos} productos · Total: {pedido.total}</span>
-                              <div className="flex items-center gap-1">
-                                <img src={calendario} alt="calendario" className="w-4 h-4" />
-                                <span>Cancelable hasta: {pedido.cancelable}</span>
+                              <div className="flex flex-col sm:flex-row justify-between text-sm text-gray-600 gap-1">
+                                <span>
+                                  {pedido.shoppingCart?.items?.length || 0} productos · 
+                                  Total: ${pedido.shoppingCart?.total?.toFixed(2) || '0.00'}
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  <img src={calendario} alt="calendario" className="w-4 h-4" />
+                                  <span>Cancelable hasta: {getCancellableDate(pedido.createdAt)}</span>
+                                </div>
                               </div>
+                              <Button 
+                                className="w-full hover:bg-pink-400 text-white py-2 text-sm" 
+                                onClick={handleSavesClick} 
+                                style={{ backgroundColor: '#E8ACD2' }}
+                              >
+                                Detalles pedidos
+                              </Button>
                             </div>
-                            <Button className="w-full hover:bg-pink-400 text-white py-2 text-sm" onClick={handleSavesClick} style={{ backgroundColor: '#E8ACD2' }}>
-                              Detalles pedidos
-                            </Button>
-                          </div>
-                        </Card>
-                      ))}
+                          </Card>
+                        ))
+                      ) : (
+                        <div className="text-center py-8">
+                          <p className="text-gray-500">No tienes pedidos recientes</p>
+                        </div>
+                      )}
                     </div>
                   </TabsContent>
 

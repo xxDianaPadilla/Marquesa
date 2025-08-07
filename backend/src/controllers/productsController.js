@@ -948,5 +948,67 @@ productsController.getProductsByCategory = async (req, res) => {
     }
 };
 
+productsController.getFeaturedProducts = async (req, res) => {
+    try {
+        // Obtenemos todos los productos disponibles
+        const allProducts = await productsModel.find({ 
+            stock: { $gt: 0 } // Solo productos con stock disponible
+        }).populate('categoryId');
+
+        // Si no hay productos suficientes, devolvemos los que existan
+        if (allProducts.length === 0) {
+            return res.status(200).json({
+                success: true,
+                message: 'No hay productos disponibles',
+                data: []
+            });
+        }
+
+        // Mezclamos array de productos de manera aleatoria 
+        const shuffledProducts = [...allProducts];
+        for (let i = shuffledProducts.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledProducts[i], shuffledProducts[j]] = [shuffledProducts[j], shuffledProducts[i]];
+        }
+
+        // Tomamos máximo 6 productos aleatorios
+        const featuredProducts = shuffledProducts.slice(0, 6);
+
+        // Formateamos los productos para el frontend
+        const formattedProducts = featuredProducts.map(product => ({
+            _id: product._id,
+            id: product._id, 
+            name: product.name,
+            description: product.description,
+            price: product.price,
+            stock: product.stock,
+            image: product.images && product.images.length > 0 ? product.images[0].image : null,
+            images: product.images,
+            category: product.categoryId ? {
+                _id: product.categoryId._id,
+                name: product.categoryId.name
+            } : null,
+            categoryId: product.categoryId?._id,
+            isPersonalizable: product.isPersonalizable,
+            createdAt: product.createdAt,
+            updatedAt: product.updatedAt
+        }));
+
+        res.status(200).json({
+            success: true,
+            message: 'Productos destacados obtenidos exitosamente',
+            data: formattedProducts,
+            total: formattedProducts.length
+        });
+
+    } catch (error) {
+        console.error('Error en getFeaturedProducts:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor al obtener productos destacados',
+            error: error.message
+        });
+    }
+};
 
 export default productsController;

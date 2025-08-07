@@ -1,9 +1,36 @@
-// OrderDetail.js - Componente actualizado para usar las nuevas rutas
+// OrderDetail.js - Componente actualizado para usar React Leaflet
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { ArrowLeft, MapPin, Package, Truck, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import Header from "../components/Header/Header";
 import toast from 'react-hot-toast';
+
+// Configurar iconos de Leaflet
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+// Icono personalizado para el marcador de entrega
+const deliveryIcon = new L.Icon({
+  iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+    <svg width="25" height="41" viewBox="0 0 25 41" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#E8ACD2" stroke="#fff" stroke-width="2" d="M12.5 0C5.596 0 0 5.596 0 12.5c0 12.5 12.5 28.5 12.5 28.5s12.5-16 12.5-28.5C25 5.596 19.404 0 12.5 0z"/>
+      <circle fill="#fff" cx="12.5" cy="12.5" r="6"/>
+      <circle fill="#E8ACD2" cx="12.5" cy="12.5" r="3"/>
+    </svg>
+  `),
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  shadowSize: [41, 41]
+});
 
 const OrderDetail = () => {
   const navigate = useNavigate();
@@ -18,6 +45,37 @@ const OrderDetail = () => {
   const [error, setError] = useState(null);
   const [cancellationInfo, setCancellationInfo] = useState(null);
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [mapCenter, setMapCenter] = useState([13.692940, -89.218191]); // San Salvador por defecto
+
+  // Función para geocodificar dirección usando Nominatim (gratuito)
+  const geocodeAddress = async (address) => {
+    try {
+      if (!address || address.trim() === '') {
+        console.log('Dirección vacía, usando coordenadas por defecto');
+        return [13.692940, -89.218191]; // San Salvador por defecto
+      }
+
+      const encodedAddress = encodeURIComponent(`${address}, San Salvador, El Salvador`);
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1&countrycodes=sv`
+      );
+      
+      const data = await response.json();
+      
+      if (data && data.length > 0) {
+        const lat = parseFloat(data[0].lat);
+        const lon = parseFloat(data[0].lon);
+        console.log('Geocodificación exitosa:', { lat, lon, address });
+        return [lat, lon];
+      } else {
+        console.log('No se encontraron coordenadas para:', address);
+        return [13.692940, -89.218191]; // Fallback a San Salvador
+      }
+    } catch (error) {
+      console.error('Error en geocodificación:', error);
+      return [13.692940, -89.218191]; // Fallback a San Salvador
+    }
+  };
 
   // Función para obtener detalles del pedido usando la nueva ruta
   const getOrderDetails = async (saleId) => {
@@ -38,6 +96,12 @@ const OrderDetail = () => {
           setOrderData(data.data.order);
           setCustomerData(data.data.customer);
           setProductsData(data.data.products);
+
+          // Geocodificar la dirección de entrega
+          if (data.data.order.deliveryAddress) {
+            const coordinates = await geocodeAddress(data.data.order.deliveryAddress);
+            setMapCenter(coordinates);
+          }
 
           // Obtener información de cancelación
           await getCancellationEligibility(saleId);
@@ -90,6 +154,13 @@ const OrderDetail = () => {
       setCustomerData(customer);
       setProductsData(products || []);
       setLoading(false);
+
+      // Geocodificar la dirección de entrega
+      if (order.deliveryAddress) {
+        geocodeAddress(order.deliveryAddress).then(coordinates => {
+          setMapCenter(coordinates);
+        });
+      }
 
       // Obtener información de cancelación si hay orderId
       if (order._id) {
@@ -264,9 +335,6 @@ const OrderDetail = () => {
     const [imageSrc, setImageSrc] = useState(null);
     const [hasError, setHasError] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-
-    // Placeholder SVG mejorado
-    const defaultImage = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjMyIiBjeT0iMjQiIHI9IjgiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTEwIDQyTDIyIDMwTDMyIDQwTDQyIDMwTDU0IDQyVjUySDEwVjQyWiIgZmlsbD0iIzlDQTNBRiIvPgo8L3N2Zz4K";
 
     // Función para extraer URL de imagen de diferentes formatos
     const extractImageUrl = (source) => {
@@ -576,7 +644,7 @@ const OrderDetail = () => {
               </div>
             </div>
 
-            {/* Ubicación en tiempo real */}
+            {/* Ubicación en tiempo real con React Leaflet */}
             <div className="bg-white rounded-lg border p-6" style={{ borderColor: '#E5E7EB' }}>
               <h2 className="text-lg font-medium text-gray-900 mb-2">
                 Ubicación en tiempo real
@@ -585,18 +653,39 @@ const OrderDetail = () => {
                 Sigue la ubicación de tu pedido en el mapa
               </p>
 
-              {/* Mapa - Google Maps Embed */}
+              {/* Mapa interactivo con React Leaflet */}
               <div className="rounded-lg h-64 overflow-hidden relative">
-                <iframe
-                  src={`https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dOjt5hk3_MV2vE&q=${encodeURIComponent(orderData.deliveryAddress || 'San Salvador, El Salvador')}`}
-                  width="100%"
-                  height="100%"
-                  style={{ border: 0 }}
-                  allowFullScreen=""
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                />
-                <div className="absolute bottom-4 left-4 right-4 bg-gray-800 text-white p-3 rounded-lg">
+                <MapContainer
+                  center={mapCenter}
+                  zoom={15}
+                  style={{ height: '100%', width: '100%' }}
+                  className="rounded-lg"
+                >
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                  <Marker position={mapCenter} icon={deliveryIcon}>
+                    <Popup>
+                      <div className="text-center">
+                        <div className="font-semibold text-gray-900 mb-1">
+                          Dirección de entrega
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {orderData.deliveryAddress || 'San Salvador, El Salvador'}
+                        </div>
+                        {orderData.deliveryPoint && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            Punto de referencia: {orderData.deliveryPoint}
+                          </div>
+                        )}
+                      </div>
+                    </Popup>
+                  </Marker>
+                </MapContainer>
+
+                {/* Overlay con información del estado */}
+                <div className="absolute bottom-4 left-4 right-4 bg-gray-800 text-white p-3 rounded-lg bg-opacity-90 backdrop-blur-sm">
                   <p className="text-sm font-medium">
                     {orderData.trackingStatus === 'Entregado' ? 'Tu pedido ha sido entregado' :
                       orderData.trackingStatus === 'En proceso' ? 'Tu pedido está en camino' :

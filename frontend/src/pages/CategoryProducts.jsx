@@ -19,7 +19,8 @@ const CategoryProducts = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [products, setProducts] = useState([]);
     const [error, setError] = useState(null);
-    const [imageLoadingStates, setImageLoadingStates] = useState({}); // Nuevo estado para controlar carga de imágenes
+    const [imageLoadingStates, setImageLoadingStates] = useState({});
+    const [favoriteToggling, setFavoriteToggling] = useState(new Set()); // Para manejar múltiples toggles
 
     // Hook de favoritos
     const {
@@ -27,7 +28,8 @@ const CategoryProducts = () => {
         addToFavorites,
         removeFromFavorites,
         isFavorite,
-        toggleFavorite
+        toggleFavorite,
+        getFavoriteProduct // Nueva función para debugging
     } = useFavorites();
 
     // URL base de la API
@@ -54,6 +56,99 @@ const CategoryProducts = () => {
         '688176179579a7cde1657ace': 'Giftboxes',
         '688175e79579a7cde1657ac6': 'Tarjetas'
     }), []);
+
+    /**
+     * Función helper para obtener ID del producto de forma consistente
+     */
+    const getProductId = useCallback((product) => {
+        if (!product) return null;
+        return product._id || product.id || null;
+    }, []);
+
+    /**
+     * Función para normalizar producto antes de enviarlo a favoritos
+     */
+    const normalizeProductForFavorites = useCallback((product) => {
+        if (!product) return null;
+
+        const productId = getProductId(product);
+        if (!productId) {
+            console.error('Product has no valid ID:', product);
+            return null;
+        }
+
+        // Extraer información de la categoría
+        let categoryName = 'Sin categoría';
+        let categoryId = null;
+
+        if (typeof product.categoryId === 'object' && product.categoryId) {
+            categoryId = product.categoryId._id || product.categoryId.id;
+            categoryName = product.categoryId.name || categoryMap[categoryId] || 'Sin categoría';
+        } else if (product.categoryId && categoryMap[product.categoryId]) {
+            categoryId = product.categoryId;
+            categoryName = categoryMap[product.categoryId];
+        }
+
+        // Extraer imagen
+        let image = '/placeholder-image.jpg';
+        if (product.image) {
+            image = product.image;
+        } else if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+            if (product.images[0]?.image) {
+                image = product.images[0].image;
+            } else if (typeof product.images[0] === 'string') {
+                image = product.images[0];
+            }
+        }
+
+        // Crear producto normalizado con todos los campos necesarios
+        const normalizedProduct = {
+            // IDs - asegurar consistencia
+            id: productId,
+            _id: productId,
+
+            // Información básica
+            name: product.name || 'Producto sin nombre',
+            description: product.description || '',
+
+            // Categoría normalizada
+            category: categoryName,
+            categoryId: categoryId,
+
+            // Precio
+            price: product.price || 0,
+
+            // Stock (si está disponible)
+            ...(product.stock !== undefined && { stock: Number(product.stock) }),
+
+            // Imágenes
+            image: image,
+            images: Array.isArray(product.images) ? product.images : (product.images ? [product.images] : []),
+
+            // Personalización
+            isPersonalizable: Boolean(product.isPersonalizable),
+
+            // Metadatos
+            createdAt: product.createdAt,
+            updatedAt: product.updatedAt,
+
+            // Preservar cualquier otro campo importante
+            ...Object.keys(product).reduce((acc, key) => {
+                if (!['id', '_id', 'name', 'description', 'category', 'categoryId', 'price', 'stock', 'image', 'images', 'isPersonalizable'].includes(key)) {
+                    acc[key] = product[key];
+                }
+                return acc;
+            }, {})
+        };
+
+        console.log('🔄 Product normalized for favorites:', {
+            original: product,
+            normalized: normalizedProduct,
+            id: productId
+        });
+
+        return normalizedProduct;
+    }, [getProductId, categoryMap]);
 
     /**
      * Función para obtener todos los productos - Memoizada con useCallback
@@ -131,16 +226,69 @@ const CategoryProducts = () => {
     }, [location.pathname]);
 
     /**
-     * Maneja el toggle de favorito - Optimizada con useCallback
+     * Maneja el toggle de favorito - MEJORADA con validación robusta
      */
-    const handleToggleFavorite = useCallback((product) => {
+    const handleToggleFavorite = useCallback(async (product) => {
+        const productId = getProductId(product);
+
+        // Validaciones previas
+        if (!product || !productId) {
+            console.error('❌ Invalid product for favorites:', product);
+            toast.error('Error: Producto inválido', {
+                duration: 2000,
+                position: 'top-center',
+                icon: '❌'
+            });
+            return;
+        }
+
+        // Evitar toggles múltiples del mismo producto
+        if (favoriteToggling.has(productId)) {
+            console.log('⏳ Toggle already in progress for product:', productId);
+            return;
+        }
+
         try {
-            console.log('❤️ Toggle favorite for product:', product.name);
-            const wasAdded = toggleFavorite(product);
+            // Marcar como procesando
+            setFavoriteToggling(prev => new Set([...prev, productId]));
+
+            console.log('❤️ Toggle favorite for product:', {
+                id: productId,
+                name: product.name,
+                currentStatus: isFavorite(productId)
+            });
+
+            // Normalizar producto antes de enviarlo al contexto
+            const normalizedProduct = normalizeProductForFavorites(product);
+
+            if (!normalizedProduct) {
+                throw new Error('No se pudo normalizar el producto');
+            }
+
+            const wasAdded = toggleFavorite(normalizedProduct);
+
+            // Verificar que se guardó correctamente
+            setTimeout(() => {
+                const savedProduct = getFavoriteProduct(productId);
+                console.log('✅ Verification after toggle:', {
+                    expected: wasAdded,
+                    inFavorites: !!savedProduct,
+                    productData: savedProduct
+                });
+
+                if (!wasAdded && savedProduct) {
+                    console.error('❌ Product was not removed correctly!');
+                    toast.error('Error al eliminar de favoritos', {
+                        duration: 3000,
+                        position: 'top-center',
+                        icon: '❌'
+                    });
+                }
+            }, 100);
 
             // Mostrar toast según la acción realizada
             if (wasAdded) {
-                toast.success(`¡${product.name} agregado a favoritos!`, {
+                toast.success(`¡${normalizedProduct.name} agregado a favoritos!`, {
                     duration: 2000,
                     position: 'top-center',
                     icon: '❤️',
@@ -149,9 +297,9 @@ const CategoryProducts = () => {
                         color: '#fff',
                     },
                 });
-                console.log('✅ Producto agregado a favoritos');
+                console.log('✅ Producto agregado a favoritos exitosamente');
             } else {
-                toast.success(`${product.name} eliminado de favoritos`, {
+                toast.success(`${normalizedProduct.name} eliminado de favoritos`, {
                     duration: 2000,
                     position: 'top-center',
                     icon: '💔',
@@ -160,17 +308,25 @@ const CategoryProducts = () => {
                         color: '#fff',
                     },
                 });
-                console.log('❌ Producto removido de favoritos');
+                console.log('❌ Producto removido de favoritos exitosamente');
             }
+
         } catch (error) {
-            console.error('Error al manejar favoritos:', error);
+            console.error('❌ Error al manejar favoritos:', error);
             toast.error('Error al actualizar favoritos', {
-                duration: 2000,
+                duration: 3000,
                 position: 'top-center',
                 icon: '❌'
             });
+        } finally {
+            // Remover del estado de procesando
+            setFavoriteToggling(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(productId);
+                return newSet;
+            });
         }
-    }, [toggleFavorite]);
+    }, [getProductId, normalizeProductForFavorites, isFavorite, toggleFavorite, getFavoriteProduct, favoriteToggling]);
 
     /**
      * Maneja la carga de imágenes para evitar parpadeo
@@ -206,7 +362,6 @@ const CategoryProducts = () => {
     /**
      * Maneja el cambio de categoría en la navegación - Optimizada
      */
-    // En CategoryProducts, asegúrate de que handleCategoryChange sea estable
     const handleCategoryChange = useCallback(async (categoryId) => {
         // Prevenir cambios innecesarios
         if (categoryId === activeCategory || isLoading) {
@@ -300,18 +455,29 @@ const CategoryProducts = () => {
     }, [products, activeCategory, categoryMap, categories]);
 
     /**
-     * Formatea los productos para ProductCard - Memoizada
+     * Formatea los productos para ProductCard - MEJORADA
      */
     const formatProductForCard = useCallback((product) => {
         console.log("🎨 Formateando producto para ProductCard:", product);
+
+        const productId = getProductId(product);
+
+        if (!productId) {
+            console.error('❌ Product has no valid ID:', product);
+            return null;
+        }
 
         const fallbackImage = '/placeholder-image.jpg';
         let image = fallbackImage;
 
         // Extraer la imagen del producto
-        if (product.images && Array.isArray(product.images) && product.images.length > 0) {
-            if (product.images[0].image) {
+        if (product.image) {
+            image = product.image;
+        } else if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+            if (product.images[0]?.image) {
                 image = product.images[0].image;
+            } else if (typeof product.images[0] === 'string') {
+                image = product.images[0];
             }
         }
 
@@ -323,21 +489,27 @@ const CategoryProducts = () => {
             categoryName = categoryMap[product.categoryId];
         }
 
-        const productId = product._id || product.id;
-
-        return {
+        const formattedProduct = {
             ...product,
             id: productId,
             _id: productId,
-            name: product.name,
-            description: product.description,
-            price: product.price,
+            name: product.name || 'Producto sin nombre',
+            description: product.description || '',
+            price: product.price || 0,
             image: image,
-            stock: product.stock,
+            images: Array.isArray(product.images) ? product.images : (product.images ? [product.images] : []),
+            stock: product.stock !== undefined ? Number(product.stock) : undefined,
             category: categoryName,
-            isPersonalizable: product.isPersonalizable || false
+            isPersonalizable: Boolean(product.isPersonalizable)
         };
-    }, [categoryMap]);
+
+        console.log("✅ Producto formateado:", {
+            original: product,
+            formatted: formattedProduct
+        });
+
+        return formattedProduct;
+    }, [getProductId, categoryMap]);
 
     /**
      * Función para reintentar la carga - Optimizada
@@ -352,7 +524,7 @@ const CategoryProducts = () => {
     }, [activeCategory, fetchAllProducts, fetchProductsByCategory]);
 
     /**
-     * Renderiza la grilla de productos - Optimizada con useMemo para productos formateados
+     * Renderiza la grilla de productos - MEJORADA con mejor manejo de errores
      */
     const renderProductGrid = useCallback((products, categoryId) => {
         if (!products || products.length === 0) {
@@ -367,13 +539,22 @@ const CategoryProducts = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                 {products.map((product) => {
                     const formattedProduct = formatProductForCard(product);
+
+                    // Skip productos que no se pudieron formatear
+                    if (!formattedProduct) {
+                        console.error('❌ Skipping invalid product:', product);
+                        return null;
+                    }
+
                     const productId = formattedProduct._id || formattedProduct.id;
+                    const isProductFavorite = isFavorite(productId);
+                    const isToggling = favoriteToggling.has(productId);
 
                     return (
                         <div
                             key={productId}
                             className={`transition-opacity duration-300 ${imageLoadingStates[productId] ? 'opacity-100' : 'opacity-0'
-                                }`}
+                                } ${isToggling ? 'pointer-events-none opacity-75' : ''}`}
                             style={{ minHeight: '300px' }} // Altura mínima para evitar layout shift
                         >
                             <ProductCard
@@ -381,16 +562,38 @@ const CategoryProducts = () => {
                                 product={formattedProduct}
                                 showFavoriteButton={true}
                                 showRemoveButton={false}
-                                isFavorite={isFavorite(productId)}
+                                isFavorite={isProductFavorite}
                                 onToggleFavorite={() => handleToggleFavorite(formattedProduct)}
                                 onImageLoad={handleImageLoad}
                             />
+
+                            {/* Overlay de loading durante toggle */}
+                            {isToggling && (
+                                <div className="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center z-10">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
+                                </div>
+                            )}
                         </div>
                     );
-                })}
+                }).filter(Boolean)} {/* Filtrar elementos null */}
             </div>
         );
-    }, [formatProductForCard, isFavorite, handleToggleFavorite, handleImageLoad, imageLoadingStates]);
+    }, [formatProductForCard, isFavorite, favoriteToggling, handleToggleFavorite, handleImageLoad, imageLoadingStates]);
+
+    // Debug effect para monitorear favoritos
+    useEffect(() => {
+        if (process.env.NODE_ENV === 'development') {
+            console.log('🔍 Favorites debug:', {
+                favoritesCount: favorites.length,
+                favoriteIds: favorites.map(f => getProductId(f)),
+                products: products.map(p => ({
+                    id: getProductId(p),
+                    name: p.name,
+                    isFavorite: isFavorite(getProductId(p))
+                }))
+            });
+        }
+    }, [favorites, products, getProductId, isFavorite]);
 
     // Mostrar error si existe
     if (error && !isLoading) {

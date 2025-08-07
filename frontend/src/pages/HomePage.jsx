@@ -1,33 +1,19 @@
 /**
  * Componente HomePage - Página principal de la tienda La Marquesa
- * ACTUALIZADA: Implementa componentes reutilizables para mejorar la organización del código
+ * ACTUALIZADA: Usa productos reales de la base de datos con carrusel dinámico
  * 
  * Funcionalidades principales:
  * - Landing page con diseño atractivo y responsivo
  * - Navegación de categorías con filtros
- * - Productos destacados con sistema de favoritos integrado
+ * - Productos destacados DINÁMICOS con carrusel y sistema de favoritos
  * - Gestión de carrito de compras
  * - Sección de testimonios de clientes
  * - Chat button integrado para soporte
  * - Notificaciones toast para feedback del usuario
- * 
- * Componentes utilizados:
- * - Header/Footer (existentes)
- * - CategoryNavigation (existente)
- * - ChatButton (existente)
- * - FeatureCard (nuevo)
- * - TestimonialCard (nuevo)
- * - NotificationToast (nuevo)
- * - Container (nuevo)
- * - ActionButton (nuevo)
- * - PriceDisplay (nuevo)
  */
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { useFavorites } from "../context/FavoritesContext"; // Importar el contexto de favoritos
-import toast from 'react-hot-toast'; // Para notificaciones mejoradas
 
 // Componentes principales existentes
 import Header from "../components/Header/Header";
@@ -40,7 +26,9 @@ import FeatureCard from "../components/FeatureCard";
 import NotificationToast from "../components/NotificationToast";
 import Container from "../components/Container";
 import ActionButton from "../components/ActionButton";
-import PriceDisplay from "../components/PriceDisplay";
+
+// NUEVO: Carrusel de productos destacados dinámico
+import FeaturedProductsCarousel from "../components/FeaturedProductsCarousel";
 
 // NUEVO: Carrusel de testimonios
 import TestimonialsCarousel from "../components/TestimonialCarousel";
@@ -48,73 +36,15 @@ import TestimonialsCarousel from "../components/TestimonialCarousel";
 // NUEVO: Sección de categorías
 import CategoriesSection from '../components/CategoriesSectionHome';
 
-// NUEVO: Sección de productos destacadis
-import TopRatedProducts from '../components/RecommendedProducts ';
-
-
 // Recursos visuales
 import heroImage from "../assets/postfebruaryhome.png";
-import flower1 from "../assets/savesFlower1.png";
-import flower2 from "../assets/savesFlower2.png";
-import flower3 from "../assets/savesFlower3.png";
-import iconFavorites from '../assets/favoritesIcon.png';
 
 const HomePage = () => {
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
-  const { toggleFavorite, isFavorite } = useFavorites(); // Usar el contexto de favoritos
 
-  // Estados para funcionalidades interactivas
-  const [cart, setCart] = useState([]);
+  // Estados para notificaciones
   const [showCartMessage, setShowCartMessage] = useState(false);
   const [showFavoriteMessage, setShowFavoriteMessage] = useState(false);
-
-  /**
-   * Datos de productos destacados
-   * NOTA: Estos productos tienen un formato diferente al resto de la app
-   * Se normalizan para ser compatibles con el sistema de favoritos
-   */
-  const featuredProducts = [
-    {
-      id: "p1",
-      _id: "p1", // Agregar _id para compatibilidad
-      name: "Ramo de flores secas lavanda",
-      description: "Arreglos con flores secas",
-      price: 10.0,
-      image: flower1,
-      category: "flores-secas"
-    },
-    {
-      id: "p2",
-      _id: "p2", // Agregar _id para compatibilidad
-      name: "Cuadro sencillo de hogar",
-      description: "Cuadros decorativos",
-      price: 34.0,
-      image: flower2,
-      category: "cuadros-decorativos"
-    },
-    {
-      id: "p3",
-      _id: "p3", // Agregar _id para compatibilidad
-      name: "Ramo de rosas frescas",
-      description: "Arreglos con flores naturales",
-      price: 23.0,
-      image: flower3,
-      category: "flores-naturales"
-    },
-  ];
-
-  /**
-   * Categorías disponibles en la tienda
-   */
-  const categories = [
-    { id: "todos", name: "Todos" },
-    { id: "flores-naturales", name: "Arreglos con flores naturales" },
-    { id: "flores-secas", name: "Arreglos con flores secas" },
-    { id: "cuadros-decorativos", name: "Cuadros decorativos" },
-    { id: "giftboxes", name: "Giftboxes" },
-    { id: "tarjetas", name: "Tarjetas" },
-  ];
 
   /**
    * Datos de características de la empresa
@@ -162,91 +92,6 @@ const HomePage = () => {
   };
 
   /**
-   * Maneja la funcionalidad de favoritos usando el contexto
-   */
-  const handleToggleFavorite = (product) => {
-    try {
-      // Preparar el objeto del producto para favoritos
-      const productForFavorites = {
-        _id: product._id || product.id,
-        id: product.id || product._id, // Para compatibilidad
-        name: product.name,
-        price: product.price,
-        description: product.description,
-        category: product.category,
-        image: product.image
-      };
-
-      const wasAdded = toggleFavorite(productForFavorites);
-
-      if (wasAdded) {
-        toast.success(`¡${product.name} agregado a favoritos!`, {
-          duration: 2000,
-          position: 'top-center',
-          icon: '❤️',
-          style: {
-            background: '#EC4899',
-            color: '#fff',
-          },
-        });
-        setShowFavoriteMessage(true);
-      } else {
-        toast.success(`${product.name} eliminado de favoritos`, {
-          duration: 2000,
-          position: 'top-center',
-          icon: '💔',
-          style: {
-            background: '#6B7280',
-            color: '#fff',
-          },
-        });
-      }
-    } catch (error) {
-      console.error('Error al manejar favoritos:', error);
-      toast.error('Error al actualizar favoritos', {
-        duration: 2000,
-        position: 'top-center',
-        icon: '❌'
-      });
-    }
-  };
-
-  /**
-   * Maneja la adición de productos al carrito
-   */
-  const handleAddToCart = (product) => {
-    const existingItem = cart.find(item => item.id === product.id);
-    if (existingItem) {
-      setCart(cart.map(item =>
-        item.id === product.id
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
-      ));
-    } else {
-      setCart([...cart, { ...product, quantity: 1 }]);
-    }
-
-    toast.success(`¡${product.name} agregado al carrito!`, {
-      duration: 2000,
-      position: 'top-center',
-      icon: '🛒',
-      style: {
-        background: '#10B981',
-        color: '#fff',
-      },
-    });
-
-    setShowCartMessage(true);
-  };
-
-  /**
-   * Navegación a la página de todos los productos
-   */
-  const handleViewAll = () => {
-    navigate('/categoryProducts');
-  };
-
-  /**
    * Scroll suave hacia la sección de productos
    */
   const handleShopNow = () => {
@@ -254,20 +99,6 @@ const HomePage = () => {
     if (productsSection) {
       productsSection.scrollIntoView({ behavior: 'smooth' });
     }
-  };
-
-  /**
-   * Mapeo de categorías para navegación
-   */
-  const getCategoryId = (categorySlug) => {
-    const categoryMap = {
-      'flores-naturales': '688175a69579a7cde1657aaa',
-      'flores-secas': '688175d89579a7cde1657ac2',
-      'cuadros-decorativos': '688175fd9579a7cde1657aca',
-      'giftboxes': '688176179579a7cde1657ace',
-      'tarjetas': '688175e79579a7cde1657ac6'
-    };
-    return categoryMap[categorySlug] || categorySlug;
   };
 
   return (
@@ -379,127 +210,16 @@ const HomePage = () => {
         subtitle="Explora nuestra selección de productos para cada ocasión."
       />
 
-      {/* Sección de productos destacados */}
-      <section id="productos-destacados" className="bg-pink-50 py-8 sm:py-14">
-        <Container>
-          <h2
-            className="text-2xl sm:text-3xl lg:text-4xl font-medium text-gray-900 text-center mb-2"
-            style={{ fontFamily: "Poppins" }}
-          >
-            Productos destacados
-          </h2>
-
-          <p className="text-center text-gray-600 mb-8 sm:mb-10 text-base sm:text-lg max-w-2xl mx-auto" style={{ fontFamily: "Poppins" }}>
-            Descubre nuestros productos más populares y mejor valorados.
-          </p>
-
-          {/* Grid de productos destacados */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8" style={{ cursor: 'pointer' }}>
-            {featuredProducts.map((product) => {
-              const productId = product._id || product.id;
-              const isProductFavorite = isFavorite(productId);
-
-              return (
-                <div
-                  key={product.id}
-                  className="bg-white rounded-lg shadow-md hover:shadow-lg transition-transform transform hover:scale-105 cursor-pointer"
-                  onClick={() => navigate(`/categoria/${getCategoryId(product.category)}`)}
-                >
-                  <div className="relative">
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      className="w-full h-48 sm:h-64 lg:h-85 object-cover rounded-t-lg"
-                    />
-
-                    {/* Badge de precio usando componente nuevo */}
-                    <div className="absolute top-3 right-3 bg-white bg-opacity-90 rounded-full px-3 py-1 shadow-md">
-                      <PriceDisplay price={product.price} size="sm" />
-                    </div>
-
-                    {/* Botón de favorito mejorado */}
-                    <button
-                      style={{ cursor: 'pointer' }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleToggleFavorite(product);
-                      }}
-                      className={`absolute top-3 left-3 p-2 rounded-full transition-all duration-200 transform hover:scale-110 shadow-md
-                        ${isProductFavorite
-                          ? 'bg-pink-500 bg-opacity-90 hover:bg-opacity-100'
-                          : 'bg-white bg-opacity-80 hover:bg-opacity-100'
-                        }`}
-                    >
-                      {isProductFavorite ? (
-                        <svg
-                          className="w-5 h-5 text-white"
-                          fill="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                        </svg>
-                      ) : (
-                        <img
-                          src={iconFavorites}
-                          alt="Agregar a favoritos"
-                          className="w-5 h-6 transition-all duration-200"
-                        />
-                      )}
-                    </button>
-                  </div>
-
-                  <div className="p-4">
-                    <h3 className="text-lg font-semibold mb-1" style={{ fontFamily: "Poppins" }}>
-                      {product.name}
-                    </h3>
-                    <p className="text-sm text-gray-600 mb-2" style={{ fontFamily: "Poppins" }}>
-                      {product.description}
-                    </p>
-
-                    <div className="flex items-center justify-between mb-3">
-                      <PriceDisplay price={product.price} />
-
-                      {/* Indicador visual de favorito */}
-                      <div className={`flex items-center gap-2 ${isProductFavorite ? 'text-pink-500' : 'text-gray-400'}`}>
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                        </svg>
-                        <span className="text-xs font-medium">
-                          {isProductFavorite ? 'En favoritos' : 'Guardar'}
-                        </span>
-                      </div>
-                    </div>
-
-                    <ActionButton
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleAddToCart(product);
-                      }}
-                      variant="primary"
-                      size="md"
-                      className="w-full"
-                    >
-                      Añadir al carrito
-                    </ActionButton>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Botón para ver todos los productos */}
-          <div className="flex justify-center mt-8 sm:mt-10">
-            <ActionButton
-              onClick={handleViewAll}
-              variant="outline"
-              size="lg"
-              className="w-full sm:w-auto"
-            >
-              Ver todos los productos 🡢
-            </ActionButton>
-          </div>
-        </Container>
-      </section>
+      {/* SECCIÓN DE PRODUCTOS DESTACADOS ACTUALIZADA */}
+      {/* Ahora usa productos reales de la base de datos con carrusel dinámico */}
+      <div id="productos-destacados">
+        <FeaturedProductsCarousel
+          autoSlideInterval={5000}  // Cambio automático cada 5 segundos
+          showArrows={true}         // Mostrar flechas de navegación
+          showDots={true}          // Mostrar indicadores de posición
+          className="scroll-mt-20"  // Margen superior para scroll suave
+        />
+      </div>
 
       {/* Sección "¿Por qué elegirnos?" usando FeatureCard */}
       <section className="bg-white py-8 sm:py-14">

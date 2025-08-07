@@ -16,6 +16,10 @@ const Saves = () => {
     const { isAuthenticated, user } = useAuth();
     const [localLoading, setLocalLoading] = useState(true);
 
+    // Crear un array seguro de favoritos
+    const safeFavorites = Array.isArray(favorites) ? favorites : [];
+    const favoritesCount = safeFavorites.length;
+
     // Simular carga inicial
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -25,7 +29,11 @@ const Saves = () => {
     }, []);
 
     const handleRemoveProduct = (productId) => {
-        removeFromFavorites(productId);
+        try {
+            removeFromFavorites(productId);
+        } catch (error) {
+            console.error('Error removing product:', error);
+        }
     };
 
     const handleExploreProducts = () => {
@@ -72,15 +80,15 @@ const Saves = () => {
                             className="text-gray-600"
                             style={{ fontFamily: 'Poppins, sans-serif' }}
                         >
-                            {favorites.length > 0
-                                ? `Tienes ${favorites.length} producto${favorites.length === 1 ? '' : 's'} en tu lista de favoritos`
+                            {favoritesCount > 0
+                                ? `Tienes ${favoritesCount} producto${favoritesCount === 1 ? '' : 's'} en tu lista de favoritos`
                                 : "Aquí encontrarás tus productos favoritos"
                             }
                         </p>
                     </div>
 
                     {/* Contenido principal */}
-                    {favorites.length === 0 ? (
+                    {favoritesCount === 0 ? (
                         <EmptyState
                             icon={
                                 <svg className="w-20 h-20 text-gray-300 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -97,13 +105,35 @@ const Saves = () => {
                         <>
                             {/* Grid de productos guardados */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
-                                {favorites.map((product) => (
-                                    <ProductCard
-                                        key={product.id}
-                                        product={product}
-                                        onRemove={handleRemoveProduct}
-                                    />
-                                ))}
+                                {safeFavorites.map((product, index) => {
+                                    // Validar que el producto tenga los datos mínimos necesarios
+                                    if (!product || typeof product !== 'object') {
+                                        console.warn('Invalid product at index', index, product);
+                                        return null;
+                                    }
+
+                                    const productKey = product._id || product.id || `product-${index}`;
+                                    
+                                    // Crear un producto validado para evitar errores en ProductCard
+                                    const validatedProduct = {
+                                        _id: product._id || product.id,
+                                        id: product.id || product._id,
+                                        name: product.name || 'Producto sin nombre',
+                                        description: product.description || '',
+                                        price: product.price || 0,
+                                        image: product.image || '/placeholder-product.jpg',
+                                        categoryId: product.categoryId,
+                                        ...product // Spread the rest of the properties
+                                    };
+
+                                    return (
+                                        <ProductCard
+                                            key={productKey}
+                                            product={validatedProduct}
+                                            onRemove={handleRemoveProduct}
+                                        />
+                                    );
+                                })}
                             </div>
 
                             {/* Sección de acciones */}
@@ -149,4 +179,4 @@ const Saves = () => {
     );
 };
 
-export default Saves
+export default Saves;

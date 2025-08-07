@@ -43,8 +43,11 @@ const upload = multer({
     }
 });
 
+router.get('/featured', productsController.getFeaturedProducts);
+
 // Nueva ruta para obtener productos por categoría
 router.get('/by-category/:categoryId', productsController.getProductsByCategory);
+router.get('/featured', productsController.getFeaturedProducts);
 
 router.route("/")
     .get(productsController.getProducts)

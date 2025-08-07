@@ -1,6 +1,5 @@
 import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
 import { useFavorites } from "../context/FavoritesContext";
 
 const ProductCard = ({
@@ -16,6 +15,96 @@ const ProductCard = ({
     const { isFavorite: contextIsFavorite } = useFavorites();
     const [imageLoaded, setImageLoaded] = useState(false);
     const [imageError, setImageError] = useState(false);
+
+    // ========== FUNCIONES DE VALIDACIÓN DEFENSIVA ==========
+
+    /**
+     * Convierte cualquier valor a string de forma segura para renderizar
+     */
+    const safeToString = useCallback((value) => {
+        if (value === null || value === undefined) return '';
+        if (typeof value === 'string') return value;
+        if (typeof value === 'number') return value.toString();
+        if (typeof value === 'boolean') return value.toString();
+        if (Array.isArray(value)) return value.join(', ');
+        if (typeof value === 'object') {
+            // Si es un objeto con una propiedad 'name', usarla
+            if (value.name) return safeToString(value.name);
+            // Si es un objeto con una propiedad 'value', usarla
+            if (value.value !== undefined) return safeToString(value.value);
+            // En último caso, convertir a JSON
+            try {
+                return JSON.stringify(value);
+            } catch (error) {
+                return '[Objeto]';
+            }
+        }
+        return String(value);
+    }, []);
+
+    /**
+     * Convierte valor a número de forma segura - VERSIÓN CORREGIDA
+     */
+    const safeToNumber = useCallback((value, defaultValue = 0) => {
+        // Si el valor es null o undefined, usar el valor por defecto
+        if (value === null || value === undefined) return defaultValue;
+
+        if (typeof value === 'number') {
+            return isNaN(value) ? defaultValue : value;
+        }
+
+        if (typeof value === 'string') {
+            // Limpiar la cadena de caracteres no numéricos excepto punto y signo negativo
+            const cleanedValue = value.replace(/[^\d.-]/g, '');
+            const parsed = parseFloat(cleanedValue);
+            return isNaN(parsed) ? defaultValue : parsed;
+        }
+
+        if (typeof value === 'object' && value !== null) {
+            if (value.value !== undefined) return safeToNumber(value.value, defaultValue);
+            if (value.amount !== undefined) return safeToNumber(value.amount, defaultValue);
+        }
+
+        return defaultValue;
+    }, []);
+
+    // ========== VALORES SEGUROS PARA RENDERIZAR - VERSIÓN CORREGIDA ==========
+
+    // Función para determinar el stock real
+    const getProductStock = (product) => {
+        // Primero verificar la propiedad 'stock' directa
+        if (product.stock !== undefined && product.stock !== null) {
+            return safeToNumber(product.stock, 0);
+        }
+
+        // Si no existe 'stock', asumir que hay stock disponible (no mostrar como sin stock)
+        // Esto evita mostrar "Sin stock" cuando simplemente no tenemos la información
+        return null; // null significa "stock desconocido"
+    };
+
+    const productStock = getProductStock(product);
+
+    const safeProduct = {
+        id: product._id || product.id || 'unknown',
+        name: safeToString(product.name) || 'Producto sin nombre',
+        description: safeToString(product.description) || '',
+        category: safeToString(product.category) || '',
+        price: safeToNumber(product.price, 0),
+        stock: productStock,
+        image: product.image || '',
+        images: product.images || []
+    };
+
+    // Debug log para verificar el stock - VERSIÓN MEJORADA
+    console.log('Product stock debug:', {
+        originalStock: product.stock,
+        safeStock: safeProduct.stock,
+        productName: safeProduct.name,
+        hasStockProperty: product.hasOwnProperty('stock'),
+        allProductKeys: Object.keys(product)
+    });
+
+    // ========== HANDLERS ==========
 
     /**
      * Maneja el click del botón eliminar
@@ -43,11 +132,11 @@ const ProductCard = ({
     }, [handleViewProduct]);
 
     /**
-     * Maneja el toggle de favorito - REMOVIDO el toast ya que se maneja en el padre
+     * Maneja el toggle de favorito
      */
     const handleToggleFavorite = useCallback((e) => {
         e.stopPropagation();
-        
+
         if (onToggleFavorite) {
             onToggleFavorite();
         }
@@ -59,8 +148,7 @@ const ProductCard = ({
     const handleImageLoad = useCallback(() => {
         setImageLoaded(true);
         setImageError(false);
-        
-        // Notificar al componente padre que la imagen se cargó
+
         if (onImageLoad) {
             const productId = product._id || product.id;
             onImageLoad(productId);
@@ -73,8 +161,7 @@ const ProductCard = ({
     const handleImageError = useCallback((e) => {
         setImageError(true);
         e.target.src = '/placeholder-image.jpg';
-        
-        // Aún notificar que "cargó" para evitar que se quede invisible
+
         if (onImageLoad) {
             const productId = product._id || product.id;
             onImageLoad(productId);
@@ -85,46 +172,50 @@ const ProductCard = ({
      * Formatea el precio del producto a formato de moneda
      */
     const formatPrice = useCallback((price) => {
-        if (typeof price === 'string' && price.includes('$')) {
-            return price;
-        }
+        try {
+            const numericPrice = safeToNumber(price, 0);
 
-        if (typeof price === 'number') {
-            return `$${price.toFixed(2)}`;
-        }
+            if (typeof price === 'string' && price.includes('$')) {
+                return price;
+            }
 
-        const numericPrice = parseFloat(price);
-        if (!isNaN(numericPrice)) {
             return `$${numericPrice.toFixed(2)}`;
+        } catch (error) {
+            console.error('Error formatting price:', error, price);
+            return '$0.00';
         }
-
-        return `$${price}`;
-    }, []);
+    }, [safeToNumber]);
 
     /**
-     * Obtiene la imagen del producto con fallback mejorado
+     * Obtiene la imagen del producto con fallback mejorado - VERSIÓN CORREGIDA
      */
     const getProductImage = useCallback((product) => {
-        if (product.image) {
+        // Primero verificar si hay un array de imágenes
+        if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+            const firstImage = product.images[0];
+
+            // Si el primer elemento del array es un objeto con propiedad 'image'
+            if (firstImage && typeof firstImage === 'object' && firstImage.image) {
+                return firstImage.image;
+            }
+
+            // Si el primer elemento es directamente una URL string
+            if (typeof firstImage === 'string') {
+                return firstImage;
+            }
+        }
+
+        // Luego verificar la propiedad image directa
+        if (product.image && typeof product.image === 'string') {
             return product.image;
         }
 
-        if (product.images && Array.isArray(product.images) && product.images.length > 0) {
-            if (product.images[0] && typeof product.images[0] === 'object' && product.images[0].image) {
-                return product.images[0].image;
-            }
-
-            if (typeof product.images[0] === 'string') {
-                return product.images[0];
-            }
-        }
-
-        return '/placeholder-image.jpg'; // Fallback directo
+        return '/placeholder-image.jpg';
     }, []);
 
     // Obtener el ID del producto de manera segura
     const productId = product._id || product.id;
-    
+
     // Determinar si es favorito usando el prop o el contexto como fallback
     const isProductFavorite = isFavorite !== undefined ? isFavorite : (productId ? contextIsFavorite(productId) : false);
 
@@ -141,21 +232,21 @@ const ProductCard = ({
                         <div className="text-gray-400 text-sm">Cargando...</div>
                     </div>
                 )}
-                
+
                 <img
                     src={getProductImage(product)}
-                    alt={product.name}
-                    className={`w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300 ${
-                        imageLoaded ? 'opacity-100' : 'opacity-0 absolute'
-                    }`}
+                    alt={safeProduct.name}
+                    className={`w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0 absolute'
+                        }`}
                     onLoad={handleImageLoad}
                     onError={handleImageError}
-                    loading="lazy" // Lazy loading nativo
+                    loading="lazy"
                 />
 
                 {/* Botón de eliminar */}
                 {showRemoveButton && onRemove && (
                     <button
+                        style={{ cursor: 'pointer' }}
                         onClick={(e) => {
                             e.stopPropagation();
                             handleRemoveClick();
@@ -241,17 +332,19 @@ const ProductCard = ({
                     </div>
                 )}
 
-                {/* Badge de stock */}
-                {product.stock !== undefined && (
+                {/* Badge de stock - LÓGICA CORREGIDA PARA MANEJAR STOCK DESCONOCIDO */}
+                {safeProduct.stock !== null && (
                     <>
-                        {product.stock <= 5 && product.stock > 0 && (
+                        {/* Advertencia de stock bajo (solo si hay stock > 0) */}
+                        {safeProduct.stock <= 5 && safeProduct.stock > 0 && (
                             <div className="absolute bottom-2 right-2 z-10">
                                 <span className="bg-orange-500 text-white text-xs px-2 py-1 rounded-full font-medium shadow-md">
-                                    ¡Solo {product.stock}!
+                                    ¡Solo {safeProduct.stock}!
                                 </span>
                             </div>
                         )}
-                        {product.stock === 0 && (
+                        {/* Overlay de sin stock (solo si stock es exactamente 0) */}
+                        {safeProduct.stock === 0 && (
                             <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-10">
                                 <span className="bg-red-500 text-white px-3 py-1 rounded-full font-medium">
                                     Sin stock
@@ -265,12 +358,12 @@ const ProductCard = ({
             {/* Contenido de información del producto */}
             <div className="p-4 flex flex-col flex-grow">
                 {/* Categoría del producto */}
-                {product.category && (
+                {safeProduct.category && (
                     <p
                         className="text-xs text-gray-500 uppercase tracking-wide mb-1"
                         style={{ fontFamily: 'Poppins, sans-serif' }}
                     >
-                        {product.category}
+                        {safeProduct.category}
                     </p>
                 )}
 
@@ -279,16 +372,16 @@ const ProductCard = ({
                     className="text-lg font-semibold text-gray-800 mb-2 line-clamp-2 flex-grow"
                     style={{ fontFamily: 'Poppins, sans-serif' }}
                 >
-                    {product.name}
+                    {safeProduct.name}
                 </h3>
 
                 {/* Descripción del producto */}
-                {product.description && (
+                {safeProduct.description && (
                     <p
                         className="text-sm text-gray-600 mb-3 line-clamp-2"
                         style={{ fontFamily: 'Poppins, sans-serif' }}
                     >
-                        {product.description}
+                        {safeProduct.description}
                     </p>
                 )}
 
@@ -298,32 +391,33 @@ const ProductCard = ({
                         className="text-xl font-bold text-gray-900"
                         style={{ fontFamily: 'Poppins, sans-serif' }}
                     >
-                        {formatPrice(product.price)}
+                        {formatPrice(safeProduct.price)}
                     </span>
 
-                    {product.stock !== undefined && product.stock > 0 && (
+                    {/* Mostrar stock solo si tenemos información de stock y es mayor a 0 */}
+                    {safeProduct.stock !== null && safeProduct.stock > 0 && (
                         <span className="text-xs text-gray-500">
-                            Stock: {product.stock}
+                            Stock: {safeProduct.stock}
                         </span>
                     )}
                 </div>
 
-                {/* Botón de acción */}
+                {/* Botón de acción - LÓGICA CORREGIDA PARA STOCK DESCONOCIDO */}
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
                         handleViewProduct();
                     }}
-                    disabled={product.stock === 0}
+                    disabled={safeProduct.stock === 0}
                     className={`w-full px-4 py-2 rounded-lg transition-all duration-200 text-sm font-medium
                              hover:scale-105 transform transition-transform mt-auto
-                             ${product.stock === 0
+                             ${safeProduct.stock === 0
                             ? 'bg-gray-300 text-gray-500 cursor-not-allowed hover:scale-100'
                             : 'bg-[#FDB4B7] hover:bg-[#FCA5A9] text-white cursor-pointer'
                         }`}
                     style={{ fontFamily: 'Poppins, sans-serif' }}
                 >
-                    {product.stock === 0 ? 'Sin stock' : 'Ver producto'}
+                    {safeProduct.stock === 0 ? 'Sin stock' : 'Ver producto'}
                 </button>
             </div>
         </div>

@@ -1,22 +1,14 @@
 import React from "react";
+import ProductCard from "./ProductCard"; // Asegúrate de que la ruta sea correcta
 
 const CategorySection = ({ 
     title, 
     products = [], 
     categoryId, 
     onProductClick, 
-    onViewAll
+    onViewAll,
+    onToggleFavorite // Nueva prop que viene desde CategoryProducts
 }) => {
-
-    /**
-     * Maneja el click en un producto individual
-     * @param {Object} product - Objeto del producto clickeado
-     */
-    const handleProductClick = (product) => {
-        if (onProductClick) {
-            onProductClick(product.id); // Simplificado para solo pasar el ID
-        }
-    };
 
     /**
      * Maneja el click en "Ver todos"
@@ -28,30 +20,52 @@ const CategorySection = ({
     };
 
     /**
-     * Formatea el precio del producto
-     * @param {number} price - Precio a formatear
-     * @returns {string} Precio formateado
+     * Adapta el producto para que funcione con ProductCard
+     * ProductCard espera ciertos campos específicos
      */
-    const formatPrice = (price) => {
-        return `$${price.toFixed(2)}`;
+    const adaptProductForCard = (product) => {
+        return {
+            _id: product.id, // ProductCard usa _id
+            id: product.id,
+            name: product.name,
+            description: product.description,
+            price: product.price,
+            image: product.image,
+            stock: product.stock,
+            isPersonalizable: product.isPersonalizable,
+            category: getCategoryName(categoryId), // ProductCard muestra la categoría
+            // Mantener los datos originales para el toggle de favoritos
+            originalProduct: product.originalProduct
+        };
     };
 
     /**
-     * Maneja el click en favoritos
+     * Obtiene el nombre de la categoría basado en el ID
      */
-    const handleFavoriteClick = (e, productId) => {
-        e.stopPropagation();
-        // Aquí iría la lógica para añadir a favoritos
-        // Removido el console.log
+    const getCategoryName = (catId) => {
+        const categoryMap = {
+            '688175a69579a7cde1657aaa': 'Arreglos con flores naturales',
+            '688175d89579a7cde1657ac2': 'Arreglos con flores secas',
+            '688175fd9579a7cde1657aca': 'Cuadros decorativos',
+            '688176179579a7cde1657ace': 'Giftboxes',
+            '688175e79579a7cde1657ac6': 'Tarjetas'
+        };
+        return categoryMap[catId] || 'Producto';
     };
 
     /**
-     * Maneja el click en añadir al carrito
+     * Maneja el toggle de favorito desde ProductCard
      */
-    const handleAddToCart = (e, productId) => {
-        e.stopPropagation();
-        // Aquí iría la lógica para añadir al carrito
-        // Removido el console.log
+    const handleToggleFavoriteFromCard = (productId) => {
+        console.log('❤️ Toggle favorite from ProductCard:', productId);
+        
+        // Encontrar el producto original para poder hacer el toggle
+        const product = products.find(p => p.id === productId);
+        if (product && product.originalProduct && onToggleFavorite) {
+            onToggleFavorite(product.originalProduct);
+        } else {
+            console.warn('⚠️ No se pudo encontrar el producto original para toggle favorite');
+        }
     };
 
     return (
@@ -99,92 +113,39 @@ const CategorySection = ({
                 </button>
             </div>
 
-            {/* Scroll horizontal de productos */}
+            {/* Grid de productos usando ProductCard */}
             <div className="relative">
-                {/* Contenedor con grid responsive */}
-                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-6">
-                    {products.map((product) => (
-                        <div
-                            key={product.id}
-                            onClick={() => handleProductClick(product)}
-                            className="bg-white rounded-lg shadow-md overflow-hidden 
-                                     hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:scale-105"
-                        >
-                            {/* Imagen del producto */}
-                            <div className="relative">
-                                <img
-                                    src={product.image}
-                                    alt={product.name}
-                                    className="w-full h-32 sm:h-48 object-cover"
-                                />
-                                
-                                {/* Badge de precio */}
-                                <div className="absolute top-2 sm:top-3 right-2 sm:right-3 bg-white bg-opacity-90 
-                                              rounded-full px-2 sm:px-3 py-1 shadow-md">
-                                    <span 
-                                        className="text-xs sm:text-sm font-bold text-gray-800"
-                                        style={{ fontFamily: 'Poppins, sans-serif' }}
-                                    >
-                                        {formatPrice(product.price)}
-                                    </span>
-                                </div>
-
-                                {/* Botón de favorito en la esquina superior izquierda */}
-                                <button
-                                    onClick={(e) => handleFavoriteClick(e, product.id)}
-                                    className="absolute top-2 sm:top-3 left-2 sm:left-3 bg-white bg-opacity-80 hover:bg-opacity-100 
-                                             rounded-full p-1.5 sm:p-2 transition-all duration-200 shadow-md
-                                             hover:shadow-lg transform hover:scale-105 cursor-pointer"
-                                    aria-label="Añadir a favoritos"
-                                >
-                                    <svg 
-                                        className="w-3 h-3 sm:w-4 sm:h-4 text-gray-600 hover:text-red-500" 
-                                        fill="none" 
-                                        stroke="currentColor" 
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path 
-                                            strokeLinecap="round" 
-                                            strokeLinejoin="round" 
-                                            strokeWidth={2} 
-                                            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" 
-                                        />
-                                    </svg>
-                                </button>
-                            </div>
-
-                            {/* Información del producto */}
-                            <div className="p-2 sm:p-4">
-                                <h3 
-                                    className="text-sm sm:text-lg font-semibold text-gray-800 mb-1 sm:mb-2 line-clamp-2"
-                                    style={{ fontFamily: 'Poppins, sans-serif' }}
-                                >
-                                    {product.name}
-                                </h3>
-                                
-                                <p 
-                                    className="text-xs sm:text-sm text-gray-600 line-clamp-2 mb-2 sm:mb-3 hidden sm:block"
-                                    style={{ fontFamily: 'Poppins, sans-serif' }}
-                                >
-                                    {product.description}
-                                </p>
-
-                                {/* Botón de acción */}
-                                <button
-                                    onClick={(e) => handleAddToCart(e, product.id)}
-                                    className="w-full bg-[#E8ACD2] hover:bg-[#E096C8] text-white py-1.5 sm:py-2 px-2 sm:px-4 
-                                             rounded-lg transition-colors duration-200 text-xs sm:text-sm font-medium
-                                             cursor-pointer hover:scale-105"
-                                    style={{ fontFamily: 'Poppins, sans-serif' }}
-                                >
-                                    <span className="hidden sm:inline">Añadir al carrito</span>
-                                    <span className="sm:hidden">Añadir</span>
-                                </button>
-                            </div>
-                        </div>
-                    ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+                    {products.slice(0, 8).map((product) => {
+                        const adaptedProduct = adaptProductForCard(product);
+                        
+                        return (
+                            <ProductCard
+                                key={product.id}
+                                product={adaptedProduct}
+                                onRemove={null} // No necesitamos remover en esta vista
+                                showFavoriteButton={true} // Mostrar botón de favoritos
+                                showRemoveButton={false} // No mostrar botón de remover
+                                isFavorite={product.isFavorite} // Estado de favorito
+                                onToggleFavorite={() => handleToggleFavoriteFromCard(product.id)} // Toggle function
+                            />
+                        );
+                    })}
                 </div>
             </div>
+
+            {/* Mensaje si hay más productos */}
+            {products.length > 8 && (
+                <div className="text-center mt-6">
+                    <button
+                        onClick={handleViewAllClick}
+                        className="bg-[#CD5277] text-white px-6 py-3 rounded-lg hover:bg-[#B8476A] transition-colors font-medium"
+                        style={{ fontFamily: 'Poppins, sans-serif' }}
+                    >
+                        Ver todos los {products.length} productos
+                    </button>
+                </div>
+            )}
 
             {/* Mensaje si no hay productos */}
             {products.length === 0 && (

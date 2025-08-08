@@ -20,19 +20,70 @@ const UserInfo = ({ user }) => {
     console.log('UserInfo - Propiedades:', user ? Object.keys(user) : 'Sin propiedades');
 
     /**
-     * Función para formatear la fecha de registro
+     * Función para formatear la fecha de registro - MEJORADA
      * @param {string|Date} createdAt - Fecha de creación de la cuenta
      * @returns {string} Año de registro formateado
      */
     const getRegistrationYear = (createdAt) => {
-        if (!createdAt) return '2024'; // Valor por defecto
+        console.log('📅 Procesando fecha de creación:', createdAt, typeof createdAt);
+        
+        if (!createdAt) {
+            console.warn('⚠️ No hay fecha de creación, usando valor por defecto');
+            return '2024'; // Valor por defecto
+        }
+        
+        try {
+            let date;
+            
+            // Si es una cadena, convertirla a Date
+            if (typeof createdAt === 'string') {
+                date = new Date(createdAt);
+            } else if (createdAt instanceof Date) {
+                date = createdAt;
+            } else {
+                console.warn('⚠️ Tipo de fecha no reconocido:', typeof createdAt);
+                return '2024';
+            }
+            
+            // Verificar que la fecha sea válida
+            if (isNaN(date.getTime())) {
+                console.error('❌ Fecha inválida:', createdAt);
+                return '2024';
+            }
+            
+            const year = date.getFullYear();
+            console.log('✅ Año extraído exitosamente:', year);
+            return year.toString();
+            
+        } catch (error) {
+            console.error('❌ Error al formatear fecha de registro:', error);
+            return '2024';
+        }
+    };
+
+    /**
+     * Función para obtener la fecha completa de registro - NUEVA
+     * @param {string|Date} createdAt - Fecha de creación de la cuenta
+     * @returns {string} Fecha formateada para mostrar
+     */
+    const getFormattedRegistrationDate = (createdAt) => {
+        if (!createdAt) return 'Fecha no disponible';
         
         try {
             const date = new Date(createdAt);
-            return date.getFullYear().toString();
+            if (isNaN(date.getTime())) return 'Fecha no disponible';
+            
+            // Formatear la fecha en español
+            const options = { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            };
+            
+            return date.toLocaleDateString('es-ES', options);
         } catch (error) {
-            console.error('Error al formatear fecha de registro:', error);
-            return '2024';
+            console.error('Error al formatear fecha completa:', error);
+            return 'Fecha no disponible';
         }
     };
 
@@ -67,7 +118,8 @@ const UserInfo = ({ user }) => {
         displayEmail,
         displayPhone,
         displayAddress,
-        displayProfilePicture
+        displayProfilePicture,
+        createdAt: user?.createdAt
     });
 
     return (
@@ -84,9 +136,14 @@ const UserInfo = ({ user }) => {
                 {displayName}
             </p>
             
-            {/* Información de membresía */}
-            <p className="text-xs text-gray-500 mb-3">
+            {/* Información de membresía - MEJORADA */}
+            <p className="text-xs text-gray-500 mb-1">
                 Miembro desde {getRegistrationYear(user?.createdAt)}
+            </p>
+            
+            {/* Fecha completa de registro - NUEVA */}
+            <p className="text-xs text-gray-400 mb-3" title="Fecha de registro completa">
+                Registrado el {getFormattedRegistrationDate(user?.createdAt)}
             </p>
             
             {/* Separador visual */}

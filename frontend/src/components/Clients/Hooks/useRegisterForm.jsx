@@ -379,9 +379,6 @@ const useRegisterForm = () => {
         } else if (name === 'email') {
             // Convertir email a minúsculas automáticamente
             processedValue = processedValue.toLowerCase();
-        } else if (name === 'fullName') {
-            // Capitalizar primera letra de cada palabra
-            processedValue = processedValue.replace(/\b\w/g, l => l.toUpperCase());
         }
         
         // Actualizar estado del formulario

@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
         elevation: 8,
     },
     title: {
-        fontSize: 18,
+        fontSize: 20,
         fontFamily: 'Poppins-SemiBold',
         color: '#999999',
         textAlign: 'center',
@@ -300,9 +300,9 @@ const styles = StyleSheet.create({
         marginTop: -5,
     },
     forgotPasswordText: {
-        fontSize: 12,
+        fontSize: 14,
         color: '#999999',
-        fontFamily: 'Poppins-Regular',
+        fontFamily: 'Poppins-SemiBold',
         marginTop: 5,
         bottom: -5
     },

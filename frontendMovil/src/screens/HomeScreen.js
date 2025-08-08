@@ -147,7 +147,6 @@ export default function HomeScreen({ navigation }) {
                     contentInset={{ right: 30 }}        // Padding adicional para iOS
                     contentInsetAdjustmentBehavior="automatic" // Ajuste automático en iOS
                 >
-                    // Mapeamos cada categoría para crear los botones
                     {categories.map((category) => (
                         // Botón táctil para cada categoría
                         <TouchableOpacity
@@ -184,26 +183,6 @@ export default function HomeScreen({ navigation }) {
                 showsVerticalScrollIndicator={false}  // Oculta barra de scroll vertical
                 columnWrapperStyle={styles.row}       // Estilos para cada fila del grid
             />
-
-            {/* Barra de navegación inferior fija */}
-            <View style={styles.bottomNav}>
-                {/* Botón de Home (activo) */}
-                <TouchableOpacity style={styles.navItem}>
-                    <Icon name="home" size={24} color="#ff6b8a" />
-                </TouchableOpacity>
-                {/* Botón de Favoritos (inactivo) */}
-                <TouchableOpacity style={styles.navItem}>
-                    <Icon name="favorite-border" size={24} color="#ccc" />
-                </TouchableOpacity>
-                {/* Botón de Chat (inactivo) */}
-                <TouchableOpacity style={styles.navItem}>
-                    <Icon name="chat-bubble-outline" size={24} color="#ccc" />
-                </TouchableOpacity>
-                {/* Botón de Carrito (inactivo) */}
-                <TouchableOpacity style={styles.navItem}>
-                    <Icon name="shopping-cart" size={24} color="#ccc" />
-                </TouchableOpacity>
-            </View>
         </View>
     );
 }

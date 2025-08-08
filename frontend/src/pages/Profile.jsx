@@ -24,6 +24,10 @@ const Perfil = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [userOrders, setUserOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  
+  // NUEVOS ESTADOS para códigos de descuento de la ruleta
+  const [ruletaCodes, setRuletaCodes] = useState([]);
+  const [loadingCodes, setLoadingCodes] = useState(false);
 
   // DEBUG: Información del contexto de autenticación
   console.log('Profile - Estado del contexto:', {
@@ -34,6 +38,88 @@ const Perfil = () => {
     user,
     userInfo
   });
+
+  /**
+   * NUEVA FUNCIÓN: Obtener códigos de descuento de la ruleta del usuario
+   */
+  const getUserRuletaCodes = async () => {
+    try {
+      console.log('Obteniendo códigos de ruleta del usuario...');
+      setLoadingCodes(true);
+
+      const response = await fetch('http://localhost:4000/api/clients/ruleta/codes', {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('Status de respuesta getUserRuletaCodes:', response.status);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Respuesta completa getUserRuletaCodes:', data);
+
+        if (data && data.success && data.codes) {
+          console.log('Códigos de ruleta obtenidos exitosamente:', data.codes);
+          setRuletaCodes(data.codes);
+        } else {
+          console.warn('Respuesta sin estructura esperada:', data);
+          setRuletaCodes([]);
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('Error en respuesta del servidor:', response.status, errorText);
+        setRuletaCodes([]);
+      }
+    } catch (error) {
+      console.error('Error al obtener códigos de ruleta:', error);
+      setRuletaCodes([]);
+    } finally {
+      setLoadingCodes(false);
+    }
+  };
+
+  /**
+   * NUEVA FUNCIÓN: Formatear fecha para mostrar
+   */
+  const formatDate = (dateString) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('es-ES', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+    } catch (error) {
+      return 'Fecha no válida';
+    }
+  };
+
+  /**
+   * NUEVA FUNCIÓN: Obtener texto del estado en español
+   */
+  const getStatusText = (status) => {
+    const statusMap = {
+      'active': 'Activo',
+      'used': 'Utilizado',
+      'expired': 'Caducado'
+    };
+    return statusMap[status] || status;
+  };
+
+  /**
+   * NUEVA FUNCIÓN: Obtener color del estado para las tarjetas
+   */
+  const getStatusColor = (status) => {
+    const colorMap = {
+      'active': 'bg-green-100 text-green-700 border-green-300',
+      'used': 'bg-gray-100 text-gray-400 border-gray-300',
+      'expired': 'bg-red-100 text-red-400 border-red-300'
+    };
+    return colorMap[status] || 'bg-gray-100 text-gray-400 border-gray-300';
+  };
 
   /**
    * Función para obtener los pedidos del usuario
@@ -83,9 +169,9 @@ const Perfil = () => {
   };
 
   /**
-   * Función para formatear fecha
+   * Función para formatear fecha de pedidos
    */
-  const formatDate = (dateString) => {
+  const formatOrderDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('es-ES', {
       day: '2-digit',
@@ -122,7 +208,7 @@ const Perfil = () => {
   /**
    * Función para obtener el color de la etiqueta según el estado
    */
-  const getStatusColor = (trackingStatus) => {
+  const getOrderStatusColor = (trackingStatus) => {
     const colorMap = {
       'Agendado': 'text-yellow-500 border-yellow-300',
       'En proceso': 'text-blue-500 border-blue-300',
@@ -263,6 +349,8 @@ const Perfil = () => {
     if (userData && (userData._id || userData.id)) {
       const userId = userData._id || userData.id;
       getUserOrders(userId);
+      // NUEVA LLAMADA: Cargar códigos de ruleta
+      getUserRuletaCodes();
     }
   }, [userData]);
 
@@ -325,7 +413,7 @@ const Perfil = () => {
             </div>
           </Card>
 
-          {/* Tabs contenido - CON DATOS REALES */}
+          {/* Tabs contenido - CON DATOS REALES INCLUYENDO CÓDIGOS DE RULETA */}
           <div className="md:col-span-2">
             <Card className="p-6">
               <Tabs defaultValue="pedidos">
@@ -357,10 +445,10 @@ const Perfil = () => {
                                     Pedido #{pedido._id?.slice(-6) || 'N/A'}
                                   </p>
                                   <p className="text-xs text-gray-500">
-                                    Realizado el {formatDate(pedido.createdAt)}
+                                    Realizado el {formatOrderDate(pedido.createdAt)}
                                   </p>
                                 </div>
-                                <span className={`border px-2 py-0.5 rounded-full text-xs h-fit ${getStatusColor(pedido.trackingStatus)}`}>
+                                <span className={`border px-2 py-0.5 rounded-full text-xs h-fit ${getOrderStatusColor(pedido.trackingStatus)}`}>
                                   {getTrackingStatusLabel(pedido.trackingStatus)}
                                 </span>
                               </div>
@@ -392,52 +480,72 @@ const Perfil = () => {
                     </div>
                   </TabsContent>
 
+                  {/* TAB DE CÓDIGOS DE DESCUENTO - ACTUALIZADO CON DATOS REALES */}
                   <TabsContent value="descuentos">
-                    <p className="text-2xl md:text-3xl font-medium mb-4">Mis códigos de descuento</p>
-                    <div className="flex flex-col gap-4">
-                      {[
-                        {
-                          titulo: "Verano 2025",
-                          descuento: "25% OFF",
-                          estado: "Activo",
-                          color: "bg-pink-100 text-pink-500",
-                          codigo: "326985",
-                          vence: "30 de agosto, 2025"
-                        },
-                        {
-                          titulo: "Ruleta marquesa",
-                          descuento: "10% OFF",
-                          estado: "Utilizado",
-                          color: "bg-gray-100 text-gray-400",
-                          codigo: "842034",
-                          vence: "8 de abril, 2025"
-                        },
-                        {
-                          titulo: "Primavera 2025",
-                          descuento: "10% OFF",
-                          estado: "Caducado",
-                          color: "bg-gray-100 text-gray-400",
-                          codigo: "659274",
-                          vence: "2 de abril, 2025"
-                        }
-                      ].map((cupon, index) => (
-                        <Card key={index} className="p-4 border border-gray-200">
-                          <div className="flex justify-between items-start mb-2">
-                            <div>
-                              <p className="font-semibold text-lg">{cupon.titulo}</p>
-                              <p className="text-sm text-gray-500">Válido hasta: {cupon.vence}</p>
-                              <p className="text-sm text-gray-500">Código: {cupon.codigo}</p>
-                            </div>
-                            <div className="flex flex-col items-end gap-1">
-                              <span className={`text-xs font-medium px-2 py-0.5 rounded-full border border-pink-300 ${cupon.color}`}>
-                                {cupon.descuento}
-                              </span>
-                              <span className="text-xs text-pink-500">{cupon.estado}</span>
-                            </div>
-                          </div>
-                        </Card>
-                      ))}
+                    <div className="flex items-center justify-between mb-4">
+                      <p className="text-2xl md:text-3xl font-medium">Mis códigos de descuento</p>
+                      <button
+                        onClick={getUserRuletaCodes}
+                        disabled={loadingCodes}
+                        className="text-sm text-blue-600 hover:text-blue-800 disabled:opacity-50"
+                        style={{ cursor: 'pointer' }}
+                      >
+                        {loadingCodes ? '🔄' : '↻ Actualizar'}
+                      </button>
                     </div>
+                    
+                    <div className="flex flex-col gap-4">
+                      {loadingCodes ? (
+                        <div className="text-center py-8">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500 mx-auto mb-4"></div>
+                          <p className="text-gray-600">Cargando códigos...</p>
+                        </div>
+                      ) : ruletaCodes.length > 0 ? (
+                        ruletaCodes.map((codigo, index) => (
+                          <Card key={codigo.codeId || index} className="p-4 border border-gray-200">
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <p className="font-semibold text-lg">{codigo.name}</p>
+                                <p className="text-sm text-gray-500">Válido hasta: {formatDate(codigo.expiresAt)}</p>
+                                <p className="text-sm text-gray-500">Código: {codigo.code}</p>
+                                {codigo.status === 'used' && codigo.usedAt && (
+                                  <p className="text-xs text-gray-400">Utilizado el {formatDate(codigo.usedAt)}</p>
+                                )}
+                              </div>
+                              <div className="flex flex-col items-end gap-1">
+                                <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${getStatusColor(codigo.status)}`}>
+                                  {codigo.discount}
+                                </span>
+                                <span className="text-xs text-pink-500">{getStatusText(codigo.status)}</span>
+                              </div>
+                            </div>
+                          </Card>
+                        ))
+                      ) : (
+                        <div className="text-center py-8">
+                          <div className="text-6xl mb-4">🎰</div>
+                          <p className="text-gray-500 text-lg mb-2">¡Aún no tienes códigos!</p>
+                          <p className="text-gray-400 text-sm mb-4">Visita la ruleta para obtener descuentos exclusivos</p>
+                          <Button
+                            onClick={() => navigate('/ruleta')}
+                            className="hover:bg-pink-400 text-white py-2 px-4"
+                            style={{ backgroundColor: '#E8ACD2' }}
+                          >
+                            Ir a la ruleta
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Información sobre límites de códigos */}
+                    {ruletaCodes.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <span>Códigos mostrados: {ruletaCodes.length}</span>
+                          <span>Activos: {ruletaCodes.filter(c => c.status === 'active').length}/10</span>
+                        </div>
+                      </div>
+                    )}
                   </TabsContent>
                 </div>
               </Tabs>

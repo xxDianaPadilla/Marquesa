@@ -57,7 +57,68 @@ const clientsSchema = new Schema({
     profilePicture: {
         type: String,
         required: false
-    }
+    },
+    // NUEVO: Array de códigos de descuento generados por la ruleta
+    ruletaCodes: [
+        {
+            // ID único del código generado
+            codeId: {
+                type: String,
+                required: true
+            },
+            // Código alfanumérico de 6 dígitos
+            code: {
+                type: String,
+                required: true
+            },
+            // Nombre descriptivo del descuento (ej: "Verano 2025")
+            name: {
+                type: String,
+                required: true
+            },
+            // Porcentaje de descuento (ej: "25% OFF")
+            discount: {
+                type: String,
+                required: true
+            },
+            // Color de fondo para mostrar en la UI
+            color: {
+                type: String,
+                required: true
+            },
+            // Color del texto para la UI
+            textColor: {
+                type: String,
+                required: true
+            },
+            // Estado del código: 'active', 'used', 'expired'
+            status: {
+                type: String,
+                enum: ['active', 'used', 'expired'],
+                default: 'active'
+            },
+            // Fecha de creación del código
+            createdAt: {
+                type: Date,
+                default: Date.now
+            },
+            // Fecha de expiración del código
+            expiresAt: {
+                type: Date,
+                required: true
+            },
+            // Fecha de uso del código (solo si status = 'used')
+            usedAt: {
+                type: Date,
+                required: false
+            },
+            // ID del pedido donde se utilizó (solo si status = 'used')
+            usedInOrderId: {
+                type: Schema.Types.ObjectId,
+                required: false
+            }
+        }
+    ]
 }, {
     // Agregar automáticamente campos createdAt y updatedAt
     timestamps: true,

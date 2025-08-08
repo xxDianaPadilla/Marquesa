@@ -46,6 +46,8 @@ const upload = multer({
 // Crear una instancia del enrutador de Express
 const router = express.Router();
 
+// ==================== RUTAS EXISTENTES ====================
+
 // Ruta para actualizar perfil - requiere autenticación
 router.put("/profile", 
     verifyToken, 
@@ -61,6 +63,36 @@ router.get("/total", clientsController.getTotalClients);
 
 // Ruta para estadísticas detalladas
 router.get("/detailedStats", clientsController.getDetailedClientsStats);
+
+// ==================== NUEVAS RUTAS PARA CÓDIGOS DE RULETA ====================
+
+// Ruta para generar un nuevo código de descuento desde la ruleta
+// POST /api/clients/ruleta/generate
+router.post("/ruleta/generate", 
+    verifyToken, 
+    clientsController.generateRuletaCode
+);
+
+// Ruta para obtener todos los códigos de descuento del usuario
+// GET /api/clients/ruleta/codes
+router.get("/ruleta/codes", 
+    verifyToken, 
+    clientsController.getUserRuletaCodes
+);
+
+// Ruta para validar un código de descuento específico
+// GET /api/clients/ruleta/validate/:code
+router.get("/ruleta/validate/:code", 
+    verifyToken, 
+    clientsController.validateRuletaCode
+);
+
+// Ruta para marcar un código como utilizado
+// PUT /api/clients/ruleta/use
+router.put("/ruleta/use", 
+    verifyToken, 
+    clientsController.useRuletaCode
+);
 
 // Manejo de errores de multer
 router.use((error, req, res, next) => {

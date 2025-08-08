@@ -216,6 +216,411 @@ clientsController.updateProfile = async (req, res) => {
     }
 };
 
+// NUEVA FUNCIÓN: Generar código de descuento de la ruleta
+clientsController.generateRuletaCode = async (req, res) => {
+    try {
+        console.log('=== INICIO generateRuletaCode ===');
+        console.log('User ID del token:', req.user?.id);
+
+        const userId = req.user?.id;
+        
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Usuario no autenticado"
+            });
+        }
+
+        // Buscar el cliente
+        const client = await clientsModel.findById(userId);
+        if (!client) {
+            return res.status(404).json({
+                success: false,
+                message: "Usuario no encontrado"
+            });
+        }
+
+        // Verificar códigos activos (máximo 10 códigos activos)
+        const activeCodes = client.ruletaCodes ? client.ruletaCodes.filter(code => code.status === 'active') : [];
+        
+        if (activeCodes.length >= 10) {
+            return res.status(400).json({
+                success: false,
+                message: "Has alcanzado el máximo de códigos activos (10). Utiliza tus códigos existentes o espera a que se caduquen para obtener nuevos."
+            });
+        }
+
+        // Códigos de descuento disponibles con colores
+        const discountOptions = [
+            { 
+                name: 'Verano 2025', 
+                discount: '25% OFF', 
+                color: '#FADDDD',
+                textColor: '#374151'
+            },
+            { 
+                name: 'Ruleta marquesa', 
+                discount: '20% OFF', 
+                color: '#E8ACD2',
+                textColor: '#FFFFFF'
+            },
+            { 
+                name: 'Primavera 2025', 
+                discount: '15% OFF', 
+                color: '#C6E2C6',
+                textColor: '#374151'
+            },
+            { 
+                name: 'Flores especiales', 
+                discount: '30% OFF', 
+                color: '#FADDDD',
+                textColor: '#374151'
+            },
+            { 
+                name: 'Giftbox deluxe', 
+                discount: '18% OFF', 
+                color: '#E8ACD2',
+                textColor: '#FFFFFF'
+            },
+            { 
+                name: 'Cuadros únicos', 
+                discount: '22% OFF', 
+                color: '#C6E2C6',
+                textColor: '#374151'
+            }
+        ];
+
+        // Seleccionar un código aleatorio
+        const randomIndex = Math.floor(Math.random() * discountOptions.length);
+        const selectedDiscount = discountOptions[randomIndex];
+
+        // Generar código único de 6 dígitos
+        const generateUniqueCode = () => {
+            return Math.floor(100000 + Math.random() * 900000).toString();
+        };
+
+        let uniqueCode = generateUniqueCode();
+        
+        // Verificar que el código no exista en los códigos del usuario
+        while (client.ruletaCodes && client.ruletaCodes.some(code => code.code === uniqueCode)) {
+            uniqueCode = generateUniqueCode();
+        }
+
+        // Crear el nuevo código con fecha de expiración (30 días)
+        const newCode = {
+            codeId: `${userId}_${Date.now()}_${uniqueCode}`,
+            code: uniqueCode,
+            name: selectedDiscount.name,
+            discount: selectedDiscount.discount,
+            color: selectedDiscount.color,
+            textColor: selectedDiscount.textColor,
+            status: 'active',
+            createdAt: new Date(),
+            expiresAt: new Date(Date.now() + (30 * 24 * 60 * 60 * 1000)) // 30 días
+        };
+
+        // Inicializar ruletaCodes si no existe
+        if (!client.ruletaCodes) {
+            client.ruletaCodes = [];
+        }
+
+        // Agregar el nuevo código
+        client.ruletaCodes.push(newCode);
+
+        // Guardar cambios
+        await client.save();
+
+        console.log('Código de ruleta generado exitosamente:', newCode.code);
+
+        res.status(200).json({
+            success: true,
+            message: "Código de descuento generado exitosamente",
+            code: {
+                code: newCode.code,
+                name: newCode.name,
+                discount: newCode.discount,
+                color: newCode.color,
+                textColor: newCode.textColor,
+                expiresAt: newCode.expiresAt
+            }
+        });
+
+    } catch (error) {
+        console.error('Error en generateRuletaCode:', error);
+        
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor al generar código de descuento",
+            error: error.message
+        });
+    }
+};
+
+// NUEVA FUNCIÓN: Obtener códigos de descuento del usuario
+clientsController.getUserRuletaCodes = async (req, res) => {
+    try {
+        console.log('=== INICIO getUserRuletaCodes ===');
+        console.log('User ID del token:', req.user?.id);
+
+        const userId = req.user?.id;
+        
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Usuario no autenticado"
+            });
+        }
+
+        // Buscar el cliente y actualizar códigos expirados
+        const client = await clientsModel.findById(userId);
+        if (!client) {
+            return res.status(404).json({
+                success: false,
+                message: "Usuario no encontrado"
+            });
+        }
+
+        // Actualizar códigos expirados
+        if (client.ruletaCodes && client.ruletaCodes.length > 0) {
+            const now = new Date();
+            let hasUpdates = false;
+
+            client.ruletaCodes.forEach(code => {
+                if (code.status === 'active' && code.expiresAt < now) {
+                    code.status = 'expired';
+                    hasUpdates = true;
+                }
+            });
+
+            if (hasUpdates) {
+                await client.save();
+            }
+        }
+
+        // Obtener códigos ordenados por fecha de creación (más recientes primero)
+        const allCodes = client.ruletaCodes || [];
+        allCodes.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        // Filtrar códigos para mostrar (máximo 10)
+        // Priorizar códigos activos, luego recientes utilizados/expirados
+        const activeCodes = allCodes.filter(code => code.status === 'active');
+        const inactiveCodes = allCodes.filter(code => code.status !== 'active');
+        
+        const codesToShow = [...activeCodes, ...inactiveCodes].slice(0, 10);
+
+        // Formatear códigos para respuesta
+        const formattedCodes = codesToShow.map(code => ({
+            codeId: code.codeId,
+            code: code.code,
+            name: code.name,
+            discount: code.discount,
+            color: code.color,
+            textColor: code.textColor,
+            status: code.status,
+            createdAt: code.createdAt,
+            expiresAt: code.expiresAt,
+            usedAt: code.usedAt,
+            usedInOrderId: code.usedInOrderId
+        }));
+
+        console.log(`Códigos de ruleta obtenidos: ${formattedCodes.length} de ${allCodes.length} totales`);
+
+        res.status(200).json({
+            success: true,
+            codes: formattedCodes,
+            totalCodes: allCodes.length,
+            activeCodes: activeCodes.length,
+            maxActiveAllowed: 10
+        });
+
+    } catch (error) {
+        console.error('Error en getUserRuletaCodes:', error);
+        
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor al obtener códigos de descuento",
+            error: error.message
+        });
+    }
+};
+
+// NUEVA FUNCIÓN: Marcar código como utilizado
+clientsController.useRuletaCode = async (req, res) => {
+    try {
+        console.log('=== INICIO useRuletaCode ===');
+        console.log('User ID del token:', req.user?.id);
+        console.log('Datos recibidos:', req.body);
+
+        const userId = req.user?.id;
+        const { code, orderId } = req.body;
+        
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Usuario no autenticado"
+            });
+        }
+
+        if (!code) {
+            return res.status(400).json({
+                success: false,
+                message: "Código de descuento es requerido"
+            });
+        }
+
+        // Buscar el cliente
+        const client = await clientsModel.findById(userId);
+        if (!client) {
+            return res.status(404).json({
+                success: false,
+                message: "Usuario no encontrado"
+            });
+        }
+
+        // Buscar el código en los códigos del usuario
+        const codeIndex = client.ruletaCodes ? client.ruletaCodes.findIndex(
+            ruletaCode => ruletaCode.code === code && ruletaCode.status === 'active'
+        ) : -1;
+
+        if (codeIndex === -1) {
+            return res.status(404).json({
+                success: false,
+                message: "Código no encontrado, ya utilizado o expirado"
+            });
+        }
+
+        // Verificar que el código no haya expirado
+        if (client.ruletaCodes[codeIndex].expiresAt < new Date()) {
+            // Marcar como expirado
+            client.ruletaCodes[codeIndex].status = 'expired';
+            await client.save();
+            
+            return res.status(400).json({
+                success: false,
+                message: "El código ha expirado"
+            });
+        }
+
+        // Marcar el código como utilizado
+        client.ruletaCodes[codeIndex].status = 'used';
+        client.ruletaCodes[codeIndex].usedAt = new Date();
+        if (orderId) {
+            client.ruletaCodes[codeIndex].usedInOrderId = orderId;
+        }
+
+        await client.save();
+
+        console.log('Código marcado como utilizado exitosamente:', code);
+
+        res.status(200).json({
+            success: true,
+            message: "Código utilizado exitosamente",
+            code: client.ruletaCodes[codeIndex]
+        });
+
+    } catch (error) {
+        console.error('Error en useRuletaCode:', error);
+        
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor al utilizar código de descuento",
+            error: error.message
+        });
+    }
+};
+
+// NUEVA FUNCIÓN: Validar código de descuento
+clientsController.validateRuletaCode = async (req, res) => {
+    try {
+        console.log('=== INICIO validateRuletaCode ===');
+        console.log('User ID del token:', req.user?.id);
+        console.log('Código a validar:', req.params.code);
+
+        const userId = req.user?.id;
+        const { code } = req.params;
+        
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Usuario no autenticado"
+            });
+        }
+
+        if (!code) {
+            return res.status(400).json({
+                success: false,
+                message: "Código de descuento es requerido"
+            });
+        }
+
+        // Buscar el cliente
+        const client = await clientsModel.findById(userId);
+        if (!client) {
+            return res.status(404).json({
+                success: false,
+                message: "Usuario no encontrado"
+            });
+        }
+
+        // Buscar el código
+        const ruletaCode = client.ruletaCodes ? client.ruletaCodes.find(
+            ruletaCode => ruletaCode.code === code
+        ) : null;
+
+        if (!ruletaCode) {
+            return res.status(404).json({
+                success: false,
+                message: "Código no encontrado"
+            });
+        }
+
+        // Verificar estado del código
+        if (ruletaCode.status === 'used') {
+            return res.status(400).json({
+                success: false,
+                message: "Este código ya ha sido utilizado",
+                code: ruletaCode
+            });
+        }
+
+        if (ruletaCode.status === 'expired' || ruletaCode.expiresAt < new Date()) {
+            // Marcar como expirado si no lo estaba
+            if (ruletaCode.status !== 'expired') {
+                ruletaCode.status = 'expired';
+                await client.save();
+            }
+            
+            return res.status(400).json({
+                success: false,
+                message: "Este código ha expirado",
+                code: ruletaCode
+            });
+        }
+
+        console.log('Código validado exitosamente:', code);
+
+        res.status(200).json({
+            success: true,
+            message: "Código válido",
+            code: {
+                code: ruletaCode.code,
+                name: ruletaCode.name,
+                discount: ruletaCode.discount,
+                expiresAt: ruletaCode.expiresAt
+            }
+        });
+
+    } catch (error) {
+        console.error('Error en validateRuletaCode:', error);
+        
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor al validar código de descuento",
+            error: error.message
+        });
+    }
+};
+
 // Función helper para calcular fechas de trimestre
 const calculateQuarterDates = (period, now = new Date()) => {
     let startDate, endDate;

@@ -15,7 +15,7 @@ const useFetchProducts = () => {
     
     try {
         // Realiza la petición al backend
-      const response = await fetch("http://192.168.0.10:4000/api/products");
+      const response = await fetch("https://marquesa.onrender.com/api/products");
       
       // Verificar si la respuesta es exitosa
       if (!response.ok) {

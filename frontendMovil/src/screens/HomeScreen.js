@@ -23,8 +23,18 @@ import useFetchProducts from "../hooks/useFetchProducts";
 // Importamos íconos de Material Icons
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
-// Obtenemos el ancho de la pantalla del dispositivo
-const { width: screenWidth } = Dimensions.get('window');
+// Obtenemos las dimensiones de la pantalla del dispositivo
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+// Calculamos valores responsivos basados en el ancho de pantalla
+const isSmallDevice = screenWidth < 375;
+const isMediumDevice = screenWidth >= 375 && screenWidth < 414;
+const isLargeDevice = screenWidth >= 414;
+
+// Padding horizontal responsivo
+const horizontalPadding = isSmallDevice ? 16 : isMediumDevice ? 20 : 24;
+// Gap entre elementos
+const elementGap = isSmallDevice ? 8 : isMediumDevice ? 10 : 12;
 
 // Definimos el componente funcional HomeScreen que recibe navigation como prop
 export default function HomeScreen({ navigation }) {
@@ -77,7 +87,7 @@ export default function HomeScreen({ navigation }) {
     // Función que renderiza cada producto en la FlatList
     const renderProduct = ({ item, index }) => (
         // Wrapper para cada card con estilos y margin condicional
-        <View style={[styles.cardWrapper, { marginRight: index % 2 === 0 ? 8 : 0 }]}>
+        <View style={[styles.cardWrapper, { marginRight: index % 2 === 0 ? elementGap : 0 }]}>
             {/* Componente ProductCard que muestra la información del producto */}
             <ProductCard
                 product={item}                    // Datos del producto
@@ -117,7 +127,7 @@ export default function HomeScreen({ navigation }) {
             <View style={styles.searchWrapper}>
                 {/* Botón de filtros (ícono de tune/ajustes) */}
                 <TouchableOpacity style={styles.filterIconButton}>
-                    <Icon name="tune" size={20} color="#999" />
+                    <Icon name="tune" size={isSmallDevice ? 18 : 20} color="#999" />
                 </TouchableOpacity>
                 {/* Contenedor de la barra de búsqueda */}
                 <View style={styles.searchContainer}>
@@ -131,12 +141,12 @@ export default function HomeScreen({ navigation }) {
                     />
                     {/* Botón de búsqueda (ícono de lupa) */}
                     <TouchableOpacity style={styles.searchButton}>
-                        <Icon name="search" size={20} color="#fff" />
+                        <Icon name="search" size={isSmallDevice ? 18 : 20} color="#fff" />
                     </TouchableOpacity>
                 </View>
             </View>
 
-            {/* Contenedor para el scroll horizontal de categorías */}
+            {/* Contenedor para el scroll horizontal de categorías - MEJORADO PARA RESPONSIVIDAD */}
             <View style={styles.categoryScrollContainer}>
                 {/* ScrollView horizontal para las categorías */}
                 <ScrollView
@@ -144,20 +154,25 @@ export default function HomeScreen({ navigation }) {
                     showsHorizontalScrollIndicator={false} // Oculta la barra de scroll
                     contentContainerStyle={styles.categoryContainer} // Estilos del contenido
                     style={styles.categoryScrollView}   // Estilos del ScrollView
-                    contentInset={{ right: 30 }}        // Padding adicional para iOS
-                    contentInsetAdjustmentBehavior="automatic" // Ajuste automático en iOS
+                    bounces={true}                      // Permite bounce en iOS
+                    decelerationRate="fast"             // Desaceleración rápida
+                    snapToAlignment="start"             // Snap al inicio
+                    snapToInterval={undefined}          // Sin interval fijo para mejor scroll
                 >
-                    // Mapeamos cada categoría para crear los botones
-                    {categories.map((category) => (
+                    {/* Mapeamos cada categoría para crear los botones */}
+                    {categories.map((category, index) => (
                         // Botón táctil para cada categoría
                         <TouchableOpacity
                             key={category}              // Key única para React
                             style={[
                                 styles.categoryButton,  // Estilo base del botón
                                 // Si la categoría está seleccionada, aplica estilo activo
-                                selectedCategory === category && styles.categoryButtonActive
+                                selectedCategory === category && styles.categoryButtonActive,
+                                // Margen específico para el último elemento
+                                index === categories.length - 1 && styles.lastCategoryButton
                             ]}
                             onPress={() => setSelectedCategory(category)} // Cambia la categoría seleccionada
+                            activeOpacity={0.7}         // Opacidad al presionar
                         >
                             {/* Texto de la categoría */}
                             <Text
@@ -166,6 +181,9 @@ export default function HomeScreen({ navigation }) {
                                     // Si está seleccionada, aplica estilo de texto activo
                                     selectedCategory === category && styles.categoryTextActive
                                 ]}
+                                numberOfLines={1}       // Una sola línea
+                                adjustsFontSizeToFit={isSmallDevice} // Ajusta tamaño en dispositivos pequeños
+                                minimumFontScale={0.85} // Escala mínima del texto
                             >
                                 {category}
                             </Text>
@@ -183,51 +201,60 @@ export default function HomeScreen({ navigation }) {
                 contentContainerStyle={styles.productsContainer} // Estilos del contenedor
                 showsVerticalScrollIndicator={false}  // Oculta barra de scroll vertical
                 columnWrapperStyle={styles.row}       // Estilos para cada fila del grid
+                initialNumToRender={10}               // Renderiza 10 items inicialmente
+                maxToRenderPerBatch={10}              // Máximo por batch
+                windowSize={10}                       // Tamaño de ventana
+                removeClippedSubviews={true}          // Mejora performance
+                getItemLayout={(data, index) => ({     // Layout fijo para mejor performance
+                    length: 200,
+                    offset: 200 * Math.floor(index / 2),
+                    index,
+                })}
             />
 
             {/* Barra de navegación inferior fija */}
             <View style={styles.bottomNav}>
                 {/* Botón de Home (activo) */}
                 <TouchableOpacity style={styles.navItem}>
-                    <Icon name="home" size={24} color="#ff6b8a" />
+                    <Icon name="home" size={isSmallDevice ? 22 : 24} color="#ff6b8a" />
                 </TouchableOpacity>
                 {/* Botón de Favoritos (inactivo) */}
                 <TouchableOpacity style={styles.navItem}>
-                    <Icon name="favorite-border" size={24} color="#ccc" />
+                    <Icon name="favorite-border" size={isSmallDevice ? 22 : 24} color="#ccc" />
                 </TouchableOpacity>
                 {/* Botón de Chat (inactivo) */}
                 <TouchableOpacity style={styles.navItem}>
-                    <Icon name="chat-bubble-outline" size={24} color="#ccc" />
+                    <Icon name="chat-bubble-outline" size={isSmallDevice ? 22 : 24} color="#ccc" />
                 </TouchableOpacity>
                 {/* Botón de Carrito (inactivo) */}
                 <TouchableOpacity style={styles.navItem}>
-                    <Icon name="shopping-cart" size={24} color="#ccc" />
+                    <Icon name="shopping-cart" size={isSmallDevice ? 22 : 24} color="#ccc" />
                 </TouchableOpacity>
             </View>
         </View>
     );
 }
 
-// Definición de estilos usando StyleSheet
+// Definición de estilos usando StyleSheet - COMPLETAMENTE RESPONSIVOS
 const styles = StyleSheet.create({
     // Contenedor principal de toda la pantalla
     container: {
         flex: 1,                    // Ocupa todo el espacio disponible
-        backgroundColor: "#ffffffff", // Fondo blanco
-        paddingTop: 50,             // Padding superior para evitar notch/status bar
+        backgroundColor: "#ffffff", // Fondo blanco
+        paddingTop: isSmallDevice ? 45 : 50, // Padding superior responsivo
     },
     // Contenedor del header
     header: {
         flexDirection: 'row',       // Elementos en fila horizontal
         justifyContent: 'flex-end', // Alinea contenido a la derecha
         alignItems: 'center',       // Centra verticalmente
-        paddingHorizontal: 20,      // Padding horizontal de 20px
-        marginBottom: 20,           // Margen inferior de 20px
+        paddingHorizontal: horizontalPadding, // Padding horizontal responsivo
+        marginBottom: isSmallDevice ? 16 : 20, // Margen inferior responsivo
     },
     // Estilo del botón de perfil
     profileButton: {
-        width: 30,                  // Ancho de 30px
-        height: 30,                 // Alto de 30px
+        width: isSmallDevice ? 28 : 30,     // Ancho responsivo
+        height: isSmallDevice ? 28 : 30,    // Alto responsivo
     },
     // Estilo del ícono dentro del botón
     icon: {
@@ -237,29 +264,29 @@ const styles = StyleSheet.create({
     },
     // Contenedor del título principal
     titleContainer: {
-        paddingHorizontal: 20,      // Padding horizontal de 20px
-        marginBottom: 30,           // Margen inferior de 30px
+        paddingHorizontal: horizontalPadding, // Padding horizontal responsivo
+        marginBottom: isSmallDevice ? 24 : 30, // Margen inferior responsivo
     },
     // Estilo del texto del título principal
     mainTitle: {
-        fontSize: 28,               // Tamaño de fuente 28px
+        fontSize: isSmallDevice ? 24 : isMediumDevice ? 26 : 28, // Tamaño responsivo
         fontFamily: 'Poppins-Bold', // Fuente Poppins en negrita
         color: '#333',              // Color gris oscuro
-        lineHeight: 34,             // Altura de línea de 34px
+        lineHeight: isSmallDevice ? 28 : isMediumDevice ? 30 : 34, // Altura de línea responsiva
     },
     // Contenedor wrapper de la búsqueda
     searchWrapper: {
         flexDirection: 'row',       // Elementos en fila
         alignItems: 'center',       // Centra verticalmente
-        marginHorizontal: 20,       // Margen horizontal de 20px
-        marginBottom: 20,           // Margen inferior de 20px
-        gap: 12,                    // Espacio entre elementos de 12px
+        marginHorizontal: horizontalPadding, // Margen horizontal responsivo
+        marginBottom: isSmallDevice ? 16 : 20, // Margen inferior responsivo
+        gap: elementGap,            // Espacio entre elementos responsivo
     },
     // Botón de filtros (ícono tune)
     filterIconButton: {
-        width: 50,                  // Ancho de 50px
-        height: 50,                 // Alto de 50px
-        borderRadius: 15,           // Bordes redondeados de 15px
+        width: isSmallDevice ? 45 : 50,     // Ancho responsivo
+        height: isSmallDevice ? 45 : 50,    // Alto responsivo
+        borderRadius: isSmallDevice ? 12 : 15, // Radio responsivo
         backgroundColor: '#fff',     // Fondo blanco
         borderWidth: 2,             // Borde de 2px
         borderColor: '#f5c7e6ff',   // Color de borde rosado
@@ -280,11 +307,11 @@ const styles = StyleSheet.create({
         position: 'relative',       // Posicionamiento relativo para elementos absolutos
         backgroundColor: '#fff',     // Fondo blanco
         borderRadius: 25,           // Bordes muy redondeados
-        maxWidth: 500,              // Ancho máximo de 500px
+        maxWidth: screenWidth - (horizontalPadding * 2) - (isSmallDevice ? 45 : 50) - elementGap, // Ancho máximo calculado
         shadowColor: '#000',        // Color de sombra
         shadowOffset: {             // Offset de sombra
             width: 0,
-            height: 5,
+            height: 3,
         },
         shadowOpacity: 0.1,         // Opacidad de sombra
         shadowRadius: 4,            // Radio de sombra
@@ -292,12 +319,12 @@ const styles = StyleSheet.create({
     },
     // Campo de entrada de texto
     searchInput: {
-        fontSize: 12,               // Tamaño de fuente pequeño
+        fontSize: isSmallDevice ? 11 : 12,  // Tamaño de fuente responsivo
         fontFamily: 'Poppins-Regular', // Fuente Poppins regular
         color: '#333',              // Color de texto
-        paddingVertical: 15,        // Padding vertical
-        paddingLeft: 15,            // Padding izquierdo
-        paddingRight: 50,           // Padding derecho (espacio para el botón)
+        paddingVertical: isSmallDevice ? 12 : 15, // Padding vertical responsivo
+        paddingLeft: isSmallDevice ? 12 : 15,     // Padding izquierdo responsivo
+        paddingRight: isSmallDevice ? 45 : 50,    // Padding derecho responsivo
         borderWidth: 1,             // Borde de 1px
         borderColor: '#e5e7eb',     // Color de borde gris claro
         borderRadius: 25,           // Bordes redondeados
@@ -306,24 +333,26 @@ const styles = StyleSheet.create({
     // Botón de búsqueda (lupa)
     searchButton: {
         position: 'absolute',       // Posicionamiento absoluto
-        right: 0,                   // Pegado al borde derecho
-        top: 0,                     // Pegado al borde superior
-        bottom: 0,                  // Pegado al borde inferior
-        width: 55,                  // Ancho de 55px
-        height: '98%',              // Alto al 98% para dejar un pequeño margen
+        right: 1,                   // Pegado al borde derecho con pequeño margen
+        top: 1,                     // Pegado al borde superior con pequeño margen
+        bottom: 1,                  // Pegado al borde inferior con pequeño margen
+        width: isSmallDevice ? 45 : 50,     // Ancho responsivo
+        height: isSmallDevice ? 43 : 48,    // Alto responsivo (un poco menos para el margen)
         backgroundColor: '#f5c7e6ff', // Fondo rosado
         borderTopLeftRadius: 0,     // Sin redondeo superior izquierdo
-        borderBottomLeftRadius: 30, // Redondeo inferior izquierdo
-        borderTopRightRadius: 30,   // Redondeo superior derecho
-        borderBottomRightRadius: 30, // Redondeo inferior derecho
+        borderBottomLeftRadius: 23, // Redondeo inferior izquierdo
+        borderTopRightRadius: 23,   // Redondeo superior derecho
+        borderBottomRightRadius: 23, // Redondeo inferior derecho
         justifyContent: 'center',   // Centra contenido horizontalmente
         alignItems: 'center',       // Centra contenido verticalmente
         overflow: 'hidden',         // Oculta contenido que se desborde
     },
 
+    // ESTILOS DE CATEGORÍAS COMPLETAMENTE RESPONSIVOS
     // Contenedor del scroll de categorías
     categoryScrollContainer: {
-        marginBottom: 20,           // Margen inferior
+        marginBottom: isSmallDevice ? 16 : 20, // Margen inferior responsivo
+        height: isSmallDevice ? 50 : 55,       // Altura fija responsiva
     },
     // Estilos del ScrollView de categorías
     categoryScrollView: {
@@ -332,55 +361,77 @@ const styles = StyleSheet.create({
     },
     // Contenedor del contenido de categorías
     categoryContainer: {
-        paddingHorizontal: 20,      // Padding horizontal
-        paddingRight: 40,           // Padding adicional a la derecha
+        paddingHorizontal: horizontalPadding, // Padding horizontal responsivo
+        paddingRight: horizontalPadding + 20,  // Padding adicional a la derecha
+        alignItems: 'center',       // Centra verticalmente los botones
+        minHeight: isSmallDevice ? 45 : 50,    // Altura mínima
     },
-    // Estilo de cada botón de categoría
+    // Estilo de cada botón de categoría - MEJORADO
     categoryButton: {
-        paddingHorizontal: 20,      // Padding horizontal interno
-        paddingVertical: 8,         // Padding vertical interno
-        borderRadius: 20,           // Bordes muy redondeados
+        paddingHorizontal: isSmallDevice ? 14 : isMediumDevice ? 16 : 18, // Padding horizontal responsivo
+        paddingVertical: isSmallDevice ? 10 : 12, // Padding vertical responsivo
+        borderRadius: isSmallDevice ? 18 : 20,    // Bordes redondeados responsivos
         backgroundColor: '#fff',     // Fondo blanco
-        marginRight: 12,            // Margen derecho entre botones
+        marginRight: isSmallDevice ? 8 : elementGap, // Margen derecho responsivo
         shadowColor: '#000',        // Color de sombra
         shadowOffset: {             // Offset de sombra
             width: 0,
-            height: 1,
+            height: 2,
         },
-        shadowOpacity: 0.1,         // Opacidad de sombra
-        shadowRadius: 2,            // Radio de sombra
+        shadowOpacity: 0.08,        // Opacidad de sombra más suave
+        shadowRadius: 3,            // Radio de sombra
         elevation: 2,               // Elevación para Android
+        minWidth: isSmallDevice ? 60 : 70,        // Ancho mínimo responsivo
+        alignItems: 'center',       // Centra el texto
+        justifyContent: 'center',   // Centra verticalmente el texto
+        flexShrink: 0,              // No se encoge
+    },
+    // Estilo del último botón de categoría (margen extra)
+    lastCategoryButton: {
+        marginRight: 0,             // Sin margen derecho en el último
     },
     // Estilo del botón de categoría cuando está activo
     categoryButtonActive: {
         backgroundColor: '#4A4170',  // Fondo morado cuando está seleccionado
+        shadowColor: '#4A4170',     // Sombra del mismo color
+        shadowOpacity: 0.3,         // Sombra más visible cuando está activo
+        elevation: 4,               // Mayor elevación cuando está activo
     },
     // Estilo del texto de categoría
     categoryText: {
-        fontSize: 14,               // Tamaño de fuente
+        fontSize: isSmallDevice ? 12 : isMediumDevice ? 13 : 14, // Tamaño responsivo
         fontFamily: 'Poppins-Medium', // Fuente Poppins medium
         color: '#1b1b1bff',         // Color de texto gris oscuro
+        textAlign: 'center',        // Texto centrado
+        lineHeight: isSmallDevice ? 14 : isMediumDevice ? 15 : 16, // Altura de línea responsiva
     },
     // Estilo del texto cuando la categoría está activa
     categoryTextActive: {
         color: '#FFFFFF',           // Color blanco para contraste con fondo morado
+        fontFamily: 'Poppins-SemiBold', // Fuente más bold cuando está activo
     },
+
+    // ESTILOS DE PRODUCTOS RESPONSIVOS
     // Contenedor de la lista de productos
     productsContainer: {
-        paddingHorizontal: 20,      // Padding horizontal
+        paddingHorizontal: horizontalPadding, // Padding horizontal responsivo
         paddingTop: 10,             // Padding superior para separar de categorías
-        paddingBottom: 100,         // Padding inferior para dejar espacio al bottom nav
+        paddingBottom: isSmallDevice ? 90 : 100, // Padding inferior responsivo
     },
     // Estilo de cada fila en el grid
     row: {
         justifyContent: 'space-between', // Distribuye espacio entre columnas
-        marginBottom: 16,           // Margen inferior entre filas
+        marginBottom: isSmallDevice ? 12 : 16, // Margen inferior responsivo
+        paddingHorizontal: 2,       // Pequeño padding para evitar cortes
     },
     // Wrapper de cada card de producto
     cardWrapper: {
-        // Ancho calculado: ancho de pantalla menos 48px (20+20 padding + 8 gap) dividido entre 2
-        width: (screenWidth - 48) / 2,
+        // Ancho calculado responsivo
+        width: (screenWidth - (horizontalPadding * 2) - elementGap - 4) / 2,
+        minHeight: isSmallDevice ? 180 : 200, // Altura mínima responsiva
     },
+
+    // BARRA DE NAVEGACIÓN RESPONSIVA
     // Barra de navegación inferior
     bottomNav: {
         position: 'absolute',       // Posición fija
@@ -389,22 +440,26 @@ const styles = StyleSheet.create({
         right: 0,                   // Pegada a la derecha
         flexDirection: 'row',       // Elementos en fila
         backgroundColor: '#fff',     // Fondo blanco
-        paddingVertical: 16,        // Padding vertical
-        paddingHorizontal: 20,      // Padding horizontal
+        paddingVertical: isSmallDevice ? 12 : 16, // Padding vertical responsivo
+        paddingHorizontal: horizontalPadding,     // Padding horizontal responsivo
         justifyContent: 'space-around', // Distribuye elementos uniformemente
         shadowColor: '#000',        // Color de sombra
         shadowOffset: {             // Sombra hacia arriba
             width: 0,
-            height: -2,
+            height: -3,
         },
         shadowOpacity: 0.1,         // Opacidad de sombra
-        shadowRadius: 4,            // Radio de sombra
-        elevation: 5,               // Elevación alta para Android
+        shadowRadius: 6,            // Radio de sombra
+        elevation: 8,               // Elevación alta para Android
+        minHeight: isSmallDevice ? 70 : 80, // Altura mínima responsiva
     },
     // Estilo de cada item de navegación
     navItem: {
         alignItems: 'center',       // Centra horizontalmente
         justifyContent: 'center',   // Centra verticalmente
-        padding: 8,                 // Padding interno
+        padding: isSmallDevice ? 6 : 8, // Padding interno responsivo
+        minWidth: isSmallDevice ? 40 : 44, // Ancho mínimo responsivo
+        minHeight: isSmallDevice ? 40 : 44, // Alto mínimo responsivo
+        borderRadius: isSmallDevice ? 20 : 22, // Bordes redondeados
     },
 });

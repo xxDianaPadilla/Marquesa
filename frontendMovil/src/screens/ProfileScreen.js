@@ -11,6 +11,7 @@ import notificationIcon from "../images/notificationIcon.png";
 import mediaIcon from "../images/mediaIcon.png";
 import discountIcon from "../images/discountIcon.png";
 import termConditionIcon from "../images/termConditionIcon.png";
+import promocionesIcon from "../images/promocionesIcon.png";
 import logoutIcon from "../images/logoutIcon.png";
 import goIcon from "../images/goIcon.png";
 
@@ -105,6 +106,12 @@ export default function ProfileScreen({ navigation }) {
             title: "Términos y condiciones",
             icon: termConditionIcon,
             onPress: () => console.log("Términos y condiciones")
+        },
+        {
+            id: 7,
+            title: "Ruletas y promociones",
+            icon: promocionesIcon,
+            onPress: () => console.log("Ruletas y promociones")
         }
     ];
 
@@ -349,6 +356,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.05,
         shadowRadius: 2,
         elevation: 1,
+        marginBottom: 70,
     },
     logoutIcon: {
         width: 20,

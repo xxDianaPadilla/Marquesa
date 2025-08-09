@@ -94,6 +94,15 @@ router.put("/ruleta/use",
     clientsController.useRuletaCode
 );
 
+router.route("/:clientId/validate-code")
+    .post(clientsController.validatePromotionalCode);
+
+router.route("/:clientId/use-code")
+    .put(clientsController.usePromotionalCode);
+
+router.route("/:clientId/promotional-codes")
+    .get(clientsController.getClientPromotionalCodes);
+
 // Manejo de errores de multer
 router.use((error, req, res, next) => {
     if (error instanceof multer.MulterError) {

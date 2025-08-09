@@ -41,7 +41,7 @@ const PriceDisplay = ({
      * @returns {string} Precio formateado
      */
     const formatPrice = (amount) => {
-        return `${amount.toFixed(2)}${currency}`;
+        return `${currency}${amount.toFixed(2)}`;
     };
 
     // Calcula el porcentaje de descuento si hay precio original

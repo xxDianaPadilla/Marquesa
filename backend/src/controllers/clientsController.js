@@ -835,5 +835,233 @@ clientsController.getDetailedClientsStats = async (req, res) => {
     }
 };
 
+clientsController.validatePromotionalCode = async (req, res) => {
+    try {
+        const {clientId} = req.params;
+        const {code} = req.body;
+
+        if(!clientId || !code){
+            return res.status(400).json({
+                success: false,
+                message: "ID de cliente y código son requeridos"
+            });
+        }
+
+        const client = await clientsModel.findById(clientId);
+        if(!client){
+            return res.status(404).json({
+                success: false,
+                message: "Cliente no encontrado"
+            });
+        }
+
+        // Buscar por código O por nombre (más flexible)
+        const foundCode = client.ruletaCodes.find(rCode => {
+            const isActive = rCode.status === 'active';
+            const codeMatch = rCode.code.toUpperCase() === code.toUpperCase();
+            const nameMatch = rCode.name.toUpperCase() === code.toUpperCase();
+            
+            return isActive && (codeMatch || nameMatch);
+        });
+
+        if(!foundCode){
+            return res.status(400).json({
+                success: false,
+                message: "Código promocional no válido o ya utilizado"
+            });
+        }
+
+        const now = new Date();
+        if(foundCode.expiresAt < now){
+            // Marcar como expirado
+            await clientsModel.findByIdAndUpdate(
+                clientId,
+                {
+                    $set: {
+                        "ruletaCodes.$[elem].status": "expired"
+                    }
+                },
+                {
+                    arrayFilters: [{"elem.codeId": foundCode.codeId}],
+                    new: true
+                }
+            );
+
+            return res.status(400).json({
+                success: false,
+                message: "El código promocional ha expirado"
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Código promocional válido",
+            discountData: {
+                codeId: foundCode.codeId,
+                code: foundCode.code,
+                name: foundCode.name,
+                discount: foundCode.discount,
+                color: foundCode.color,
+                textColor: foundCode.textColor,
+                expiresAt: foundCode.expiresAt
+            }
+        });
+
+    } catch (error) {
+        console.error('Error validando código promocional: ', error);
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor",
+            error: error.message
+        });
+    }
+};
+
+clientsController.usePromotionalCode = async (req, res) => {
+    try {
+        const {clientId} = req.params;
+        const {codeId, orderId} = req.body;
+
+        if(!clientId || !codeId){
+            return res.status(400).json({
+                success: false,
+                message: "ID de cliente y código son requeridos"
+            });
+        }
+
+        const updateResult = await clientsModel.findByIdAndUpdate(
+            clientId,
+            {
+                $set: {
+                    "ruletaCodes.$[elem].status": "used",
+                    "ruletaCodes.$[elem].usedAt": new Date(),
+                    "ruletaCodes.$[elem].usedInOrderId": orderId || null
+                }
+            },
+            {
+                arrayFilters: [{
+                    "elem.codeId": codeId,
+                    "elem.status": "active"
+                }],
+                new: true
+            }
+        );
+
+        if(!updateResult){
+            return res.status(404).json({
+                success: false,
+                message: "Cliente no encontrado o código no válido"
+            });
+        }
+
+        const updatedCode = updateResult.ruletaCodes.find(code =>
+            code.codeId === codeId && code.status === 'used'
+        );
+
+        if(!updatedCode){
+            res.status(400).json({
+                success: false,
+                message: "No se pudo marcar el código como usado. Puede que ya esté utilizado."
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Código promocional marcado como usado exitosamente",
+            usedCode: {
+                codeId: updatedCode.codeId,
+                code: updatedCode.code,
+                usedAt: updatedCode.usedAt,
+                orderId: updatedCode.usedInOrderId
+            }
+        });
+    } catch (error) {
+        console.error('Error marcando código como usado: ', error);
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor",
+            error: error.message
+        });
+    }
+};
+
+clientsController.getClientPromotionalCodes = async (req, res) => {
+    try {
+        const {clientId} = req.params;
+        const {status} = req.query;
+
+        const client = await clientsModel.findById(clientId).select('ruletCodes');
+        if(!client){
+            return res.status(404).json({
+                success: false,
+                message: "Cliente no encontrado"
+            });
+        }
+
+        let filteredCodes = client.ruletaCodes;
+        if(status){
+            filteredCodes = client.ruletaCodes.filter(code => code.status === status);
+        }
+
+        const now = new Date();
+        const expiredCodes = filteredCodes.filter(code =>
+            code.status === 'active' && code.expiresAt < now
+        );
+
+        if(expiredCodes.length > 0){
+            await clientsModel.findByIdAndUpdate(
+                clientId,
+                {
+                    $set: {
+                        "ruletaCodes.$[elem].status": "expired"
+                    }
+                },
+                {
+                    arrayFilters: [{
+                        "elem.status": "active",
+                        "elem.expiresAt": {$lt: now}
+                    }]
+                }
+            );
+
+            filteredCodes = filteredCodes.map(code => ({
+                ...code.toObject(),
+                status: code.expiresAt < now ? 'expired' : code.status
+            }));
+        }
+
+        const formattedCodes = filteredCodes.map(code => ({
+            codeId: code.codeId,
+            code: code.code,
+            name: code.name,
+            discount: code.discount,
+            color: code.color,
+            textColor: code.textColor,
+            status: code.status,
+            createdAt: code.createdAt,
+            expiresAt: code.expiresAt,
+            usedAt: code.usedAt || null,
+            usedInOrderId: code.usedInOrderId || null
+        }));
+
+        res.status(200).json({
+            success: true,
+            message: "Códigos promocionales obtenidos exitosamente",
+            codes: formattedCodes,
+            total: formattedCodes.length,
+            activeCount: formattedCodes.filter(c => c.status === 'active').length,
+            usedCount: formattedCodes.filter(c => c.status === 'used').length,
+            expiredCount: formattedCodes.filter(c => c.status === 'expired').length
+        });
+    } catch (error) {
+        console.error('Error obteniendo códigos promocionales: ', error);
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor",
+            error: error.message
+        });
+    }
+};
+
 // Exportamos el controller para poder usarlo en las rutas
 export default clientsController;

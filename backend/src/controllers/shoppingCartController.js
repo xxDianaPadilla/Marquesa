@@ -456,7 +456,7 @@ shoppingCartController.removeSpecificItem = async (req, res) => {
         }
 
         // Buscar el carrito del cliente
-        const cart = await ShoppingCart.findOne({ clientId })
+        const cart = await shoppingCartModel.findOne({ clientId })
             .populate('items.itemId');
 
         if (!cart) {

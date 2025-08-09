@@ -1,5 +1,6 @@
 /**
  * Componente ShoppingCart - Página del carrito de compras
+ * ACTUALIZADO: Integra funcionalidad completa de códigos promocionales
  */
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -16,17 +17,12 @@ import "../styles/ShoppingCart.css";
  */
 const validateCartItem = (item) => {
     if (!item || typeof item !== 'object') return false;
-
-    // Verificar campos requeridos
     if (!item.id || !item.name || typeof item.price !== 'number' || typeof item.quantity !== 'number') {
         return false;
     }
-
-    // Validar valores
     if (item.price < 0 || item.quantity < 1 || item.quantity > 99) {
         return false;
     }
-
     return true;
 };
 
@@ -49,7 +45,7 @@ const ShoppingCart = () => {
     const [discountError, setDiscountError] = useState(null);
     const [isLoadingDiscount, setIsLoadingDiscount] = useState(false);
 
-    // Usar el hook personalizado del carrito
+    // Usar el hook personalizado del carrito (ACTUALIZADO con descuentos)
     const {
         cartItems,
         cartTotal,
@@ -59,10 +55,26 @@ const ShoppingCart = () => {
         updating,
         isAuthenticated,
         user,
+
+        // Nuevas propiedades de descuentos
+        appliedDiscount,
+        discountAmount,
+        subtotalWithDiscount,
+        finalTotal,
+        hasDiscount,
+
+        // Funciones existentes
         updateQuantity,
         removeItem,
         clearError,
         refreshCart,
+
+        // Nuevas funciones de descuentos
+        applyDiscount,
+        removeDiscount,
+        markDiscountAsUsed,
+        getPromotionalCodes,
+
         isEmpty
     } = useShoppingCart();
 
@@ -76,7 +88,7 @@ const ShoppingCart = () => {
     /**
      * Función para proceder al pago
      */
-    const handlePaymentProcessClick = (e) => {
+    const handlePaymentProcessClick = useCallback(async (e) => {
         e.preventDefault();
 
         // Validar autenticación
@@ -99,21 +111,58 @@ const ShoppingCart = () => {
         }
 
         setCartError(null);
-        navigate('/paymentProcess');
-    };
+
+        // Si hay un descuento aplicado, marcarlo como usado antes de proceder
+        if (hasDiscount && appliedDiscount) {
+            try {
+                // Aquí podrías generar un ID temporal de orden si es necesario
+                const tempOrderId = `temp_${Date.now()}`;
+                const success = await markDiscountAsUsed(tempOrderId);
+
+                if (!success) {
+                    setCartError('Error al procesar el código de descuento. Inténtalo nuevamente.');
+                    return;
+                }
+            } catch (error) {
+                console.error('Error marcando descuento como usado:', error);
+                setCartError('Error al procesar el descuento.');
+                return;
+            }
+        }
+
+        // Navegar a la página de pago con información del descuento si existe
+        const paymentState = {
+            cartTotal: finalTotal,
+            originalSubtotal: calculatedSubtotal,
+            discountApplied: hasDiscount,
+            discountAmount: discountAmount,
+            discountInfo: appliedDiscount
+        };
+
+        navigate('/paymentProcess', { state: paymentState });
+    }, [
+        isAuthenticated,
+        isEmpty,
+        cartItems,
+        hasDiscount,
+        appliedDiscount,
+        markDiscountAsUsed,
+        navigate,
+        finalTotal,
+        calculatedSubtotal,
+        discountAmount
+    ]);
 
     /**
      * Función para actualizar cantidad con validación mejorada
      */
     const handleUpdateQuantity = useCallback(async (itemId, newQuantity) => {
         try {
-            // Validar entrada
             if (!itemId || typeof newQuantity !== 'number') {
                 setCartError('Error al actualizar cantidad del producto.');
                 return;
             }
 
-            // Validar rango de cantidad
             if (newQuantity < 1) {
                 setCartError('La cantidad debe ser al menos 1.');
                 return;
@@ -126,7 +175,6 @@ const ShoppingCart = () => {
 
             setCartError(null);
 
-            // Usar la función del hook
             const success = await updateQuantity(itemId, newQuantity);
 
             if (!success) {
@@ -150,7 +198,6 @@ const ShoppingCart = () => {
 
             setCartError(null);
 
-            // Usar la función del hook
             const success = await removeItem(itemId);
 
             if (!success) {
@@ -163,9 +210,9 @@ const ShoppingCart = () => {
     }, [removeItem]);
 
     /**
-     * Función para aplicar descuento con validación
+     * NUEVA FUNCIÓN: Aplicar descuento con validación completa
      */
-    const handleApplyDiscount = useCallback(async (code, amount) => {
+    const handleApplyDiscount = useCallback(async (code, amount, discountData) => {
         try {
             setIsLoadingDiscount(true);
             setDiscountError(null);
@@ -182,14 +229,14 @@ const ShoppingCart = () => {
                 return;
             }
 
-            // Simular validación del código con el servidor
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Aplicar el descuento usando el hook
+            applyDiscount(discountData, amount);
 
-            // Aquí iría la lógica real de validación del descuento
-            console.log(`Descuento aplicado: ${sanitizedCode} - Monto: ${amount}$`);
-
-            // Por ahora solo mostramos mensaje de éxito
-            setDiscountError(null);
+            console.log(`Descuento aplicado exitosamente:`, {
+                code: sanitizedCode,
+                amount: amount,
+                discountData: discountData
+            });
 
         } catch (error) {
             console.error('Error al aplicar descuento:', error);
@@ -197,7 +244,7 @@ const ShoppingCart = () => {
         } finally {
             setIsLoadingDiscount(false);
         }
-    }, []);
+    }, [applyDiscount]);
 
     /**
      * Función para continuar comprando
@@ -217,8 +264,23 @@ const ShoppingCart = () => {
     const clearErrors = useCallback(() => {
         setCartError(null);
         setDiscountError(null);
-        clearError(); // Limpiar errores del hook también
+        clearError();
     }, [clearError]);
+
+    /**
+     * NUEVA FUNCIÓN: Mostrar códigos disponibles (opcional)
+     */
+    const showAvailableCodes = useCallback(async () => {
+        try {
+            const result = await getPromotionalCodes('active');
+            if (result.success && result.codes.length > 0) {
+                console.log('Códigos activos disponibles:', result.codes);
+                // Aquí podrías mostrar un modal o lista de códigos disponibles
+            }
+        } catch (error) {
+            console.error('Error obteniendo códigos:', error);
+        }
+    }, [getPromotionalCodes]);
 
     // Limpiar errores después de un tiempo
     useEffect(() => {
@@ -229,6 +291,13 @@ const ShoppingCart = () => {
             return () => clearTimeout(timer);
         }
     }, [cartError]);
+
+    // Limpiar descuento si el carrito se vacía
+    useEffect(() => {
+        if (isEmpty && hasDiscount) {
+            removeDiscount();
+        }
+    }, [isEmpty, hasDiscount, removeDiscount]);
 
     /**
      * Componente para carrito vacío
@@ -405,6 +474,37 @@ const ShoppingCart = () => {
                 </div>
             )}
 
+            {/* Mostrar información de descuento aplicado */}
+            {hasDiscount && appliedDiscount && (
+                <div className="max-w-4xl mx-auto px-4 mb-4">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                                <svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <div>
+                                    <span className="text-green-700 text-sm font-medium" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                        Descuento activo: {appliedDiscount.name}
+                                    </span>
+                                    <div className="text-green-600 text-xs">
+                                        Ahorras ${discountAmount.toFixed(2)}
+                                    </div>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => removeDiscount()}
+                                className="text-green-500 hover:text-green-700"
+                                style={{ cursor: 'pointer' }}
+                                title="Remover descuento"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="shopping-cart-container">
                 {isEmpty ? (
                     <EmptyCart />
@@ -427,14 +527,14 @@ const ShoppingCart = () => {
 
                         <OrderSummary
                             subtotal={calculatedSubtotal}
-                            shipping={10.00}
-                            total={cartTotal}
+                            total={hasDiscount ? finalTotal : cartTotal}
                             onApplyDiscount={handleApplyDiscount}
                             onProceedToPay={handlePaymentProcessClick}
                             onContinueShopping={handleContinueShopping}
                             discountError={discountError}
                             isLoading={isLoadingDiscount}
                             updating={updating}
+                            userId={user?.id}
                         />
                     </>
                 )}

@@ -539,22 +539,6 @@ const CategoryProductsPage = () => {
 
             {/* **CONTENIDO PRINCIPAL** */}
             <main className="py-4 sm:py-8 relative">
-                
-                {/* **INDICADOR DE CARGA FLOTANTE** */}
-                {isLoading && hasLoadedOnce && (
-                    <div className="fixed top-20 right-4 sm:right-6 z-50 bg-white rounded-lg shadow-lg border border-gray-200 px-4 py-3 flex items-center space-x-3 animate-pulse">
-                        {/* Spinner animado */}
-                        <div className="relative">
-                            <div className="w-5 h-5 border-2 border-pink-200 rounded-full"></div>
-                            <div className="absolute top-0 left-0 w-5 h-5 border-2 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
-                        </div>
-                        {/* Texto de carga */}
-                        <span className="text-sm font-medium text-gray-700" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                            Cargando productos...
-                        </span>
-                    </div>
-                )}
-
                 <Container>
                     <div className="space-y-8 sm:space-y-12">
 

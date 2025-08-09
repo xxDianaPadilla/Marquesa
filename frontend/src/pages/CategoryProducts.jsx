@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useFavorites } from "../context/FavoritesContext";
 import Header from "../components/Header/Header";
@@ -10,36 +10,22 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import Container from "../components/Container";
 import ProductCard from "../components/ProductCard";
 
+/**
+ * CategoryProducts.jsx - VERSIÓN SIN CACHE
+ * Siempre carga desde el servidor, como la primera vez
+ */
+
+// **VARIABLE PARA MANEJAR REQUESTS ACTIVOS (SIN CACHE)**
+let currentFetch = null;
+
 const CategoryProducts = () => {
     const navigate = useNavigate();
     const location = useLocation();
+    const params = useParams();
 
-    // Estados para el manejo de la página
-    const [activeCategory, setActiveCategory] = useState('todos');
-    const [isLoading, setIsLoading] = useState(true);
-    const [products, setProducts] = useState([]);
-    const [error, setError] = useState(null);
-    const [imageLoadingStates, setImageLoadingStates] = useState({});
-    const [favoriteToggling, setFavoriteToggling] = useState(new Set()); // Para manejar múltiples toggles
+    // **CONFIGURACIÓN ESTÁTICA**
+    const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:4000/api';
 
-    // Hook de favoritos
-    const {
-        favorites,
-        addToFavorites,
-        removeFromFavorites,
-        isFavorite,
-        toggleFavorite,
-        getFavoriteProduct // Nueva función para debugging
-    } = useFavorites();
-
-    // URL base de la API
-    const API_BASE_URL = process.env.NODE_ENV === 'production'
-        ? '/api'
-        : 'http://localhost:4000/api';
-
-    /**
-     * Configuración de categorías disponibles - Memoizado para evitar re-creación
-     */
     const categories = useMemo(() => [
         { _id: 'todos', name: 'Todos' },
         { _id: '688175a69579a7cde1657aaa', name: 'Arreglos con flores naturales' },
@@ -57,27 +43,212 @@ const CategoryProducts = () => {
         '688175e79579a7cde1657ac6': 'Tarjetas'
     }), []);
 
-    /**
-     * Función helper para obtener ID del producto de forma consistente
-     */
-    const getProductId = useCallback((product) => {
-        if (!product) return null;
-        return product._id || product.id || null;
-    }, []);
+    // **FUNCIÓN PARA DETERMINAR CATEGORÍA DESDE URL**
+    const getCurrentCategory = useCallback(() => {
+        const pathParts = location.pathname.split('/');
+        
+        if (location.pathname === '/categoryProducts') {
+            return 'todos';
+        }
+        
+        if (pathParts[1] === 'categoria' && pathParts[2]) {
+            return pathParts[2];
+        }
+        
+        if (params.categoryId) {
+            return params.categoryId;
+        }
+        
+        return 'todos';
+    }, [location.pathname, params.categoryId]);
+
+    // **ESTADOS PRINCIPALES**
+    const [activeCategory, setActiveCategory] = useState(getCurrentCategory());
+    const [products, setProducts] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [favoriteToggling, setFavoriteToggling] = useState(new Set());
+
+    // **HOOKS**
+    const { isFavorite, toggleFavorite } = useFavorites();
 
     /**
-     * Función para normalizar producto antes de enviarlo a favoritos
+     * **FUNCIÓN DE CARGA SIN CACHE - SIEMPRE DESDE SERVIDOR**
      */
+    const loadProducts = useCallback(async (categoryId) => {
+        console.log(`🎯 Cargando productos desde servidor para: ${categoryId}`);
+
+        // **CANCELAR FETCH ANTERIOR SI EXISTE**
+        if (currentFetch) {
+            console.log(`🚫 Cancelando fetch anterior: ${currentFetch.categoryId}`);
+            currentFetch.controller.abort();
+            currentFetch = null;
+        }
+
+        try {
+            console.log(`🚀 Iniciando carga fresca para: ${categoryId}`);
+            setIsLoading(true);
+            setError(null);
+
+            const controller = new AbortController();
+            currentFetch = { categoryId, controller };
+
+            // **DETERMINAR ENDPOINT**
+            const endpoint = categoryId === 'todos' 
+                ? `${API_BASE_URL}/products`
+                : `${API_BASE_URL}/products/by-category/${categoryId}`;
+
+            console.log(`📡 Fetching desde: ${endpoint}`);
+
+            const response = await fetch(endpoint, {
+                signal: controller.signal,
+                headers: { 
+                    'Content-Type': 'application/json',
+                    // **AGREGAR HEADERS PARA EVITAR CACHE DEL NAVEGADOR**
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            let productsData = [];
+
+            // **NORMALIZAR RESPUESTA**
+            if (Array.isArray(data)) {
+                productsData = data;
+            } else if (data.success && Array.isArray(data.data)) {
+                productsData = data.data;
+            } else if (data.products && Array.isArray(data.products)) {
+                productsData = data.products;
+            } else if (data.data && Array.isArray(data.data)) {
+                productsData = data.data;
+            }
+
+            console.log(`✅ ${productsData.length} productos cargados desde servidor para: ${categoryId}`);
+
+            // **VERIFICAR QUE SIGUE SIENDO LA CATEGORÍA ACTUAL ANTES DE ACTUALIZAR**
+            const currentCat = getCurrentCategory();
+            if (categoryId === currentCat) {
+                console.log(`🔄 Actualizando UI para: ${categoryId}`);
+                setProducts(productsData);
+                setError(null);
+            } else {
+                console.log(`⚠️ Categoría cambió durante fetch: ${categoryId} → ${currentCat}`);
+            }
+
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                console.log(`🚫 Fetch cancelado para: ${categoryId}`);
+                return;
+            }
+
+            console.error(`❌ Error al cargar ${categoryId}:`, error);
+            
+            const errorMsg = `Error al cargar ${categoryMap[categoryId] || 'productos'}`;
+            
+            // **SOLO MOSTRAR ERROR SI ES LA CATEGORÍA ACTUAL**
+            const currentCat = getCurrentCategory();
+            if (categoryId === currentCat) {
+                setError(errorMsg);
+                setProducts([]);
+                toast.error(errorMsg, { duration: 3000, position: 'top-center' });
+            }
+
+        } finally {
+            // **SOLO QUITAR LOADING SI ES LA CATEGORÍA ACTUAL**
+            const currentCat = getCurrentCategory();
+            if (categoryId === currentCat) {
+                setIsLoading(false);
+            }
+
+            // **LIMPIAR FETCH ACTUAL**
+            if (currentFetch && currentFetch.categoryId === categoryId) {
+                currentFetch = null;
+            }
+        }
+    }, [API_BASE_URL, categoryMap, getCurrentCategory]);
+
+    /**
+     * **EFECTO PRINCIPAL - SIEMPRE CARGA DESDE SERVIDOR**
+     */
+    useEffect(() => {
+        const urlCategory = getCurrentCategory();
+        
+        console.log(`🔄 Effect principal - URL: ${location.pathname}, Categoría: ${urlCategory}`);
+
+        // **ACTUALIZAR CATEGORÍA ACTIVA SI ES DIFERENTE**
+        if (urlCategory !== activeCategory) {
+            console.log(`📝 Actualizando categoría activa: ${activeCategory} → ${urlCategory}`);
+            setActiveCategory(urlCategory);
+        }
+
+        // **SIEMPRE CARGAR DESDE SERVIDOR**
+        console.log(`📦 Cargando productos desde servidor para: ${urlCategory}`);
+        loadProducts(urlCategory);
+
+        // **CLEANUP AL DESMONTAR O CAMBIAR**
+        return () => {
+            if (currentFetch) {
+                console.log(`🧹 Cleanup: cancelando fetch para ${currentFetch.categoryId}`);
+                currentFetch.controller.abort();
+                currentFetch = null;
+            }
+        };
+    }, [location.pathname, getCurrentCategory, loadProducts, activeCategory]);
+
+    /**
+     * **MANEJO DE CAMBIO DE CATEGORÍA DESDE NAVEGACIÓN**
+     */
+    const handleCategoryChange = useCallback((categoryId) => {
+        console.log(`👆 Cambio de categoría solicitado: ${activeCategory} → ${categoryId}`);
+
+        // **EVITAR CAMBIO REDUNDANTE**
+        if (categoryId === activeCategory) {
+            console.log(`⚠️ Ya estamos en la categoría: ${categoryId}`);
+            return;
+        }
+
+        // **RESETEAR ESTADO COMPLETAMENTE ANTES DE NAVEGAR**
+        setIsLoading(true);
+        setError(null);
+        setProducts([]);
+
+        // **NAVEGAR INMEDIATAMENTE**
+        if (categoryId === 'todos') {
+            navigate('/categoryProducts', { replace: true });
+        } else {
+            navigate(`/categoria/${categoryId}`, { replace: true });
+        }
+
+        // **SCROLL SUAVE**
+        setTimeout(() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 100);
+    }, [activeCategory, navigate]);
+
+    const handlePersonalizeClick = useCallback((categoryId) => {
+        console.log('🎨 Navegando a personalización:', categoryId);
+        navigate(`/personalizar/${categoryId}`);
+    }, [navigate]);
+
+    /**
+     * **FUNCIONES AUXILIARES PARA FAVORITOS**
+     */
+    const getProductId = useCallback((product) => {
+        return product?._id || product?.id || null;
+    }, []);
+
     const normalizeProductForFavorites = useCallback((product) => {
         if (!product) return null;
 
         const productId = getProductId(product);
-        if (!productId) {
-            console.error('Product has no valid ID:', product);
-            return null;
-        }
+        if (!productId) return null;
 
-        // Extraer información de la categoría
         let categoryName = 'Sin categoría';
         let categoryId = null;
 
@@ -89,7 +260,6 @@ const CategoryProducts = () => {
             categoryName = categoryMap[product.categoryId];
         }
 
-        // Extraer imagen
         let image = '/placeholder-image.jpg';
         if (product.image) {
             image = product.image;
@@ -101,214 +271,54 @@ const CategoryProducts = () => {
             }
         }
 
-        // Crear producto normalizado con todos los campos necesarios
-        const normalizedProduct = {
-            // IDs - asegurar consistencia
+        return {
             id: productId,
             _id: productId,
-
-            // Información básica
             name: product.name || 'Producto sin nombre',
             description: product.description || '',
-
-            // Categoría normalizada
             category: categoryName,
             categoryId: categoryId,
-
-            // Precio
             price: product.price || 0,
-
-            // Stock (si está disponible)
-            ...(product.stock !== undefined && { stock: Number(product.stock) }),
-
-            // Imágenes
             image: image,
-            images: Array.isArray(product.images) ? product.images : (product.images ? [product.images] : []),
-
-            // Personalización
+            images: Array.isArray(product.images) ? product.images : [],
             isPersonalizable: Boolean(product.isPersonalizable),
-
-            // Metadatos
+            ...(product.stock !== undefined && { stock: Number(product.stock) }),
             createdAt: product.createdAt,
             updatedAt: product.updatedAt,
-
-            // Preservar cualquier otro campo importante
-            ...Object.keys(product).reduce((acc, key) => {
-                if (!['id', '_id', 'name', 'description', 'category', 'categoryId', 'price', 'stock', 'image', 'images', 'isPersonalizable'].includes(key)) {
-                    acc[key] = product[key];
-                }
-                return acc;
-            }, {})
         };
-
-        console.log('🔄 Product normalized for favorites:', {
-            original: product,
-            normalized: normalizedProduct,
-            id: productId
-        });
-
-        return normalizedProduct;
     }, [getProductId, categoryMap]);
 
-    /**
-     * Función para obtener todos los productos - Memoizada con useCallback
-     */
-    const fetchAllProducts = useCallback(async () => {
-        try {
-            setIsLoading(true);
-            console.log('🔄 Fetching all products...');
-
-            const response = await fetch(`${API_BASE_URL}/products`);
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            console.log('📦 All products response:', data);
-
-            const productsData = Array.isArray(data) ? data : (data.products || data.data || []);
-
-            console.log('📊 Total products loaded:', productsData.length);
-            setProducts(productsData);
-            setError(null);
-
-        } catch (error) {
-            console.error('❌ Error fetching all products:', error);
-            setError('Error al cargar todos los productos');
-            setProducts([]);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [API_BASE_URL]);
-
-    /**
-     * Función para obtener productos por categoría específica - Memoizada
-     */
-    const fetchProductsByCategory = useCallback(async (categoryId) => {
-        try {
-            setIsLoading(true);
-            console.log('🔄 Fetching products for category:', categoryId);
-
-            const response = await fetch(`${API_BASE_URL}/products/by-category/${categoryId}`);
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            console.log(`📦 Products for category ${categoryId}:`, data);
-
-            const productsData = Array.isArray(data) ? data : (data.products || data.data || []);
-
-            console.log(`📊 Products loaded for category ${categoryId}:`, productsData.length);
-            setProducts(productsData);
-            setError(null);
-
-        } catch (error) {
-            console.error(`❌ Error fetching products for category ${categoryId}:`, error);
-            setError(`Error al cargar los productos de la categoría`);
-            setProducts([]);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [API_BASE_URL]);
-
-    /**
-     * Determina la categoría inicial basada en la URL - Memoizada
-     */
-    const getInitialCategory = useCallback(() => {
-        const pathParts = location.pathname.split('/');
-        if (pathParts[1] === 'categoria' && pathParts[2]) {
-            return pathParts[2];
-        }
-        return 'todos';
-    }, [location.pathname]);
-
-    /**
-     * Maneja el toggle de favorito - MEJORADA con validación robusta
-     */
     const handleToggleFavorite = useCallback(async (product) => {
         const productId = getProductId(product);
 
-        // Validaciones previas
-        if (!product || !productId) {
-            console.error('❌ Invalid product for favorites:', product);
-            toast.error('Error: Producto inválido', {
-                duration: 2000,
-                position: 'top-center',
-                icon: '❌'
-            });
-            return;
-        }
-
-        // Evitar toggles múltiples del mismo producto
-        if (favoriteToggling.has(productId)) {
-            console.log('⏳ Toggle already in progress for product:', productId);
+        if (!product || !productId || favoriteToggling.has(productId)) {
             return;
         }
 
         try {
-            // Marcar como procesando
             setFavoriteToggling(prev => new Set([...prev, productId]));
 
-            console.log('❤️ Toggle favorite for product:', {
-                id: productId,
-                name: product.name,
-                currentStatus: isFavorite(productId)
-            });
-
-            // Normalizar producto antes de enviarlo al contexto
             const normalizedProduct = normalizeProductForFavorites(product);
-
             if (!normalizedProduct) {
                 throw new Error('No se pudo normalizar el producto');
             }
 
             const wasAdded = toggleFavorite(normalizedProduct);
 
-            // Verificar que se guardó correctamente
-            setTimeout(() => {
-                const savedProduct = getFavoriteProduct(productId);
-                console.log('✅ Verification after toggle:', {
-                    expected: wasAdded,
-                    inFavorites: !!savedProduct,
-                    productData: savedProduct
-                });
-
-                if (!wasAdded && savedProduct) {
-                    console.error('❌ Product was not removed correctly!');
-                    toast.error('Error al eliminar de favoritos', {
-                        duration: 3000,
-                        position: 'top-center',
-                        icon: '❌'
-                    });
-                }
-            }, 100);
-
-            // Mostrar toast según la acción realizada
             if (wasAdded) {
                 toast.success(`¡${normalizedProduct.name} agregado a favoritos!`, {
                     duration: 2000,
                     position: 'top-center',
                     icon: '❤️',
-                    style: {
-                        background: '#EC4899',
-                        color: '#fff',
-                    },
+                    style: { background: '#EC4899', color: '#fff' },
                 });
-                console.log('✅ Producto agregado a favoritos exitosamente');
             } else {
                 toast.success(`${normalizedProduct.name} eliminado de favoritos`, {
                     duration: 2000,
                     position: 'top-center',
                     icon: '💔',
-                    style: {
-                        background: '#6B7280',
-                        color: '#fff',
-                    },
+                    style: { background: '#6B7280', color: '#fff' },
                 });
-                console.log('❌ Producto removido de favoritos exitosamente');
             }
 
         } catch (error) {
@@ -316,161 +326,69 @@ const CategoryProducts = () => {
             toast.error('Error al actualizar favoritos', {
                 duration: 3000,
                 position: 'top-center',
-                icon: '❌'
             });
         } finally {
-            // Remover del estado de procesando
             setFavoriteToggling(prev => {
                 const newSet = new Set(prev);
                 newSet.delete(productId);
                 return newSet;
             });
         }
-    }, [getProductId, normalizeProductForFavorites, isFavorite, toggleFavorite, getFavoriteProduct, favoriteToggling]);
+    }, [getProductId, normalizeProductForFavorites, toggleFavorite, favoriteToggling]);
 
     /**
-     * Maneja la carga de imágenes para evitar parpadeo
+     * **AGRUPACIÓN DE PRODUCTOS**
      */
-    const handleImageLoad = useCallback((productId) => {
-        setImageLoadingStates(prev => ({
-            ...prev,
-            [productId]: true
-        }));
-    }, []);
-
-    /**
-     * useEffect ÚNICO para manejar la carga inicial y cambios de URL
-     */
-    useEffect(() => {
-        console.log('🚀 Loading data based on URL...');
-
-        const initialCategory = getInitialCategory();
-        console.log('🎯 Initial category from URL:', initialCategory);
-
-        // Solo actualizar si la categoría cambió
-        if (initialCategory !== activeCategory) {
-            setActiveCategory(initialCategory);
+    const productsByCategory = useMemo(() => {
+        if (!Array.isArray(products) || products.length === 0) {
+            return {};
         }
-
-        if (initialCategory === 'todos') {
-            fetchAllProducts();
-        } else {
-            fetchProductsByCategory(initialCategory);
-        }
-    }, [location.pathname, getInitialCategory, fetchAllProducts, fetchProductsByCategory, activeCategory]);
-
-    /**
-     * Maneja el cambio de categoría en la navegación - Optimizada
-     */
-    const handleCategoryChange = useCallback(async (categoryId) => {
-        // Prevenir cambios innecesarios
-        if (categoryId === activeCategory || isLoading) {
-            return;
-        }
-
-        console.log('🎯 Category changed to:', categoryId);
-        setActiveCategory(categoryId);
-
-        if (categoryId === 'todos') {
-            await fetchAllProducts();
-            navigate('/categoryProducts', { replace: true });
-        } else {
-            await fetchProductsByCategory(categoryId);
-            navigate(`/categoria/${categoryId}`, { replace: true });
-        }
-
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, [activeCategory, isLoading, fetchAllProducts, fetchProductsByCategory, navigate]);
-
-    /**
-     * Maneja el click en "Ver todos" - Optimizada
-     */
-    const handleViewAll = useCallback((categoryId) => {
-        console.log('👀 View all clicked for category:', categoryId);
-        handleCategoryChange(categoryId);
-    }, [handleCategoryChange]);
-
-    /**
-     * Maneja la navegación al detalle del producto - Optimizada
-     */
-    const handleProductDetailClick = useCallback((productId) => {
-        console.log('🔗 Navigating to product detail:', productId);
-        navigate(`/ProductDetail/${productId}`);
-    }, [navigate]);
-
-    /**
-     * Maneja la navegación a la página de personalización - Optimizada
-     */
-    const handlePersonalizeClick = useCallback((categoryId) => {
-        console.log('🎨 Navigating to personalize category:', categoryId);
-        navigate(`/personalizar/${categoryId}`);
-    }, [navigate]);
-
-    /**
-     * Agrupa los productos por categoría - Memoizada para evitar recálculos
-     */
-    const getProductsByCategory = useMemo(() => {
-        const safeProducts = Array.isArray(products) ? products : [];
 
         if (activeCategory === 'todos') {
-            const groupedProducts = {};
+            const grouped = {};
 
-            safeProducts.forEach(product => {
-                let categoryId, categoryName;
+            products.forEach(product => {
+                let catId, catName;
 
                 if (typeof product.categoryId === 'object' && product.categoryId._id) {
-                    categoryId = product.categoryId._id;
-                    categoryName = product.categoryId.name;
+                    catId = product.categoryId._id;
+                    catName = product.categoryId.name;
                 } else {
-                    categoryId = product.categoryId;
-                    categoryName = categoryMap[categoryId] || 'Sin categoría';
+                    catId = product.categoryId;
+                    catName = categoryMap[catId] || 'Sin categoría';
                 }
 
-                if (!groupedProducts[categoryId]) {
-                    groupedProducts[categoryId] = {
-                        name: categoryName,
+                if (!grouped[catId]) {
+                    grouped[catId] = {
+                        name: catName,
                         products: []
                     };
                 }
 
-                groupedProducts[categoryId].products.push(product);
+                grouped[catId].products.push(product);
             });
 
-            console.log('📊 Grouped products:', Object.keys(groupedProducts).map(key => ({
-                categoryId: key,
-                name: groupedProducts[key].name,
-                count: groupedProducts[key].products.length
-            })));
-
-            return groupedProducts;
+            return grouped;
         } else {
-            const categoryName = categoryMap[activeCategory] || categories.find(cat => cat._id === activeCategory)?.name || 'Categoría';
+            const categoryName = categoryMap[activeCategory] || 
+                               categories.find(cat => cat._id === activeCategory)?.name || 
+                               'Categoría';
             return {
                 [activeCategory]: {
                     name: categoryName,
-                    products: safeProducts
+                    products: products
                 }
             };
         }
     }, [products, activeCategory, categoryMap, categories]);
 
-    /**
-     * Formatea los productos para ProductCard - MEJORADA
-     */
     const formatProductForCard = useCallback((product) => {
-        console.log("🎨 Formateando producto para ProductCard:", product);
+        if (!product) return null;
 
         const productId = getProductId(product);
+        if (!productId) return null;
 
-        if (!productId) {
-            console.error('❌ Product has no valid ID:', product);
-            return null;
-        }
-
-        const fallbackImage = '/placeholder-image.jpg';
-        let image = fallbackImage;
-
-        // Extraer la imagen del producto
+        let image = '/placeholder-image.jpg';
         if (product.image) {
             image = product.image;
         } else if (product.images && Array.isArray(product.images) && product.images.length > 0) {
@@ -481,7 +399,6 @@ const CategoryProducts = () => {
             }
         }
 
-        // Extraer información de la categoría
         let categoryName = 'Sin categoría';
         if (typeof product.categoryId === 'object' && product.categoryId.name) {
             categoryName = product.categoryId.name;
@@ -489,7 +406,7 @@ const CategoryProducts = () => {
             categoryName = categoryMap[product.categoryId];
         }
 
-        const formattedProduct = {
+        return {
             ...product,
             id: productId,
             _id: productId,
@@ -497,54 +414,29 @@ const CategoryProducts = () => {
             description: product.description || '',
             price: product.price || 0,
             image: image,
-            images: Array.isArray(product.images) ? product.images : (product.images ? [product.images] : []),
-            stock: product.stock !== undefined ? Number(product.stock) : undefined,
+            images: Array.isArray(product.images) ? product.images : [],
+            stock: product.stock,
             category: categoryName,
             isPersonalizable: Boolean(product.isPersonalizable)
         };
-
-        console.log("✅ Producto formateado:", {
-            original: product,
-            formatted: formattedProduct
-        });
-
-        return formattedProduct;
     }, [getProductId, categoryMap]);
 
-    /**
-     * Función para reintentar la carga - Optimizada
-     */
-    const handleRetry = useCallback(() => {
-        setError(null);
-        if (activeCategory === 'todos') {
-            fetchAllProducts();
-        } else {
-            fetchProductsByCategory(activeCategory);
-        }
-    }, [activeCategory, fetchAllProducts, fetchProductsByCategory]);
-
-    /**
-     * Renderiza la grilla de productos - MEJORADA con mejor manejo de errores
-     */
-    const renderProductGrid = useCallback((products, categoryId) => {
-        if (!products || products.length === 0) {
+    const renderProductGrid = useCallback((productsToRender) => {
+        if (!productsToRender || productsToRender.length === 0) {
             return (
-                <div className="text-center py-8">
-                    <p className="text-white-500">No hay productos disponibles en esta categoría</p>
+                <div className="text-center py-12">
+                    <div className="text-6xl mb-4">📦</div>
+                    <p className="text-gray-500 text-lg">No hay productos disponibles</p>
                 </div>
             );
         }
 
         return (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-                {products.map((product) => {
+                {productsToRender.map((product) => {
                     const formattedProduct = formatProductForCard(product);
-
-                    // Skip productos que no se pudieron formatear
-                    if (!formattedProduct) {
-                        console.error('❌ Skipping invalid product:', product);
-                        return null;
-                    }
+                    
+                    if (!formattedProduct) return null;
 
                     const productId = formattedProduct._id || formattedProduct.id;
                     const isProductFavorite = isFavorite(productId);
@@ -552,63 +444,70 @@ const CategoryProducts = () => {
 
                     return (
                         <div
-                            key={productId}
-                            className={`transition-opacity duration-300 ${imageLoadingStates[productId] ? 'opacity-100' : 'opacity-0'
-                                } ${isToggling ? 'pointer-events-none opacity-75' : ''}`}
-                            style={{ minHeight: '300px' }} // Altura mínima para evitar layout shift
+                            key={`product-${productId}-${activeCategory}`}
+                            className={isToggling ? 'pointer-events-none opacity-75' : ''}
                         >
                             <ProductCard
-                                key={productId}
                                 product={formattedProduct}
                                 showFavoriteButton={true}
                                 showRemoveButton={false}
                                 isFavorite={isProductFavorite}
                                 onToggleFavorite={() => handleToggleFavorite(formattedProduct)}
-                                onImageLoad={handleImageLoad}
                             />
-
-                            {/* Overlay de loading durante toggle */}
-                            {isToggling && (
-                                <div className="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center z-10">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
-                                </div>
-                            )}
                         </div>
                     );
-                }).filter(Boolean)} {/* Filtrar elementos null */}
+                }).filter(Boolean)}
             </div>
         );
-    }, [formatProductForCard, isFavorite, favoriteToggling, handleToggleFavorite, handleImageLoad, imageLoadingStates]);
+    }, [formatProductForCard, isFavorite, favoriteToggling, handleToggleFavorite, activeCategory]);
 
-    // Debug effect para monitorear favoritos
-    useEffect(() => {
-        if (process.env.NODE_ENV === 'development') {
-            console.log('🔍 Favorites debug:', {
-                favoritesCount: favorites.length,
-                favoriteIds: favorites.map(f => getProductId(f)),
-                products: products.map(p => ({
-                    id: getProductId(p),
-                    name: p.name,
-                    isFavorite: isFavorite(getProductId(p))
-                }))
-            });
+    const handleRetry = useCallback(() => {
+        console.log('🔄 Retry solicitado - Recargando desde servidor');
+        setError(null);
+        
+        // **CANCELAR FETCH ACTUAL SI EXISTE**
+        if (currentFetch) {
+            currentFetch.controller.abort();
+            currentFetch = null;
         }
-    }, [favorites, products, getProductId, isFavorite]);
+        
+        // **CARGAR DESDE SERVIDOR**
+        loadProducts(activeCategory);
+    }, [activeCategory, loadProducts]);
 
-    // Mostrar error si existe
-    if (error && !isLoading) {
+    // **RENDERIZADO CONDICIONAL**
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-white-50">
+                <Header />
+                <Container>
+                    <LoadingSpinner
+                        text={`Cargando ${categoryMap[activeCategory] || 'productos'}...`}
+                        className="min-h-[400px]"
+                    />
+                </Container>
+                <Footer />
+            </div>
+        );
+    }
+
+    if (error && products.length === 0) {
         return (
             <div className="min-h-screen bg-white-50">
                 <Header />
                 <Container>
                     <div className="flex items-center justify-center min-h-[400px]">
                         <div className="text-center">
-                            <div className="text-red-500 text-lg mb-4">⚠️ {error}</div>
+                            <div className="text-6xl mb-4">😔</div>
+                            <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                                ¡Ups! Algo salió mal
+                            </h3>
+                            <p className="text-gray-600 mb-6">{error}</p>
                             <button
                                 onClick={handleRetry}
-                                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+                                className="bg-pink-500 text-white px-6 py-3 rounded-lg hover:bg-pink-600 transition-colors"
                             >
-                                Reintentar
+                                🔄 Reintentar
                             </button>
                         </div>
                     </div>
@@ -622,7 +521,8 @@ const CategoryProducts = () => {
         <div className="min-h-screen bg-white-50">
             <Header />
 
-            <section className="bg-white pt-2 sm:pt-4 pb-4 sm:pb-6">
+            {/* **NAVEGACIÓN** */}
+            <section className="bg-white pt-2 sm:pt-4 pb-4 sm:pb-6 shadow-sm">
                 <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
                     <CategoryNavigation
                         categories={categories}
@@ -632,67 +532,79 @@ const CategoryProducts = () => {
                 </div>
             </section>
 
+            {/* **CONTENIDO PRINCIPAL** */}
             <main className="py-4 sm:py-8">
                 <Container>
-                    {isLoading ? (
-                        <LoadingSpinner
-                            text="Cargando productos..."
-                            className="min-h-[300px] sm:min-h-[400px]"
-                        />
-                    ) : (
-                        <div className="space-y-8 sm:space-y-12">
-                            {activeCategory === 'todos' && (
-                                <PersonalizableSection
-                                    onPersonalizeClick={handlePersonalizeClick}
-                                />
-                            )}
+                    <div className="space-y-8 sm:space-y-12">
 
-                            {Object.entries(getProductsByCategory).map(([categoryId, categoryData]) => (
-                                <section key={categoryId} id={`section-${categoryId}`} className="space-y-4 sm:space-y-6">
-                                    {/* Título de la categoría */}
-                                    <div className="flex items-center justify-between">
-                                        <h2 className="text-2xl sm:text-3xl font-bold text-white-900" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                            {categoryData.name}
-                                        </h2>
-                                        {activeCategory === 'todos' && categoryData.products.length > 4 && (
-                                            <button
-                                                onClick={() => handleViewAll(categoryId)}
-                                                className="text-pink-500 hover:text-pink-600 font-medium transition-colors duration-200"
-                                                style={{ fontFamily: 'Poppins, sans-serif' }}
-                                            >
-                                                Ver todos
-                                            </button>
-                                        )}
-                                    </div>
+                        {/* **SECCIÓN DE PERSONALIZACIÓN** */}
+                        {activeCategory === 'todos' && (
+                            <PersonalizableSection
+                                onPersonalizeClick={handlePersonalizeClick}
+                            />
+                        )}
 
-                                    {/* Grilla de productos usando ProductCard */}
-                                    {renderProductGrid(
-                                        activeCategory === 'todos'
-                                            ? categoryData.products.slice(0, 4)
-                                            : categoryData.products,
-                                        categoryId
-                                    )}
-                                </section>
-                            ))}
-
-                            {products.length === 0 && !isLoading && (
-                                <div className="text-center py-12">
-                                    <div className="text-white-500 text-lg">
-                                        No se encontraron productos
-                                        {activeCategory !== 'todos' && ' en esta categoría'}
-                                    </div>
-                                    {activeCategory !== 'todos' && (
+                        {/* **SECCIONES DE PRODUCTOS** */}
+                        {Object.entries(productsByCategory).map(([categoryId, categoryData]) => (
+                            <section 
+                                key={`section-${categoryId}-${activeCategory}`}
+                                className="space-y-4 sm:space-y-6"
+                            >
+                                <div className="flex items-center justify-between">
+                                    <h2 
+                                        className="text-2xl sm:text-3xl font-bold text-gray-900" 
+                                        style={{ fontFamily: 'Poppins, sans-serif' }}
+                                    >
+                                        {categoryData.name}
+                                        <span className="text-sm font-normal text-gray-500 ml-2">
+                                            ({categoryData.products.length} producto{categoryData.products.length === 1 ? '' : 's'})
+                                        </span>
+                                    </h2>
+                                    
+                                    {activeCategory === 'todos' && categoryData.products.length > 4 && (
                                         <button
-                                            onClick={() => handleCategoryChange('todos')}
-                                            className="mt-4 text-blue-500 hover:text-blue-600 underline"
+                                            onClick={() => handleCategoryChange(categoryId)}
+                                            disabled={isLoading}
+                                            className="text-pink-500 hover:text-pink-600 font-medium transition-colors disabled:opacity-50"
+                                            style={{ fontFamily: 'Poppins, sans-serif' }}
                                         >
-                                            Ver todos los productos
+                                            Ver todos →
                                         </button>
                                     )}
                                 </div>
-                            )}
-                        </div>
-                    )}
+
+                                {renderProductGrid(
+                                    activeCategory === 'todos'
+                                        ? categoryData.products.slice(0, 4)
+                                        : categoryData.products
+                                )}
+                            </section>
+                        ))}
+
+                        {/* **ESTADO VACÍO** */}
+                        {Object.keys(productsByCategory).length === 0 && !isLoading && (
+                            <div className="text-center py-16">
+                                <div className="text-6xl mb-4">🔍</div>
+                                <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                                    No encontramos productos
+                                </h3>
+                                <p className="text-gray-600 mb-6">
+                                    {activeCategory !== 'todos' 
+                                        ? 'No hay productos en esta categoría'
+                                        : 'No hay productos disponibles'
+                                    }
+                                </p>
+                                {activeCategory !== 'todos' && (
+                                    <button
+                                        onClick={() => handleCategoryChange('todos')}
+                                        className="bg-pink-500 text-white px-6 py-3 rounded-lg hover:bg-pink-600 transition-colors"
+                                    >
+                                        🏠 Ver todos los productos
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </Container>
             </main>
 

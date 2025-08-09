@@ -125,7 +125,7 @@ export default function HomeScreen({ navigation }) {
                 </TouchableOpacity>
                 {/* Botón de búsqueda que navega a la pantalla de búsqueda */}
                 <View style={styles.searchContainer}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.searchTouchable}
                         onPress={() => navigation.navigate('Search')}
                         activeOpacity={0.7}
@@ -203,26 +203,6 @@ export default function HomeScreen({ navigation }) {
                     index,
                 })}
             />
-
-            {/* Barra de navegación inferior fija */}
-            <View style={styles.bottomNav}>
-                {/* Botón de Home (activo) */}
-                <TouchableOpacity style={styles.navItem}>
-                    <Icon name="home" size={isSmallDevice ? 22 : 24} color="#ff6b8a" />
-                </TouchableOpacity>
-                {/* Botón de Favoritos (inactivo) */}
-                <TouchableOpacity style={styles.navItem}>
-                    <Icon name="favorite-border" size={isSmallDevice ? 22 : 24} color="#ccc" />
-                </TouchableOpacity>
-                {/* Botón de Chat (inactivo) */}
-                <TouchableOpacity style={styles.navItem}>
-                    <Icon name="chat-bubble-outline" size={isSmallDevice ? 22 : 24} color="#ccc" />
-                </TouchableOpacity>
-                {/* Botón de Carrito (inactivo) */}
-                <TouchableOpacity style={styles.navItem}>
-                    <Icon name="shopping-cart" size={isSmallDevice ? 22 : 24} color="#ccc" />
-                </TouchableOpacity>
-            </View>
         </View>
     );
 }

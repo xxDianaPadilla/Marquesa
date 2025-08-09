@@ -391,6 +391,7 @@ const styles = StyleSheet.create({
         marginRight: 12,           // Espacio a la derecha
         padding: 4,                // Padding interno
         borderRadius: 20,          // Bordes redondeados
+        marginTop: 30,
     },
     
     // Contenedor del input de búsqueda
@@ -409,6 +410,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 3,
+        marginTop: 30,
     },
     
     // Input de búsqueda
@@ -465,6 +467,7 @@ const styles = StyleSheet.create({
         fontSize: isSmallDevice ? 16 : 16, // Tamaño de fuente
         fontFamily: 'Poppins-Regular',     // Fuente
         color: '#333',                     // Color del texto
+        marginTop: 20,
     },
     clearAllText: {
         fontSize: 14,                      // Tamaño de fuente
@@ -503,6 +506,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',         // Centrado verticalmente
         alignItems: 'center',             // Centrado horizontalmente
         paddingVertical: 60,              // Padding vertical
+        marginTop: -120,
     },
     emptyHistoryText: {
         fontSize: isSmallDevice ? 16 : 18, // Tamaño adaptativo

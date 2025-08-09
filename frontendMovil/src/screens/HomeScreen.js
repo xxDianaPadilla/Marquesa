@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
     // ESTILOS DE CATEGORÍAS COMPLETAMENTE RESPONSIVOS
     // Contenedor del scroll de categorías
     categoryScrollContainer: {
-        marginBottom: isSmallDevice ? 16 : 20, // Margen inferior responsivo
+        marginBottom: isSmallDevice ? 10 : 12, // Margen inferior responsivo REDUCIDO
         height: isSmallDevice ? 50 : 55,       // Altura fija responsiva
     },
     // Estilos del ScrollView de categorías
@@ -415,7 +415,7 @@ const styles = StyleSheet.create({
     // Contenedor de la lista de productos
     productsContainer: {
         paddingHorizontal: horizontalPadding, // Padding horizontal responsivo
-        paddingTop: 10,             // Padding superior para separar de categorías
+        paddingTop: 5,              // Padding superior REDUCIDO para separar de categorías
         paddingBottom: isSmallDevice ? 90 : 100, // Padding inferior responsivo
     },
     // Estilo de cada fila en el grid

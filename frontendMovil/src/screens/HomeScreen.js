@@ -7,7 +7,6 @@ import {
     Image,          // Componente para mostrar imágenes
     StyleSheet,     // Para crear estilos CSS-like
     Text,           // Componente para mostrar texto
-    TextInput,      // Campo de entrada de texto
     FlatList,       // Lista optimizada para renderizar muchos elementos
     Dimensions,     // Para obtener dimensiones de la pantalla
     ScrollView      // Contenedor scrolleable
@@ -42,8 +41,6 @@ export default function HomeScreen({ navigation }) {
     const { user, userInfo } = useAuth();
     // Obtenemos la lista de productos y el estado de carga del hook personalizado
     const { productos, loading } = useFetchProducts();
-    // Estado local para manejar el texto de búsqueda
-    const [searchText, setSearchText] = useState('');
     // Estado local para manejar la categoría seleccionada, inicialmente 'Todo'
     const [selectedCategory, setSelectedCategory] = useState('Todo');
 
@@ -73,15 +70,12 @@ export default function HomeScreen({ navigation }) {
         console.log('Toggle favorito:', product);
     };
 
-    // Filtramos los productos basado en el texto de búsqueda y la categoría seleccionada
+    // Filtramos los productos basado únicamente en la categoría seleccionada
     const filteredProducts = productos.filter(product => {
-        // Verificamos si el nombre del producto contiene el texto de búsqueda (case insensitive)
-        const matchesSearch = product.name.toLowerCase().includes(searchText.toLowerCase());
         // Verificamos si la categoría coincide ('Todo' muestra todos, sino filtra por categoría)
         const matchesCategory = selectedCategory === 'Todo' ||
             product.category?.toLowerCase().includes(selectedCategory.toLowerCase());
-        // Retornamos true solo si ambas condiciones se cumplen
-        return matchesSearch && matchesCategory;
+        return matchesCategory;
     });
 
     // Función que renderiza cada producto en la FlatList
@@ -129,19 +123,17 @@ export default function HomeScreen({ navigation }) {
                 <TouchableOpacity style={styles.filterIconButton}>
                     <Icon name="tune" size={isSmallDevice ? 18 : 20} color="#999" />
                 </TouchableOpacity>
-                {/* Contenedor de la barra de búsqueda */}
+                {/* Botón de búsqueda que navega a la pantalla de búsqueda */}
                 <View style={styles.searchContainer}>
-                    {/* Campo de texto para búsqueda */}
-                    <TextInput
-                        style={styles.searchInput}
-                        placeholder="¿Qué estás buscando?"
-                        value={searchText}              // Valor controlado por el estado
-                        onChangeText={setSearchText}    // Actualiza el estado al escribir
-                        placeholderTextColor="#999"
-                    />
-                    {/* Botón de búsqueda (ícono de lupa) */}
-                    <TouchableOpacity style={styles.searchButton}>
-                        <Icon name="search" size={isSmallDevice ? 18 : 20} color="#fff" />
+                    <TouchableOpacity 
+                        style={styles.searchTouchable}
+                        onPress={() => navigation.navigate('Search')}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={styles.searchPlaceholder}>¿Qué estás buscando?</Text>
+                        <View style={styles.searchButton}>
+                            <Icon name="search" size={isSmallDevice ? 18 : 20} color="#fff" />
+                        </View>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -317,11 +309,18 @@ const styles = StyleSheet.create({
         shadowRadius: 4,            // Radio de sombra
         elevation: 3,               // Elevación para Android
     },
-    // Campo de entrada de texto
-    searchInput: {
-        fontSize: isSmallDevice ? 11 : 12,  // Tamaño de fuente responsivo
+    // TouchableOpacity dentro del container
+    searchTouchable: {
+        flexDirection: 'row',       // Elementos en fila
+        alignItems: 'center',       // Centra verticalmente
+        position: 'relative',       // Para posicionar la lupita
+    },
+    // Texto placeholder de búsqueda
+    searchPlaceholder: {
+        flex: 1,
+        fontSize: isSmallDevice ? 12 : 14,  // Tamaño de fuente responsivo
         fontFamily: 'Poppins-Regular', // Fuente Poppins regular
-        color: '#333',              // Color de texto
+        color: '#999',              // Color de texto placeholder
         paddingVertical: isSmallDevice ? 12 : 15, // Padding vertical responsivo
         paddingLeft: isSmallDevice ? 12 : 15,     // Padding izquierdo responsivo
         paddingRight: isSmallDevice ? 45 : 50,    // Padding derecho responsivo
@@ -337,7 +336,7 @@ const styles = StyleSheet.create({
         top: 1,                     // Pegado al borde superior con pequeño margen
         bottom: 1,                  // Pegado al borde inferior con pequeño margen
         width: isSmallDevice ? 45 : 50,     // Ancho responsivo
-        height: isSmallDevice ? 43 : 48,    // Alto responsivo (un poco menos para el margen)
+        height: isSmallDevice ? 43 : 50,    // Alto responsivo (un poco menos para el margen)
         backgroundColor: '#f5c7e6ff', // Fondo rosado
         borderTopLeftRadius: 0,     // Sin redondeo superior izquierdo
         borderBottomLeftRadius: 23, // Redondeo inferior izquierdo

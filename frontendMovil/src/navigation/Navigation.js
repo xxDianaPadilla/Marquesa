@@ -1,45 +1,86 @@
+// Importamos React para poder crear el componente
 import React from "react";
+// Importamos el contenedor principal de navegación de React Navigation
 import { NavigationContainer } from "@react-navigation/native";
+// Importamos la función para crear un stack navigator nativo (iOS/Android)
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+// Importamos nuestro provider de contexto de autenticación
 import { AuthProvider } from "../context/AuthContext";
+// Importamos el navegador de pestañas (tabs) principal de la app
 import TabNavigator from "./TabNavigator";
-import SplashScreen from "../screens/SplashScreen";
-import WelcomeScreen from "../screens/WelcomeScreen";
-import LoginScreen from "../screens/LoginScreen";
-import ProfileScreen from "../screens/ProfileScreen";
+// Importamos todas las pantallas que formarán parte de la navegación:
+import SplashScreen from "../screens/SplashScreen";       // Pantalla de carga inicial
+import WelcomeScreen from "../screens/WelcomeScreen";     // Pantalla de bienvenida
+import LoginScreen from "../screens/LoginScreen";         // Pantalla de login
+import ProfileScreen from "../screens/ProfileScreen";     // Pantalla de perfil de usuario
+import SearchScreen from "../screens/SearchScreen";       // Pantalla de búsqueda
 
+// Componente principal de navegación de toda la aplicación
 export default function Navigation() {
+    // Creamos una instancia del Stack Navigator
+    // Stack = navegación tipo "pila" donde las pantallas se apilan una sobre otra
     const Stack = createNativeStackNavigator();
 
     return (
+        // AuthProvider envuelve toda la app para proporcionar contexto de autenticación
+        // Cualquier componente hijo puede acceder al estado de autenticación
         <AuthProvider>
+            {/* NavigationContainer es el contenedor raíz requerido por React Navigation */}
+            {/* Maneja el estado de navegación y la vinculación con el sistema nativo */}
             <NavigationContainer>
+                {/* Stack.Navigator define la estructura de navegación tipo pila */}
                 <Stack.Navigator
-                    initialRouteName="Splash"
-                    screenOptions={{
-                        headerShown: false,
+                    initialRouteName="Splash"    // Pantalla inicial que se muestra al abrir la app
+                    screenOptions={{             // Opciones que se aplican a TODAS las pantallas
+                        headerShown: false,      // Oculta el header por defecto en todas las pantallas
                     }}
                 >
+                    {/* 
+                        Cada Stack.Screen define una pantalla en la pila de navegación
+                        - name: identificador único para navegar a esta pantalla
+                        - component: componente React que se renderiza
+                    */}
+                    
+                    {/* Pantalla de splash/carga inicial */}
                     <Stack.Screen
-                        name="Splash"
-                        component={SplashScreen}
+                        name="Splash"              // Nombre de la ruta
+                        component={SplashScreen}   // Componente a renderizar
                     />
+                    
+                    {/* Pantalla de bienvenida (onboarding) */}
                     <Stack.Screen
-                        name="Welcome"
-                        component={WelcomeScreen}
+                        name="Welcome"             // Nombre de la ruta
+                        component={WelcomeScreen}  // Componente a renderizar
                     />
+                    
+                    {/* Pantalla de inicio de sesión */}
                     <Stack.Screen
-                        name="Login"
-                        component={LoginScreen}
+                        name="Login"               // Nombre de la ruta
+                        component={LoginScreen}    // Componente a renderizar
                     />
+                    
+                    {/* Navegador de pestañas (contiene Home, Categories, Cart, etc.) */}
                     <Stack.Screen
-                        name="TabNavigator"
-                        component={TabNavigator}
+                        name="TabNavigator"        // Nombre de la ruta
+                        component={TabNavigator}   // Componente del tab navigator
                     />
+                    
+                    {/* Pantalla de perfil de usuario */}
                     <Stack.Screen
-                        name="Profile"
-                        component={ProfileScreen}
+                        name="Profile"             // Nombre de la ruta
+                        component={ProfileScreen}  // Componente a renderizar
                     />
+                    
+                    {/* Pantalla de búsqueda */}
+                    <Stack.Screen
+                        name="Search"              // Nombre de la ruta
+                        component={SearchScreen}   // Componente a renderizar
+                        options={{                 // Opciones específicas para esta pantalla
+                            headerShown: false,    // Sin header porque ya tiene el suyo propio
+                            animation: 'slide_from_right', // Animación de entrada desde la derecha
+                        }}
+                    />
+
                 </Stack.Navigator>
             </NavigationContainer>
         </AuthProvider>

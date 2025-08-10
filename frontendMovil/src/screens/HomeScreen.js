@@ -21,6 +21,8 @@ import ProductCard from "../components/Products/ProductCard";
 import useFetchProducts from "../hooks/useFetchProducts";
 // Importamos íconos de Material Icons
 import Icon from 'react-native-vector-icons/MaterialIcons';
+// Importamos el modal de filtros de precio
+import PriceFilterModal from '../components/PriceFilterModal';
 
 // Obtenemos las dimensiones de la pantalla del dispositivo
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -43,6 +45,10 @@ export default function HomeScreen({ navigation }) {
     const { productos, loading } = useFetchProducts();
     // Estado local para manejar la categoría seleccionada, inicialmente 'Todo'
     const [selectedCategory, setSelectedCategory] = useState('Todo');
+    
+    // NUEVOS ESTADOS PARA EL FILTRO DE PRECIO
+    const [showPriceFilter, setShowPriceFilter] = useState(false);
+    const [priceRange, setPriceRange] = useState({ min: 0, max: 100 });
 
     // Array con las categorías disponibles para filtrar productos
     const categories = ['Todo', 'Naturales', 'Secas', 'Tarjetas', 'Cuadros', 'Giftboxes'];
@@ -70,12 +76,23 @@ export default function HomeScreen({ navigation }) {
         console.log('Toggle favorito:', product);
     };
 
-    // Filtramos los productos basado únicamente en la categoría seleccionada
+    // FUNCIÓN PARA MANEJAR FILTROS DE PRECIO
+    const handleApplyPriceFilter = (minPrice, maxPrice) => {
+        setPriceRange({ min: minPrice, max: maxPrice });
+        console.log('Filtros de precio aplicados:', { minPrice, maxPrice });
+    };
+
+    // Filtramos los productos basado en la categoría seleccionada Y el rango de precio
     const filteredProducts = productos.filter(product => {
         // Verificamos si la categoría coincide ('Todo' muestra todos, sino filtra por categoría)
         const matchesCategory = selectedCategory === 'Todo' ||
             product.category?.toLowerCase().includes(selectedCategory.toLowerCase());
-        return matchesCategory;
+        
+        // Verificamos si el precio está en el rango seleccionado
+        const matchesPrice = product.price >= priceRange.min && product.price <= priceRange.max;
+        
+        // Retornamos solo productos que cumplan ambos filtros
+        return matchesCategory && matchesPrice;
     });
 
     // Función que renderiza cada producto en la FlatList
@@ -119,8 +136,11 @@ export default function HomeScreen({ navigation }) {
 
             {/* Contenedor de la barra de búsqueda con botón de filtros */}
             <View style={styles.searchWrapper}>
-                {/* Botón de filtros (ícono de tune/ajustes) */}
-                <TouchableOpacity style={styles.filterIconButton}>
+                {/* Botón de filtros (ícono de tune/ajustes) - MODIFICADO */}
+                <TouchableOpacity 
+                    style={styles.filterIconButton}
+                    onPress={() => setShowPriceFilter(true)}
+                >
                     <Icon name="tune" size={isSmallDevice ? 18 : 20} color="#999" />
                 </TouchableOpacity>
                 {/* Botón de búsqueda que navega a la pantalla de búsqueda */}
@@ -184,6 +204,24 @@ export default function HomeScreen({ navigation }) {
                 </ScrollView>
             </View>
 
+            {/* Indicador de filtros activos */}
+            {(priceRange.min > 0 || priceRange.max < 100) && (
+                <View style={styles.filterIndicatorContainer}>
+                    <View style={styles.filterChip}>
+                        <Icon name="filter-list" size={16} color="#4A4170" />
+                        <Text style={styles.filterChipText}>
+                            Precio: ${priceRange.min} - ${priceRange.max}
+                        </Text>
+                        <TouchableOpacity 
+                            onPress={() => setPriceRange({ min: 0, max: 100 })}
+                            style={styles.filterChipClose}
+                        >
+                            <Icon name="close" size={14} color="#666" />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            )}
+
             {/* Lista de productos en grid de 2 columnas */}
             <FlatList
                 data={filteredProducts}               // Datos filtrados de productos
@@ -203,11 +241,22 @@ export default function HomeScreen({ navigation }) {
                     index,
                 })}
             />
+
+            {/* Modal de filtros de precio */}
+            <PriceFilterModal
+                visible={showPriceFilter}
+                onClose={() => setShowPriceFilter(false)}
+                onApplyFilter={handleApplyPriceFilter}
+                minPrice={0}
+                maxPrice={100} // Ajusta este valor según tus productos
+                currentMinPrice={priceRange.min}
+                currentMaxPrice={priceRange.max}
+            />
         </View>
     );
 }
 
-// Definición de estilos usando StyleSheet - COMPLETAMENTE RESPONSIVOS
+// Definición de estilos usando StyleSheet 
 const styles = StyleSheet.create({
     // Contenedor principal de toda la pantalla
     container: {
@@ -388,6 +437,31 @@ const styles = StyleSheet.create({
     categoryTextActive: {
         color: '#FFFFFF',           // Color blanco para contraste con fondo morado
         fontFamily: 'Poppins-SemiBold', // Fuente más bold cuando está activo
+    },
+
+    // NUEVOS ESTILOS PARA EL INDICADOR DE FILTROS
+    filterIndicatorContainer: {
+        paddingHorizontal: horizontalPadding,
+        paddingVertical: 8,
+    },
+    filterChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f0f0f0',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        alignSelf: 'flex-start',
+    },
+    filterChipText: {
+        fontSize: 12,
+        fontFamily: 'Poppins-Medium',
+        color: '#4A4170',
+        marginHorizontal: 6,
+    },
+    filterChipClose: {
+        marginLeft: 4,
+        padding: 2,
     },
 
     // ESTILOS DE PRODUCTOS RESPONSIVOS

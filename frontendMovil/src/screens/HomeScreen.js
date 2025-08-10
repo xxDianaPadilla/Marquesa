@@ -96,14 +96,9 @@ export default function HomeScreen({ navigation }) {
 
     return (
         <View style={styles.container}>
-            {/* Header con botones de perfil y favoritos */}
+            {/* Header solo con botón de perfil */}
             <View style={styles.header}>
-                <TouchableOpacity
-                    style={styles.favoriteButton}
-                    onPress={() => navigation.navigate('Favorites')}
-                >
-                    <Image source={favoritesIcon} style={styles.icon} />
-                </TouchableOpacity>
+                <View style={styles.headerSpacer} />
                 
                 <TouchableOpacity
                     style={styles.profileButton}
@@ -260,16 +255,16 @@ const styles = StyleSheet.create({
     },
     header: {
         flexDirection: 'row',
-        justifyContent: 'space-between', // Cambiado para distribuir botones
+        justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: horizontalPadding,
         marginBottom: isSmallDevice ? 16 : 20,
     },
-    profileButton: {
+    headerSpacer: {
         width: isSmallDevice ? 28 : 30,
         height: isSmallDevice ? 28 : 30,
     },
-    favoriteButton: {
+    profileButton: {
         width: isSmallDevice ? 28 : 30,
         height: isSmallDevice ? 28 : 30,
     },

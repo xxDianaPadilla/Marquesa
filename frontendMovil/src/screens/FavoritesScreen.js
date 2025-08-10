@@ -39,19 +39,20 @@ const FavoritesScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
 
   // Cargar favoritos cuando la pantalla gana foco
+  // Removemos getFavorites de las dependencias para evitar el bucle
   useFocusEffect(
     useCallback(() => {
       if (isAuthenticated && userInfo) {
         console.log('FavoritesScreen - Cargando favoritos...');
         getFavorites();
       }
-    }, [isAuthenticated, userInfo, getFavorites])
+    }, [isAuthenticated, userInfo]) // Removimos getFavorites de aquí
   );
 
   // Limpiar errores cuando el componente se monta
   useEffect(() => {
     clearFavoritesError();
-  }, [clearFavoritesError]);
+  }, []); // También removemos clearFavoritesError de las dependencias
 
   // Función para refrescar favoritos
   const onRefresh = useCallback(async () => {
@@ -155,11 +156,12 @@ const FavoritesScreen = ({ navigation }) => {
           style={styles.heartIcon}
           onPress={() => handleRemoveFavorite(product)}
           disabled={localLoading}
+          activeOpacity={0.7}
         >
           <Icon
             name="favorite"
-            size={20}
-            color="#ff4757"
+            size={18}
+            color="#fff"
           />
         </TouchableOpacity>
       </View>
@@ -546,12 +548,20 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 20,
-    width: 36,
-    height: 36,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#ff6b8a',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
   
   // Estados de carga, error y vacío

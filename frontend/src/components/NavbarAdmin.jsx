@@ -73,6 +73,7 @@ const NavbarAdmin = ({ isExpanded, setIsExpanded }) => {
             return (
               <button
                 key={label}
+                style={{ cursor: 'pointer' }}
                 onClick={handleClick}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 group
                 ${activeClass} hover:bg-white/20`}
@@ -82,9 +83,9 @@ const NavbarAdmin = ({ isExpanded, setIsExpanded }) => {
                   src={icon}
                   alt={label}
                   className={`object-contain transition-transform duration-200 ${isToggle
-                      ? "w-7 h-7"
-                      : `w-5 h-5 filter brightness-0 invert ${isActive(path) ? "scale-110" : "group-hover:scale-110"
-                      }`
+                    ? "w-7 h-7"
+                    : `w-5 h-5 filter brightness-0 invert ${isActive(path) ? "scale-110" : "group-hover:scale-110"
+                    }`
                     }`}
                 />
                 {isExpanded && (
@@ -99,6 +100,7 @@ const NavbarAdmin = ({ isExpanded, setIsExpanded }) => {
         <div>
           <button
             onClick={handleLogout}
+            style={{ cursor: 'pointer' }}
             className={`flex items-center gap-2 hover:bg-white/20 rounded-lg transition-all duration-200 group
       ${isExpanded ? "px-3 py-2" : "p-3 justify-center w-full"}`}
             aria-label="Cerrar sesión"

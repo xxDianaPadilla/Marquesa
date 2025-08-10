@@ -33,7 +33,7 @@ const upload = multer({
     },
     fileFilter: (req, file, cb) => {
         console.log('Procesando archivo:', file.originalname, 'Tipo:', file.mimetype);
-        
+
         // Validar tipo de archivo
         if (file.mimetype.startsWith('image/')) {
             cb(null, true);
@@ -45,13 +45,15 @@ const upload = multer({
 
 router.get('/featured', productsController.getFeaturedProducts);
 
+router.get('/best-selling', productsController.getBestSellingProducts);
+
 // Nueva ruta para obtener productos por categoría
 router.get('/by-category/:categoryId', productsController.getProductsByCategory);
 router.get('/featured', productsController.getFeaturedProducts);
 
 router.route("/")
     .get(productsController.getProducts)
-    .post(upload.array("images", 5), productsController.createProducts); 
+    .post(upload.array("images", 5), productsController.createProducts);
 
 router.route("/:id")
     .get(productsController.getProduct)

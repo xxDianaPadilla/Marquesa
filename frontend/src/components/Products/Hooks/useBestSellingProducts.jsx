@@ -1,83 +1,59 @@
+// Importa los hooks useState y useEffect desde la biblioteca de React
 import { useState, useEffect } from "react";
-import { useProducts } from "./useProducts";
-import { useCustomProducts } from "../../CustomProducts/Hooks/useCustomProducts";
 
-// Hook para obtener los productos más vendidos
-// Calcula los productos más vendidos a partir de las ventas de productos y productos personalizados
-// Devuelve los productos más vendidos y un estado de carga
+// Define y exporta un custom hook para obtener productos más vendidos
 export const useBestSellingProducts = () => {
-    const {products, loading: productsLoading} = useProducts();
-    const {customProducts, loading: customProductsLoading} = useCustomProducts(); 
-    const [bestSelling, setBestSelling] = useState([]);
-    const [loading, setLoading] = useState(true);
+  // Estado para almacenar la lista de productos más vendidos
+  const [bestSelling, setBestSelling] = useState([]);
+  // Estado para manejar el estado de carga de la petición
+  const [loading, setLoading] = useState(true);
+  // Estado para almacenar cualquier error que ocurra durante la petición
+  const [error, setError] = useState(null);
+  // Estado para almacenar estadísticas adicionales
+  const [totalSales, setTotalSales] = useState(0);
 
-    useEffect(() => {
-        if(!productsLoading && !customProductsLoading){
-            calculateBestSelling();
+  // Hook de efecto que se ejecuta una sola vez cuando el componente se monta
+  useEffect(() => {
+    // Función asíncrona para obtener los productos más vendidos desde la API
+    const fetchBestSellingProducts = async () => {
+      try {
+        // Inicia el estado de carga
+        setLoading(true);
+        // Realiza la petición fetch a la API de productos más vendidos
+        const response = await fetch("http://localhost:4000/api/products/best-selling");
+        
+        // Si la respuesta no es exitosa, lanza un error
+        if (!response.ok) {
+          throw new Error("Error al obtener productos más vendidos");
         }
-    }, [products, customProducts, productsLoading, customProductsLoading]);
-
-    const calculateBestSelling = () => {
-        try {
-            const productSales = {};
-
-            // Verificar si customProducts existe y tiene la estructura correcta
-            let customProductsArray = [];
-            
-            if (customProducts) {
-                // Si customProducts es un objeto con data (nueva estructura del API)
-                if (customProducts.data && Array.isArray(customProducts.data)) {
-                    customProductsArray = customProducts.data;
-                }
-                // Si customProducts es directamente un array (estructura antigua)
-                else if (Array.isArray(customProducts)) {
-                    customProductsArray = customProducts;
-                }
-                // Si customProducts es un objeto pero no tiene data, podría ser un solo elemento
-                else if (customProducts.selectedItems) {
-                    customProductsArray = [customProducts];
-                }
-            }
-
-            // Procesar cada producto personalizado
-            customProductsArray.forEach(customProduct => {
-                if(customProduct && customProduct.selectedItems && Array.isArray(customProduct.selectedItems)){
-                    customProduct.selectedItems.forEach(item => {
-                        if (item && item.productId) {
-                            const productId = item.productId._id || item.productId;
-                            const quantity = item.quantity || 1;
-
-                            if(productSales[productId]){
-                                productSales[productId].sold += quantity;
-                            } else {
-                                productSales[productId] = {
-                                    product: item.productId,
-                                    sold: quantity
-                                };
-                            }
-                        }
-                    });
-                }
-            });
-
-            const sortedProducts = Object.values(productSales)
-                .sort((a, b) => b.sold - a.sold)
-                .slice(0, 5);
-
-            const totalSold = sortedProducts.reduce((sum, item) => sum + item.sold, 0);
-            const productsWithPercentage = sortedProducts.map(item => ({
-                ...item,
-                percentage: totalSold > 0 ? Math.round((item.sold / totalSold) * 100) : 0
-            }));
-
-            setBestSelling(productsWithPercentage);
-        } catch (error) {
-            console.error('Error calculando productos más vendidos: ', error);
-            setBestSelling([]);
-        } finally {
-            setLoading(false);
-        }
+        
+        // Convierte la respuesta de la API a formato JSON
+        const data = await response.json();
+        
+        // Actualiza los estados con los datos obtenidos
+        setBestSelling(data.data || []);
+        setTotalSales(data.totalSales || 0);
+        
+      } catch (error) {
+        // Si ocurre un error, se captura y se guarda el mensaje en el estado de error
+        setError(error.message);
+        // En caso de error, asegurar que bestSelling sea un array vacío
+        setBestSelling([]);
+      } finally {
+        // Finaliza el estado de carga, indicando que la operación ha terminado
+        setLoading(false);
+      }
     };
 
-    return {bestSelling, loading};
+    // Llama a la función para que se ejecute
+    fetchBestSellingProducts();
+  }, []); // El array de dependencias vacío asegura que el efecto se ejecute solo una vez
+
+  // El hook retorna un objeto con los productos más vendidos, estadísticas y estados
+  return { 
+    bestSelling, 
+    loading, 
+    error, 
+    totalSales 
+  };
 };

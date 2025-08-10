@@ -2,6 +2,7 @@ import productsModel from '../models/products.js';
 import { v2 as cloudinary } from "cloudinary";
 import { config } from "../config.js";
 import mongoose from "mongoose";
+import salesModel from "../models/Sales.js";
 
 // Configuración de Cloudinary para el manejo de imágenes
 cloudinary.config({
@@ -1006,6 +1007,122 @@ productsController.getFeaturedProducts = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Error interno del servidor al obtener productos destacados',
+            error: error.message
+        });
+    }
+};
+
+productsController.getBestSellingProducts = async (req, res) => {
+    try {
+        const bestSellingProducts = await salesModel.aggregate([
+            {
+                $match: {
+                    status: "Pagado"
+                }
+            },
+            {
+                $lookup: {
+                    from: "shoppingcarts",
+                    localField: "ShoppingCartId",
+                    foreignField: "_id",
+                    as: "shoppingCart"
+                }
+            },
+            {
+                $unwind: "$shoppingCart"
+            },
+            {
+                $unwind: "$shoppingCart.items"
+            },
+            {
+                $match: {
+                    "shoppingCart.items.itemType": "product"
+                }
+            },
+            {
+                $group: {
+                    _id: "$shoppingCart.items.itemId",
+                    totalSold: {$sum: "$shoppingCart.items.quantity"},
+                    totalRevenue: {$sum: "$shoppingCart.items.subtotal"}
+                }
+            },
+            {
+                $lookup: {
+                    from: "products",
+                    localField: "_id",
+                    foreignField: "_id",
+                    as: "product"
+                }
+            },
+            {
+                $unwind: "$product"
+            },
+            {
+                $lookup: {
+                    from: "cateogies",
+                    localField: "product.categoryId",
+                    foreignField: "_id",
+                    as: "product.category"
+                }
+            },
+            {
+                $addFields: {
+                    "product.categoryId": {$arrayElemAt: ["$product.category", 0]}
+                }
+            },
+            {
+                $sort: {totalSold: -1}
+            },
+            {
+                $limit: 10
+            }
+        ]);
+
+        const totalSales = bestSellingProducts.reduce((sum, item) => sum + item.totalSold, 0);
+
+        const formattedProducts = bestSellingProducts.map(item => ({
+            product: {
+                _id: item.product._id,
+                name: item.product.name,
+                description: item.product.description,
+                price: item.product.price,
+                images: item.product.images,
+                categoryId: item.product.categoryId
+            },
+            sold: item.totalSold,
+            revenue: item.totalRevenue,
+            percentage: totalSales > 0 ? Math.round((item.totalSold / totalSales) * 100) : 0
+        }));
+
+        if(!formattedProducts || formattedProducts.length === 0){
+            return res.status(200).json({
+                success: true,
+                message: 'No hay productos vendidos aún',
+                data: [],
+                count: 0
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Productos más vendidos obtenidos exitosamente',
+            data: formattedProducts,
+            count: formattedProducts.length,
+            totalSales: totalSales
+        });
+    } catch (error) {
+        console.error('Error en getBestSellingProducts: ', error);
+
+        if(error.name === 'MongoNetworkError'){
+            return res.status(503).json({
+                success: false,
+                message: "Servicio de base de datos no disponible temporalmente"
+            });
+        }
+
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor al obtener productos más vendidos',
             error: error.message
         });
     }

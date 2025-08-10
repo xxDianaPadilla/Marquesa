@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View, Text } from 'react-native';
 import Navigation from './src/navigation/Navigation';
+import { AuthProvider } from './src/context/AuthContext'; // Importar el AuthProvider
 import { useFonts, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -31,7 +32,10 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      <Navigation />
+      {/* Envolver Navigation con AuthProvider para que el contexto esté disponible en toda la app */}
+      <AuthProvider>
+        <Navigation />
+      </AuthProvider>
       <StatusBar style="auto" />
     </View>
   );

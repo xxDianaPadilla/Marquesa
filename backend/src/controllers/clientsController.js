@@ -1,6 +1,6 @@
 // Importé el modelo de clientes para trabajar con la base de datos
 import clientsModel from "../models/Clients.js";
-
+import productsModel from "../models/products.js"; // Ajusta la ruta según tu estructura
 // Importé Cloudinary para manejar imágenes y configuraciones
 import { v2 as cloudinary } from "cloudinary";
 import { config } from "../config.js";
@@ -26,6 +26,9 @@ const validatePeriod = (period) => {
  * Actualiza el perfil del cliente autenticado
  * Permite actualizar teléfono, dirección y foto de perfil
  */
+// AGREGAR ESTAS FUNCIONES A TU clientsController.js
+
+// FUNCIÓN MODIFICADA: updateProfile con manejo de favoritos
 clientsController.updateProfile = async (req, res) => {
     try {
         console.log('=== INICIO updateProfile ===');
@@ -42,31 +45,107 @@ clientsController.updateProfile = async (req, res) => {
             });
         }
 
-        const { phone, address, fullName } = req.body;
+        const { phone, address, fullName, action, productId, ...otherUpdates } = req.body;
 
-        // Validaciones
-        if (!phone || !phone.trim()) {
-            return res.status(400).json({
+        // Buscar el cliente
+        const client = await clientsModel.findById(userId);
+        if (!client) {
+            return res.status(404).json({
                 success: false,
-                message: "El teléfono es requerido"
+                message: "Usuario no encontrado"
             });
         }
 
-        const phoneClean = phone.trim().replace(/\D/g, '');
-        if (phoneClean.length !== 8) {
-            return res.status(400).json({
-                success: false,
-                message: "El teléfono debe tener 8 dígitos"
+        // MANEJO DE FAVORITOS
+        if (action === 'add_favorite' && productId) {
+            // Verificar si ya está en favoritos
+            const isAlreadyFavorite = client.favorites.some(
+                fav => fav.productId.toString() === productId
+            );
+
+            if (isAlreadyFavorite) {
+                return res.status(400).json({
+                    success: false,
+                    message: "El producto ya está en favoritos"
+                });
+            }
+
+            // Agregar a favoritos
+            client.favorites.push({ productId });
+            await client.save();
+
+            return res.status(200).json({
+                success: true,
+                message: "Producto agregado a favoritos",
+                user: {
+                    id: client._id,
+                    name: client.fullName,
+                    email: client.email,
+                    phone: client.phone,
+                    address: client.address,
+                    birthDate: client.birthDate,
+                    profilePicture: client.profilePicture,
+                    favorites: client.favorites,
+                    discount: client.discount
+                }
             });
         }
 
-        // Formatear teléfono
-        const formattedPhone = phoneClean.slice(0, 4) + "-" + phoneClean.slice(4);
+        if (action === 'remove_favorite' && productId) {
+            // Remover de favoritos
+            const favoriteIndex = client.favorites.findIndex(
+                fav => fav.productId.toString() === productId
+            );
 
-        if (!address || !address.trim()) {
+            if (favoriteIndex === -1) {
+                return res.status(400).json({
+                    success: false,
+                    message: "El producto no está en favoritos"
+                });
+            }
+
+            client.favorites.splice(favoriteIndex, 1);
+            await client.save();
+
+            return res.status(200).json({
+                success: true,
+                message: "Producto removido de favoritos",
+                user: {
+                    id: client._id,
+                    name: client.fullName,
+                    email: client.email,
+                    phone: client.phone,
+                    address: client.address,
+                    birthDate: client.birthDate,
+                    profilePicture: client.profilePicture,
+                    favorites: client.favorites,
+                    discount: client.discount
+                }
+            });
+        }
+
+        // VALIDACIONES PARA ACTUALIZACIÓN NORMAL DEL PERFIL
+        if (phone) {
+            if (!phone.trim()) {
+                return res.status(400).json({
+                    success: false,
+                    message: "El teléfono es requerido"
+                });
+            }
+
+            const phoneClean = phone.trim().replace(/\D/g, '');
+            if (phoneClean.length !== 8) {
+                return res.status(400).json({
+                    success: false,
+                    message: "El teléfono debe tener 8 dígitos"
+                });
+            }
+        }
+
+        if (address && address.trim().length < 10) {
             return res.status(400).json({
                 success: false,
-                message: "La dirección es requerida"
+                message: "La dirección debe tener al menos 10 caracteres"
             });
         }
 
@@ -95,30 +174,18 @@ clientsController.updateProfile = async (req, res) => {
             }
         }
 
-        // Validar longitud de dirección
-        if (address.trim().length < 10) {
-            return res.status(400).json({
-                success: false,
-                message: "La dirección debe tener al menos 10 caracteres"
-            });
-        }
-
-        // Buscar el cliente
-        const client = await clientsModel.findById(userId);
-        if (!client) {
-            return res.status(404).json({
-                success: false,
-                message: "Usuario no encontrado"
-            });
-        }
-
         // Preparar datos para actualizar
-        const updateData = {
-            phone: formattedPhone,
-            address: address.trim()
-        };
+        const updateData = {};
+        
+        if (phone) {
+            const phoneClean = phone.trim().replace(/\D/g, '');
+            updateData.phone = phoneClean.slice(0, 4) + "-" + phoneClean.slice(4);
+        }
+        
+        if (address) {
+            updateData.address = address.trim();
+        }
 
-        // Agregar el nombre a los datos de actualización si se proporcionó
         if (fullName) {
             updateData.fullName = fullName.trim();
         }
@@ -162,30 +229,37 @@ clientsController.updateProfile = async (req, res) => {
             }
         }
 
-        // Actualizar cliente
-        const updatedClient = await clientsModel.findByIdAndUpdate(
-            userId,
-            updateData,
-            { new: true, runValidators: true }
-        ).select('-password'); // No devolver la contraseña
+        // Actualizar cliente solo si hay datos para actualizar
+        if (Object.keys(updateData).length > 0) {
+            const updatedClient = await clientsModel.findByIdAndUpdate(
+                userId,
+                updateData,
+                { new: true, runValidators: true }
+            ).select('-password');
 
-        console.log('Cliente actualizado exitosamente');
+            console.log('Cliente actualizado exitosamente');
 
-        res.status(200).json({
-            success: true,
-            message: "Perfil actualizado exitosamente",
-            user: {
-                id: updatedClient._id,
-                name: updatedClient.fullName,
-                email: updatedClient.email,
-                phone: updatedClient.phone,
-                address: updatedClient.address,
-                birthDate: updatedClient.birthDate,
-                profilePicture: updatedClient.profilePicture,
-                favorites: updatedClient.favorites,
-                discount: updatedClient.discount
-            }
-        });
+            return res.status(200).json({
+                success: true,
+                message: "Perfil actualizado exitosamente",
+                user: {
+                    id: updatedClient._id,
+                    name: updatedClient.fullName,
+                    email: updatedClient.email,
+                    phone: updatedClient.phone,
+                    address: updatedClient.address,
+                    birthDate: updatedClient.birthDate,
+                    profilePicture: updatedClient.profilePicture,
+                    favorites: updatedClient.favorites,
+                    discount: updatedClient.discount
+                }
+            });
+        } else {
+            return res.status(400).json({
+                success: false,
+                message: "No hay datos para actualizar"
+            });
+        }
 
     } catch (error) {
         console.error('Error en updateProfile:', error);
@@ -212,6 +286,273 @@ clientsController.updateProfile = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Error interno del servidor al actualizar perfil",
+            error: error.message
+        });
+    }
+};
+
+// NUEVA FUNCIÓN: Obtener favoritos con población de productos
+clientsController.getFavorites = async (req, res) => {
+    try {
+        console.log('=== INICIO getFavorites ===');
+        console.log('User ID del token:', req.user?.id);
+
+        const userId = req.user?.id;
+        
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Usuario no autenticado"
+            });
+        }
+
+        // Buscar el cliente y poblar los favoritos con datos de productos
+        const client = await clientsModel.findById(userId)
+            .populate({
+                path: 'favorites.productId',
+                select: 'name price images category description stock _id',
+                // Solo incluir productos que existan (no fueron eliminados)
+                match: { _id: { $exists: true } }
+            });
+
+        if (!client) {
+            return res.status(404).json({
+                success: false,
+                message: "Usuario no encontrado"
+            });
+        }
+
+        // Filtrar favoritos que tengan productos válidos
+        const validFavorites = client.favorites.filter(fav => fav.productId !== null);
+
+        // Formatear la respuesta
+        const favoriteProducts = validFavorites.map(fav => fav.productId);
+
+        console.log(`Favoritos obtenidos: ${favoriteProducts.length} productos válidos`);
+
+        res.status(200).json({
+            success: true,
+            favorites: favoriteProducts,
+            count: favoriteProducts.length
+        });
+
+    } catch (error) {
+        console.error('Error en getFavorites:', error);
+        
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor al obtener favoritos",
+            error: error.message
+        });
+    }
+};
+
+// NUEVA FUNCIÓN: Agregar producto a favoritos
+clientsController.addToFavorites = async (req, res) => {
+    try {
+        console.log('=== INICIO addToFavorites ===');
+        console.log('User ID del token:', req.user?.id);
+        console.log('Datos recibidos:', req.body);
+
+        const userId = req.user?.id;
+        const { productId } = req.body;
+        
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Usuario no autenticado"
+            });
+        }
+
+        if (!productId) {
+            return res.status(400).json({
+                success: false,
+                message: "ID del producto es requerido"
+            });
+        }
+
+        // Buscar el cliente
+        const client = await clientsModel.findById(userId);
+        if (!client) {
+            return res.status(404).json({
+                success: false,
+                message: "Usuario no encontrado"
+            });
+        }
+
+        // Verificar si ya está en favoritos
+        const isAlreadyFavorite = client.favorites.some(
+            fav => fav.productId.toString() === productId
+        );
+
+        if (isAlreadyFavorite) {
+            return res.status(400).json({
+                success: false,
+                message: "El producto ya está en favoritos"
+            });
+        }
+
+        // Agregar a favoritos
+        client.favorites.push({ productId });
+        await client.save();
+
+        console.log('Producto agregado a favoritos exitosamente:', productId);
+
+        res.status(200).json({
+            success: true,
+            message: "Producto agregado a favoritos exitosamente",
+            favorites: client.favorites
+        });
+
+    } catch (error) {
+        console.error('Error en addToFavorites:', error);
+        
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor al agregar a favoritos",
+            error: error.message
+        });
+    }
+};
+
+// NUEVA FUNCIÓN: Remover producto de favoritos
+clientsController.removeFromFavorites = async (req, res) => {
+    try {
+        console.log('=== INICIO removeFromFavorites ===');
+        console.log('User ID del token:', req.user?.id);
+        console.log('Datos recibidos:', req.body);
+
+        const userId = req.user?.id;
+        const { productId } = req.body;
+        
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Usuario no autenticado"
+            });
+        }
+
+        if (!productId) {
+            return res.status(400).json({
+                success: false,
+                message: "ID del producto es requerido"
+            });
+        }
+
+        // Buscar el cliente
+        const client = await clientsModel.findById(userId);
+        if (!client) {
+            return res.status(404).json({
+                success: false,
+                message: "Usuario no encontrado"
+            });
+        }
+
+        // Encontrar el índice del favorito
+        const favoriteIndex = client.favorites.findIndex(
+            fav => fav.productId.toString() === productId
+        );
+
+        if (favoriteIndex === -1) {
+            return res.status(404).json({
+                success: false,
+                message: "El producto no está en favoritos"
+            });
+        }
+
+        // Remover de favoritos
+        client.favorites.splice(favoriteIndex, 1);
+        await client.save();
+
+        console.log('Producto removido de favoritos exitosamente:', productId);
+
+        res.status(200).json({
+            success: true,
+            message: "Producto removido de favoritos exitosamente",
+            favorites: client.favorites
+        });
+
+    } catch (error) {
+        console.error('Error en removeFromFavorites:', error);
+        
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor al remover de favoritos",
+            error: error.message
+        });
+    }
+};
+
+// NUEVA FUNCIÓN: Toggle favorito (agregar o remover)
+clientsController.toggleFavorite = async (req, res) => {
+    try {
+        console.log('=== INICIO toggleFavorite ===');
+        console.log('User ID del token:', req.user?.id);
+        console.log('Datos recibidos:', req.body);
+
+        const userId = req.user?.id;
+        const { productId } = req.body;
+        
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Usuario no autenticado"
+            });
+        }
+
+        if (!productId) {
+            return res.status(400).json({
+                success: false,
+                message: "ID del producto es requerido"
+            });
+        }
+
+        // Buscar el cliente
+        const client = await clientsModel.findById(userId);
+        if (!client) {
+            return res.status(404).json({
+                success: false,
+                message: "Usuario no encontrado"
+            });
+        }
+
+        // Verificar si ya está en favoritos
+        const favoriteIndex = client.favorites.findIndex(
+            fav => fav.productId.toString() === productId
+        );
+
+        let action, message;
+
+        if (favoriteIndex === -1) {
+            // No está en favoritos, agregarlo
+            client.favorites.push({ productId });
+            action = 'added';
+            message = 'Producto agregado a favoritos';
+        } else {
+            // Ya está en favoritos, removerlo
+            client.favorites.splice(favoriteIndex, 1);
+            action = 'removed';
+            message = 'Producto removido de favoritos';
+        }
+
+        await client.save();
+
+        console.log(`Favorito ${action} exitosamente:`, productId);
+
+        res.status(200).json({
+            success: true,
+            message: message,
+            action: action,
+            isFavorite: action === 'added',
+            favorites: client.favorites
+        });
+
+    } catch (error) {
+        console.error('Error en toggleFavorite:', error);
+        
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor al alternar favorito",
             error: error.message
         });
     }

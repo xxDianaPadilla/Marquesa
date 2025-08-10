@@ -1,4 +1,4 @@
-import React from 'react'; // Importa React para usar JSX
+import React from 'react';
 import {
   View,
   Text,
@@ -6,48 +6,93 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
-} from 'react-native';  // Componentes nativos de React Native
-import Icon from 'react-native-vector-icons/MaterialIcons'; // Iconos de Material Design
+  Alert,
+} from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import { useAuth } from '../../context/AuthContext';
 
-const { width: screenWidth } = Dimensions.get('window'); // Obtiene el ancho de la pantalla
-const cardWidth = (screenWidth - 48) / 2; // Calcula el ancho de cada tarjeta para un layout de 2 columnas
+const { width: screenWidth } = Dimensions.get('window');
+const cardWidth = (screenWidth - 48) / 2;
 
 const ProductCard = ({
   product,
   onPress,
   onAddToCart,
-  onToggleFavorite,
-  isFavorite = false,
 }) => {
+  // Obtener funciones de favoritos del contexto
+ const { 
+    toggleFavorite, 
+    isFavorite: checkIsFavorite,  // ← Aquí estás esperando esta función
+    favoritesLoading,
+    isAuthenticated,
+    userInfo,
+    user 
+} = useAuth();
+
+  // Verificar si el producto está en favoritos
+  const isFavorite = checkIsFavorite(product._id);
+
   // Formatear precio
   const formatPrice = (price) => {
-    return `$${price}`; // Devuelve el precio 
+    return `$${price}`;
   };
 
   // Obtener primera imagen 
   const getProductImage = () => {
-    // Prioridad 1: Array de imágenes
     if (product.images && Array.isArray(product.images) && product.images.length > 0) {
       const firstImage = product.images[0];
       
-      // Si es objeto con propiedad image
       if (typeof firstImage === 'object' && firstImage.image) {
         return firstImage.image;
       }
 
-      // Si es string directamente
       if (typeof firstImage === 'string') {
         return firstImage;
       }
     }
     
-    // Prioridad 2: Propiedad image directa
     if (product.image) {
       return product.image;
     }
     
-    // Fallback: imagen placeholder
     return 'https://via.placeholder.com/300x240/f0f0f0/666666?text=Sin+Imagen';
+  };
+
+  // Manejar toggle de favorito
+  const handleToggleFavorite = async () => {
+    try {
+      // Verificar autenticación
+      if (!isAuthenticated) {
+        Alert.alert(
+          "Iniciar sesión",
+          "Debes iniciar sesión para agregar productos a favoritos",
+          [
+            { text: "Cancelar", style: "cancel" },
+            { text: "Iniciar sesión", onPress: () => {
+              // Aquí necesitarías acceso a navigation, podrías pasarlo como prop
+              console.log('Navegar a login');
+            }}
+          ]
+        );
+        return;
+      }
+
+      console.log('Haciendo toggle de favorito para producto:', product._id);
+
+      const result = await toggleFavorite(product._id);
+      
+      if (!result.success) {
+        console.error('Error al cambiar favorito:', result.message);
+        Alert.alert('Error', result.message || 'No se pudo actualizar favoritos');
+      } else {
+        console.log('Toggle favorito exitoso:', result);
+        // Opcional: mostrar un mensaje de éxito
+        // Alert.alert('Éxito', result.message);
+      }
+    } catch (error) {
+      console.error('Error al cambiar favorito:', error);
+      Alert.alert('Error', 'Error de conexión. Intenta nuevamente.');
+    }
   };
 
   return (
@@ -70,7 +115,8 @@ const ProductCard = ({
             styles.favoriteButton,
             isFavorite && styles.favoriteButtonActive
           ]}
-          onPress={() => onToggleFavorite && onToggleFavorite(product)}
+          onPress={handleToggleFavorite}
+          disabled={favoritesLoading}
           activeOpacity={0.7}
         >
           <Icon
@@ -126,7 +172,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 4, // Para Android
+    elevation: 4,
     marginBottom: 16,
   },
   
@@ -139,7 +185,7 @@ const styles = StyleSheet.create({
   
   image: {
     width: '100%',
-    height: cardWidth * 0.8, // Proporción 4:3 aproximadamente
+    height: cardWidth * 0.8,
     backgroundColor: '#f5f5f5',
   },
   
@@ -167,45 +213,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#ff6b8a',
   },
   
-  stockBadge: {
-    position: 'absolute',
-    bottom: 8,
-    right: 8,
-    backgroundColor: '#ff9500',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  
-  stockBadgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '600',
-    fontFamily: 'Poppins-SemiBold',
-  },
-  
-  noStockOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  
-  noStockText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-    backgroundColor: '#dc3545',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    fontFamily: 'Poppins-SemiBold',
-  },
-  
   content: {
     padding: 12,
     flex: 1,
@@ -217,8 +224,8 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 8,
     lineHeight: 18,
-    minHeight: 36, // Para mantener consistencia en altura
-    fontFamily: 'Poppins-SemiBold', // Poppins SemiBold para el nombre
+    minHeight: 36,
+    fontFamily: 'Poppins-SemiBold',
   },
   
   price: {
@@ -226,7 +233,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#2c3e50',
     marginBottom: 8,
-    fontFamily: 'Poppins-Bold', // Poppins Bold para el precio
+    fontFamily: 'Poppins-Bold',
   },
   
   cartButton: {
@@ -236,8 +243,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#4A4170', // ligeramente más claro
-
+    backgroundColor: '#4A4170',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',

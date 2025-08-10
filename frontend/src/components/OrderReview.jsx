@@ -1,146 +1,247 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+/**
+ * Componente OrderReview - Revisión final del pedido
+ * 
+ * Componente que permite al usuario revisar toda la información del pedido
+ * antes de confirmar la compra. Muestra resumen de envío, pago y productos.
+ */
 
-const OrderReview = ({ onBack, onConfirm }) => {
-    const [showModal, setShowModal] = useState(false);
-    const navigate = useNavigate();
+import React, { useState } from 'react';
 
-    const handleConfirmOrder = () => {
-        // Aquí podremos agregar la lógica para procesar el pedido
-        setShowModal(true);
-        if (onConfirm) {
-            onConfirm();
+const OrderReview = ({
+    onBack,
+    onConfirm,
+    orderData,
+    isProcessing = false
+}) => {
+    const [isConfirming, setIsConfirming] = useState(false);
+
+    // Función para manejar la confirmación
+    const handleConfirm = async () => {
+        setIsConfirming(true);
+        try {
+            await onConfirm();
+        } catch (error) {
+            console.error('Error al confirmar pedido:', error);
+        } finally {
+            setIsConfirming(false);
         }
     };
 
-    const handleContinueShopping = () => {
-        setShowModal(false);
-        navigate('/categoryProducts');
+    // Formatear fecha para mostrar
+    const formatDate = (dateString) => {
+        if (!dateString) return 'No especificada';
+
+        const [year, month, day] = dateString.split('-');
+        const date = new Date(year, month - 1, day);
+        
+        return date.toLocaleDateString('es-ES', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    };
+
+    // Obtener etiqueta del método de pago
+    const getPaymentTypeLabel = (type) => {
+        const labels = {
+            'Transferencia': 'Transferencia bancaria',
+            'Efectivo': 'Pago en efectivo',
+            'Débito': 'Tarjeta de débito',
+            'Crédito': 'Tarjeta de crédito'
+        };
+        return labels[type] || type;
     };
 
     return (
-        <>
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h3 className="text-xl font-semibold mb-6">Revisar pedido</h3>
-                         
-                {/* Información de envío */}
-                <div className="mb-6">
-                    <h4 className="text-lg font-medium mb-4">Información de envío</h4>
-                    <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                        <div className="flex">
-                            <span className="font-medium text-gray-700 w-42">Nombre y apellido:</span>
-                            <span className="text-gray-600">Bryan Miranda</span>
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+            <h2 className="text-xl font-semibold mb-6" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                Revisión del pedido
+            </h2>
+
+            {/* Información de envío */}
+            <div className="mb-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-3" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                    📦 Información de envío
+                </h3>
+                <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <span className="font-medium text-gray-700">Receptor:</span>
+                            <p className="text-gray-600" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                {orderData.shippingInfo?.receiverName || 'No especificado'}
+                            </p>
                         </div>
-                        <div className="flex">
-                            <span className="font-medium text-gray-700 w-32">Dirección:</span>
-                            <span className="text-gray-600">&ensp;&ensp;&ensp;Jardines del escorial, calle bienestar casa 15A, San Salvador &ensp;&ensp;&ensp;San salvador</span>
-                        </div>
-                        <div className="flex">
-                            <span className="font-medium text-gray-700 w-32">Referencia:</span>
-                            <span className="text-gray-600">Punto de la 308</span>
-                        </div>
-                        <div className="flex">
-                            <span className="font-medium text-gray-700 w-32">Estado:</span>
-                            <span className="text-gray-600">Agendada</span>
-                        </div>
-                        <div className="flex">
-                            <span className="font-medium text-gray-700 w-42">Correo electrónico:</span>
-                            <span className="text-gray-600">bryanmiranda@gmail.com</span>
-                        </div>
-                        <div className="flex">
-                            <span className="font-medium text-gray-700 w-32">Teléfono:</span>
-                            <span className="text-gray-600">6793-8435</span>
+                        <div>
+                            <span className="font-medium text-gray-700">Teléfono:</span>
+                            <p className="text-gray-600" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                {orderData.shippingInfo?.receiverPhone || 'No especificado'}
+                            </p>
                         </div>
                     </div>
-                </div>
 
-                {/* Método de pago */}
-                <div className="mb-6">
-                    <h4 className="text-lg font-medium mb-4">Método de pago</h4>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                        <div className="flex items-center">
-                            <div className="w-6 h-6 bg-pink-400 rounded-full flex items-center justify-center mr-3">
-                                <span className="text-white text-sm">$</span>
-                            </div>
-                            <div>
-                                <span className="font-medium text-gray-700">Transferencia bancaria</span>
-                                <p className="text-sm text-pink-500 mt-1">Tu pedido estará procesado una vez que se verifique el pago</p>
-                            </div>
-                        </div>
+                    <div className="text-sm">
+                        <span className="font-medium text-gray-700">Dirección:</span>
+                        <p className="text-gray-600" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                            {orderData.shippingInfo?.deliveryAddress || 'No especificada'}
+                        </p>
                     </div>
-                </div>
 
-                {/* Botones de acción */}
-                <div className="flex gap-4 mt-8">
-                    <button
-                        onClick={onBack}
-                        className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-                    >
-                        Volver
-                    </button>
-                    <button
-                        onClick={handleConfirmOrder}
-                        className="flex-1 bg-pink-400 text-white py-3 rounded-lg hover:bg-pink-500 transition-colors font-medium"
-                    >
-                        Realizar pedido
-                    </button>
+                    <div className="text-sm">
+                        <span className="font-medium text-gray-700">Punto de referencia:</span>
+                        <p className="text-gray-600" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                            {orderData.shippingInfo?.deliveryPoint || 'No especificado'}
+                        </p>
+                    </div>
+
+                    <div className="text-sm">
+                        <span className="font-medium text-gray-700">Fecha de entrega:</span>
+                        <p className="text-gray-600" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                            {formatDate(orderData.shippingInfo?.deliveryDate)}
+                        </p>
+                    </div>
                 </div>
             </div>
 
-            {/* Modal de confirmación */}
-            {showModal && (
-                <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.15)' }}>
-                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-                        <div className="p-8 text-center">
-                            {/* Ícono de check */}
-                            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                                <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            {/* Información de pago */}
+            <div className="mb-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-3" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                    💳 Información de pago
+                </h3>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="text-sm">
+                        <span className="font-medium text-gray-700">Método de pago:</span>
+                        <p className="text-gray-600" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                            {getPaymentTypeLabel(orderData.paymentInfo?.paymentType)}
+                        </p>
+                    </div>
+
+                    {orderData.paymentInfo?.paymentProofImage && (
+                        <div className="mt-3">
+                            <span className="font-medium text-gray-700 text-sm">Comprobante:</span>
+                            <div className="mt-2 flex items-center text-sm text-green-600">
+                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
+                                <span style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                    Comprobante cargado correctamente
+                                </span>
                             </div>
-                            
-                            {/* Título */}
-                            <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                                ¡Gracias por tu pedido!
-                            </h2>
-                            
-                            {/* Subtítulo */}
-                            <p className="text-gray-600 mb-4">
-                                Tu pedido ha sido recibido
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Resumen financiero */}
+            <div className="mb-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-3" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                    💰 Resumen de costos
+                </h3>
+                <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                    <div className="flex justify-between text-sm">
+                        <span className="text-gray-600" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                            Subtotal:
+                        </span>
+                        <span className="font-medium" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                            ${orderData.originalSubtotal?.toFixed(2) || '0.00'}
+                        </span>
+                    </div>
+
+                    {/* Mostrar descuento si está aplicado */}
+                    {orderData.discountApplied && orderData.discountAmount > 0 && (
+                        <div className="flex justify-between text-sm">
+                            <span className="text-green-600" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                Descuento {orderData.discountInfo?.name ? `(${orderData.discountInfo.name})` : ''}:
+                            </span>
+                            <span className="font-medium text-green-600" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                -${orderData.discountAmount?.toFixed(2) || '0.00'}
+                            </span>
+                        </div>
+                    )}
+
+                    <div className="border-t pt-2">
+                        <div className="flex justify-between font-bold text-lg">
+                            <span style={{ fontFamily: 'Poppins, sans-serif' }}>Total:</span>
+                            <span style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                ${orderData.cartTotal?.toFixed(2) || '0.00'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Información importante */}
+            <div className="mb-6 bg-amber-50 p-4 rounded-lg">
+                <div className="flex items-start">
+                    <svg className="w-5 h-5 text-amber-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.664-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                    <div>
+                        <p className="text-amber-700 text-sm font-medium mb-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                            Importante
+                        </p>
+                        <ul className="text-amber-600 text-xs space-y-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                            <li>• Una vez confirmado, el pedido no podrá ser modificado</li>
+                            <li>• El tiempo de entrega puede variar según la ubicación</li>
+                            <li>• Asegúrate de que la información de contacto sea correcta</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            {/* Botones de acción */}
+            <div className="flex justify-between">
+                <button
+                    type="button"
+                    onClick={onBack}
+                    disabled={isConfirming || isProcessing}
+                    className="px-6 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors duration-200"
+                    style={{ fontFamily: 'Poppins, sans-serif', cursor: 'pointer' }}
+                >
+                    Volver al pago
+                </button>
+
+                <button
+                    type="button"
+                    onClick={handleConfirm}
+                    disabled={isConfirming || isProcessing}
+                    className="px-8 py-3 bg-pink-400 text-white rounded-md hover:bg-pink-500 disabled:bg-pink-300 disabled:cursor-not-allowed transition-colors duration-200 font-medium"
+                    style={{ fontFamily: 'Poppins, sans-serif', cursor: 'pointer' }}
+                >
+                    {isConfirming || isProcessing ? (
+                        <span className="flex items-center">
+                            <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Procesando pedido...
+                        </span>
+                    ) : (
+                        'Confirmar pedido'
+                    )}
+                </button>
+            </div>
+
+            {/* Estado de procesamiento */}
+            {(isConfirming || isProcessing) && (
+                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center">
+                        <svg className="animate-spin h-5 w-5 text-blue-600 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <div>
+                            <p className="text-blue-700 text-sm font-medium" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                Procesando tu pedido...
                             </p>
-                            
-                            {/* Descripción */}
-                            <p className="text-gray-500 text-sm mb-8 leading-relaxed">
-                                Hemos enviado un correo electrónico de confirmación a tu dirección de correo electrónico con los detalles de tu pedido
+                            <p className="text-blue-600 text-xs" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                Por favor no cierres esta ventana
                             </p>
-                            
-                            {/* Detalles del pedido */}
-                            <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                                <h3 className="font-semibold text-gray-800 mb-3">Detalles del pedido</h3>
-                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                    <div>
-                                        <span className="text-gray-600">Nombre del comprador</span>
-                                        <p className="font-medium text-gray-800">Bryan Miranda</p>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-600">Fecha de compra</span>
-                                        <p className="font-medium text-gray-800">7/5/2025</p>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            {/* Botón de seguir comprando */}
-                            <button
-                                onClick={handleContinueShopping}
-                                className="w-full bg-pink-400 text-white py-3 rounded-lg hover:bg-pink-500 transition-colors font-medium"
-                            >
-                                Seguir comprando
-                            </button>
                         </div>
                     </div>
                 </div>
             )}
-        </>
+        </div>
     );
 };
 

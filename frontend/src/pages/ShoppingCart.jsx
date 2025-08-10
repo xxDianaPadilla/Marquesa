@@ -1,6 +1,6 @@
 /**
  * Componente ShoppingCart - Página del carrito de compras
- * ACTUALIZADO: Integra funcionalidad completa de códigos promocionales
+ * ACTUALIZADO: Integra funcionalidad completa de códigos promocionales y nueva lógica del carrito
  */
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -72,7 +72,6 @@ const ShoppingCart = () => {
         // Nuevas funciones de descuentos
         applyDiscount,
         removeDiscount,
-        markDiscountAsUsed,
         getPromotionalCodes,
 
         isEmpty
@@ -86,7 +85,7 @@ const ShoppingCart = () => {
     }, [hookError]);
 
     /**
-     * Función para proceder al pago
+     * ✅ FUNCIÓN CORREGIDA: Proceder al pago (usando la nueva lógica del carrito activo)
      */
     const handlePaymentProcessClick = useCallback(async (e) => {
         e.preventDefault();
@@ -112,45 +111,84 @@ const ShoppingCart = () => {
 
         setCartError(null);
 
-        // Si hay un descuento aplicado, marcarlo como usado antes de proceder
-        if (hasDiscount && appliedDiscount) {
-            try {
-                // Aquí podrías generar un ID temporal de orden si es necesario
-                const tempOrderId = `temp_${Date.now()}`;
-                const success = await markDiscountAsUsed(tempOrderId);
+        // ✅ CAMBIO PRINCIPAL: Usar el endpoint /active para obtener el carrito activo
+        try {
+            const response = await fetch(`http://localhost:4000/api/shoppingCart/active/${user.id}`, {
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
 
-                if (!success) {
-                    setCartError('Error al procesar el código de descuento. Inténtalo nuevamente.');
-                    return;
+            if (response.ok) {
+                const cartData = await response.json();
+
+                // ✅ ESTRUCTURA ACTUALIZADA: data.cart en lugar de data.shoppingCart
+                if (cartData.cart) {
+                    const cart = cartData.cart;
+
+                    // Transformar items para el estado de navegación
+                    const transformedItems = cart.items.map(item => ({
+                        id: item.itemId?._id || item.itemId,
+                        name: item.itemType === 'product'
+                            ? (item.itemId?.name || 'Producto sin nombre')
+                            : (item.itemId?.productToPersonalize || 'Producto personalizado'),
+                        quantity: item.quantity || 1,
+                        price: item.itemType === 'product'
+                            ? (item.itemId?.price || 0)
+                            : (item.itemId?.totalPrice || 0),
+                        subtotal: item.subtotal || 0,
+                        itemType: item.itemType,
+                        image: item.itemType === 'product'
+                            ? (item.itemId?.images?.[0]?.image || item.itemId?.image || '')
+                            : (item.itemId?.referenceImage || '🎨'),
+                        _originalItem: item
+                    }));
+
+                    // Navegar a la página de pago con información completa del carrito y descuentos
+                    const paymentState = {
+                        // Información financiera
+                        cartTotal: finalTotal,
+                        originalSubtotal: calculatedSubtotal,
+                        discountApplied: hasDiscount,
+                        discountAmount: discountAmount,
+                        discountInfo: appliedDiscount, // Pasar info del descuento para usarlo después
+
+                        // Items del carrito
+                        cartItems: transformedItems,
+
+                        // ✅ CAMBIO: Usar cart._id en lugar de shoppingCart._id
+                        shoppingCartId: cart._id,
+                        itemCount: transformedItems.length,
+
+                        // Timestamp para referencia
+                        timestamp: Date.now()
+                    };
+
+                    console.log('Navegando a PaymentProcess con estado:', paymentState);
+                    navigate('/paymentProcess', { state: paymentState });
+                } else {
+                    setCartError('Error al obtener información del carrito.');
                 }
-            } catch (error) {
-                console.error('Error marcando descuento como usado:', error);
-                setCartError('Error al procesar el descuento.');
-                return;
+            } else {
+                setCartError('Error al comunicarse con el servidor.');
             }
+        } catch (error) {
+            console.error('Error obteniendo carrito para pago:', error);
+            setCartError('Error al procesar el carrito para el pago.');
         }
-
-        // Navegar a la página de pago con información del descuento si existe
-        const paymentState = {
-            cartTotal: finalTotal,
-            originalSubtotal: calculatedSubtotal,
-            discountApplied: hasDiscount,
-            discountAmount: discountAmount,
-            discountInfo: appliedDiscount
-        };
-
-        navigate('/paymentProcess', { state: paymentState });
     }, [
         isAuthenticated,
         isEmpty,
         cartItems,
         hasDiscount,
         appliedDiscount,
-        markDiscountAsUsed,
         navigate,
         finalTotal,
         calculatedSubtotal,
-        discountAmount
+        discountAmount,
+        user?.id
     ]);
 
     /**
@@ -251,7 +289,7 @@ const ShoppingCart = () => {
      */
     const handleContinueShopping = useCallback(() => {
         try {
-            navigate('/');
+            navigate('/categoryProducts');
         } catch (error) {
             console.error('Error al navegar:', error);
             setCartError('Error al navegar. Inténtalo nuevamente.');
@@ -266,21 +304,6 @@ const ShoppingCart = () => {
         setDiscountError(null);
         clearError();
     }, [clearError]);
-
-    /**
-     * NUEVA FUNCIÓN: Mostrar códigos disponibles (opcional)
-     */
-    const showAvailableCodes = useCallback(async () => {
-        try {
-            const result = await getPromotionalCodes('active');
-            if (result.success && result.codes.length > 0) {
-                console.log('Códigos activos disponibles:', result.codes);
-                // Aquí podrías mostrar un modal o lista de códigos disponibles
-            }
-        } catch (error) {
-            console.error('Error obteniendo códigos:', error);
-        }
-    }, [getPromotionalCodes]);
 
     // Limpiar errores después de un tiempo
     useEffect(() => {
@@ -298,6 +321,27 @@ const ShoppingCart = () => {
             removeDiscount();
         }
     }, [isEmpty, hasDiscount, removeDiscount]);
+
+    /**
+     * ✅ NUEVA FUNCIÓN: Acceso rápido a la limpieza de carritos duplicados (desarrollo)
+     */
+    const handleCleanupDuplicatesIfNeeded = useCallback(async () => {
+        // Solo mostrar en desarrollo o cuando hay problemas
+        if (process.env.NODE_ENV === 'development') {
+            const { cleanupDuplicateCarts } = useShoppingCart();
+            try {
+                const result = await cleanupDuplicateCarts();
+                console.log('Limpieza ejecutada:', result);
+                if (result.success) {
+                    setCartError(null);
+                    // Refrescar automáticamente
+                    await refreshCart();
+                }
+            } catch (error) {
+                console.error('Error en limpieza:', error);
+            }
+        }
+    }, [refreshCart]);
 
     /**
      * Componente para carrito vacío
@@ -470,6 +514,17 @@ const ShoppingCart = () => {
                         >
                             {loading ? 'Cargando...' : 'Reintentar'}
                         </button>
+                        
+                        {/* ✅ BOTÓN DE DESARROLLO: Para limpiar carritos duplicados si es necesario */}
+                        {process.env.NODE_ENV === 'development' && (
+                            <button
+                                onClick={handleCleanupDuplicatesIfNeeded}
+                                className="ml-2 inline-flex items-center px-4 py-2 border border-yellow-300 rounded-md shadow-sm text-sm font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100"
+                                disabled={loading}
+                            >
+                                Limpiar duplicados
+                            </button>
+                        )}
                     </div>
                 </div>
             )}

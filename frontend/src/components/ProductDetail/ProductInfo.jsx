@@ -4,6 +4,7 @@ import carrito from '../../assets/carritoP.png';
 import guardar from '../../assets/guardarP.png';
 import useCustomization from '../CustomProducts/Hooks/useCustomization'; 
 import { useFavorites } from '../../context/FavoritesContext';
+import useShoppingCart from '../ShoppingCart/hooks/useShoppingCart'; // Importar el hook del carrito
 
 const ProductInfo = ({ 
   product, 
@@ -15,6 +16,9 @@ const ProductInfo = ({
   isAuthenticated 
 }) => {
   const { addItemToCart, isLoading } = useCustomization();
+  
+  // Hook del carrito para verificar si el producto ya está agregado
+  const { cartItems, refreshCart } = useShoppingCart();
   
   // Usar todas las funciones disponibles del contexto de favoritos
   const { 
@@ -115,6 +119,29 @@ const ProductInfo = ({
     return isFavorite(normalizedProduct._id);
   }, [normalizedProduct, isFavorite]);
 
+  // NUEVO: Verificar si el producto está en el carrito
+  const isProductInCart = useMemo(() => {
+    if (!normalizedProduct || !cartItems || cartItems.length === 0) return false;
+    
+    return cartItems.some(item => {
+      // Comparar por ID del producto
+      const itemId = item.id || item._originalItem?.itemId;
+      return itemId === normalizedProduct._id;
+    });
+  }, [normalizedProduct, cartItems]);
+
+  // NUEVO: Obtener la cantidad del producto en el carrito
+  const productQuantityInCart = useMemo(() => {
+    if (!normalizedProduct || !cartItems || cartItems.length === 0) return 0;
+    
+    const cartItem = cartItems.find(item => {
+      const itemId = item.id || item._originalItem?.itemId;
+      return itemId === normalizedProduct._id;
+    });
+    
+    return cartItem ? cartItem.quantity : 0;
+  }, [normalizedProduct, cartItems]);
+
   // Función optimizada para manejar la adición al carrito
   const handleAddToCart = useCallback(async () => {
     try {
@@ -205,6 +232,9 @@ const ProductInfo = ({
         }
       );
 
+      // NUEVO: Refrescar el carrito para actualizar el estado visual
+      await refreshCart();
+
       // Opcional: Resetear la cantidad a 1 después de agregar
       setQuantity(1);
 
@@ -236,7 +266,7 @@ const ProductInfo = ({
     } finally {
       setAddingToCart(false);
     }
-  }, [isAuthenticated, user?.id, isValidProduct, numericPrice, quantity, subtotal, normalizedProduct, product.name, addItemToCart, setQuantity]);
+  }, [isAuthenticated, user?.id, isValidProduct, numericPrice, quantity, subtotal, normalizedProduct, product.name, addItemToCart, setQuantity, refreshCart]);
 
   // Función optimizada para manejar favoritos
   const handleToggleFavorites = useCallback(async () => {
@@ -411,21 +441,32 @@ const ProductInfo = ({
       
       {/* Botones de acción */}
       <div className="flex flex-wrap gap-3">
-        {/* Botón de agregar al carrito */}
+        {/* Botón de agregar al carrito - ACTUALIZADO con estado visual */}
         <button
           onClick={handleAddToCart}
           disabled={!canAddToCart}
           className={`px-4 py-2 rounded-md text-sm flex items-center gap-2
                      transition-all duration-200 ease-in-out hover:scale-105 cursor-pointer
                      disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
-                     ${canAddToCart 
-                       ? 'bg-[#E8ACD2] hover:bg-pink-300 text-white shadow-md hover:shadow-lg' 
-                       : 'bg-gray-300 text-gray-500'
+                     ${isProductInCart
+                       ? 'bg-green-500 hover:bg-green-600 text-white shadow-md hover:shadow-lg border-2 border-green-600' 
+                       : canAddToCart 
+                         ? 'bg-[#E8ACD2] hover:bg-pink-300 text-white shadow-md hover:shadow-lg' 
+                         : 'bg-gray-300 text-gray-500'
                      }`}
           aria-label={`Agregar ${quantity} ${product.name}${quantity > 1 ? 's' : ''} al carrito`}
         >
-          <img src={carrito} alt="Carrito" className="w-5 h-5" />
-          {addingToCart ? 'Agregando...' : `Añadir al carrito${quantity > 1 ? ` (${quantity})` : ''}`}
+          <img 
+            src={carrito} 
+            alt="Carrito" 
+            className={`w-5 h-5 ${isProductInCart ? 'filter brightness-0 invert' : ''}`} 
+          />
+          {addingToCart 
+            ? 'Agregando...' 
+            : isProductInCart 
+              ? `✅ En carrito (${productQuantityInCart})`
+              : `Añadir al carrito${quantity > 1 ? ` (${quantity})` : ''}`
+          }
         </button>
         
         {/* Botón de favoritos */}
@@ -457,6 +498,17 @@ const ProductInfo = ({
 
       {/* Mensajes informativos */}
       <div className="space-y-2">
+        {/* NUEVO: Mensaje cuando el producto está en el carrito */}
+        {isProductInCart && (
+          <div className="text-sm text-green-600 bg-green-50 p-3 rounded border border-green-200 flex items-center gap-2">
+            <span>✅</span>
+            <span>
+              Este producto está en tu carrito 
+              {productQuantityInCart > 1 && ` (${productQuantityInCart} unidades)`}
+            </span>
+          </div>
+        )}
+
         {/* Mensaje para usuarios no autenticados */}
         {!isAuthenticated && (
           <div className="text-sm text-orange-600 bg-orange-50 p-3 rounded border border-orange-200 flex items-center gap-2">

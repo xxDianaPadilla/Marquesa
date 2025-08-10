@@ -101,12 +101,14 @@ const validatePhone = (phone) => {
 
     const trimmedPhone = phone.trim();
 
-    if (trimmedPhone.length !== 9) {
-        return { isValid: false, error: "El teléfono debe tener exactamente 9 dígitos" };
-    }
+    // Verifica el formato exacto: 4 dígitos, guion, 4 dígitos
+    const phoneRegex = /^\d{4}-\d{4}$/;
 
-    if (!/^\d{9}$/.test(trimmedPhone)) {
-        return { isValid: false, error: "El teléfono debe contener solo números" };
+    if (!phoneRegex.test(trimmedPhone)) {
+        return {
+            isValid: false,
+            error: "El teléfono debe tener el formato 1234-5678"
+        };
     }
 
     return { isValid: true, value: trimmedPhone };
@@ -925,6 +927,9 @@ salesController.createSale = async (req, res) => {
             ShoppingCartId
         } = req.body;
 
+        // 1. VALIDACIONES DE DATOS BÁSICOS
+        console.log('Iniciando validaciones para nueva venta...');
+
         // Validar tipo de pago
         const paymentTypeValidation = validatePaymentType(paymentType);
         if (!paymentTypeValidation.isValid) {
@@ -979,7 +984,7 @@ salesController.createSale = async (req, res) => {
             });
         }
 
-        // Validar ShoppingCartId
+        // 2. VALIDACIONES DE CARRITO
         if (!ShoppingCartId || !isValidObjectId(ShoppingCartId)) {
             return res.status(400).json({
                 success: false,
@@ -996,53 +1001,95 @@ salesController.createSale = async (req, res) => {
             });
         }
 
-        // Validar imagen de comprobante
-        const imageValidation = validatePaymentProofImage(req.file);
-        if (!imageValidation.isValid) {
-            return res.status(400).json({
-                success: false,
-                message: imageValidation.error
-            });
-        }
+        // 3. VALIDACIONES DE COMPROBANTE DE PAGO
+        console.log(`Validando comprobante para pago tipo: ${paymentType}`);
 
-        let paymentProofImage = '';
+        // Determinar si es necesario el comprobante
+        const requiresProof = paymentType !== 'Efectivo';
+        let imageValidation = { isValid: true };
 
-        // Subir imagen de comprobante de pago a Cloudinary
-        try {
-            const result = await cloudinary.uploader.upload(
-                req.file.path,
-                {
-                    folder: "payment-proofs",
-                    allowed_formats: ["jpg", "png", "jpeg", "pdf", "webp"],
-                    transformation: req.file.mimetype.startsWith('image/') ? [
-                        { width: 1200, height: 1200, crop: "limit" },
-                        { quality: "auto" }
-                    ] : undefined
-                }
-            );
-            paymentProofImage = result.secure_url;
-        } catch (cloudinaryError) {
-            console.error('Error en Cloudinary:', cloudinaryError);
-            return res.status(502).json({
-                success: false,
-                message: "Error al procesar el comprobante de pago"
-            });
-        }
-
-        // Validar estados opcionales
-        let validatedStatus = "Pendiente";
-        let validatedTrackingStatus = "Agendado";
-
-        if (status) {
-            const statusValidation = validatePaymentStatus(status);
-            if (!statusValidation.isValid) {
+        if (requiresProof) {
+            // Validar que se envió un archivo
+            if (!req.file) {
                 return res.status(400).json({
                     success: false,
-                    message: statusValidation.error
+                    message: "El comprobante de pago es requerido para este método de pago"
                 });
             }
-            validatedStatus = statusValidation.value;
+
+            // Validar el archivo
+            imageValidation = validatePaymentProofImage(req.file);
+            if (!imageValidation.isValid) {
+                return res.status(400).json({
+                    success: false,
+                    message: imageValidation.error
+                });
+            }
         }
+
+        // 4. PROCESAMIENTO DE COMPROBANTE DE PAGO
+        let paymentProofImage = '';
+
+        if (requiresProof && req.file) {
+            console.log('Subiendo comprobante de pago a Cloudinary...');
+
+            try {
+                const result = await cloudinary.uploader.upload(
+                    req.file.path,
+                    {
+                        folder: "payment-proofs",
+                        allowed_formats: ["jpg", "png", "jpeg", "pdf", "webp"],
+                        transformation: req.file.mimetype.startsWith('image/') ? [
+                            { width: 1200, height: 1200, crop: "limit" },
+                            { quality: "auto" }
+                        ] : undefined
+                    }
+                );
+                paymentProofImage = result.secure_url;
+                console.log('Comprobante subido exitosamente:', paymentProofImage);
+            } catch (cloudinaryError) {
+                console.error('Error en Cloudinary:', cloudinaryError);
+                return res.status(502).json({
+                    success: false,
+                    message: "Error al procesar el comprobante de pago"
+                });
+            }
+        } else if (paymentType === 'Efectivo') {
+            console.log('Pago en efectivo - no se requiere comprobante');
+            // Para efectivo, podemos establecer un valor por defecto o dejarlo vacío
+            paymentProofImage = '';
+        }
+
+        // 5. VALIDACIÓN Y CONFIGURACIÓN DE ESTADOS
+        // *** CORREGIDO: Lógica de estado basada en tipo de pago ***
+        let validatedStatus;
+
+        if (paymentType === 'Efectivo') {
+            // Para efectivo siempre es "Pendiente" hasta que se entregue
+            validatedStatus = "Pendiente";
+            console.log('Pago en efectivo - estado establecido como Pendiente');
+        } else {
+            // Para otros métodos de pago, si hay comprobante es "Pagado"
+            if (paymentProofImage) {
+                validatedStatus = "Pagado";
+                console.log(`Pago ${paymentType} con comprobante - estado establecido como Pagado`);
+            } else {
+                validatedStatus = "Pendiente";
+                console.log(`Pago ${paymentType} sin comprobante - estado establecido como Pendiente`);
+            }
+        }
+
+        // Si se proporciona un estado específico, validarlo y usarlo solo si es válido
+        if (status) {
+            const statusValidation = validatePaymentStatus(status);
+            if (statusValidation.isValid) {
+                validatedStatus = statusValidation.value;
+                console.log(`Estado personalizado aplicado: ${validatedStatus}`);
+            }
+        }
+
+        // Establecer estado de tracking por defecto
+        let validatedTrackingStatus = "Agendado";
 
         if (trackingStatus) {
             const trackingValidation = validateTrackingStatus(trackingStatus);
@@ -1055,7 +1102,10 @@ salesController.createSale = async (req, res) => {
             validatedTrackingStatus = trackingValidation.value;
         }
 
-        const newSale = new salesModel({
+        // 6. CREAR LA VENTA
+        console.log('Creando nueva venta en la base de datos...');
+
+        const saleData = {
             paymentType: paymentTypeValidation.value,
             paymentProofImage,
             status: validatedStatus,
@@ -1066,40 +1116,87 @@ salesController.createSale = async (req, res) => {
             deliveryPoint: pointValidation.value,
             deliveryDate: dateValidation.value,
             ShoppingCartId
+        };
+
+        console.log('Datos de la venta a crear:', {
+            paymentType: saleData.paymentType,
+            status: saleData.status,
+            hasProofImage: !!saleData.paymentProofImage,
+            trackingStatus: saleData.trackingStatus
         });
 
+        const newSale = new salesModel(saleData);
         await newSale.save();
 
-        // Poblar carrito en la respuesta
-        const populatedSale = await salesModel.findById(newSale._id).populate('ShoppingCartId');
+        console.log('Venta creada con ID:', newSale._id);
 
+        // 7. PREPARAR RESPUESTA
+        // Poblar carrito en la respuesta
+        const populatedSale = await salesModel
+            .findById(newSale._id)
+            .populate('ShoppingCartId');
+
+        // Respuesta exitosa
         res.status(201).json({
             success: true,
             message: "Venta creada exitosamente",
-            data: populatedSale
+            data: {
+                sale: populatedSale,
+                paymentInfo: {
+                    type: paymentType,
+                    requiresProof: requiresProof,
+                    proofUploaded: !!paymentProofImage,
+                    status: validatedStatus,
+                    trackingStatus: validatedTrackingStatus
+                }
+            }
         });
+
+        console.log('Venta procesada exitosamente con estado:', validatedStatus);
+
     } catch (error) {
         console.error('Error en createSale:', error);
 
+        // Manejo específico de errores de validación de Mongoose
         if (error.name === 'ValidationError') {
+            const validationErrors = Object.values(error.errors).map(err => ({
+                field: err.path,
+                message: err.message,
+                value: err.value
+            }));
+
             return res.status(400).json({
                 success: false,
-                message: "Error de validación",
-                details: Object.values(error.errors).map(err => err.message)
+                message: "Error de validación en los datos",
+                errors: validationErrors
             });
         }
 
+        // Manejo de errores de casting (IDs inválidos, etc.)
         if (error.name === 'CastError') {
             return res.status(400).json({
                 success: false,
-                message: "Datos con formato incorrecto"
+                message: `Formato inválido para el campo: ${error.path}`,
+                field: error.path,
+                value: error.value
             });
         }
 
+        // Manejo de errores de duplicación (si hay índices únicos)
+        if (error.code === 11000) {
+            const field = Object.keys(error.keyPattern)[0];
+            return res.status(409).json({
+                success: false,
+                message: `Ya existe un registro con ese ${field}`,
+                field: field
+            });
+        }
+
+        // Error genérico del servidor
         res.status(500).json({
             success: false,
             message: "Error interno del servidor al crear la venta",
-            error: error.message
+            error: process.env.NODE_ENV === 'development' ? error.message : 'Error interno'
         });
     }
 };

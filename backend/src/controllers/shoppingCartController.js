@@ -48,33 +48,42 @@ shoppingCartController.getShoppingCartById = async (req, res) => {
 };
 
 // Obtenemos carrito por cliente
+// En tu shoppingCartController.js
 shoppingCartController.getShoppingCartByClient = async (req, res) => {
     try {
-        const cart = await shoppingCartModel.findOne({ clientId: req.params.clientId })
-            .populate('clientId')
-            .populate({
-                path: 'items.itemId',
-                refPath: 'items.itemTypeRef'
+        const { clientId } = req.params;
+
+        // Validaciones...
+        if (!clientId) {
+            return res.status(400).json({
+                message: "clientId es requerido",
+                error: "Missing clientId parameter"
             });
+        }
+
+        // CAMBIO CLAVE: Solo buscar carritos activos
+        const cart = await shoppingCartModel.findOne({
+            clientId: clientId,
+            status: 'Activo'  // 
+        }).populate('items.itemId');
 
         if (!cart) {
             return res.status(404).json({
                 success: false,
-                message: "Carrito no encontrado para este cliente"
+                message: "No se encontró carrito activo para este cliente"
             });
         }
 
-        // Devolver respuesta consistente con el frontend
         res.status(200).json({
             success: true,
             message: "Carrito obtenido exitosamente",
-            shoppingCart: cart,
+            shoppingCart: cart
         });
+
     } catch (error) {
-        console.error('Error en getShoppingCartByClient:', error);
+        console.error('Error al obtener carrito por cliente:', error);
         res.status(500).json({
-            success: false,
-            message: "Error al obtener carrito del cliente",
+            message: "Error interno del servidor",
             error: error.message
         });
     }
@@ -363,15 +372,19 @@ shoppingCartController.addItemToCartNew = async (req, res) => {
         // Calcular subtotal
         const subtotal = product.price * qty;
 
-        // Buscar o crear el carrito del cliente
-        let cart = await ShoppingCart.findOne({ clientId });
+        // CAMBIO CLAVE: Buscar solo el carrito ACTIVO del cliente
+        let cart = await ShoppingCart.findOne({
+            clientId,
+            status: 'Activo'  // Solo carritos activos
+        });
 
         if (!cart) {
-            // Crear un nuevo carrito
+            // Crear un nuevo carrito ACTIVO
             cart = new ShoppingCart({
                 clientId,
                 items: [],
-                total: 0
+                total: 0,
+                status: 'Activo'  // Asegurar que el nuevo carrito sea activo
             });
         }
 
@@ -573,8 +586,11 @@ shoppingCartController.addItemToCart = async (req, res) => {
             });
         }
 
-        // Buscar carrito existente del cliente
-        let cart = await shoppingCartModel.findOne({ clientId });
+        // CAMBIO CLAVE: Buscar solo el carrito ACTIVO del cliente
+        let cart = await shoppingCartModel.findOne({
+            clientId,
+            status: 'Activo'  // Solo carritos activos
+        });
 
         const newItem = {
             itemType,
@@ -593,11 +609,12 @@ shoppingCartController.addItemToCart = async (req, res) => {
 
             await cart.save();
         } else {
-            // Si no existe carrito, crear uno nuevo
+            // Si no existe carrito activo, crear uno nuevo ACTIVO
             cart = new shoppingCartModel({
                 clientId,
                 items: [newItem],
-                total: subtotal
+                total: subtotal,
+                status: 'Activo'  // Asegurar que el nuevo carrito sea activo
             });
 
             await cart.save();
@@ -1062,81 +1079,187 @@ shoppingCartController.applyPromotionalCode = async (req, res) => {
 };
 
 // Vaciamos carrito
-shoppingCartController.clearCart = async (req, res) => {
+shoppingCartController.clearCartAfterPurchase = async (req, res) => {
     try {
         const { cartId } = req.params;
+        const { userId } = req.body;
 
-        // Validación: cartId es requerido
-        if (!cartId) {
+        // Validaciones
+        if (!cartId || !userId) {
             return res.status(400).json({
-                message: "El ID del carrito es requerido",
-                error: "cartId is required"
+                message: "cartId y userId son requeridos",
+                error: "Missing required parameters"
             });
         }
 
-        // Validación: verificar formato de ObjectId para cartId
-        const mongoose = require('mongoose');
-        if (!mongoose.Types.ObjectId.isValid(cartId)) {
+        if (!mongoose.Types.ObjectId.isValid(cartId) || !mongoose.Types.ObjectId.isValid(userId)) {
             return res.status(400).json({
-                message: "El ID del carrito no tiene un formato válido",
-                error: "Invalid cartId format"
-            });
-        }
-
-        const cart = await shoppingCartModel.findById(cartId);
-
-        if (!cart) {
-            return res.status(404).json({
-                message: "Carrito no encontrado",
-                error: "Cart not found"
-            });
-        }
-
-        // Validación: verificar si el carrito ya está vacío
-        if (cart.items.length === 0) {
-            return res.status(200).json({
-                message: "El carrito ya está vacío",
-                cart
-            });
-        }
-
-        // Limpiar carrito
-        cart.items = [];
-        cart.total = 0;
-        cart.promotionalCode = undefined;
-
-        await cart.save();
-        res.status(200).json({
-            message: "Carrito vaciado exitosamente",
-            cart
-        });
-
-    } catch (error) {
-        // Manejo de errores específicos de MongoDB/Mongoose
-        if (error.name === 'ValidationError') {
-            return res.status(400).json({
-                message: "Error de validación en el modelo",
-                error: error.message
-            });
-        }
-
-        if (error.name === 'CastError') {
-            return res.status(400).json({
-                message: "ID proporcionado no es válido",
+                message: "IDs no tienen formato válido",
                 error: "Invalid ID format"
             });
         }
 
-        if (error.code === 11000) {
-            return res.status(409).json({
-                message: "Conflicto al vaciar carrito",
-                error: "Duplicate key error"
+        // Buscar el carrito y verificar que pertenece al usuario
+        const cart = await shoppingCartModel.findOne({
+            _id: cartId,
+            clientId: userId
+        });
+
+        if (!cart) {
+            return res.status(404).json({
+                message: "Carrito no encontrado o no pertenece al usuario",
+                error: "Cart not found"
             });
         }
 
-        // Error genérico del servidor
+        // Verificar que el carrito tiene items para limpiar
+        if (cart.items.length === 0) {
+            return res.status(200).json({
+                message: "El carrito ya está vacío",
+                cart,
+                cleared: false
+            });
+        }
+
+        // SOLUCIÓN: Marcar TODOS los carritos activos del usuario como completados
+        await shoppingCartModel.updateMany(
+            {
+                clientId: userId,
+                status: 'Activo'
+            },
+            {
+                status: 'Completado',
+                completedAt: new Date()
+            }
+        );
+
+        // Verificar si ya existe un carrito activo después de la actualización
+        let activeCart = await shoppingCartModel.findOne({
+            clientId: userId,
+            status: 'Activo'
+        }).populate({
+            path: 'items.itemId',
+        });
+
+        // Solo crear un nuevo carrito si no existe uno activo
+        if (!activeCart) {
+            activeCart = new shoppingCartModel({
+                clientId: userId,
+                items: [],
+                total: 0,
+                status: 'Activo',
+                createdAt: new Date()
+            });
+            await activeCart.save();
+        }
+
+        res.status(200).json({
+            message: "Carrito limpiado después de compra exitosa",
+            completedCartId: cartId,
+            activeCart: activeCart,
+            cleared: true
+        });
+
+    } catch (error) {
+        console.error('Error al limpiar carrito después de compra:', error);
         res.status(500).json({
-            message: "Error interno del servidor al vaciar carrito",
+            message: "Error interno del servidor",
+            error: error.message
+        });
+    }
+};
+
+// MÉTODO ADICIONAL: Para obtener el carrito activo del usuario
+shoppingCartController.getActiveCart = async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({
+                message: "userId es requerido y debe tener formato válido",
+                error: "Invalid user ID"
+            });
+        }
+
+        // Buscar carrito activo del usuario
+        let activeCart = await shoppingCartModel.findOne({
+            clientId: userId,
+            status: 'Activo'
+        }).populate('items.itemId'); 
+
+        // Si no existe, crear uno nuevo
+        if (!activeCart) {
+            activeCart = new shoppingCartModel({
+                clientId: userId,
+                items: [],
+                total: 0,
+                status: 'Activo',
+                createdAt: new Date()
+            });
+            await activeCart.save();
+        }
+
+        res.status(200).json({
+            message: "Carrito activo obtenido exitosamente",
+            cart: activeCart
+        });
+
+    } catch (error) {
+        console.error('Error al obtener carrito activo:', error);
+        res.status(500).json({
+            message: "Error interno del servidor",
+            error: error.message
+        });
+    }
+};
+
+// MÉTODO PARA LIMPIAR CARRITOS DUPLICADOS (ejecutar una sola vez)
+shoppingCartController.cleanupDuplicateCarts = async (req, res) => {
+    try {
+        // Encontrar usuarios con múltiples carritos activos
+        const duplicateCarts = await shoppingCartModel.aggregate([
+            { $match: { status: 'Activo' } },
+            {
+                $group: {
+                    _id: '$clientId',
+                    count: { $sum: 1 },
+                    carts: { $push: '$$ROOT' }
+                }
+            },
+            { $match: { count: { $gt: 1 } } }
+        ]);
+
+        let cleanedCount = 0;
+
+        for (const userCarts of duplicateCarts) {
+            // Ordenar por fecha de creación, mantener el más reciente
+            const sortedCarts = userCarts.carts.sort((a, b) =>
+                new Date(b.createdAt) - new Date(a.createdAt)
+            );
+
+            // Mantener solo el carrito más reciente, marcar otros como completados
+            for (let i = 1; i < sortedCarts.length; i++) {
+                await shoppingCartModel.updateOne(
+                    { _id: sortedCarts[i]._id },
+                    {
+                        status: 'Completado',
+                        completedAt: new Date()
+                    }
+                );
+                cleanedCount++;
+            }
+        }
+
+        res.status(200).json({
+            message: "Limpieza de carritos duplicados completada",
+            cleanedCarts: cleanedCount,
+            usersAffected: duplicateCarts.length
+        });
+
+    } catch (error) {
+        console.error('Error en limpieza de carritos:', error);
+        res.status(500).json({
+            message: "Error interno del servidor",
             error: error.message
         });
     }

@@ -12,10 +12,12 @@ const salesSchema = new Schema({
         },
         default: "Efectivo",
     },
-    // Imagen del comprobante de pago (obligatorio)
+    // Imagen del comprobante de pago (obligatorio menos en la opción de pago en efectivo)
     paymentProofImage: {
         type: String,
-        required: true
+        required: function () {
+            return this.paymentType !== 'Efectivo';
+        }
     },
     // Estado del pago de la venta, por defecto "Pendiente"
     status: {

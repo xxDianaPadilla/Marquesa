@@ -4,6 +4,7 @@ import clientsModel from "../models/Clients.js";
 // Importé Cloudinary para manejar imágenes y configuraciones
 import { v2 as cloudinary } from "cloudinary";
 import { config } from "../config.js";
+import mongoose from "mongoose";
 
 // Configuración de Cloudinary con las credenciales del archivo de configuración
 cloudinary.config({
@@ -33,7 +34,7 @@ clientsController.updateProfile = async (req, res) => {
         console.log('Archivo recibido:', req.file);
 
         const userId = req.user?.id;
-        
+
         if (!userId) {
             return res.status(401).json({
                 success: false,
@@ -126,7 +127,7 @@ clientsController.updateProfile = async (req, res) => {
         if (req.file) {
             try {
                 console.log('Procesando imagen de perfil...');
-                
+
                 // Eliminar imagen anterior de Cloudinary si existe
                 if (client.profilePicture) {
                     try {
@@ -188,7 +189,7 @@ clientsController.updateProfile = async (req, res) => {
 
     } catch (error) {
         console.error('Error en updateProfile:', error);
-        
+
         // Manejar errores específicos de validación
         if (error.name === 'ValidationError') {
             return res.status(400).json({
@@ -223,7 +224,7 @@ clientsController.generateRuletaCode = async (req, res) => {
         console.log('User ID del token:', req.user?.id);
 
         const userId = req.user?.id;
-        
+
         if (!userId) {
             return res.status(401).json({
                 success: false,
@@ -242,7 +243,7 @@ clientsController.generateRuletaCode = async (req, res) => {
 
         // Verificar códigos activos (máximo 10 códigos activos)
         const activeCodes = client.ruletaCodes ? client.ruletaCodes.filter(code => code.status === 'active') : [];
-        
+
         if (activeCodes.length >= 10) {
             return res.status(400).json({
                 success: false,
@@ -252,39 +253,39 @@ clientsController.generateRuletaCode = async (req, res) => {
 
         // Códigos de descuento disponibles con colores
         const discountOptions = [
-            { 
-                name: 'Verano 2025', 
-                discount: '25% OFF', 
+            {
+                name: 'Verano 2025',
+                discount: '25% OFF',
                 color: '#FADDDD',
                 textColor: '#374151'
             },
-            { 
-                name: 'Ruleta marquesa', 
-                discount: '20% OFF', 
+            {
+                name: 'Ruleta marquesa',
+                discount: '20% OFF',
                 color: '#E8ACD2',
                 textColor: '#FFFFFF'
             },
-            { 
-                name: 'Primavera 2025', 
-                discount: '15% OFF', 
+            {
+                name: 'Primavera 2025',
+                discount: '15% OFF',
                 color: '#C6E2C6',
                 textColor: '#374151'
             },
-            { 
-                name: 'Flores especiales', 
-                discount: '30% OFF', 
+            {
+                name: 'Flores especiales',
+                discount: '30% OFF',
                 color: '#FADDDD',
                 textColor: '#374151'
             },
-            { 
-                name: 'Giftbox deluxe', 
-                discount: '18% OFF', 
+            {
+                name: 'Giftbox deluxe',
+                discount: '18% OFF',
                 color: '#E8ACD2',
                 textColor: '#FFFFFF'
             },
-            { 
-                name: 'Cuadros únicos', 
-                discount: '22% OFF', 
+            {
+                name: 'Cuadros únicos',
+                discount: '22% OFF',
                 color: '#C6E2C6',
                 textColor: '#374151'
             }
@@ -300,7 +301,7 @@ clientsController.generateRuletaCode = async (req, res) => {
         };
 
         let uniqueCode = generateUniqueCode();
-        
+
         // Verificar que el código no exista en los códigos del usuario
         while (client.ruletaCodes && client.ruletaCodes.some(code => code.code === uniqueCode)) {
             uniqueCode = generateUniqueCode();
@@ -347,7 +348,7 @@ clientsController.generateRuletaCode = async (req, res) => {
 
     } catch (error) {
         console.error('Error en generateRuletaCode:', error);
-        
+
         res.status(500).json({
             success: false,
             message: "Error interno del servidor al generar código de descuento",
@@ -363,7 +364,7 @@ clientsController.getUserRuletaCodes = async (req, res) => {
         console.log('User ID del token:', req.user?.id);
 
         const userId = req.user?.id;
-        
+
         if (!userId) {
             return res.status(401).json({
                 success: false,
@@ -405,7 +406,7 @@ clientsController.getUserRuletaCodes = async (req, res) => {
         // Priorizar códigos activos, luego recientes utilizados/expirados
         const activeCodes = allCodes.filter(code => code.status === 'active');
         const inactiveCodes = allCodes.filter(code => code.status !== 'active');
-        
+
         const codesToShow = [...activeCodes, ...inactiveCodes].slice(0, 10);
 
         // Formatear códigos para respuesta
@@ -435,7 +436,7 @@ clientsController.getUserRuletaCodes = async (req, res) => {
 
     } catch (error) {
         console.error('Error en getUserRuletaCodes:', error);
-        
+
         res.status(500).json({
             success: false,
             message: "Error interno del servidor al obtener códigos de descuento",
@@ -453,7 +454,7 @@ clientsController.useRuletaCode = async (req, res) => {
 
         const userId = req.user?.id;
         const { code, orderId } = req.body;
-        
+
         if (!userId) {
             return res.status(401).json({
                 success: false,
@@ -494,7 +495,7 @@ clientsController.useRuletaCode = async (req, res) => {
             // Marcar como expirado
             client.ruletaCodes[codeIndex].status = 'expired';
             await client.save();
-            
+
             return res.status(400).json({
                 success: false,
                 message: "El código ha expirado"
@@ -520,7 +521,7 @@ clientsController.useRuletaCode = async (req, res) => {
 
     } catch (error) {
         console.error('Error en useRuletaCode:', error);
-        
+
         res.status(500).json({
             success: false,
             message: "Error interno del servidor al utilizar código de descuento",
@@ -538,7 +539,7 @@ clientsController.validateRuletaCode = async (req, res) => {
 
         const userId = req.user?.id;
         const { code } = req.params;
-        
+
         if (!userId) {
             return res.status(401).json({
                 success: false,
@@ -589,7 +590,7 @@ clientsController.validateRuletaCode = async (req, res) => {
                 ruletaCode.status = 'expired';
                 await client.save();
             }
-            
+
             return res.status(400).json({
                 success: false,
                 message: "Este código ha expirado",
@@ -612,7 +613,7 @@ clientsController.validateRuletaCode = async (req, res) => {
 
     } catch (error) {
         console.error('Error en validateRuletaCode:', error);
-        
+
         res.status(500).json({
             success: false,
             message: "Error interno del servidor al validar código de descuento",
@@ -659,7 +660,7 @@ clientsController.getNewClientsStats = async (req, res) => {
 
         // Obtenemos la fecha actual para los cálculos
         const now = new Date();
-        
+
         try {
             const { startDate, endDate } = calculateQuarterDates(period, now);
 
@@ -674,8 +675,8 @@ clientsController.getNewClientsStats = async (req, res) => {
             // Contamos los clientes creados en el rango de fechas especificado
             const newClients = await clientsModel.countDocuments({
                 createdAt: {
-                    $gte: startDate, 
-                    $lte: endDate    
+                    $gte: startDate,
+                    $lte: endDate
                 }
             });
 
@@ -687,11 +688,11 @@ clientsController.getNewClientsStats = async (req, res) => {
             // Retornamos la respuesta con los datos calculados
             res.status(200).json({
                 success: true,
-                count: newClients,  
-                period: period,     
-                startDate: startDate.toISOString(),          
+                count: newClients,
+                period: period,
+                startDate: startDate.toISOString(),
                 endDate: endDate.toISOString(),
-                quarter: Math.floor(now.getMonth() / 3) + 1             
+                quarter: Math.floor(now.getMonth() / 3) + 1
             });
         } catch (dateError) {
             console.error('Error en cálculo de fechas:', dateError);
@@ -702,7 +703,7 @@ clientsController.getNewClientsStats = async (req, res) => {
         }
     } catch (error) {
         console.error('Error en getNewClientsStats:', error);
-        
+
         // Manejar errores específicos de MongoDB
         if (error.name === 'MongoNetworkError') {
             return res.status(503).json({
@@ -710,14 +711,14 @@ clientsController.getNewClientsStats = async (req, res) => {
                 message: "Servicio de base de datos no disponible temporalmente"
             });
         }
-        
+
         if (error.name === 'MongoServerError') {
             return res.status(502).json({
                 success: false,
                 message: "Error en el servidor de base de datos"
             });
         }
-        
+
         // Error genérico del servidor
         res.status(500).json({
             success: false,
@@ -732,12 +733,12 @@ clientsController.getTotalClients = async (req, res) => {
     try {
         // Contamos todos los documentos en la colección de clientes
         const totalClients = await clientsModel.countDocuments();
-        
+
         // Verificar que el resultado sea válido
         if (typeof totalClients !== 'number' || totalClients < 0) {
             throw new Error('Resultado de conteo inválido');
         }
-        
+
         // Retornamos el total de clientes
         res.status(200).json({
             success: true,
@@ -746,7 +747,7 @@ clientsController.getTotalClients = async (req, res) => {
         });
     } catch (error) {
         console.error('Error en getTotalClients:', error);
-        
+
         // Manejar errores específicos de MongoDB
         if (error.name === 'MongoNetworkError') {
             return res.status(503).json({
@@ -754,14 +755,14 @@ clientsController.getTotalClients = async (req, res) => {
                 message: "Servicio de base de datos no disponible temporalmente"
             });
         }
-        
+
         if (error.name === 'MongoServerError') {
             return res.status(502).json({
                 success: false,
                 message: "Error en el servidor de base de datos"
             });
         }
-        
+
         // Error genérico del servidor
         res.status(500).json({
             success: false,
@@ -794,13 +795,13 @@ clientsController.getDetailedClientsStats = async (req, res) => {
                 createdAt: { $gte: previousStart, $lte: previousEnd }
             }),
             clientsModel.countDocuments({
-                createdAt: { 
+                createdAt: {
                     $gte: new Date(now.getFullYear(), now.getMonth(), 1),
                     $lte: now
                 }
             }),
             clientsModel.countDocuments({
-                createdAt: { 
+                createdAt: {
                     $gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
                     $lte: now
                 }
@@ -808,7 +809,7 @@ clientsController.getDetailedClientsStats = async (req, res) => {
         ]);
 
         // Calcular porcentaje de crecimiento
-        const growthPercentage = previousQuarterClients > 0 
+        const growthPercentage = previousQuarterClients > 0
             ? ((currentQuarterClients - previousQuarterClients) / previousQuarterClients * 100).toFixed(2)
             : currentQuarterClients > 0 ? 100 : 0;
 
@@ -837,10 +838,10 @@ clientsController.getDetailedClientsStats = async (req, res) => {
 
 clientsController.validatePromotionalCode = async (req, res) => {
     try {
-        const {clientId} = req.params;
-        const {code} = req.body;
+        const { clientId } = req.params;
+        const { code } = req.body;
 
-        if(!clientId || !code){
+        if (!clientId || !code) {
             return res.status(400).json({
                 success: false,
                 message: "ID de cliente y código son requeridos"
@@ -848,7 +849,7 @@ clientsController.validatePromotionalCode = async (req, res) => {
         }
 
         const client = await clientsModel.findById(clientId);
-        if(!client){
+        if (!client) {
             return res.status(404).json({
                 success: false,
                 message: "Cliente no encontrado"
@@ -860,11 +861,11 @@ clientsController.validatePromotionalCode = async (req, res) => {
             const isActive = rCode.status === 'active';
             const codeMatch = rCode.code.toUpperCase() === code.toUpperCase();
             const nameMatch = rCode.name.toUpperCase() === code.toUpperCase();
-            
+
             return isActive && (codeMatch || nameMatch);
         });
 
-        if(!foundCode){
+        if (!foundCode) {
             return res.status(400).json({
                 success: false,
                 message: "Código promocional no válido o ya utilizado"
@@ -872,7 +873,7 @@ clientsController.validatePromotionalCode = async (req, res) => {
         }
 
         const now = new Date();
-        if(foundCode.expiresAt < now){
+        if (foundCode.expiresAt < now) {
             // Marcar como expirado
             await clientsModel.findByIdAndUpdate(
                 clientId,
@@ -882,7 +883,7 @@ clientsController.validatePromotionalCode = async (req, res) => {
                     }
                 },
                 {
-                    arrayFilters: [{"elem.codeId": foundCode.codeId}],
+                    arrayFilters: [{ "elem.codeId": foundCode.codeId }],
                     new: true
                 }
             );
@@ -919,51 +920,201 @@ clientsController.validatePromotionalCode = async (req, res) => {
 
 clientsController.usePromotionalCode = async (req, res) => {
     try {
-        const {clientId} = req.params;
-        const {codeId, orderId} = req.body;
+        const { clientId } = req.params;
+        const { codeId, orderId } = req.body;
 
-        if(!clientId || !codeId){
+        console.log('=== INICIO: Marcando código como usado ===');
+        console.log('Datos recibidos:', {
+            clientId,
+            codeId,
+            orderId,
+            orderIdType: typeof orderId
+        });
+
+        // Validaciones básicas
+        if (!clientId || !codeId) {
+            console.log('❌ Error: Faltan datos requeridos');
             return res.status(400).json({
                 success: false,
                 message: "ID de cliente y código son requeridos"
             });
         }
 
-        const updateResult = await clientsModel.findByIdAndUpdate(
+        if (!mongoose.Types.ObjectId.isValid(clientId)) {
+            console.log('❌ Error: ClientId no es un ObjectId válido');
+            return res.status(400).json({
+                success: false,
+                message: "ID de cliente no válido"
+            });
+        }
+
+        let processedOrderId = orderId;
+        if (orderId && mongoose.Types.ObjectId.isValid(orderId)) {
+            processedOrderId = new mongoose.Types.ObjectId(orderId);
+        }
+
+        console.log('Datos procesados:', {
             clientId,
+            codeId,
+            processedOrderId,
+            processedOrderIdType: typeof processedOrderId
+        });
+
+        // PASO 1: Verificar cliente y código existente ANTES de actualizar
+        const client = await clientsModel.findById(clientId);
+        if (!client) {
+            console.log('Error: Cliente no encontrado');
+            return res.status(404).json({
+                success: false,
+                message: "Cliente no encontrado"
+            });
+        }
+
+        const currentCode = client.ruletaCodes.find(code =>
+            code.codeId === codeId
+        );
+
+        if (!currentCode) {
+            console.log('Error: Código no encontrado');
+            console.log('Códigos disponibles:', client.ruletaCodes.map(c => ({
+                codeId: c.codeId,
+                status: c.status
+            })));
+            return res.status(404).json({
+                success: false,
+                message: "Código promocional no encontrado"
+            });
+        }
+
+        console.log('Código actual antes de actualización:', {
+            codeId: currentCode.codeId,
+            code: currentCode.code,
+            status: currentCode.status,
+            expiresAt: currentCode.expiresAt
+        });
+
+        if (currentCode.status !== 'active') {
+            console.log('Error: Código no está activo:', currentCode.status);
+            return res.status(400).json({
+                success: false,
+                message: `El código no está disponible. Estado: ${currentCode.status}`
+            });
+        }
+
+        // PASO 3: Verificar expiración
+        const now = new Date();
+        if (currentCode.expiresAt && now > new Date(currentCode.expiresAt)) {
+            console.log('Error: Código expirado');
+
+            // Marcar como expirado primero
+            await clientsModel.findByIdAndUpdate(
+                clientId,
+                {
+                    $set: {
+                        "ruletaCodes.$[elem].status": "expired"
+                    }
+                },
+                {
+                    arrayFilters: [{ "elem.codeId": codeId }]
+                }
+            );
+
+            return res.status(400).json({
+                success: false,
+                message: "El código promocional ha expirado"
+            });
+        }
+
+        console.log('Código válido, procediendo a actualizar...');
+
+        const updateResult = await clientsModel.findOneAndUpdate(
             {
-                $set: {
-                    "ruletaCodes.$[elem].status": "used",
-                    "ruletaCodes.$[elem].usedAt": new Date(),
-                    "ruletaCodes.$[elem].usedInOrderId": orderId || null
+                _id: clientId,
+                'ruletaCodes': {
+                    $elemMatch: {
+                        'codeId': codeId,
+                        'status': 'active'
+                    }
                 }
             },
             {
-                arrayFilters: [{
-                    "elem.codeId": codeId,
-                    "elem.status": "active"
-                }],
-                new: true
+                $set: {
+                    "ruletaCodes.$.status": "used",
+                    "ruletaCodes.$.usedAt": now,
+                    "ruletaCodes.$.usedInOrderId": processedOrderId
+                }
+            },
+            {
+                new: true,
+                runValidators: true
             }
         );
 
-        if(!updateResult){
-            return res.status(404).json({
-                success: false,
-                message: "Cliente no encontrado o código no válido"
-            });
+        if (!updateResult) {
+            console.log('Primera estrategia falló, intentando estrategia alternativa...');
+
+            const codeIndex = client.ruletaCodes.findIndex(code =>
+                code.codeId === codeId && code.status === 'active'
+            );
+
+            if (codeIndex === -1) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Código no encontrado o ya no está activo"
+                });
+            }
+
+            const alternativeUpdate = await clientsModel.findByIdAndUpdate(
+                clientId,
+                {
+                    $set: {
+                        [`ruletaCodes.${codeIndex}.status`]: "used",
+                        [`ruletaCodes.${codeIndex}.usedAt`]: now,
+                        [`ruletaCodes.${codeIndex}.usedInOrderId`]: processedOrderId
+                    }
+                },
+                {
+                    new: true,
+                    runValidators: true
+                }
+            );
+
+            if (!alternativeUpdate) {
+                console.log('Error: Ambas estrategias fallaron');
+                return res.status(500).json({
+                    success: false,
+                    message: "Error al actualizar el código en la base de datos"
+                });
+            }
+
+            console.log('Actualización exitosa con estrategia alternativa');
+            var finalResult = alternativeUpdate;
+        } else {
+            console.log('Actualización exitosa con primera estrategia');
+            var finalResult = updateResult;
         }
 
-        const updatedCode = updateResult.ruletaCodes.find(code =>
-            code.codeId === codeId && code.status === 'used'
+        // PASO 5: Verificar resultado final
+        const updatedCode = finalResult.ruletaCodes.find(code =>
+            code.codeId === codeId
         );
 
-        if(!updatedCode){
-            res.status(400).json({
+        console.log('Código después de actualización:', {
+            codeId: updatedCode?.codeId,
+            newStatus: updatedCode?.status,
+            usedAt: updatedCode?.usedAt,
+            orderId: updatedCode?.usedInOrderId
+        });
+
+        if (!updatedCode || updatedCode.status !== 'used') {
+            console.log('VERIFICACIÓN FALLÓ: El código no se actualizó correctamente');
+            return res.status(500).json({
                 success: false,
-                message: "No se pudo marcar el código como usado. Puede que ya esté utilizado."
+                message: "Error en la verificación: código no se marcó como usado"
             });
         }
+
+        console.log('SUCCESS: Código marcado como usado exitosamente');
 
         res.status(200).json({
             success: true,
@@ -971,27 +1122,38 @@ clientsController.usePromotionalCode = async (req, res) => {
             usedCode: {
                 codeId: updatedCode.codeId,
                 code: updatedCode.code,
+                name: updatedCode.name,
+                discount: updatedCode.discount,
                 usedAt: updatedCode.usedAt,
-                orderId: updatedCode.usedInOrderId
+                orderId: updatedCode.usedInOrderId,
+                previousStatus: 'active',
+                newStatus: 'used'
+            },
+            debug: {
+                clientId: clientId,
+                updateTimestamp: now.toISOString(),
+                strategy: updateResult ? 'primary' : 'alternative'
             }
         });
+
     } catch (error) {
-        console.error('Error marcando código como usado: ', error);
+        console.error('ERROR CRÍTICO en usePromotionalCode:', error);
+        console.error('Stack trace:', error.stack);
         res.status(500).json({
             success: false,
             message: "Error interno del servidor",
-            error: error.message
+            error: error.message,
         });
     }
 };
 
 clientsController.getClientPromotionalCodes = async (req, res) => {
     try {
-        const {clientId} = req.params;
-        const {status} = req.query;
+        const { clientId } = req.params;
+        const { status } = req.query;
 
         const client = await clientsModel.findById(clientId).select('ruletCodes');
-        if(!client){
+        if (!client) {
             return res.status(404).json({
                 success: false,
                 message: "Cliente no encontrado"
@@ -999,7 +1161,7 @@ clientsController.getClientPromotionalCodes = async (req, res) => {
         }
 
         let filteredCodes = client.ruletaCodes;
-        if(status){
+        if (status) {
             filteredCodes = client.ruletaCodes.filter(code => code.status === status);
         }
 
@@ -1008,7 +1170,7 @@ clientsController.getClientPromotionalCodes = async (req, res) => {
             code.status === 'active' && code.expiresAt < now
         );
 
-        if(expiredCodes.length > 0){
+        if (expiredCodes.length > 0) {
             await clientsModel.findByIdAndUpdate(
                 clientId,
                 {
@@ -1019,7 +1181,7 @@ clientsController.getClientPromotionalCodes = async (req, res) => {
                 {
                     arrayFilters: [{
                         "elem.status": "active",
-                        "elem.expiresAt": {$lt: now}
+                        "elem.expiresAt": { $lt: now }
                     }]
                 }
             );

@@ -48,10 +48,27 @@ const router = express.Router();
 
 // ==================== RUTAS EXISTENTES ====================
 
-// Ruta para actualizar perfil - requiere autenticación
-router.put("/profile", 
+router.get("/favorites", 
     verifyToken, 
-    upload.single('profilePicture'), 
+    clientsController.getFavorites
+);
+router.post("/favorites/add", 
+    verifyToken, 
+    clientsController.addToFavorites
+);
+router.delete("/favorites/remove", 
+    verifyToken, 
+    clientsController.removeFromFavorites
+);
+router.post("/favorites/toggle", 
+    verifyToken, 
+    clientsController.toggleFavorite
+);
+
+// Ruta para actualizar perfil - requiere autenticación
+router.put("/profile",
+    verifyToken,
+    upload.single('profilePicture'),
     clientsController.updateProfile
 );
 

@@ -11,11 +11,14 @@
   "dependencies": {
     "@expo-google-fonts/poppins": "^0.4.0",
     "@expo/vector-icons": "^14.1.0",
-    "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-async-storage/async-storage": "^2.1.2",
+    "@react-native-community/blur": "^4.4.1",
+    "@react-native-community/slider": "^4.5.7",
     "@react-navigation/bottom-tabs": "^6.5.20",
     "@react-navigation/native": "^6.1.17",
     "@react-navigation/native-stack": "^6.9.26",
     "expo": "~53.0.20",
+    "expo-blur": "^14.1.5",
     "expo-font": "~13.3.2",
     "expo-splash-screen": "^0.30.10",
     "expo-status-bar": "~2.2.3",
@@ -24,7 +27,7 @@
     "npm": "^11.5.2",
     "react": "19.0.0",
     "react-native": "0.79.5",
-    "react-native-vector-icons": "^10.1.0"
+    "react-native-vector-icons": "^10.3.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

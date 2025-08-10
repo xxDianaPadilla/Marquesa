@@ -7,13 +7,12 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   SafeAreaView,
   StatusBar,
   Dimensions,
 } from 'react-native';
-import favoritesIcon from "../images/favoritesIcon.png";
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import FavoriteCards from "../components/FavoriteCards";
 
 const { width: screenWidth } = Dimensions.get('window');
 const isSmallDevice = screenWidth < 375;
@@ -33,6 +32,12 @@ const FavoritesScreen = ({ navigation }) => {
     }));
   };
 
+  const handleCardPress = (item) => {
+    // Aquí puedes agregar la lógica para cuando se presiona una card
+    console.log('Card pressed:', item);
+    // Por ejemplo: navigation.navigate('ProductDetail', { product: item });
+  };
+
   const favoritesData = [
     {
       id: 1,
@@ -45,31 +50,6 @@ const FavoritesScreen = ({ navigation }) => {
       image: FavoritesImage,
     },
   ];
-
-  const renderFavoriteItem = (item) => (
-    <TouchableOpacity key={item.id} style={styles.favoriteItem}>
-      <View style={styles.imageContainer}>
-        <Image source={item.image} style={styles.favoriteImage} />
-
-        {/* Degradado inferior para el texto */}
-        <View style={styles.textOverlay}>
-          <Text style={styles.favoriteTitle}>{item.title}</Text>
-        </View>
-
-        {/* Corazón flotante */}
-        <TouchableOpacity
-          style={styles.heartIcon}
-          onPress={() => toggleFavorite(item.id)}
-        >
-          <Icon
-            name={favorites[item.id] ? "favorite" : "favorite-border"}
-            size={20}
-            color="#fff"
-          />
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
-  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -91,35 +71,13 @@ const FavoritesScreen = ({ navigation }) => {
 
       {/* Content */}
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.favoritesGrid}>
-          {favoritesData.map(renderFavoriteItem)}
-        </View>
+        <FavoriteCards
+          data={favoritesData}
+          favorites={favorites}
+          onToggleFavorite={toggleFavorite}
+          onCardPress={handleCardPress}
+        />
       </ScrollView>
-
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate('Home')}
-        >
-          <Icon name="home" size={isSmallDevice ? 20 : 24} color="#ccc" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Image source={favoritesIcon} style={styles.navIcon} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate('Chat')}
-        >
-          <Icon name="chat" size={isSmallDevice ? 20 : 24} color="#ccc" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate('Cart')}
-        >
-          <Icon name="shopping-cart" size={isSmallDevice ? 20 : 24} color="#ccc" />
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 };
@@ -127,7 +85,7 @@ const FavoritesScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -135,7 +93,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
+    marginTop: 25,
   },
   pinkSeparator: {
     height: 2,
@@ -155,92 +114,8 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: '#FFFFFF',
     paddingBottom: isSmallDevice ? 90 : 100,
-  },
-  favoritesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    padding: 16,
-    justifyContent: 'space-between',
-  },
-  favoriteItem: {
-    width: '48%',
-    marginBottom: 16,
-    borderRadius: 23,
-    overflow: 'hidden', // para que la imagen y overlays respeten bordes
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  imageContainer: {
-    position: 'relative',
-    width: '100%',
-    height: 150,
-  },
-  favoriteImage: {
-    width: '100%',
-    height: '100%',
-  },
-  textOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-  },
-  favoriteTitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#fff',
-  },
-  heartIcon: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    borderRadius: 20,
-    width: 36,
-    height: 36,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  bottomNav: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    paddingVertical: isSmallDevice ? 12 : 16,
-    paddingHorizontal: horizontalPadding,
-    justifyContent: 'space-around',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 8,
-    minHeight: isSmallDevice ? 70 : 80,
-  },
-  navItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: isSmallDevice ? 6 : 8,
-    minWidth: isSmallDevice ? 40 : 44,
-    minHeight: isSmallDevice ? 40 : 44,
-    borderRadius: isSmallDevice ? 20 : 22,
-  },
-  navIcon: {
-    width: isSmallDevice ? 20 : 24,
-    height: isSmallDevice ? 20 : 24,
-    resizeMode: 'contain',
   },
 });
 

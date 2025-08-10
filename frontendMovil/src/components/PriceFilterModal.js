@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
-        height: '65%',   // Altura del modal
+        height: '72%',   // Altura del modal
         minHeight: '65%',
     },
     modalHeader: { // Encabezado

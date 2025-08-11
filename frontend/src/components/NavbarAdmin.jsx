@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import marquesaMiniLogo from "../assets/marquesaMiniLogo.png";
 import statisticsIcon from "../assets/statisticsIcon.png";
 import flowerIcon from "../assets/flowerIcon.png";
-import shoppingCartIcon from "../assets/ShoppingCartIcon.png";
+import shoppingCartIcon from "../assets/shoppingCartIcon.png";
 import mediaIcon from "../assets/mediaIcon.png";
 import reviewsIcon from "../assets/reviewsIcon.png";
 import categoriesIcon from "../assets/categoriesIcon.png";

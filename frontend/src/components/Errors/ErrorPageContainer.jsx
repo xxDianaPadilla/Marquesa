@@ -18,21 +18,21 @@ import Header from "../Header/Header";
 import Footer from "../Footer";
 
 const ErrorPageContainer = ({ children }) => {
-  return (
-    <>
-      <div className="min-h-screen ">
-        {/* Header de la página */}
-        <Header />
+    return (
+        <>
+            <div className="min-h-screen ">
+                {/* Header de la página */}
+                <Header />
 
-        {/* Contenido principal */}
-        <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 ">
-          {children}
-        </main>
-      </div>
-      
-      <Footer />
-    </>
-  );
+                {/* Contenido principal */}
+                <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 ">
+                    {children}
+                </main>
+            </div>
+
+            <Footer />
+        </>
+    );
 };
 
 export default ErrorPageContainer;

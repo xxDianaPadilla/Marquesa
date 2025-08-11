@@ -13,7 +13,7 @@
 
 import React from "react";
 
-const ErrorInfoCard = ({
+const ErrorInfoCard2 = ({
     icon,
     title,
     children,
@@ -51,4 +51,4 @@ const ErrorInfoCard = ({
     );
 };
 
-export default ErrorInfoCard;
+export default ErrorInfoCard2;

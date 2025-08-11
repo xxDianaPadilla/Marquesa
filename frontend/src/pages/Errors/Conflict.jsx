@@ -16,11 +16,11 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 
 // Componentes específicos para páginas de error
-import ErrorPageContainer from "../../components/errors/ErrorPageContainer";
-import ErrorHeroSection from "../../components/errors/ErrorHeroSection";
-import ErrorDescriptionCard from "../../components/errors/ErrorDescriptionCard";
-import ErrorActionButton from "../../components/errors/ErrorActionButton";
-import ErrorSuggestionsGrid from "../../components/errors/ErrorSuggestionsGrid";
+import ErrorPageContainer from "../../components/Errors/ErrorPageContainer";
+import ErrorHeroSection from "../../components/Errors/ErrorHeroSection";
+import ErrorDescriptionCard from "../../components/Errors/ErrorDescriptionCard";
+import ErrorActionButton from "../../components/Errors/ErrorActionButton";
+import ErrorSuggestionsGrid from "../../components/Errors/ErrorSuggestionsGrid";
 import ErrorInfoCard from "../../components/errors/ErrorInfoCard";
 
 const Conflict = () => {

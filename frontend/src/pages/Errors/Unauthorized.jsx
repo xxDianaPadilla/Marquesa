@@ -16,11 +16,11 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 
 // Componentes específicos para páginas de error
-import ErrorPageContainer from "../../components/errors/ErrorPageContainer";
-import ErrorHeroSection from "../../components/errors/ErrorHeroSection";
-import ErrorDescriptionCard from "../../components/errors/ErrorDescriptionCard";
-import ErrorActionButton from "../../components/errors/ErrorActionButton";
-import ErrorInfoCard from "../../components/errors/ErrorInfoCard";
+import ErrorInfoCard2 from "../../components/Errors/ErrorInfoCard2";
+import ErrorPageContainer from "../../components/Errors/ErrorPageContainer";
+import ErrorHeroSection from "../../components/Errors/ErrorHeroSection";
+import ErrorDescriptionCard from "../../components/Errors/ErrorDescriptionCard";
+import ErrorActionButton from "../../components/Errors/ErrorActionButton";
 
 const Unauthorized = () => {
   const navigate = useNavigate();
@@ -75,7 +75,7 @@ const Unauthorized = () => {
       </ErrorDescriptionCard>
 
       {/* Información sobre los beneficios de iniciar sesión */}
-      <ErrorInfoCard 
+      <ErrorInfoCard2
         icon={
           <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
             <path
@@ -99,7 +99,7 @@ const Unauthorized = () => {
             </li>
           ))}
         </ul>
-      </ErrorInfoCard>
+      </ErrorInfoCard2>
     </ErrorPageContainer>
   );
 };

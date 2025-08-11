@@ -22,9 +22,23 @@ const useShoppingCart = () => {
         });
     }, [appliedDiscount, discountAmount]);
 
-    const { user, isAuthenticated, userInfo } = useAuth();
+    const { user, isAuthenticated, userInfo, getBestAvailableToken,setAuthToken } = useAuth();
 
-    // ✅ FUNCIÓN CORREGIDA: Obtener carrito activo (nueva lógica)
+    /**
+     * ✅ NUEVA FUNCIÓN: Crear headers de autenticación híbridos
+     */
+    const getAuthHeaders = useCallback(() => {
+        const token = getBestAvailableToken();
+        const headers = {
+            'Content-Type': 'application/json',
+        };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        return headers;
+    }, [getBestAvailableToken]);
+
+    // ✅ FUNCIÓN CORREGIDA: Obtener carrito activo (nueva lógica) con sistema híbrido
     const fetchShoppingCart = useCallback(async () => {
         if (!isAuthenticated || !user?.id) {
             setCartItems([]);
@@ -36,18 +50,41 @@ const useShoppingCart = () => {
         try {
             setError(null);
 
-            // ✅ CAMBIO PRINCIPAL: Usar la nueva ruta /active/:userId
-            const response = await fetch(`http://localhost:4000/api/shoppingCart/active/${user.id}`, {
+            // ✅ CAMBIO PRINCIPAL: Usar la nueva ruta /active/:userId con sistema híbrido
+            const operationPromise = fetch(`https://test-9gs3.onrender.com/api/shoppingCart/active/${user.id}`, {
                 method: 'GET',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                credentials: 'include', // ✅ NUEVO: Incluir cookies
+                headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
             });
+
+            // ✅ NUEVO: Timeout para conexiones lentas
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
+            });
+
+            const response = await Promise.race([operationPromise, timeoutPromise]);
 
             if (response.ok) {
                 const data = await response.json();
                 console.log('Datos recibidos del backend (carrito activo):', data);
+
+                // ✅ NUEVO: Manejo híbrido de tokens
+                let token = null;
+
+                // Primera prioridad: response body
+                if (data.token) {
+                    token = data.token;
+                    setAuthToken(token); // Guardar en estado local
+                }
+
+                // Segunda prioridad: cookie (con retraso)
+                if (!token) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    token = getBestAvailableToken();
+                    if (token) {
+                        setAuthToken(token);
+                    }
+                }
 
                 // ✅ ESTRUCTURA ACTUALIZADA: La nueva ruta devuelve { cart } en lugar de { shoppingCart }
                 if (data.cart) {
@@ -110,14 +147,29 @@ const useShoppingCart = () => {
             }
         } catch (error) {
             console.error('Error al obtener el carrito activo: ', error);
-            setError('Error al cargar el carrito de compras');
+            
+            // ✅ NUEVO: Manejo específico de errores de red vs servidor
+            let errorMessage = 'Error al cargar el carrito de compras';
+            
+            if (error.message === 'TIMEOUT') {
+                errorMessage = 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
+            } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
+            } else if (error.message?.includes('timeout')) {
+                errorMessage = 'La conexión tardó demasiado. Inténtalo nuevamente.';
+            } else if (error.message?.includes('network')) {
+                errorMessage = 'Error de red. Verifica tu conexión a internet.';
+            }
+            
+            setError(errorMessage);
             setCartItems([]);
             setCartTotal(0);
         } finally {
             setLoading(false);
         }
-    }, [isAuthenticated, user?.id]);
+    }, [isAuthenticated, user?.id, getAuthHeaders, getBestAvailableToken, setAuthToken]);
 
+    // ✅ ACTUALIZADA: Función updateQuantity con sistema híbrido
     const updateQuantity = useCallback(async (itemId, newQuantity) => {
         if (!isAuthenticated || !user?.id) {
             setError('Usuario no autenticado');
@@ -133,12 +185,10 @@ const useShoppingCart = () => {
             setUpdating(true);
             setError(null);
 
-            const response = await fetch(`http://localhost:4000/api/shoppingCart/update-quantity`, {
+            const operationPromise = fetch(`https://test-9gs3.onrender.com/api/shoppingCart/update-quantity`, {
                 method: 'PUT',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                credentials: 'include', // ✅ NUEVO: Incluir cookies
+                headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
                 body: JSON.stringify({
                     clientId: user.id,
                     itemId: itemId,
@@ -146,9 +196,21 @@ const useShoppingCart = () => {
                 })
             });
 
+            // ✅ NUEVO: Timeout para conexiones lentas
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
+            });
+
+            const response = await Promise.race([operationPromise, timeoutPromise]);
+
             if (response.ok) {
                 const data = await response.json();
                 if (data.success) {
+                    // ✅ NUEVO: Manejo híbrido de tokens
+                    if (data.token) {
+                        setAuthToken(data.token);
+                    }
+
                     setCartItems(prevItems =>
                         prevItems.map(item => {
                             if (item.id === itemId || item._originalItem?.itemId === itemId) {
@@ -173,13 +235,24 @@ const useShoppingCart = () => {
             }
         } catch (error) {
             console.error('Error al actualizar cantidad: ', error);
-            setError(error.message || 'Error al actualizar la cantidad');
+            
+            // ✅ NUEVO: Manejo específico de errores
+            let errorMessage = 'Error al actualizar la cantidad';
+            
+            if (error.message === 'TIMEOUT') {
+                errorMessage = 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
+            } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
+            }
+            
+            setError(errorMessage);
             return false;
         } finally {
             setUpdating(false);
         }
-    }, [isAuthenticated, user?.id, fetchShoppingCart]);
+    }, [isAuthenticated, user?.id, fetchShoppingCart, getAuthHeaders, setAuthToken]);
 
+    // ✅ ACTUALIZADA: Función removeItem con sistema híbrido
     const removeItem = useCallback(async (itemId) => {
         if (!isAuthenticated || !user?.id) {
             setError('Usuario no autenticado');
@@ -190,21 +263,31 @@ const useShoppingCart = () => {
             setUpdating(true);
             setError(null);
 
-            const response = await fetch(`http://localhost:4000/api/shoppingCart/remove-item`, {
+            const operationPromise = fetch(`https://test-9gs3.onrender.com/api/shoppingCart/remove-item`, {
                 method: 'DELETE',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                credentials: 'include', // ✅ NUEVO: Incluir cookies
+                headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
                 body: JSON.stringify({
                     clientId: user.id,
                     itemId: itemId
                 })
             });
 
+            // ✅ NUEVO: Timeout para conexiones lentas
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
+            });
+
+            const response = await Promise.race([operationPromise, timeoutPromise]);
+
             if (response.ok) {
                 const data = await response.json();
                 if (data.success) {
+                    // ✅ NUEVO: Manejo híbrido de tokens
+                    if (data.token) {
+                        setAuthToken(data.token);
+                    }
+
                     setCartItems(prevItems =>
                         prevItems.filter(item =>
                             item.id !== itemId && item._originalItem?.itemId !== itemId
@@ -221,13 +304,24 @@ const useShoppingCart = () => {
             }
         } catch (error) {
             console.error('Error al eliminar item: ', error);
-            setError(error.message || 'Error al eliminar el producto');
+            
+            // ✅ NUEVO: Manejo específico de errores
+            let errorMessage = 'Error al eliminar el producto';
+            
+            if (error.message === 'TIMEOUT') {
+                errorMessage = 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
+            } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
+            }
+            
+            setError(errorMessage);
             return false;
         } finally {
             setUpdating(false);
         }
-    }, [isAuthenticated, user?.id, fetchShoppingCart]);
+    }, [isAuthenticated, user?.id, fetchShoppingCart, getAuthHeaders, setAuthToken]);
 
+    // ✅ ACTUALIZADA: Función addToCart con sistema híbrido
     const addToCart = useCallback(async (productId, quantity = 1, itemType = 'product') => {
         if (!isAuthenticated || !user?.id) {
             setError('Usuario no autenticado');
@@ -238,12 +332,10 @@ const useShoppingCart = () => {
             setUpdating(true);
             setError(null);
 
-            const response = await fetch(`http://localhost:4000/api/shoppingCart/add-item`, {
+            const operationPromise = fetch(`https://test-9gs3.onrender.com/api/shoppingCart/add-item`, {
                 method: 'POST',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                credentials: 'include', // ✅ NUEVO: Incluir cookies
+                headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
                 body: JSON.stringify({
                     clientId: user.id,
                     itemId: productId,
@@ -252,9 +344,21 @@ const useShoppingCart = () => {
                 })
             });
 
+            // ✅ NUEVO: Timeout para conexiones lentas
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
+            });
+
+            const response = await Promise.race([operationPromise, timeoutPromise]);
+
             if (response.ok) {
                 const data = await response.json();
                 if (data.success) {
+                    // ✅ NUEVO: Manejo híbrido de tokens
+                    if (data.token) {
+                        setAuthToken(data.token);
+                    }
+
                     await fetchShoppingCart();
                     return true;
                 } else {
@@ -265,12 +369,22 @@ const useShoppingCart = () => {
             }
         } catch (error) {
             console.error('Error al agregar al carrito: ', error);
-            setError(error.message || 'Error al agregar el producto al carrito');
+            
+            // ✅ NUEVO: Manejo específico de errores
+            let errorMessage = 'Error al agregar el producto al carrito';
+            
+            if (error.message === 'TIMEOUT') {
+                errorMessage = 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
+            } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
+            }
+            
+            setError(errorMessage);
             return false;
         } finally {
             setUpdating(false);
         }
-    }, [isAuthenticated, user?.id, fetchShoppingCart]);
+    }, [isAuthenticated, user?.id, fetchShoppingCart, getAuthHeaders, setAuthToken]);
 
     // NUEVA FUNCIÓN: Aplicar descuento
     const applyDiscount = useCallback((discountData, amount) => {
@@ -334,7 +448,7 @@ const useShoppingCart = () => {
         return false;
     }, []);
 
-    // FUNCIÓN CORREGIDA: Marcar descuento como usado con orden real
+    // ✅ ACTUALIZADA: Función markDiscountAsUsedWithRealOrder con sistema híbrido
     const markDiscountAsUsedWithRealOrder = useCallback(async (realOrderId) => {
         console.log('🎫 === INICIO MARCAR DESCUENTO COMO USADO ===');
         console.log('Datos iniciales:', {
@@ -361,10 +475,7 @@ const useShoppingCart = () => {
             console.error('❌ Datos faltantes para marcar descuento:', {
                 hasDiscount: !!appliedDiscount,
                 hasUser: !!user?.id,
-                hasOrderId: !!realOrderId,
-                appliedDiscountValue: appliedDiscount,
-                userIdValue: user?.id,
-                orderIdValue: realOrderId
+                hasOrderId: !!realOrderId
             });
             return false;
         }
@@ -373,33 +484,34 @@ const useShoppingCart = () => {
             console.log('📤 Enviando request para marcar código como usado:', {
                 userId: user.id,
                 codeId: appliedDiscount.codeId,
-                orderId: realOrderId,
-                url: `http://localhost:4000/api/clients/${user.id}/use-code`
+                orderId: realOrderId
             });
 
-            const response = await fetch(`http://localhost:4000/api/clients/${user.id}/use-code`, {
+            const operationPromise = fetch(`https://test-9gs3.onrender.com/api/clients/${user.id}/use-code`, {
                 method: 'PUT',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                credentials: 'include', // ✅ NUEVO: Incluir cookies
+                headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
                 body: JSON.stringify({
                     codeId: appliedDiscount.codeId,
                     orderId: realOrderId
                 })
             });
 
-            console.log('📥 Respuesta recibida:', {
-                status: response.status,
-                statusText: response.statusText,
-                ok: response.ok
+            // ✅ NUEVO: Timeout para conexiones lentas
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
             });
 
+            const response = await Promise.race([operationPromise, timeoutPromise]);
             const data = await response.json();
-            console.log('📊 Datos de respuesta:', data);
 
             if (response.ok && data.success) {
                 console.log('✅ SUCCESS: Código marcado como usado exitosamente:', data.usedCode);
+
+                // ✅ NUEVO: Manejo híbrido de tokens
+                if (data.token) {
+                    setAuthToken(data.token);
+                }
 
                 // Limpiar descuento aplicado después de marcarlo como usado
                 removeDiscount();
@@ -416,9 +528,9 @@ const useShoppingCart = () => {
             console.error('❌ EXCEPCIÓN al marcar código como usado:', error);
             return false;
         }
-    }, [appliedDiscount, user?.id, removeDiscount, recoverDiscountFromStorage]);
+    }, [appliedDiscount, user?.id, removeDiscount, recoverDiscountFromStorage, getAuthHeaders, setAuthToken]);
 
-    // NUEVA FUNCIÓN: Obtener códigos promocionales del cliente
+    // ✅ ACTUALIZADA: Función getPromotionalCodes con sistema híbrido
     const getPromotionalCodes = useCallback(async (status = null) => {
         if (!isAuthenticated || !user?.id) {
             return { success: false, codes: [] };
@@ -426,20 +538,29 @@ const useShoppingCart = () => {
 
         try {
             const url = status
-                ? `http://localhost:4000/api/clients/${user.id}/promotional-codes?status=${status}`
-                : `http://localhost:4000/api/clients/${user.id}/promotional-codes`;
+                ? `https://test-9gs3.onrender.com/api/clients/${user.id}/promotional-codes?status=${status}`
+                : `https://test-9gs3.onrender.com/api/clients/${user.id}/promotional-codes`;
 
-            const response = await fetch(url, {
+            const operationPromise = fetch(url, {
                 method: 'GET',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
+                credentials: 'include', // ✅ NUEVO: Incluir cookies
+                headers: getAuthHeaders() // ✅ NUEVO: Headers híbridos
             });
 
+            // ✅ NUEVO: Timeout para conexiones lentas
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
+            });
+
+            const response = await Promise.race([operationPromise, timeoutPromise]);
             const data = await response.json();
 
             if (response.ok && data.success) {
+                // ✅ NUEVO: Manejo híbrido de tokens
+                if (data.token) {
+                    setAuthToken(data.token);
+                }
+
                 return {
                     success: true,
                     codes: data.codes,
@@ -452,11 +573,21 @@ const useShoppingCart = () => {
             }
         } catch (error) {
             console.error('Error obteniendo códigos promocionales:', error);
-            return { success: false, codes: [], message: 'Error al obtener códigos' };
+            
+            // ✅ NUEVO: Manejo específico de errores
+            let errorMessage = 'Error al obtener códigos';
+            
+            if (error.message === 'TIMEOUT') {
+                errorMessage = 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
+            } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
+            }
+            
+            return { success: false, codes: [], message: errorMessage };
         }
-    }, [isAuthenticated, user?.id]);
+    }, [isAuthenticated, user?.id, getAuthHeaders, setAuthToken]);
 
-    // ✅ FUNCIÓN CORREGIDA: Limpiar carrito después de compra (mejorada)
+    // ✅ FUNCIÓN CORREGIDA: Limpiar carrito después de compra (mejorada) con sistema híbrido
     const clearCartAfterPurchase = useCallback(async (shoppingCartId) => {
         if (!isAuthenticated || !user?.id) {
             console.error('Usuario no autenticado para limpiar carrito');
@@ -477,21 +608,30 @@ const useShoppingCart = () => {
                 userId: user.id
             });
 
-            const response = await fetch(`http://localhost:4000/api/shoppingCart/${shoppingCartId}/clear-after-purchase`, {
+            const operationPromise = fetch(`https://test-9gs3.onrender.com/api/shoppingCart/${shoppingCartId}/clear-after-purchase`, {
                 method: 'POST',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                credentials: 'include', // ✅ NUEVO: Incluir cookies
+                headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
                 body: JSON.stringify({
                     userId: user.id
                 })
             });
 
+            // ✅ NUEVO: Timeout para conexiones lentas
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
+            });
+
+            const response = await Promise.race([operationPromise, timeoutPromise]);
             const data = await response.json();
 
             if (response.ok && data) {
                 console.log('Respuesta del servidor al limpiar carrito:', data);
+
+                // ✅ NUEVO: Manejo híbrido de tokens
+                if (data.token) {
+                    setAuthToken(data.token);
+                }
 
                 // ✅ MEJORA: Limpiar el estado local del carrito inmediatamente
                 setCartItems([]);
@@ -523,15 +663,25 @@ const useShoppingCart = () => {
             }
         } catch (error) {
             console.error('Error al limpiar carrito después de compra:', error);
-            setError(`Error al limpiar el carrito: ${error.message}`);
+            
+            // ✅ NUEVO: Manejo específico de errores
+            let errorMessage = `Error al limpiar el carrito: ${error.message}`;
+            
+            if (error.message === 'TIMEOUT') {
+                errorMessage = 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
+            } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
+            }
+            
+            setError(errorMessage);
             return {
                 success: false,
-                message: error.message || 'Error al limpiar el carrito después de la compra'
+                message: errorMessage
             };
         }
-    }, [user?.id, isAuthenticated, fetchShoppingCart]);
+    }, [user?.id, isAuthenticated, fetchShoppingCart, getAuthHeaders, setAuthToken]);
 
-    // ✅ NUEVA FUNCIÓN: Limpiar carritos duplicados (usar una sola vez)
+    // ✅ NUEVA FUNCIÓN: Limpiar carritos duplicados (usar una sola vez) con sistema híbrido
     const cleanupDuplicateCarts = useCallback(async () => {
         if (!isAuthenticated || !user?.id) {
             console.error('Usuario no autenticado para limpieza');
@@ -541,18 +691,27 @@ const useShoppingCart = () => {
         try {
             console.log('Ejecutando limpieza de carritos duplicados...');
 
-            const response = await fetch(`http://localhost:4000/api/shoppingCart/cleanup-duplicates`, {
+            const operationPromise = fetch(`https://test-9gs3.onrender.com/api/shoppingCart/cleanup-duplicates`, {
                 method: 'POST',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
+                credentials: 'include', // ✅ NUEVO: Incluir cookies
+                headers: getAuthHeaders() // ✅ NUEVO: Headers híbridos
             });
 
+            // ✅ NUEVO: Timeout para conexiones lentas
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
+            });
+
+            const response = await Promise.race([operationPromise, timeoutPromise]);
             const data = await response.json();
 
             if (response.ok) {
                 console.log('Limpieza completada:', data);
+
+                // ✅ NUEVO: Manejo híbrido de tokens
+                if (data.token) {
+                    setAuthToken(data.token);
+                }
 
                 // Recargar el carrito después de la limpieza
                 await fetchShoppingCart();
@@ -568,12 +727,22 @@ const useShoppingCart = () => {
             }
         } catch (error) {
             console.error('Error en limpieza de carritos:', error);
+            
+            // ✅ NUEVO: Manejo específico de errores
+            let errorMessage = 'Error al limpiar carritos duplicados';
+            
+            if (error.message === 'TIMEOUT') {
+                errorMessage = 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
+            } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
+            }
+            
             return {
                 success: false,
-                message: error.message || 'Error al limpiar carritos duplicados'
+                message: errorMessage
             };
         }
-    }, [isAuthenticated, user?.id, fetchShoppingCart]);
+    }, [isAuthenticated, user?.id, fetchShoppingCart, getAuthHeaders, setAuthToken]);
 
     const clearError = useCallback(() => {
         setError(null);

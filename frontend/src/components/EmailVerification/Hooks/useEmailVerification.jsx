@@ -1,15 +1,34 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../../context/AuthContext';
 
 /**
  * Hook personalizado para manejar el proceso de verificación de email
+ * ACTUALIZADO: Sistema de autenticación cross-domain híbrido
  * Maneja el envío del código y la verificación del mismo
  */
 export const useEmailVerification = () => {
     const [isLoading, setIsLoading] = useState(false);
 
+    // ✅ NUEVO: Hook de autenticación para sistema híbrido
+    const { getBestAvailableToken,setAuthToken } = useAuth();
+
     /**
-     * Solicitar código de verificación de email
+     * ✅ NUEVA FUNCIÓN: Crear headers de autenticación híbridos
+     */
+    const getAuthHeaders = () => {
+        const token = getBestAvailableToken();
+        const headers = {
+            'Content-Type': 'application/json',
+        };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        return headers;
+    };
+
+    /**
+     * ✅ ACTUALIZADA: Solicitar código de verificación de email con sistema híbrido
      * @param {string} email - Email del usuario
      * @param {string} fullName - Nombre completo del usuario
      * @returns {Object} - Resultado de la operación
@@ -20,21 +39,45 @@ export const useEmailVerification = () => {
 
             console.log('Enviando solicitud de verificación:', { email, fullName });
 
-            const response = await fetch('http://localhost:4000/api/emailVerification/request', {
+            // ✅ NUEVA LÓGICA: Petición con sistema híbrido
+            const operationPromise = fetch('https://test-9gs3.onrender.com/api/emailVerification/request', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                credentials: 'include', // ✅ NUEVO: Incluir cookies
+                headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
                 body: JSON.stringify({ 
                     email: email?.trim(), 
                     fullName: fullName?.trim() 
                 }),
             });
 
+            // ✅ NUEVO: Timeout para conexiones lentas
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
+            });
+
+            const response = await Promise.race([operationPromise, timeoutPromise]);
             const data = await response.json();
             console.log('Respuesta del servidor (request):', data);
 
             if (data.success) {
+                // ✅ NUEVO: Manejo híbrido de tokens
+                let token = null;
+
+                // Primera prioridad: response body
+                if (data.token) {
+                    token = data.token;
+                    setAuthToken(token); // Guardar en estado local
+                }
+
+                // Segunda prioridad: cookie (con retraso)
+                if (!token) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    token = getBestAvailableToken();
+                    if (token) {
+                        setAuthToken(token);
+                    }
+                }
+
                 toast.success('Correo de verificación enviado', {
                     duration: 4000,
                     style: {
@@ -72,7 +115,19 @@ export const useEmailVerification = () => {
         } catch (error) {
             console.error('Error en requestEmailVerification:', error);
             
-            const errorMessage = 'Error de conexión. Verifica tu internet e intenta nuevamente';
+            // ✅ NUEVO: Manejo específico de errores de red vs servidor
+            let errorMessage = 'Error de conexión. Verifica tu internet e intenta nuevamente';
+            
+            if (error.message === 'TIMEOUT') {
+                errorMessage = 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
+            } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
+            } else if (error.message?.includes('timeout')) {
+                errorMessage = 'La conexión tardó demasiado. Inténtalo nuevamente.';
+            } else if (error.message?.includes('network')) {
+                errorMessage = 'Error de red. Verifica tu conexión a internet.';
+            }
+            
             toast.error(errorMessage, {
                 duration: 4000,
                 style: {
@@ -91,7 +146,7 @@ export const useEmailVerification = () => {
     };
 
     /**
-     * Verificar código de email y completar registro
+     * ✅ ACTUALIZADA: Verificar código de email y completar registro con sistema híbrido
      * @param {string} email - Email del usuario
      * @param {string} verificationCode - Código de verificación
      * @param {Object} userData - Datos del usuario para el registro
@@ -141,18 +196,42 @@ export const useEmailVerification = () => {
                 userData: 'datos presentes'
             });
 
-            const response = await fetch('http://localhost:4000/api/emailVerification/verify', {
+            // ✅ NUEVA LÓGICA: Petición con sistema híbrido
+            const operationPromise = fetch('https://test-9gs3.onrender.com/api/emailVerification/verify', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                credentials: 'include', // ✅ NUEVO: Incluir cookies
+                headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
                 body: JSON.stringify(requestData),
             });
 
+            // ✅ NUEVO: Timeout para conexiones lentas
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
+            });
+
+            const response = await Promise.race([operationPromise, timeoutPromise]);
             const data = await response.json();
             console.log('Respuesta del servidor (verify):', data);
 
             if (data.success) {
+                // ✅ NUEVO: Manejo híbrido de tokens
+                let token = null;
+
+                // Primera prioridad: response body
+                if (data.token) {
+                    token = data.token;
+                    setAuthToken(token); // Guardar en estado local
+                }
+
+                // Segunda prioridad: cookie (con retraso)
+                if (!token) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    token = getBestAvailableToken();
+                    if (token) {
+                        setAuthToken(token);
+                    }
+                }
+
                 toast.success('¡Registro exitoso! Ya puedes iniciar sesión', {
                     duration: 4000,
                     style: {
@@ -190,7 +269,19 @@ export const useEmailVerification = () => {
         } catch (error) {
             console.error('Error en verifyEmailAndRegister:', error);
             
-            const errorMessage = 'Error de conexión. Verifica tu internet e intenta nuevamente';
+            // ✅ NUEVO: Manejo específico de errores de red vs servidor
+            let errorMessage = 'Error de conexión. Verifica tu internet e intenta nuevamente';
+            
+            if (error.message === 'TIMEOUT') {
+                errorMessage = 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
+            } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
+            } else if (error.message?.includes('timeout')) {
+                errorMessage = 'La conexión tardó demasiado. Inténtalo nuevamente.';
+            } else if (error.message?.includes('network')) {
+                errorMessage = 'Error de red. Verifica tu conexión a internet.';
+            }
+            
             toast.error(errorMessage, {
                 duration: 4000,
                 style: {

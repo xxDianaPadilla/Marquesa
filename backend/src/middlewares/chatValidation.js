@@ -5,15 +5,44 @@ import ChatConversation from '../models/ChatConversation.js';
  * Middlewares de Validación para el Sistema de Chat
  * 
  * Este archivo contiene todos los middlewares de validación
- * específicos para las operaciones del chat.
+ * específicos para las operaciones del chat con soporte cross-domain.
  * 
  * Ubicación: backend/src/middlewares/chatValidation.js
  */
+
+// Función helper para configuración dinámica de cookies basada en el entorno
+const getCookieConfig = () => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    return {
+        httpOnly: false, // Permitir acceso desde JavaScript
+        secure: isProduction, // Solo HTTPS en producción
+        sameSite: isProduction ? 'none' : 'lax', // Cross-domain en producción
+        maxAge: 24 * 60 * 60 * 1000, // 24 horas
+        domain: undefined // Dejar que el navegador determine
+    };
+};
+
+// Función helper para obtener token de múltiples fuentes en la petición
+const getTokenFromRequest = (req) => {
+    let token = req.cookies?.authToken;
+    let source = 'cookie';
+    
+    if (!token) {
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.substring(7);
+            source = 'authorization_header';
+        }
+    }
+    
+    return { token, source };
+};
 
 // ============ VALIDACIÓN DE AUTENTICACIÓN ============
 
 /**
  * Middleware para validar que el usuario esté autenticado
+ * Implementa verificación híbrida de tokens y configuración de cookies cross-domain
  * @param {Object} req - Request de Express
  * @param {Object} res - Response de Express
  * @param {Function} next - Función next de Express
@@ -37,6 +66,13 @@ export const requireAuth = (req, res, next) => {
             });
         }
 
+        // Establecer cookie con configuración dinámica para mantener sesión
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
+        }
+
         next();
     } catch (error) {
         console.error('Error en validación de autenticación:', error);
@@ -50,6 +86,7 @@ export const requireAuth = (req, res, next) => {
 
 /**
  * Middleware para validar que el usuario sea administrador
+ * Implementa configuración de cookies cross-domain
  * @param {Object} req - Request de Express
  * @param {Object} res - Response de Express
  * @param {Function} next - Función next de Express
@@ -62,6 +99,13 @@ export const requireAdmin = (req, res, next) => {
                 message: "Acceso denegado - Se requieren permisos de administrador",
                 code: "ADMIN_REQUIRED"
             });
+        }
+
+        // Establecer cookie con configuración dinámica para mantener sesión
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
         }
 
         next();
@@ -77,6 +121,7 @@ export const requireAdmin = (req, res, next) => {
 
 /**
  * Middleware para validar que el usuario sea cliente
+ * Implementa configuración de cookies cross-domain
  * @param {Object} req - Request de Express
  * @param {Object} res - Response de Express
  * @param {Function} next - Función next de Express
@@ -89,6 +134,13 @@ export const requireCustomer = (req, res, next) => {
                 message: "Acceso denegado - Se requieren permisos de cliente",
                 code: "CUSTOMER_REQUIRED"
             });
+        }
+
+        // Establecer cookie con configuración dinámica para mantener sesión
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
         }
 
         next();
@@ -106,6 +158,7 @@ export const requireCustomer = (req, res, next) => {
 
 /**
  * Middleware para validar que existe una conversación
+ * Implementa configuración de cookies cross-domain
  * @param {Object} req - Request de Express
  * @param {Object} res - Response de Express
  * @param {Function} next - Función next de Express
@@ -137,6 +190,14 @@ export const validateConversationExists = async (req, res, next) => {
 
         // Agregar la conversación al request para uso posterior
         req.conversation = conversation;
+
+        // Establecer cookie con configuración dinámica para mantener sesión
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
+        }
+
         next();
 
     } catch (error) {
@@ -151,6 +212,7 @@ export const validateConversationExists = async (req, res, next) => {
 
 /**
  * Middleware para validar acceso a una conversación específica
+ * Implementa configuración de cookies cross-domain
  * @param {Object} req - Request de Express
  * @param {Object} res - Response de Express
  * @param {Function} next - Función next de Express
@@ -182,6 +244,13 @@ export const validateConversationAccess = (req, res, next) => {
             });
         }
 
+        // Establecer cookie con configuración dinámica para mantener sesión
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
+        }
+
         next();
 
     } catch (error) {
@@ -196,6 +265,7 @@ export const validateConversationAccess = (req, res, next) => {
 
 /**
  * Middleware para validar que el cliente de la conversación existe
+ * Implementa configuración de cookies cross-domain
  * @param {Object} req - Request de Express
  * @param {Object} res - Response de Express
  * @param {Function} next - Función next de Express
@@ -223,6 +293,13 @@ export const validateConversationClient = async (req, res, next) => {
             });
         }
 
+        // Establecer cookie con configuración dinámica para mantener sesión
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
+        }
+
         next();
 
     } catch (error) {
@@ -239,6 +316,7 @@ export const validateConversationClient = async (req, res, next) => {
 
 /**
  * Middleware para validar datos de mensaje antes de crearlo
+ * Implementa configuración de cookies cross-domain
  * @param {Object} req - Request de Express
  * @param {Object} res - Response de Express
  * @param {Function} next - Función next de Express
@@ -287,6 +365,13 @@ export const validateMessageData = (req, res, next) => {
             });
         }
 
+        // Establecer cookie con configuración dinámica para mantener sesión
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
+        }
+
         next();
 
     } catch (error) {
@@ -301,6 +386,7 @@ export const validateMessageData = (req, res, next) => {
 
 /**
  * Middleware para validar parámetros de paginación
+ * Implementa configuración de cookies cross-domain
  * @param {Object} req - Request de Express
  * @param {Object} res - Response de Express
  * @param {Function} next - Función next de Express
@@ -332,6 +418,14 @@ export const validatePagination = (req, res, next) => {
 
         // Agregar los valores validados al request
         req.pagination = { page, limit };
+
+        // Establecer cookie con configuración dinámica para mantener sesión
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
+        }
+
         next();
 
     } catch (error) {
@@ -348,6 +442,7 @@ export const validatePagination = (req, res, next) => {
 
 /**
  * Middleware para validar parámetros de URL
+ * Implementa configuración de cookies cross-domain
  * @param {Array<string>} requiredParams - Lista de parámetros requeridos
  * @returns {Function} Middleware de Express
  */
@@ -371,6 +466,13 @@ export const validateUrlParams = (requiredParams) => {
                 });
             }
 
+            // Establecer cookie con configuración dinámica para mantener sesión
+            const { token } = getTokenFromRequest(req);
+            if (token) {
+                const cookieConfig = getCookieConfig();
+                res.cookie("authToken", token, cookieConfig);
+            }
+
             next();
 
         } catch (error) {
@@ -386,6 +488,7 @@ export const validateUrlParams = (requiredParams) => {
 
 /**
  * Middleware para validar que un ID tiene formato válido
+ * Implementa configuración de cookies cross-domain
  * @param {string} paramName - Nombre del parámetro a validar
  * @returns {Function} Middleware de Express
  */
@@ -420,6 +523,13 @@ export const validateIdFormat = (paramName) => {
                 });
             }
 
+            // Establecer cookie con configuración dinámica para mantener sesión
+            const { token } = getTokenFromRequest(req);
+            if (token) {
+                const cookieConfig = getCookieConfig();
+                res.cookie("authToken", token, cookieConfig);
+            }
+
             next();
 
         } catch (error) {
@@ -437,6 +547,7 @@ export const validateIdFormat = (paramName) => {
 
 /**
  * Middleware combinado para validaciones comunes del chat
+ * Implementa configuración de cookies cross-domain
  * @param {Object} req - Request de Express
  * @param {Object} res - Response de Express
  * @param {Function} next - Función next de Express
@@ -451,6 +562,7 @@ export const chatCommonValidation = [
 
 /**
  * Middleware para rutas de administrador
+ * Implementa configuración de cookies cross-domain
  */
 export const adminChatValidation = [
     requireAuth,
@@ -459,6 +571,7 @@ export const adminChatValidation = [
 
 /**
  * Middleware para rutas de cliente
+ * Implementa configuración de cookies cross-domain
  */
 export const customerChatValidation = [
     requireAuth,
@@ -489,5 +602,9 @@ export default {
     // Combinados
     chatCommonValidation,
     adminChatValidation,
-    customerChatValidation
+    customerChatValidation,
+    
+    // Utilidades
+    getCookieConfig,
+    getTokenFromRequest
 };

@@ -17,7 +17,7 @@ const AdminTools = () => {
         if (!user || user.userType !== 'admin') return;
         
         try {
-            const response = await fetch('http://localhost:4000/api/chat/admin/stats', {
+            const response = await fetch('https://test-9gs3.onrender.com/api/chat/admin/stats', {
                 credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',

@@ -16,7 +16,7 @@ const useReviewsUsers = (productId) => {
 
         try {
             setLoading(true);
-            const response = await fetch(`http://localhost:4000/api/reviews/product/${productId}`);
+            const response = await fetch(`https://test-9gs3.onrender.com/api/reviews/product/${productId}`);
 
             if (!response.ok) {
                 throw new Error('Error al obtener las reseñas');
@@ -72,7 +72,7 @@ const useReviewsUsers = (productId) => {
         try {
             setSubmitting(true);
 
-            const response = await fetch('http://localhost:4000/api/reviews', {
+            const response = await fetch('https://test-9gs3.onrender.com/api/reviews', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

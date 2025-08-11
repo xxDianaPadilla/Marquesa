@@ -2,6 +2,7 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 
+// ACTUALIZADO: Sistema de autenticación cross-domain híbrido
 export const useRuleta = () => {
     // Estados de la UI de la ruleta
     const [isSpinning, setIsSpinning] = useState(false);
@@ -10,8 +11,22 @@ export const useRuleta = () => {
     const [hasSpun, setHasSpun] = useState(false);
     const [error, setError] = useState(null);
 
-    // Acceso al contexto de autenticación
-    const { isAuthenticated } = useAuth();
+    // ✅ NUEVO: Acceso al contexto de autenticación híbrido
+    const { isAuthenticated, getBestAvailableToken,setAuthToken } = useAuth();
+
+    /**
+     * ✅ NUEVA FUNCIÓN: Crear headers de autenticación híbridos
+     */
+    const getAuthHeaders = useCallback(() => {
+        const token = getBestAvailableToken();
+        const headers = {
+            'Content-Type': 'application/json',
+        };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        return headers;
+    }, [getBestAvailableToken]);
 
     // Función para generar código aleatorio de 6 dígitos (para mostrar en UI)
     const generateRandomCode = () => {
@@ -65,7 +80,7 @@ export const useRuleta = () => {
     ];
 
     /**
-     * Función principal para girar la ruleta y generar código en el backend
+     * ✅ ACTUALIZADA: Función principal para girar la ruleta y generar código en el backend con sistema híbrido
      * AJUSTADO: Mantener fullscreen hasta que aparezca el modal
      */
     const spinRuleta = useCallback(async () => {
@@ -96,19 +111,41 @@ export const useRuleta = () => {
             
             // Generar código real en el backend mientras el fullscreen sigue activo
             try {
-                // Llamar al backend para generar código real
-                const response = await fetch('http://localhost:4000/api/clients/ruleta/generate', {
+                // ✅ NUEVA LÓGICA: Llamar al backend para generar código real con sistema híbrido
+                const operationPromise = fetch('https://test-9gs3.onrender.com/api/clients/ruleta/generate', {
                     method: 'POST',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    credentials: 'include', // ✅ NUEVO: Incluir cookies
+                    headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
                 });
 
+                // ✅ NUEVO: Timeout para conexiones lentas
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('TIMEOUT')), 30000);
+                });
+
+                const response = await Promise.race([operationPromise, timeoutPromise]);
                 const data = await response.json();
 
                 if (response.ok && data.success) {
                     console.log('✅ Código real generado en el backend:', data.code);
+
+                    // ✅ NUEVO: Manejo híbrido de tokens
+                    let token = null;
+
+                    // Primera prioridad: response body
+                    if (data.token) {
+                        token = data.token;
+                        setAuthToken(token); // Guardar en estado local
+                    }
+
+                    // Segunda prioridad: cookie (con retraso)
+                    if (!token) {
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        token = getBestAvailableToken();
+                        if (token) {
+                            setAuthToken(token);
+                        }
+                    }
 
                     // Usar el código real del backend
                     const realCode = {
@@ -128,10 +165,23 @@ export const useRuleta = () => {
                     setError(data.message || 'Error al generar código, usando código temporal');
                 }
             } catch (error) {
-                // Si hay error de conexión, usar el código de preview
                 console.error('❌ Error de conexión, usando código preview:', error);
+                
+                // ✅ NUEVO: Manejo específico de errores de red vs servidor
+                let errorMessage = 'Error de conexión, usando código temporal';
+                
+                if (error.message === 'TIMEOUT') {
+                    errorMessage = 'La conexión tardó demasiado tiempo. Usando código temporal.';
+                } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                    errorMessage = 'No se pudo conectar con el servidor. Usando código temporal.';
+                } else if (error.message?.includes('timeout')) {
+                    errorMessage = 'La conexión tardó demasiado. Usando código temporal.';
+                } else if (error.message?.includes('network')) {
+                    errorMessage = 'Error de red. Usando código temporal.';
+                }
+                
                 setSelectedCode(selectedDiscount);
-                setError('Error de conexión, usando código temporal');
+                setError(errorMessage);
             }
 
             // AHORA SÍ cambiar isSpinning y mostrar el modal inmediatamente
@@ -140,7 +190,7 @@ export const useRuleta = () => {
             setHasSpun(true);
             console.log('🎉 Modal de resultado mostrado inmediatamente');
         }, 4000); // Timing original - 4 segundos
-    }, [isSpinning, hasSpun, isAuthenticated, discountCodes]);
+    }, [isSpinning, hasSpun, isAuthenticated, discountCodes, getAuthHeaders, getBestAvailableToken, setAuthToken]);
 
     /**
      * Función para resetear la ruleta
@@ -181,7 +231,7 @@ export const useRuleta = () => {
     }, []);
 
     /**
-     * Función para verificar si el usuario puede girar la ruleta
+     * ✅ ACTUALIZADA: Función para verificar si el usuario puede girar la ruleta con sistema híbrido
      */
     const checkCanSpin = useCallback(async () => {
         if (!isAuthenticated) {
@@ -189,17 +239,26 @@ export const useRuleta = () => {
         }
 
         try {
-            const response = await fetch('http://localhost:4000/api/clients/ruleta/codes', {
+            const operationPromise = fetch('https://test-9gs3.onrender.com/api/clients/ruleta/codes', {
                 method: 'GET',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                credentials: 'include', // ✅ NUEVO: Incluir cookies
+                headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
             });
 
+            // ✅ NUEVO: Timeout para conexiones lentas
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
+            });
+
+            const response = await Promise.race([operationPromise, timeoutPromise]);
             const data = await response.json();
 
             if (response.ok && data.success) {
+                // ✅ NUEVO: Manejo híbrido de tokens
+                if (data.token) {
+                    setAuthToken(data.token);
+                }
+
                 const activeCodes = data.activeCodes || 0;
                 const maxActive = data.maxActiveAllowed || 10;
 
@@ -219,9 +278,23 @@ export const useRuleta = () => {
 
         } catch (error) {
             console.error('Error verificando códigos:', error);
-            return { canSpin: false, reason: 'Error de conexión' };
+            
+            // ✅ NUEVO: Manejo específico de errores de red vs servidor
+            let errorMessage = 'Error de conexión';
+            
+            if (error.message === 'TIMEOUT') {
+                errorMessage = 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
+            } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
+            } else if (error.message?.includes('timeout')) {
+                errorMessage = 'La conexión tardó demasiado. Inténtalo nuevamente.';
+            } else if (error.message?.includes('network')) {
+                errorMessage = 'Error de red. Verifica tu conexión a internet.';
+            }
+            
+            return { canSpin: false, reason: errorMessage };
         }
-    }, [isAuthenticated]);
+    }, [isAuthenticated, getAuthHeaders, setAuthToken]);
 
     /**
      * Función mejorada para girar la ruleta con validaciones

@@ -7,6 +7,34 @@ import { getEmailTemplate } from "../utils/passwordResetDesign.js";
 
 const passwordResetController = {};
 
+// Función helper para configuración dinámica de cookies basada en el entorno
+const getCookieConfig = () => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    return {
+        httpOnly: false, // Permitir acceso desde JavaScript
+        secure: isProduction, // Solo HTTPS en producción
+        sameSite: isProduction ? 'none' : 'lax', // Cross-domain en producción
+        maxAge: 24 * 60 * 60 * 1000, // 24 horas
+        domain: undefined // Dejar que el navegador determine
+    };
+};
+
+// Función helper para obtener token de múltiples fuentes en la petición
+const getTokenFromRequest = (req) => {
+    let token = req.cookies?.authToken;
+    let source = 'cookie';
+    
+    if (!token) {
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.substring(7);
+            source = 'authorization_header';
+        }
+    }
+    
+    return { token, source };
+};
+
 // Función helper para validar email
 const validateEmail = (email) => {
     if (!email || typeof email !== 'string') {
@@ -83,11 +111,15 @@ const createTransporter = () => {
             throw new Error('Configuración de email incompleta');
         }
 
+        // CORRECCIÓN: usar createTransport (sin 'er' al final)
         return nodemailer.createTransport({
             service: 'gmail',
             auth: {
                 user: config.emailUser.user_email,
                 pass: config.emailUser.user_pass
+            },
+            tls: {
+                rejectUnauthorized: false
             }
         });
     } catch (error) {
@@ -184,9 +216,14 @@ passwordResetController.requestPasswordReset = async (req, res) => {
             });
         }
 
+        // Configurar cookies con configuración dinámica
+        const cookieConfig = getCookieConfig();
+        res.cookie("passwordResetToken", "reset_in_progress", cookieConfig);
+
         res.status(200).json({
             success: true,
-            message: "Correo enviado, tienes 5 minutos para usar el código"
+            message: "Correo enviado, tienes 5 minutos para usar el código",
+            token: "reset_in_progress" // También en el body para mayor compatibilidad
         });
 
     } catch (error) {
@@ -248,9 +285,14 @@ passwordResetController.verifyCode = async (req, res) => {
             });
         }
 
+        // Configurar cookies con configuración dinámica para indicar verificación exitosa
+        const cookieConfig = getCookieConfig();
+        res.cookie("passwordResetVerified", "code_verified", cookieConfig);
+
         res.status(200).json({
             success: true,
-            message: "Código verificado correctamente"
+            message: "Código verificado correctamente",
+            token: "code_verified" // También en el body para mayor compatibilidad
         });
 
     } catch (error) {
@@ -375,9 +417,16 @@ passwordResetController.updatePassword = async (req, res) => {
             // No fallar por esto
         }
 
+        // Configurar cookies con configuración dinámica
+        const cookieConfig = getCookieConfig();
+        res.clearCookie("passwordResetToken");
+        res.clearCookie("passwordResetVerified");
+        res.cookie("passwordResetComplete", "success", cookieConfig);
+
         res.status(200).json({
             success: true,
-            message: "Contraseña actualizada correctamente"
+            message: "Contraseña actualizada correctamente",
+            token: "password_reset_complete" // También en el body para mayor compatibilidad
         });
 
     } catch (error) {

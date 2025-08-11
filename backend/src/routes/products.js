@@ -60,4 +60,8 @@ router.route("/:id")
     .put(upload.array("images", 5), productsController.updateProducts)
     .delete(productsController.deleteProducts);
 
+router.get('/best-rated', productsController.getBestRankedProducts);
+
+router.get('/best-rated', productsController.getBestRatedProducts);
+
 export default router;

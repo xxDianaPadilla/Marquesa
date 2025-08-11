@@ -25,7 +25,7 @@ const useDataCategories = () => {
     // ============ CONFIGURACIÓN DE API ============
     
     // URL base para todas las operaciones de categorías
-    const API = "http://localhost:4000/api/categories";
+    const API = "https://test-9gs3.onrender.com/api/categories";
 
     // ============ ESTADOS DEL FORMULARIO ============
     

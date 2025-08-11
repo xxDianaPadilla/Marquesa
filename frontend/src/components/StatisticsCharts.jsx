@@ -19,7 +19,7 @@ const StatisticsCharts = () => {
     const fetchChartData = async () => {
         try {
             // Realiza la solicitud a la API para obtener datos de ventas
-            const response = await fetch('http://localhost:4000/api/sales/dashboardStats');
+            const response = await fetch('https://test-9gs3.onrender.com/api/sales/dashboardStats');
 
             // Verifica si la respuesta es correcta, si no lanza un error
             if (!response.ok) {

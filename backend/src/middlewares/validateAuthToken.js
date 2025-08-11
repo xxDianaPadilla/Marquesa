@@ -2,29 +2,52 @@ import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
 
 /**
- * Middleware de Autenticación Mejorado - VERSIÓN CORREGIDA
- * 
- * PROBLEMAS SOLUCIONADOS:
- * - Mejor logging para debug de errores 401
- * - Manejo más robusto de cookies
- * - Validación mejorada de tokens
- * - Respuestas de error más específicas
- * 
- * Ubicación: backend/src/middlewares/validateAuthToken.js
+ * Middleware de Autenticación para verificar tokens JWT
+ * Soporta verificación híbrida tanto en cookies como en headers Authorization
+ * Implementa el patrón cross-domain requerido para producción
  */
+
+// Función helper para configuración dinámica de cookies basada en el entorno
+const getCookieConfig = () => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    return {
+        httpOnly: false, // Permitir acceso desde JavaScript
+        secure: isProduction, // Solo HTTPS en producción
+        sameSite: isProduction ? 'none' : 'lax', // Cross-domain en producción
+        maxAge: 24 * 60 * 60 * 1000, // 24 horas
+        domain: undefined // Dejar que el navegador determine
+    };
+};
+
+// Función para obtener el token de diferentes fuentes en la petición (verificación híbrida)
+const getTokenFromRequest = (req) => {
+    // Primera prioridad: obtener token de las cookies
+    let token = req.cookies?.authToken;
+    let source = 'cookie';
+
+    // Segunda prioridad: obtener token del header Authorization
+    if (!token) {
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.substring(7); // Remover "Bearer " del inicio
+            source = 'authorization_header';
+        }
+    }
+
+    return { token, source };
+};
 
 /**
  * Middleware principal para verificar token de autenticación
- * ✅ MEJORADO: Mejor logging y manejo de errores
+ * Verifica la validez del token JWT y agrega información del usuario a la petición
+ * Implementa respuesta híbrida (cookies + body) para compatibilidad cross-domain
  */
 const verifyToken = (req, res, next) => {
     try {
+        // Obtener token de múltiples fuentes posibles (verificación híbrida)
+        const { token, source } = getTokenFromRequest(req);
         
-        // Obtener token de las cookies
-        const token = req.cookies?.authToken;
-        
-        
-        // Verificar si existe el token
+        // Verificar si se encontró un token
         if (!token) {
             return res.status(401).json({ 
                 success: false,
@@ -33,18 +56,18 @@ const verifyToken = (req, res, next) => {
                 debug: {
                     cookiesPresent: !!req.cookies,
                     cookieKeys: req.cookies ? Object.keys(req.cookies) : [],
+                    hasAuthHeader: !!req.headers.authorization,
                     path: req.path
                 }
             });
         }
         
-        
-        // Verificar y decodificar el token
+        // Verificar y decodificar el token JWT
         const decoded = jwt.verify(token, config.JWT.secret);
-        
         
         // Validar que el token contenga la información necesaria
         if (!decoded || !decoded.id || !decoded.userType) {
+            // Limpiar cookie en caso de token inválido
             res.clearCookie("authToken");
             return res.status(401).json({ 
                 success: false,
@@ -53,19 +76,21 @@ const verifyToken = (req, res, next) => {
             });
         }
         
-        // Agregar información del usuario a la request
+        // Agregar información del usuario autenticado a la petición
         req.user = {
             id: decoded.id,
             userType: decoded.userType,
             email: decoded.email || null
         };
+
+        // Establecer cookie con configuración dinámica para mantener sesión
+        const cookieConfig = getCookieConfig();
+        res.cookie("authToken", token, cookieConfig);
         
-        
+        // Continuar con el siguiente middleware
         next();
         
     } catch (error) {
-        console.error(`❌ Error en autenticación para ${req.path}:`, error.message);
-        
         // Limpiar cookie en caso de error
         res.clearCookie("authToken");
         
@@ -91,7 +116,6 @@ const verifyToken = (req, res, next) => {
                 }
             });
         } else {
-            console.error(`💥 Error interno de autenticación para ${req.path}:`, error);
             return res.status(500).json({ 
                 success: false,
                 message: 'Error interno del servidor en autenticación',
@@ -103,18 +127,17 @@ const verifyToken = (req, res, next) => {
 
 /**
  * Middleware para verificar permisos de administrador
- * ✅ MEJORADO: Mejor logging y validación
+ * Primero verifica el token y luego confirma que el usuario sea admin
+ * Implementa configuración de cookies y respuesta híbrida
  */
 const verifyAdmin = (req, res, next) => {
-    
-    // Primero verificar el token
+    // Primero verificar que el token sea válido
     verifyToken(req, res, (err) => {
         if (err) {
-            return; // verifyToken ya envió la respuesta
+            return; // verifyToken ya envió la respuesta de error
         }
         
-        
-        // Verificar que el usuario sea administrador
+        // Verificar que el usuario tenga permisos de administrador
         if (!req.user || req.user.userType !== 'admin') {
             return res.status(403).json({
                 success: false,
@@ -127,24 +150,31 @@ const verifyAdmin = (req, res, next) => {
                 }
             });
         }
+
+        // Establecer cookie con configuración dinámica para mantener sesión
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
+        }
+        
         next();
     });
 };
 
 /**
  * Middleware para verificar permisos de cliente
- * ✅ MEJORADO: Mejor logging y validación
+ * Primero verifica el token y luego confirma que el usuario sea cliente
+ * Implementa configuración de cookies y respuesta híbrida
  */
 const verifyCustomer = (req, res, next) => {
-    
-    // Primero verificar el token
+    // Primero verificar que el token sea válido
     verifyToken(req, res, (err) => {
         if (err) {
-            return; // verifyToken ya envió la respuesta
+            return; // verifyToken ya envió la respuesta de error
         }
         
-        
-        // Verificar que el usuario sea cliente
+        // Verificar que el usuario tenga permisos de cliente
         if (!req.user || req.user.userType !== 'Customer') {
             return res.status(403).json({
                 success: false,
@@ -157,20 +187,28 @@ const verifyCustomer = (req, res, next) => {
                 }
             });
         }
+
+        // Establecer cookie con configuración dinámica para mantener sesión
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
+        }
         
         next();
     });
 };
 
 /**
- * ✅ NUEVO: Middleware opcional que permite tanto admin como customer
+ * Middleware que permite acceso tanto a administradores como a clientes
+ * Útil para rutas que pueden ser accedidas por ambos tipos de usuario
+ * Implementa configuración de cookies y respuesta híbrida
  */
 const verifyAdminOrCustomer = (req, res, next) => {
-    
-    // Primero verificar el token
+    // Primero verificar que el token sea válido
     verifyToken(req, res, (err) => {
         if (err) {
-            return; // verifyToken ya envió la respuesta
+            return; // verifyToken ya envió la respuesta de error
         }
         
         // Verificar que el usuario sea admin o customer
@@ -186,15 +224,24 @@ const verifyAdminOrCustomer = (req, res, next) => {
                 }
             });
         }
+
+        // Establecer cookie con configuración dinámica para mantener sesión
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
+        }
         
         next();
     });
 };
 
-// Exportaciones
+// Exportar el middleware principal como default y los demás como named exports
 export default verifyToken;
 export { 
     verifyAdmin, 
     verifyCustomer, 
-    verifyAdminOrCustomer
+    verifyAdminOrCustomer,
+    getTokenFromRequest,
+    getCookieConfig
 };

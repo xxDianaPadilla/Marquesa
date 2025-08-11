@@ -13,6 +13,34 @@ cloudinary.config({
     api_secret: config.cloudinary.cloudinary_api_secret
 });
 
+// Función helper para configuración dinámica de cookies basada en el entorno
+const getCookieConfig = () => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    return {
+        httpOnly: false, // Permitir acceso desde JavaScript
+        secure: isProduction, // Solo HTTPS en producción
+        sameSite: isProduction ? 'none' : 'lax', // Cross-domain en producción
+        maxAge: 24 * 60 * 60 * 1000, // 24 horas
+        domain: undefined // Dejar que el navegador determine
+    };
+};
+
+// Función helper para obtener token de múltiples fuentes en la petición
+const getTokenFromRequest = (req) => {
+    let token = req.cookies?.authToken;
+    let source = 'cookie';
+    
+    if (!token) {
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.substring(7);
+            source = 'authorization_header';
+        }
+    }
+    
+    return { token, source };
+};
+
 // Objeto que contendrá todas las funciones del controller
 const clientsController = {};
 
@@ -26,9 +54,6 @@ const validatePeriod = (period) => {
  * Actualiza el perfil del cliente autenticado
  * Permite actualizar teléfono, dirección y foto de perfil
  */
-// AGREGAR ESTAS FUNCIONES A TU clientsController.js
-
-// FUNCIÓN MODIFICADA: updateProfile con manejo de favoritos
 clientsController.updateProfile = async (req, res) => {
     try {
         console.log('=== INICIO updateProfile ===');
@@ -74,9 +99,15 @@ clientsController.updateProfile = async (req, res) => {
             client.favorites.push({ productId });
             await client.save();
 
+            // Configurar cookies con configuración dinámica
+            const cookieConfig = getCookieConfig();
+            const currentToken = req.cookies?.authToken || 'session_maintained';
+            res.cookie("authToken", currentToken, cookieConfig);
+
             return res.status(200).json({
                 success: true,
                 message: "Producto agregado a favoritos",
+                token: currentToken, // También en el body para mayor compatibilidad
                 user: {
                     id: client._id,
                     name: client.fullName,
@@ -107,9 +138,15 @@ clientsController.updateProfile = async (req, res) => {
             client.favorites.splice(favoriteIndex, 1);
             await client.save();
 
+            // Configurar cookies con configuración dinámica
+            const cookieConfig = getCookieConfig();
+            const currentToken = req.cookies?.authToken || 'session_maintained';
+            res.cookie("authToken", currentToken, cookieConfig);
+
             return res.status(200).json({
                 success: true,
                 message: "Producto removido de favoritos",
+                token: currentToken, // También en el body para mayor compatibilidad
                 user: {
                     id: client._id,
                     name: client.fullName,
@@ -239,9 +276,15 @@ clientsController.updateProfile = async (req, res) => {
 
             console.log('Cliente actualizado exitosamente');
 
+            // Configurar cookies con configuración dinámica
+            const cookieConfig = getCookieConfig();
+            const currentToken = req.cookies?.authToken || 'session_maintained';
+            res.cookie("authToken", currentToken, cookieConfig);
+
             return res.status(200).json({
                 success: true,
                 message: "Perfil actualizado exitosamente",
+                token: currentToken, // También en el body para mayor compatibilidad
                 user: {
                     id: updatedClient._id,
                     name: updatedClient.fullName,
@@ -286,586 +329,6 @@ clientsController.updateProfile = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Error interno del servidor al actualizar perfil",
-            error: error.message
-        });
-    }
-};
-
-// NUEVA FUNCIÓN: Obtener favoritos con población de productos
-clientsController.getFavorites = async (req, res) => {
-    try {
-        console.log('=== INICIO getFavorites ===');
-        console.log('User ID del token:', req.user?.id);
-
-        const userId = req.user?.id;
-        
-        if (!userId) {
-            return res.status(401).json({
-                success: false,
-                message: "Usuario no autenticado"
-            });
-        }
-
-        // Buscar el cliente y poblar los favoritos con datos de productos
-        const client = await clientsModel.findById(userId)
-            .populate({
-                path: 'favorites.productId',
-                select: 'name price images category description stock _id',
-                // Solo incluir productos que existan (no fueron eliminados)
-                match: { _id: { $exists: true } }
-            });
-
-        if (!client) {
-            return res.status(404).json({
-                success: false,
-                message: "Usuario no encontrado"
-            });
-        }
-
-        // Filtrar favoritos que tengan productos válidos
-        const validFavorites = client.favorites.filter(fav => fav.productId !== null);
-
-        // Formatear la respuesta
-        const favoriteProducts = validFavorites.map(fav => fav.productId);
-
-        console.log(`Favoritos obtenidos: ${favoriteProducts.length} productos válidos`);
-
-        res.status(200).json({
-            success: true,
-            favorites: favoriteProducts,
-            count: favoriteProducts.length
-        });
-
-    } catch (error) {
-        console.error('Error en getFavorites:', error);
-        
-        res.status(500).json({
-            success: false,
-            message: "Error interno del servidor al obtener favoritos",
-            error: error.message
-        });
-    }
-};
-
-// NUEVA FUNCIÓN: Agregar producto a favoritos
-clientsController.addToFavorites = async (req, res) => {
-    try {
-        console.log('=== INICIO addToFavorites ===');
-        console.log('User ID del token:', req.user?.id);
-        console.log('Datos recibidos:', req.body);
-
-        const userId = req.user?.id;
-        const { productId } = req.body;
-        
-        if (!userId) {
-            return res.status(401).json({
-                success: false,
-                message: "Usuario no autenticado"
-            });
-        }
-
-        if (!productId) {
-            return res.status(400).json({
-                success: false,
-                message: "ID del producto es requerido"
-            });
-        }
-
-        // Buscar el cliente
-        const client = await clientsModel.findById(userId);
-        if (!client) {
-            return res.status(404).json({
-                success: false,
-                message: "Usuario no encontrado"
-            });
-        }
-
-        // Verificar si ya está en favoritos
-        const isAlreadyFavorite = client.favorites.some(
-            fav => fav.productId.toString() === productId
-        );
-
-        if (isAlreadyFavorite) {
-            return res.status(400).json({
-                success: false,
-                message: "El producto ya está en favoritos"
-            });
-        }
-
-        // Agregar a favoritos
-        client.favorites.push({ productId });
-        await client.save();
-
-        console.log('Producto agregado a favoritos exitosamente:', productId);
-
-        res.status(200).json({
-            success: true,
-            message: "Producto agregado a favoritos exitosamente",
-            favorites: client.favorites
-        });
-
-    } catch (error) {
-        console.error('Error en addToFavorites:', error);
-        
-        res.status(500).json({
-            success: false,
-            message: "Error interno del servidor al agregar a favoritos",
-            error: error.message
-        });
-    }
-};
-
-// NUEVA FUNCIÓN: Remover producto de favoritos
-clientsController.removeFromFavorites = async (req, res) => {
-    try {
-        console.log('=== INICIO removeFromFavorites ===');
-        console.log('User ID del token:', req.user?.id);
-        console.log('Datos recibidos:', req.body);
-
-        const userId = req.user?.id;
-        const { productId } = req.body;
-        
-        if (!userId) {
-            return res.status(401).json({
-                success: false,
-                message: "Usuario no autenticado"
-            });
-        }
-
-        if (!productId) {
-            return res.status(400).json({
-                success: false,
-                message: "ID del producto es requerido"
-            });
-        }
-
-        // Buscar el cliente
-        const client = await clientsModel.findById(userId);
-        if (!client) {
-            return res.status(404).json({
-                success: false,
-                message: "Usuario no encontrado"
-            });
-        }
-
-        // Encontrar el índice del favorito
-        const favoriteIndex = client.favorites.findIndex(
-            fav => fav.productId.toString() === productId
-        );
-
-        if (favoriteIndex === -1) {
-            return res.status(404).json({
-                success: false,
-                message: "El producto no está en favoritos"
-            });
-        }
-
-        // Remover de favoritos
-        client.favorites.splice(favoriteIndex, 1);
-        await client.save();
-
-        console.log('Producto removido de favoritos exitosamente:', productId);
-
-        res.status(200).json({
-            success: true,
-            message: "Producto removido de favoritos exitosamente",
-            favorites: client.favorites
-        });
-
-    } catch (error) {
-        console.error('Error en removeFromFavorites:', error);
-        
-        res.status(500).json({
-            success: false,
-            message: "Error interno del servidor al remover de favoritos",
-            error: error.message
-        });
-    }
-};
-
-// NUEVA FUNCIÓN: Toggle favorito (agregar o remover)
-clientsController.toggleFavorite = async (req, res) => {
-    try {
-        console.log('=== INICIO toggleFavorite ===');
-        console.log('User ID del token:', req.user?.id);
-        console.log('Datos recibidos:', req.body);
-
-        const userId = req.user?.id;
-        const { productId } = req.body;
-        
-        if (!userId) {
-            return res.status(401).json({
-                success: false,
-                message: "Usuario no autenticado"
-            });
-        }
-
-        if (!productId) {
-            return res.status(400).json({
-                success: false,
-                message: "ID del producto es requerido"
-            });
-        }
-
-        // Buscar el cliente
-        const client = await clientsModel.findById(userId);
-        if (!client) {
-            return res.status(404).json({
-                success: false,
-                message: "Usuario no encontrado"
-            });
-        }
-
-        // Verificar si ya está en favoritos
-        const favoriteIndex = client.favorites.findIndex(
-            fav => fav.productId.toString() === productId
-        );
-
-        let action, message;
-
-        if (favoriteIndex === -1) {
-            // No está en favoritos, agregarlo
-            client.favorites.push({ productId });
-            action = 'added';
-            message = 'Producto agregado a favoritos';
-        } else {
-            // Ya está en favoritos, removerlo
-            client.favorites.splice(favoriteIndex, 1);
-            action = 'removed';
-            message = 'Producto removido de favoritos';
-        }
-
-        await client.save();
-
-        console.log(`Favorito ${action} exitosamente:`, productId);
-
-        res.status(200).json({
-            success: true,
-            message: message,
-            action: action,
-            isFavorite: action === 'added',
-            favorites: client.favorites
-        });
-
-    } catch (error) {
-        console.error('Error en toggleFavorite:', error);
-        
-        res.status(500).json({
-            success: false,
-            message: "Error interno del servidor al alternar favorito",
-            error: error.message
-        });
-    }
-};
-
-// NUEVA FUNCIÓN: Generar código de descuento de la ruleta
-clientsController.generateRuletaCode = async (req, res) => {
-    try {
-        console.log('=== INICIO generateRuletaCode ===');
-        console.log('User ID del token:', req.user?.id);
-
-        const userId = req.user?.id;
-
-        if (!userId) {
-            return res.status(401).json({
-                success: false,
-                message: "Usuario no autenticado"
-            });
-        }
-
-        // Buscar el cliente
-        const client = await clientsModel.findById(userId);
-        if (!client) {
-            return res.status(404).json({
-                success: false,
-                message: "Usuario no encontrado"
-            });
-        }
-
-        // Verificar códigos activos (máximo 10 códigos activos)
-        const activeCodes = client.ruletaCodes ? client.ruletaCodes.filter(code => code.status === 'active') : [];
-
-        if (activeCodes.length >= 10) {
-            return res.status(400).json({
-                success: false,
-                message: "Has alcanzado el máximo de códigos activos (10). Utiliza tus códigos existentes o espera a que se caduquen para obtener nuevos."
-            });
-        }
-
-        // Códigos de descuento disponibles con colores
-        const discountOptions = [
-            {
-                name: 'Verano 2025',
-                discount: '25% OFF',
-                color: '#FADDDD',
-                textColor: '#374151'
-            },
-            {
-                name: 'Ruleta marquesa',
-                discount: '20% OFF',
-                color: '#E8ACD2',
-                textColor: '#FFFFFF'
-            },
-            {
-                name: 'Primavera 2025',
-                discount: '15% OFF',
-                color: '#C6E2C6',
-                textColor: '#374151'
-            },
-            {
-                name: 'Flores especiales',
-                discount: '30% OFF',
-                color: '#FADDDD',
-                textColor: '#374151'
-            },
-            {
-                name: 'Giftbox deluxe',
-                discount: '18% OFF',
-                color: '#E8ACD2',
-                textColor: '#FFFFFF'
-            },
-            {
-                name: 'Cuadros únicos',
-                discount: '22% OFF',
-                color: '#C6E2C6',
-                textColor: '#374151'
-            }
-        ];
-
-        // Seleccionar un código aleatorio
-        const randomIndex = Math.floor(Math.random() * discountOptions.length);
-        const selectedDiscount = discountOptions[randomIndex];
-
-        // Generar código único de 6 dígitos
-        const generateUniqueCode = () => {
-            return Math.floor(100000 + Math.random() * 900000).toString();
-        };
-
-        let uniqueCode = generateUniqueCode();
-
-        // Verificar que el código no exista en los códigos del usuario
-        while (client.ruletaCodes && client.ruletaCodes.some(code => code.code === uniqueCode)) {
-            uniqueCode = generateUniqueCode();
-        }
-
-        // Crear el nuevo código con fecha de expiración (30 días)
-        const newCode = {
-            codeId: `${userId}_${Date.now()}_${uniqueCode}`,
-            code: uniqueCode,
-            name: selectedDiscount.name,
-            discount: selectedDiscount.discount,
-            color: selectedDiscount.color,
-            textColor: selectedDiscount.textColor,
-            status: 'active',
-            createdAt: new Date(),
-            expiresAt: new Date(Date.now() + (30 * 24 * 60 * 60 * 1000)) // 30 días
-        };
-
-        // Inicializar ruletaCodes si no existe
-        if (!client.ruletaCodes) {
-            client.ruletaCodes = [];
-        }
-
-        // Agregar el nuevo código
-        client.ruletaCodes.push(newCode);
-
-        // Guardar cambios
-        await client.save();
-
-        console.log('Código de ruleta generado exitosamente:', newCode.code);
-
-        res.status(200).json({
-            success: true,
-            message: "Código de descuento generado exitosamente",
-            code: {
-                code: newCode.code,
-                name: newCode.name,
-                discount: newCode.discount,
-                color: newCode.color,
-                textColor: newCode.textColor,
-                expiresAt: newCode.expiresAt
-            }
-        });
-
-    } catch (error) {
-        console.error('Error en generateRuletaCode:', error);
-
-        res.status(500).json({
-            success: false,
-            message: "Error interno del servidor al generar código de descuento",
-            error: error.message
-        });
-    }
-};
-
-// NUEVA FUNCIÓN: Obtener códigos de descuento del usuario
-clientsController.getUserRuletaCodes = async (req, res) => {
-    try {
-        console.log('=== INICIO getUserRuletaCodes ===');
-        console.log('User ID del token:', req.user?.id);
-
-        const userId = req.user?.id;
-
-        if (!userId) {
-            return res.status(401).json({
-                success: false,
-                message: "Usuario no autenticado"
-            });
-        }
-
-        // Buscar el cliente y actualizar códigos expirados
-        const client = await clientsModel.findById(userId);
-        if (!client) {
-            return res.status(404).json({
-                success: false,
-                message: "Usuario no encontrado"
-            });
-        }
-
-        // Actualizar códigos expirados
-        if (client.ruletaCodes && client.ruletaCodes.length > 0) {
-            const now = new Date();
-            let hasUpdates = false;
-
-            client.ruletaCodes.forEach(code => {
-                if (code.status === 'active' && code.expiresAt < now) {
-                    code.status = 'expired';
-                    hasUpdates = true;
-                }
-            });
-
-            if (hasUpdates) {
-                await client.save();
-            }
-        }
-
-        // Obtener códigos ordenados por fecha de creación (más recientes primero)
-        const allCodes = client.ruletaCodes || [];
-        allCodes.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-        // Filtrar códigos para mostrar (máximo 10)
-        // Priorizar códigos activos, luego recientes utilizados/expirados
-        const activeCodes = allCodes.filter(code => code.status === 'active');
-        const inactiveCodes = allCodes.filter(code => code.status !== 'active');
-
-        const codesToShow = [...activeCodes, ...inactiveCodes].slice(0, 10);
-
-        // Formatear códigos para respuesta
-        const formattedCodes = codesToShow.map(code => ({
-            codeId: code.codeId,
-            code: code.code,
-            name: code.name,
-            discount: code.discount,
-            color: code.color,
-            textColor: code.textColor,
-            status: code.status,
-            createdAt: code.createdAt,
-            expiresAt: code.expiresAt,
-            usedAt: code.usedAt,
-            usedInOrderId: code.usedInOrderId
-        }));
-
-        console.log(`Códigos de ruleta obtenidos: ${formattedCodes.length} de ${allCodes.length} totales`);
-
-        res.status(200).json({
-            success: true,
-            codes: formattedCodes,
-            totalCodes: allCodes.length,
-            activeCodes: activeCodes.length,
-            maxActiveAllowed: 10
-        });
-
-    } catch (error) {
-        console.error('Error en getUserRuletaCodes:', error);
-
-        res.status(500).json({
-            success: false,
-            message: "Error interno del servidor al obtener códigos de descuento",
-            error: error.message
-        });
-    }
-};
-
-// NUEVA FUNCIÓN: Marcar código como utilizado
-clientsController.useRuletaCode = async (req, res) => {
-    try {
-        console.log('=== INICIO useRuletaCode ===');
-        console.log('User ID del token:', req.user?.id);
-        console.log('Datos recibidos:', req.body);
-
-        const userId = req.user?.id;
-        const { code, orderId } = req.body;
-
-        if (!userId) {
-            return res.status(401).json({
-                success: false,
-                message: "Usuario no autenticado"
-            });
-        }
-
-        if (!code) {
-            return res.status(400).json({
-                success: false,
-                message: "Código de descuento es requerido"
-            });
-        }
-
-        // Buscar el cliente
-        const client = await clientsModel.findById(userId);
-        if (!client) {
-            return res.status(404).json({
-                success: false,
-                message: "Usuario no encontrado"
-            });
-        }
-
-        // Buscar el código en los códigos del usuario
-        const codeIndex = client.ruletaCodes ? client.ruletaCodes.findIndex(
-            ruletaCode => ruletaCode.code === code && ruletaCode.status === 'active'
-        ) : -1;
-
-        if (codeIndex === -1) {
-            return res.status(404).json({
-                success: false,
-                message: "Código no encontrado, ya utilizado o expirado"
-            });
-        }
-
-        // Verificar que el código no haya expirado
-        if (client.ruletaCodes[codeIndex].expiresAt < new Date()) {
-            // Marcar como expirado
-            client.ruletaCodes[codeIndex].status = 'expired';
-            await client.save();
-
-            return res.status(400).json({
-                success: false,
-                message: "El código ha expirado"
-            });
-        }
-
-        // Marcar el código como utilizado
-        client.ruletaCodes[codeIndex].status = 'used';
-        client.ruletaCodes[codeIndex].usedAt = new Date();
-        if (orderId) {
-            client.ruletaCodes[codeIndex].usedInOrderId = orderId;
-        }
-
-        await client.save();
-
-        console.log('Código marcado como utilizado exitosamente:', code);
-
-        res.status(200).json({
-            success: true,
-            message: "Código utilizado exitosamente",
-            code: client.ruletaCodes[codeIndex]
-        });
-
-    } catch (error) {
-        console.error('Error en useRuletaCode:', error);
-
-        res.status(500).json({
-            success: false,
-            message: "Error interno del servidor al utilizar código de descuento",
             error: error.message
         });
     }
@@ -941,9 +404,15 @@ clientsController.validateRuletaCode = async (req, res) => {
 
         console.log('Código validado exitosamente:', code);
 
+        // Configurar cookies con configuración dinámica
+        const cookieConfig = getCookieConfig();
+        const currentToken = req.cookies?.authToken || 'session_maintained';
+        res.cookie("authToken", currentToken, cookieConfig);
+
         res.status(200).json({
             success: true,
             message: "Código válido",
+            token: currentToken, // También en el body para mayor compatibilidad
             code: {
                 code: ruletaCode.code,
                 name: ruletaCode.name,
@@ -1488,6 +957,79 @@ clientsController.usePromotionalCode = async (req, res) => {
     }
 };
 
+clientsController.addToFavorites = async (req, res) => {
+    try {
+        console.log('=== INICIO addToFavorites ===');
+        console.log('User ID del token:', req.user?.id);
+        console.log('Datos recibidos:', req.body);
+
+        const userId = req.user?.id;
+        const { productId } = req.body;
+        
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Usuario no autenticado"
+            });
+        }
+
+        if (!productId) {
+            return res.status(400).json({
+                success: false,
+                message: "ID del producto es requerido"
+            });
+        }
+
+        // Buscar el cliente
+        const client = await clientsModel.findById(userId);
+        if (!client) {
+            return res.status(404).json({
+                success: false,
+                message: "Usuario no encontrado"
+            });
+        }
+
+        // Verificar si ya está en favoritos
+        const isAlreadyFavorite = client.favorites.some(
+            fav => fav.productId.toString() === productId
+        );
+
+        if (isAlreadyFavorite) {
+            return res.status(400).json({
+                success: false,
+                message: "El producto ya está en favoritos"
+            });
+        }
+
+        // Agregar a favoritos
+        client.favorites.push({ productId });
+        await client.save();
+
+        console.log('Producto agregado a favoritos exitosamente:', productId);
+
+        // Configurar cookies con configuración dinámica
+        const cookieConfig = getCookieConfig();
+        const currentToken = req.cookies?.authToken || 'session_maintained';
+        res.cookie("authToken", currentToken, cookieConfig);
+
+        res.status(200).json({
+            success: true,
+            message: "Producto agregado a favoritos exitosamente",
+            token: currentToken, // También en el body para mayor compatibilidad
+            favorites: client.favorites
+        });
+
+    } catch (error) {
+        console.error('Error en addToFavorites:', error);
+        
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor al agregar a favoritos",
+            error: error.message
+        });
+    }
+};
+
 clientsController.getClientPromotionalCodes = async (req, res) => {
     try {
         const { clientId } = req.params;
@@ -1566,5 +1108,325 @@ clientsController.getClientPromotionalCodes = async (req, res) => {
     }
 };
 
+/**
+ * Obtener favoritos del usuario
+ */
+clientsController.getFavorites = async (req, res) => {
+    try {
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Usuario no autenticado"
+            });
+        }
+
+        const client = await clientsModel.findById(userId)
+            .populate({
+                path: 'favorites.productId',
+                model: 'products'
+            });
+
+        if (!client) {
+            return res.status(404).json({
+                success: false,
+                message: "Usuario no encontrado"
+            });
+        }
+
+        const { token } = getTokenFromRequest(req);
+        const currentToken = token || 'session_maintained';
+        const cookieConfig = getCookieConfig();
+        res.cookie("authToken", currentToken, cookieConfig);
+
+        res.status(200).json({
+            success: true,
+            favorites: client.favorites,
+            token: currentToken
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error al obtener favoritos",
+            error: error.message
+        });
+    }
+};
+/**
+ * Remover de favoritos
+ */
+clientsController.removeFromFavorites = async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        const { productId } = req.body;
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Usuario no autenticado"
+            });
+        }
+
+        const client = await clientsModel.findById(userId);
+        if (!client) {
+            return res.status(404).json({
+                success: false,
+                message: "Usuario no encontrado"
+            });
+        }
+
+        const favoriteIndex = client.favorites.findIndex(
+            fav => fav.productId.toString() === productId
+        );
+
+        if (favoriteIndex === -1) {
+            return res.status(400).json({
+                success: false,
+                message: "El producto no está en favoritos"
+            });
+        }
+
+        client.favorites.splice(favoriteIndex, 1);
+        await client.save();
+
+        const { token } = getTokenFromRequest(req);
+        const currentToken = token || 'session_maintained';
+        const cookieConfig = getCookieConfig();
+        res.cookie("authToken", currentToken, cookieConfig);
+
+        res.status(200).json({
+            success: true,
+            message: "Producto removido de favoritos",
+            token: currentToken
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error al remover de favoritos",
+            error: error.message
+        });
+    }
+};
+
+/**
+ * Toggle favorito
+ */
+clientsController.toggleFavorite = async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        const { productId } = req.body;
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Usuario no autenticado"
+            });
+        }
+
+        const client = await clientsModel.findById(userId);
+        if (!client) {
+            return res.status(404).json({
+                success: false,
+                message: "Usuario no encontrado"
+            });
+        }
+
+        const favoriteIndex = client.favorites.findIndex(
+            fav => fav.productId.toString() === productId
+        );
+
+        let action = '';
+        if (favoriteIndex === -1) {
+            client.favorites.push({ productId });
+            action = 'added';
+        } else {
+            client.favorites.splice(favoriteIndex, 1);
+            action = 'removed';
+        }
+
+        await client.save();
+
+        const { token } = getTokenFromRequest(req);
+        const currentToken = token || 'session_maintained';
+        const cookieConfig = getCookieConfig();
+        res.cookie("authToken", currentToken, cookieConfig);
+
+        res.status(200).json({
+            success: true,
+            message: `Producto ${action === 'added' ? 'agregado a' : 'removido de'} favoritos`,
+            action,
+            token: currentToken
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error al modificar favoritos",
+            error: error.message
+        });
+    }
+};
+
+/**
+ * Generar código de ruleta
+ */
+clientsController.generateRuletaCode = async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        const { discount, name, color, textColor, expiresInDays = 30 } = req.body;
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Usuario no autenticado"
+            });
+        }
+
+        const client = await clientsModel.findById(userId);
+        if (!client) {
+            return res.status(404).json({
+                success: false,
+                message: "Usuario no encontrado"
+            });
+        }
+
+        const newCode = {
+            codeId: new mongoose.Types.ObjectId().toString(),
+            code: Math.random().toString(36).substring(2, 10).toUpperCase(),
+            name: name || `Descuento ${discount}%`,
+            discount: discount || 10,
+            color: color || '#FF6B6B',
+            textColor: textColor || '#FFFFFF',
+            status: 'active',
+            createdAt: new Date(),
+            expiresAt: new Date(Date.now() + (expiresInDays * 24 * 60 * 60 * 1000))
+        };
+
+        if (!client.ruletaCodes) {
+            client.ruletaCodes = [];
+        }
+
+        client.ruletaCodes.push(newCode);
+        await client.save();
+
+        const { token } = getTokenFromRequest(req);
+        const currentToken = token || 'session_maintained';
+        const cookieConfig = getCookieConfig();
+        res.cookie("authToken", currentToken, cookieConfig);
+
+        res.status(201).json({
+            success: true,
+            message: "Código de ruleta generado exitosamente",
+            code: newCode,
+            token: currentToken
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error al generar código de ruleta",
+            error: error.message
+        });
+    }
+};
+
+/**
+ * Obtener códigos de ruleta del usuario
+ */
+clientsController.getUserRuletaCodes = async (req, res) => {
+    try {
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Usuario no autenticado"
+            });
+        }
+
+        const client = await clientsModel.findById(userId);
+        if (!client) {
+            return res.status(404).json({
+                success: false,
+                message: "Usuario no encontrado"
+            });
+        }
+
+        const { token } = getTokenFromRequest(req);
+        const currentToken = token || 'session_maintained';
+        const cookieConfig = getCookieConfig();
+        res.cookie("authToken", currentToken, cookieConfig);
+
+        res.status(200).json({
+            success: true,
+            codes: client.ruletaCodes || [],
+            token: currentToken
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error al obtener códigos de ruleta",
+            error: error.message
+        });
+    }
+};
+
+/**
+ * Usar código de ruleta
+ */
+clientsController.useRuletaCode = async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        const { codeId, orderId } = req.body;
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Usuario no autenticado"
+            });
+        }
+
+        const client = await clientsModel.findById(userId);
+        if (!client) {
+            return res.status(404).json({
+                success: false,
+                message: "Usuario no encontrado"
+            });
+        }
+
+        const codeIndex = client.ruletaCodes.findIndex(
+            code => code.codeId === codeId && code.status === 'active'
+        );
+
+        if (codeIndex === -1) {
+            return res.status(400).json({
+                success: false,
+                message: "Código no encontrado o ya utilizado"
+            });
+        }
+
+        client.ruletaCodes[codeIndex].status = 'used';
+        client.ruletaCodes[codeIndex].usedAt = new Date();
+        client.ruletaCodes[codeIndex].usedInOrderId = orderId;
+
+        await client.save();
+
+        const { token } = getTokenFromRequest(req);
+        const currentToken = token || 'session_maintained';
+        const cookieConfig = getCookieConfig();
+        res.cookie("authToken", currentToken, cookieConfig);
+
+        res.status(200).json({
+            success: true,
+            message: "Código usado exitosamente",
+            token: currentToken
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error al usar código de ruleta",
+            error: error.message
+        });
+    }
+};
 // Exportamos el controller para poder usarlo en las rutas
 export default clientsController;

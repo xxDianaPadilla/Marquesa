@@ -82,7 +82,7 @@ const OrderDetail = () => {
     try {
       setLoading(true);
 
-      const response = await fetch(`http://localhost:4000/api/sales/${saleId}/details`, {
+      const response = await fetch(`https://test-9gs3.onrender.com/api/sales/${saleId}/details`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -126,7 +126,7 @@ const OrderDetail = () => {
   // Función para verificar elegibilidad de cancelación
   const getCancellationEligibility = async (saleId) => {
     try {
-      const response = await fetch(`http://localhost:4000/api/sales/${saleId}/cancellation-eligibility`, {
+      const response = await fetch(`https://test-9gs3.onrender.com/api/sales/${saleId}/cancellation-eligibility`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -192,7 +192,7 @@ const OrderDetail = () => {
     try {
       setCancelLoading(true);
 
-      const response = await fetch(`http://localhost:4000/api/sales/${orderData._id}/cancel`, {
+      const response = await fetch(`https://test-9gs3.onrender.com/api/sales/${orderData._id}/cancel`, {
         method: 'PUT',
         credentials: 'include',
         headers: {

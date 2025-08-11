@@ -37,7 +37,7 @@ const PaymentOrderSummary = ({
             }
 
             try {
-                const response = await fetch(`http://localhost:4000/api/shoppingCart/client/${user.id}`, {
+                const response = await fetch(`https://test-9gs3.onrender.com/api/shoppingCart/client/${user.id}`, {
                     method: 'GET',
                     credentials: 'include',
                     headers: {

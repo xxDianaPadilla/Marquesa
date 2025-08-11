@@ -23,9 +23,9 @@ async function main(){
        // Configurar Socket.IO con CORS
        const io = new Server(httpServer, {
            cors: {
-               origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
-               methods: ["GET", "POST", "PUT", "DELETE"],
-               credentials: true
+                origin: "https://test-pink-five-44.vercel.app", // URL del frontend en Vercel
+                credentials: true, // Permite envío de cookies entre dominios
+                methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Métodos HTTP permitidos
            },
            transports: ['websocket', 'polling']
        });

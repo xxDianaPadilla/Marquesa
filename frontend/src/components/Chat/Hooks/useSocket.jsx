@@ -74,7 +74,7 @@ export const useSocket = () => {
             // ✅ CORRECCIÓN: Limpiar errores previos al intentar conectar
             setConnectionError(null);
             
-            socketRef.current = io('http://localhost:4000', {
+            socketRef.current = io('https://test-9gs3.onrender.com', {
                 auth: {
                     token: token,
                     userId: user.id,

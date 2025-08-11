@@ -59,7 +59,7 @@ export const useChat = () => {
         onMessageDeleted
     } = useSocket();
 
-    const API_BASE = "http://localhost:4000/api/chat";
+    const API_BASE = "https://test-9gs3.onrender.com/api/chat";
 
     useEffect(() => {
         activeConversationRef.current = activeConversation;

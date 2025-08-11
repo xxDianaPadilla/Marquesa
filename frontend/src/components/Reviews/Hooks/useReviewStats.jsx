@@ -24,7 +24,7 @@ export const useReviewStats = () => {
         const fetchStats = async () => {
             try {
                 setLoading(true);
-                const response = await fetch('http://localhost:4000/api/reviews/stats');
+                const response = await fetch('https://test-9gs3.onrender.com/api/reviews/stats');
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: Error al obtener estadísticas`);
@@ -115,7 +115,7 @@ export const useReviewStats = () => {
                 endDate: endDate.toISOString()
             });
 
-            const response = await fetch(`http://localhost:4000/api/reviews/stats/period?${params}`);
+            const response = await fetch(`https://test-9gs3.onrender.com/api/reviews/stats/period?${params}`);
             
             if (!response.ok) {
                 throw new Error('Error al obtener estadísticas del período');

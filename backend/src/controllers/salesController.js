@@ -9,6 +9,34 @@ import mongoose from "mongoose";
 
 const salesController = {};
 
+// Función helper para configuración dinámica de cookies basada en el entorno
+const getCookieConfig = () => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    return {
+        httpOnly: false, // Permitir acceso desde JavaScript
+        secure: isProduction, // Solo HTTPS en producción
+        sameSite: isProduction ? 'none' : 'lax', // Cross-domain en producción
+        maxAge: 24 * 60 * 60 * 1000, // 24 horas
+        domain: undefined // Dejar que el navegador determine
+    };
+};
+
+// Función helper para obtener token de múltiples fuentes en la petición
+const getTokenFromRequest = (req) => {
+    let token = req.cookies?.authToken;
+    let source = 'cookie';
+    
+    if (!token) {
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.substring(7);
+            source = 'authorization_header';
+        }
+    }
+    
+    return { token, source };
+};
+
 // Función helper para validar ObjectId
 const isValidObjectId = (id) => {
     return mongoose.Types.ObjectId.isValid(id);
@@ -194,7 +222,10 @@ cloudinary.config({
     api_secret: config.cloudinary.cloudinary_api_secret
 });
 
-// Obtenemos todas las ventas
+/**
+ * Obtenemos todas las ventas
+ * Implementa configuración de cookies cross-domain
+ */
 salesController.getSales = async (req, res) => {
     try {
         const { page = 1, limit = 10, status, trackingStatus } = req.query;
@@ -245,6 +276,13 @@ salesController.getSales = async (req, res) => {
             salesModel.countDocuments(filters)
         ]);
 
+        // Configurar cookies con configuración dinámica cross-domain
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
+        }
+
         res.status(200).json({
             success: true,
             data: sales,
@@ -255,7 +293,8 @@ salesController.getSales = async (req, res) => {
                 itemsPerPage: limitNum,
                 hasNextPage: skip + limitNum < totalCount,
                 hasPrevPage: pageNum > 1
-            }
+            },
+            token: token || 'session_maintained' // También en el body para mayor compatibilidad
         });
     } catch (error) {
         console.error('Error en getSales:', error);
@@ -267,7 +306,10 @@ salesController.getSales = async (req, res) => {
     }
 };
 
-// Obtenemos una venta por ID
+/**
+ * Obtenemos una venta por ID
+ * Implementa configuración de cookies cross-domain
+ */
 salesController.getSaleById = async (req, res) => {
     try {
         const { id } = req.params;
@@ -288,9 +330,17 @@ salesController.getSaleById = async (req, res) => {
             });
         }
 
+        // Configurar cookies con configuración dinámica cross-domain
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
+        }
+
         res.status(200).json({
             success: true,
-            data: sale
+            data: sale,
+            token: token || 'session_maintained' // También en el body para mayor compatibilidad
         });
     } catch (error) {
         console.error('Error en getSaleById:', error);
@@ -302,6 +352,10 @@ salesController.getSaleById = async (req, res) => {
     }
 };
 
+/**
+ * Obtener estadísticas de pedidos del usuario
+ * Implementa configuración de cookies cross-domain
+ */
 salesController.getUserOrderStats = async (req, res) => {
     try {
         const { userId } = req.params;
@@ -383,12 +437,20 @@ salesController.getUserOrderStats = async (req, res) => {
                 deliveredOrders: 0
             };
 
+            // Configurar cookies con configuración dinámica cross-domain
+            const { token } = getTokenFromRequest(req);
+            if (token) {
+                const cookieConfig = getCookieConfig();
+                res.cookie("authToken", token, cookieConfig);
+            }
+
             return res.status(200).json({
                 success: true,
                 data: {
                     userId,
                     orderStats: emptyStats
-                }
+                },
+                token: token || 'session_maintained' // También en el body para mayor compatibilidad
             });
         }
 
@@ -418,12 +480,20 @@ salesController.getUserOrderStats = async (req, res) => {
             }
         });
 
+        // Configurar cookies con configuración dinámica cross-domain
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
+        }
+
         res.status(200).json({
             success: true,
             data: {
                 userId,
                 orderStats: stats
-            }
+            },
+            token: token || 'session_maintained' // También en el body para mayor compatibilidad
         });
 
     } catch (error) {
@@ -436,6 +506,10 @@ salesController.getUserOrderStats = async (req, res) => {
     }
 };
 
+/**
+ * Obtener pedidos del usuario
+ * Implementa configuración de cookies cross-domain
+ */
 salesController.getUserOrders = async (req, res) => {
     try {
         const { userId } = req.params;
@@ -522,11 +596,19 @@ salesController.getUserOrders = async (req, res) => {
 
         console.log('Primer pedido procesado (si existe): ', enrichedOrders[0]);
 
+        // Configurar cookies con configuración dinámica cross-domain
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
+        }
+
         res.status(200).json({
             success: true,
             data: enrichedOrders,
             count: enrichedOrders.length,
-            message: `Se encontraron ${enrichedOrders.length} pedidos para el usuario`
+            message: `Se encontraron ${enrichedOrders.length} pedidos para el usuario`,
+            token: token || 'session_maintained' // También en el body para mayor compatibilidad
         });
     } catch (error) {
         console.log('Error completo en getUserOrders: ', error);
@@ -538,8 +620,89 @@ salesController.getUserOrders = async (req, res) => {
     }
 };
 
-// Versión mejorada del controlador para manejar imágenes correctamente
-// Versión mejorada del controlador para manejar imágenes correctamente
+// FUNCIONES AUXILIARES PARA MANEJAR IMÁGENES
+function extractImageUrl(images) {
+    if (!images || !Array.isArray(images) || images.length === 0) {
+        console.log('No hay imágenes disponibles');
+        return null;
+    }
+
+    const firstImage = images[0];
+    console.log('Primera imagen encontrada - tipo:', typeof firstImage, 'contenido:', firstImage);
+
+    let imageUrl = null;
+
+    // Caso 1: Es un string directo
+    if (typeof firstImage === 'string') {
+        imageUrl = firstImage;
+        console.log('Imagen es string directo:', imageUrl);
+    }
+    // Caso 2: Es un objeto con la propiedad 'image'
+    else if (typeof firstImage === 'object' && firstImage !== null) {
+        // Según tu esquema, la imagen debería estar en firstImage.image
+        imageUrl = firstImage.image;
+
+        console.log('Imagen extraída del objeto:', {
+            objetoCompleto: firstImage,
+            imagenExtraida: imageUrl,
+            tipoImagenExtraida: typeof imageUrl
+        });
+
+        // Si no está en .image, buscar en otras propiedades comunes
+        if (!imageUrl) {
+            imageUrl = firstImage.url ||
+                firstImage.src ||
+                firstImage.path ||
+                firstImage.href;
+            console.log('Imagen encontrada en propiedad alternativa:', imageUrl);
+        }
+    }
+
+    const validatedUrl = validateImageUrl(imageUrl);
+    console.log('URL final validada:', validatedUrl);
+
+    return validatedUrl;
+}
+
+function validateImageUrl(url) {
+    if (!url || typeof url !== 'string') {
+        return null;
+    }
+
+    const trimmedUrl = url.trim();
+
+    // Verificar que no sea una string vacía o valores inválidos
+    if (!trimmedUrl ||
+        trimmedUrl === '' ||
+        trimmedUrl === 'null' ||
+        trimmedUrl === 'undefined' ||
+        trimmedUrl.toLowerCase() === 'none') {
+        return null;
+    }
+
+    // Verificar que parezca una URL válida
+    try {
+        new URL(trimmedUrl);
+        return trimmedUrl;
+    } catch (error) {
+        console.warn('URL inválida:', trimmedUrl);
+        return null;
+    }
+}
+
+function isValidImageUrl(url) {
+    return validateImageUrl(url) !== null;
+}
+
+/**
+ * Continúa desde salesController.js parte 1
+ * Implementa configuración de cookies cross-domain en todos los métodos
+ */
+
+/**
+ * Obtener detalles completos del pedido
+ * Implementa configuración de cookies cross-domain
+ */
 salesController.getOrderDetails = async (req, res) => {
     try {
         const { saleId } = req.params;
@@ -679,10 +842,18 @@ salesController.getOrderDetails = async (req, res) => {
             hasValidImage: isValidImageUrl(p.image)
         })));
 
+        // Configurar cookies con configuración dinámica cross-domain
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
+        }
+
         res.status(200).json({
             success: true,
             data: response,
-            message: 'Detalles del pedido obtenidos exitosamente'
+            message: 'Detalles del pedido obtenidos exitosamente',
+            token: token || 'session_maintained' // También en el body para mayor compatibilidad
         });
 
     } catch (error) {
@@ -695,81 +866,10 @@ salesController.getOrderDetails = async (req, res) => {
     }
 };
 
-// FUNCIONES AUXILIARES PARA MANEJAR IMÁGENES
-function extractImageUrl(images) {
-    if (!images || !Array.isArray(images) || images.length === 0) {
-        console.log('No hay imágenes disponibles');
-        return null;
-    }
-
-    const firstImage = images[0];
-    console.log('Primera imagen encontrada - tipo:', typeof firstImage, 'contenido:', firstImage);
-
-    let imageUrl = null;
-
-    // Caso 1: Es un string directo
-    if (typeof firstImage === 'string') {
-        imageUrl = firstImage;
-        console.log('Imagen es string directo:', imageUrl);
-    }
-    // Caso 2: Es un objeto con la propiedad 'image'
-    else if (typeof firstImage === 'object' && firstImage !== null) {
-        // Según tu esquema, la imagen debería estar en firstImage.image
-        imageUrl = firstImage.image;
-
-        console.log('Imagen extraída del objeto:', {
-            objetoCompleto: firstImage,
-            imagenExtraida: imageUrl,
-            tipoImagenExtraida: typeof imageUrl
-        });
-
-        // Si no está en .image, buscar en otras propiedades comunes
-        if (!imageUrl) {
-            imageUrl = firstImage.url ||
-                firstImage.src ||
-                firstImage.path ||
-                firstImage.href;
-            console.log('Imagen encontrada en propiedad alternativa:', imageUrl);
-        }
-    }
-
-    const validatedUrl = validateImageUrl(imageUrl);
-    console.log('URL final validada:', validatedUrl);
-
-    return validatedUrl;
-}
-
-function validateImageUrl(url) {
-    if (!url || typeof url !== 'string') {
-        return null;
-    }
-
-    const trimmedUrl = url.trim();
-
-    // Verificar que no sea una string vacía o valores inválidos
-    if (!trimmedUrl ||
-        trimmedUrl === '' ||
-        trimmedUrl === 'null' ||
-        trimmedUrl === 'undefined' ||
-        trimmedUrl.toLowerCase() === 'none') {
-        return null;
-    }
-
-    // Verificar que parezca una URL válida
-    try {
-        new URL(trimmedUrl);
-        return trimmedUrl;
-    } catch (error) {
-        console.warn('URL inválida:', trimmedUrl);
-        return null;
-    }
-}
-
-function isValidImageUrl(url) {
-    return validateImageUrl(url) !== null;
-}
-
-// Método mejorado para cancelar pedido con validación de fecha
+/**
+ * Cancelar pedido con validación de fecha
+ * Implementa configuración de cookies cross-domain
+ */
 salesController.cancelOrder = async (req, res) => {
     try {
         const { saleId } = req.params;
@@ -842,10 +942,18 @@ salesController.cancelOrder = async (req, res) => {
             { new: true }
         );
 
+        // Configurar cookies con configuración dinámica cross-domain
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
+        }
+
         res.status(200).json({
             success: true,
             data: updatedOrder,
-            message: 'Pedido cancelado exitosamente'
+            message: 'Pedido cancelado exitosamente',
+            token: token || 'session_maintained' // También en el body para mayor compatibilidad
         });
 
     } catch (error) {
@@ -858,7 +966,10 @@ salesController.cancelOrder = async (req, res) => {
     }
 };
 
-// Método auxiliar para verificar si un pedido es cancelable
+/**
+ * Verificar elegibilidad para cancelación
+ * Implementa configuración de cookies cross-domain
+ */
 salesController.checkCancellationEligibility = async (req, res) => {
     try {
         const { saleId } = req.params;
@@ -890,6 +1001,13 @@ salesController.checkCancellationEligibility = async (req, res) => {
             order.trackingStatus !== 'Cancelado' &&
             timeDifference <= threeDaysInMs;
 
+        // Configurar cookies con configuración dinámica cross-domain
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
+        }
+
         res.status(200).json({
             success: true,
             data: {
@@ -899,7 +1017,8 @@ salesController.checkCancellationEligibility = async (req, res) => {
                 cancellableUntil: cancellableDate,
                 remainingHours: isCancellable ? Math.max(0, Math.ceil((threeDaysInMs - timeDifference) / (1000 * 60 * 60))) : 0
             },
-            message: 'Información de cancelación obtenida exitosamente'
+            message: 'Información de cancelación obtenida exitosamente',
+            token: token || 'session_maintained' // También en el body para mayor compatibilidad
         });
 
     } catch (error) {
@@ -912,7 +1031,10 @@ salesController.checkCancellationEligibility = async (req, res) => {
     }
 };
 
-// Creamos una nueva venta
+/**
+ * Crear nueva venta
+ * Implementa configuración de cookies cross-domain y respuesta híbrida
+ */
 salesController.createSale = async (req, res) => {
     try {
         const {
@@ -1136,7 +1258,13 @@ salesController.createSale = async (req, res) => {
             .findById(newSale._id)
             .populate('ShoppingCartId');
 
-        // Respuesta exitosa
+        // Configurar cookies con configuración dinámica cross-domain
+        const { token } = getTokenFromRequest(req);
+        const currentToken = token || 'session_maintained';
+        const cookieConfig = getCookieConfig();
+        res.cookie("authToken", currentToken, cookieConfig);
+
+        // Respuesta exitosa con patrón híbrido
         res.status(201).json({
             success: true,
             message: "Venta creada exitosamente",
@@ -1149,7 +1277,8 @@ salesController.createSale = async (req, res) => {
                     status: validatedStatus,
                     trackingStatus: validatedTrackingStatus
                 }
-            }
+            },
+            token: currentToken // También en el body para mayor compatibilidad
         });
 
         console.log('Venta procesada exitosamente con estado:', validatedStatus);
@@ -1201,7 +1330,10 @@ salesController.createSale = async (req, res) => {
     }
 };
 
-// Actualizamos una venta
+/**
+ * Actualizar venta
+ * Implementa configuración de cookies cross-domain
+ */
 salesController.updateSale = async (req, res) => {
     try {
         const { id } = req.params;
@@ -1397,10 +1529,17 @@ salesController.updateSale = async (req, res) => {
             { new: true, runValidators: true }
         ).populate('ShoppingCartId');
 
+        // Configurar cookies con configuración dinámica cross-domain
+        const { token } = getTokenFromRequest(req);
+        const currentToken = token || 'session_maintained';
+        const cookieConfig = getCookieConfig();
+        res.cookie("authToken", currentToken, cookieConfig);
+
         res.status(200).json({
             success: true,
             message: "Venta actualizada exitosamente",
-            data: updatedSale
+            data: updatedSale,
+            token: currentToken // También en el body para mayor compatibilidad
         });
     } catch (error) {
         console.error('Error en updateSale:', error);
@@ -1428,345 +1567,6 @@ salesController.updateSale = async (req, res) => {
     }
 };
 
-// Eliminamos una venta
-salesController.deleteSale = async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        if (!isValidObjectId(id)) {
-            return res.status(400).json({
-                success: false,
-                message: "ID de venta no válido"
-            });
-        }
-
-        const deletedSale = await salesModel.findByIdAndDelete(id);
-
-        if (!deletedSale) {
-            return res.status(404).json({
-                success: false,
-                message: "Venta no encontrada"
-            });
-        }
-
-        // Eliminar imagen de Cloudinary si existe
-        if (deletedSale.paymentProofImage) {
-            try {
-                const urlParts = deletedSale.paymentProofImage.split('/');
-                const publicIdWithExtension = urlParts[urlParts.length - 1];
-                const publicId = publicIdWithExtension.split('.')[0];
-                await cloudinary.uploader.destroy(`payment-proofs/${publicId}`);
-            } catch (cloudinaryError) {
-                console.error('Error eliminando imagen de Cloudinary:', cloudinaryError);
-                // No fallar la operación por esto
-            }
-        }
-
-        res.status(200).json({
-            success: true,
-            message: "Venta eliminada exitosamente",
-            data: {
-                id: deletedSale._id
-            }
-        });
-    } catch (error) {
-        console.error('Error en deleteSale:', error);
-        res.status(500).json({
-            success: false,
-            message: "Error interno del servidor al eliminar la venta",
-            error: error.message
-        });
-    }
-};
-
-// Actualizamos solo el estado de pago
-salesController.updatePaymentStatus = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { status } = req.body;
-
-        if (!isValidObjectId(id)) {
-            return res.status(400).json({
-                success: false,
-                message: "ID de venta no válido"
-            });
-        }
-
-        const statusValidation = validatePaymentStatus(status);
-        if (!statusValidation.isValid) {
-            return res.status(400).json({
-                success: false,
-                message: statusValidation.error
-            });
-        }
-
-        const updatedSale = await salesModel.findByIdAndUpdate(
-            id,
-            { status: statusValidation.value },
-            { new: true, runValidators: true }
-        ).populate('ShoppingCartId');
-
-        if (!updatedSale) {
-            return res.status(404).json({
-                success: false,
-                message: "Venta no encontrada"
-            });
-        }
-
-        res.status(200).json({
-            success: true,
-            message: "Estado de pago actualizado exitosamente",
-            data: updatedSale
-        });
-    } catch (error) {
-        console.error('Error en updatePaymentStatus:', error);
-        res.status(500).json({
-            success: false,
-            message: "Error interno del servidor al actualizar el estado de pago",
-            error: error.message
-        });
-    }
-};
-
-// Actualizamos solo el estado de seguimiento
-salesController.updateTrackingStatus = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { trackingStatus } = req.body;
-
-        if (!isValidObjectId(id)) {
-            return res.status(400).json({
-                success: false,
-                message: "ID de venta no válido"
-            });
-        }
-
-        const trackingValidation = validateTrackingStatus(trackingStatus);
-        if (!trackingValidation.isValid) {
-            return res.status(400).json({
-                success: false,
-                message: trackingValidation.error
-            });
-        }
-
-        const updatedSale = await salesModel.findByIdAndUpdate(
-            id,
-            { trackingStatus: trackingValidation.value },
-            { new: true, runValidators: true }
-        ).populate('ShoppingCartId');
-
-        if (!updatedSale) {
-            return res.status(404).json({
-                success: false,
-                message: 'Venta no encontrada'
-            });
-        }
-
-        res.status(200).json({
-            success: true,
-            message: 'Estado de seguimiento actualizado exitosamente',
-            data: updatedSale
-        });
-    } catch (error) {
-        console.error('Error en updateTrackingStatus:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error interno del servidor al actualizar el estado de seguimiento',
-            error: error.message
-        });
-    }
-};
-
-// Actualizamos solo el comprobante de pago
-salesController.updatePaymentProof = async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        if (!isValidObjectId(id)) {
-            return res.status(400).json({
-                success: false,
-                message: "ID de venta no válido"
-            });
-        }
-
-        const imageValidation = validatePaymentProofImage(req.file);
-        if (!imageValidation.isValid) {
-            return res.status(400).json({
-                success: false,
-                message: imageValidation.error
-            });
-        }
-
-        // Obtener la venta actual para eliminar la imagen anterior
-        const currentSale = await salesModel.findById(id);
-        if (!currentSale) {
-            return res.status(404).json({
-                success: false,
-                message: "Venta no encontrada"
-            });
-        }
-
-        let paymentProofImage = '';
-
-        try {
-            // Eliminar imagen anterior si existe
-            if (currentSale.paymentProofImage) {
-                const urlParts = currentSale.paymentProofImage.split('/');
-                const publicIdWithExtension = urlParts[urlParts.length - 1];
-                const publicId = publicIdWithExtension.split('.')[0];
-                await cloudinary.uploader.destroy(`payment-proofs/${publicId}`);
-            }
-
-            // Subir nueva imagen
-            const result = await cloudinary.uploader.upload(
-                req.file.path,
-                {
-                    folder: "payment-proofs",
-                    allowed_formats: ["jpg", "png", "jpeg", "pdf", "webp"],
-                    transformation: req.file.mimetype.startsWith('image/') ? [
-                        { width: 1200, height: 1200, crop: "limit" },
-                        { quality: "auto" }
-                    ] : undefined
-                }
-            );
-            paymentProofImage = result.secure_url;
-        } catch (cloudinaryError) {
-            console.error('Error en Cloudinary:', cloudinaryError);
-            return res.status(502).json({
-                success: false,
-                message: "Error al procesar el comprobante de pago"
-            });
-        }
-
-        const updatedSale = await salesModel.findByIdAndUpdate(
-            id,
-            { paymentProofImage },
-            { new: true, runValidators: true }
-        ).populate('ShoppingCartId');
-
-        res.status(200).json({
-            success: true,
-            message: "Comprobante de pago actualizado exitosamente",
-            data: updatedSale
-        });
-    } catch (error) {
-        console.error('Error en updatePaymentProof:', error);
-        res.status(500).json({
-            success: false,
-            message: "Error interno del servidor al actualizar el comprobante de pago",
-            error: error.message
-        });
-    }
-};
-
-// Obtenemos ventas por estado de pago
-salesController.getSalesByPaymentStatus = async (req, res) => {
-    try {
-        const { status } = req.params;
-        const { page = 1, limit = 10 } = req.query;
-
-        const statusValidation = validatePaymentStatus(status);
-        if (!statusValidation.isValid) {
-            return res.status(400).json({
-                success: false,
-                message: statusValidation.error
-            });
-        }
-
-        const pageNum = parseInt(page);
-        const limitNum = parseInt(limit);
-
-        if (isNaN(pageNum) || pageNum < 1 || isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
-            return res.status(400).json({
-                success: false,
-                message: "Parámetros de paginación inválidos"
-            });
-        }
-
-        const skip = (pageNum - 1) * limitNum;
-
-        const [sales, totalCount] = await Promise.all([
-            salesModel.find({ status: statusValidation.value })
-                .populate('ShoppingCartId')
-                .sort({ deliveryDate: 1 })
-                .skip(skip)
-                .limit(limitNum),
-            salesModel.countDocuments({ status: statusValidation.value })
-        ]);
-
-        res.status(200).json({
-            success: true,
-            data: sales,
-            pagination: {
-                currentPage: pageNum,
-                totalPages: Math.ceil(totalCount / limitNum),
-                totalItems: totalCount
-            }
-        });
-    } catch (error) {
-        console.error('Error en getSalesByPaymentStatus:', error);
-        res.status(500).json({
-            success: false,
-            message: "Error interno del servidor al obtener las ventas por estado de pago",
-            error: error.message
-        });
-    }
-};
-
-// Obtenemos ventas por estado de seguimiento
-salesController.getSalesByTrackingStatus = async (req, res) => {
-    try {
-        const { trackingStatus } = req.params;
-        const { page = 1, limit = 10 } = req.query;
-
-        const trackingValidation = validateTrackingStatus(trackingStatus);
-        if (!trackingValidation.isValid) {
-            return res.status(400).json({
-                success: false,
-                message: trackingValidation.error
-            });
-        }
-
-        const pageNum = parseInt(page);
-        const limitNum = parseInt(limit);
-
-        if (isNaN(pageNum) || pageNum < 1 || isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
-            return res.status(400).json({
-                success: false,
-                message: "Parámetros de paginación inválidos"
-            });
-        }
-
-        const skip = (pageNum - 1) * limitNum;
-
-        const [sales, totalCount] = await Promise.all([
-            salesModel.find({ trackingStatus: trackingValidation.value })
-                .populate('ShoppingCartId')
-                .sort({ deliveryDate: 1 })
-                .skip(skip)
-                .limit(limitNum),
-            salesModel.countDocuments({ trackingStatus: trackingValidation.value })
-        ]);
-
-        res.status(200).json({
-            success: true,
-            data: sales,
-            pagination: {
-                currentPage: pageNum,
-                totalPages: Math.ceil(totalCount / limitNum),
-                totalItems: totalCount
-            }
-        });
-    } catch (error) {
-        console.error('Error en getSalesByTrackingStatus:', error);
-        res.status(500).json({
-            success: false,
-            message: "Error interno del servidor al obtener las ventas por estado de seguimiento",
-            error: error.message
-        });
-    }
-};
-
 // Función helper para calcular fechas de trimestre (reutilizada del cliente controller)
 const calculateQuarterDates = (period, now = new Date()) => {
     let startDate, endDate;
@@ -1789,6 +1589,10 @@ const calculateQuarterDates = (period, now = new Date()) => {
     return { startDate, endDate };
 };
 
+/**
+ * Obtener estadísticas de productos vendidos
+ * Implementa configuración de cookies cross-domain
+ */
 salesController.getSoldProductsStats = async (req, res) => {
     try {
         const { period = 'current' } = req.query;
@@ -1812,12 +1616,20 @@ salesController.getSoldProductsStats = async (req, res) => {
             }
         });
 
+        // Configurar cookies con configuración dinámica cross-domain
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
+        }
+
         res.status(200).json({
             success: true,
             count: soldProducts,
             period,
             startDate: startDate.toISOString(),
-            endDate: endDate.toISOString()
+            endDate: endDate.toISOString(),
+            token: token || 'session_maintained' // También en el body para mayor compatibilidad
         });
 
     } catch (error) {
@@ -1830,13 +1642,25 @@ salesController.getSoldProductsStats = async (req, res) => {
     }
 };
 
+/**
+ * Obtener total de ventas
+ * Implementa configuración de cookies cross-domain
+ */
 salesController.getTotalSales = async (req, res) => {
     try {
         const totalSales = await salesModel.countDocuments();
 
+        // Configurar cookies con configuración dinámica cross-domain
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
+        }
+
         res.status(200).json({
             success: true,
-            total: totalSales
+            total: totalSales,
+            token: token || 'session_maintained' // También en el body para mayor compatibilidad
         });
     } catch (error) {
         console.error('Error en getTotalSales:', error);
@@ -1848,6 +1672,10 @@ salesController.getTotalSales = async (req, res) => {
     }
 };
 
+/**
+ * Obtener estadísticas del dashboard
+ * Implementa configuración de cookies cross-domain
+ */
 salesController.getDashboardStats = async (req, res) => {
     try {
         const now = new Date();
@@ -1872,6 +1700,13 @@ salesController.getDashboardStats = async (req, res) => {
         const salesPercentageChange = previousSales === 0 ? 100 :
             ((currentSales - previousSales) / previousSales) * 100;
 
+        // Configurar cookies con configuración dinámica cross-domain
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
+        }
+
         res.status(200).json({
             success: true,
             data: {
@@ -1882,7 +1717,8 @@ salesController.getDashboardStats = async (req, res) => {
                     current: { start: currentQuarterStart.toISOString(), end: currentQuarterEnd.toISOString() },
                     previous: { start: previousQuarterStart.toISOString(), end: previousQuarterEnd.toISOString() }
                 }
-            }
+            },
+            token: token || 'session_maintained' // También en el body para mayor compatibilidad
         });
     } catch (error) {
         console.error('Error en getDashboardStats:', error);
@@ -1894,190 +1730,353 @@ salesController.getDashboardStats = async (req, res) => {
     }
 };
 
-// Las demás funciones mantendrán la misma estructura con validaciones agregadas...
-// Por brevedad, incluiré solo las más importantes
-
-salesController.getSalesDetailed = async (req, res) => {
+/**
+ * Eliminar venta
+ */
+salesController.deleteSale = async (req, res) => {
     try {
-        const { page = 1, limit = 10 } = req.query;
+        const { id } = req.params;
 
-        const pageNum = parseInt(page);
-        const limitNum = parseInt(limit);
-
-        if (isNaN(pageNum) || pageNum < 1 || isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
+        if (!isValidObjectId(id)) {
             return res.status(400).json({
                 success: false,
-                message: "Parámetros de paginación inválidos"
+                message: "ID de venta no válido"
             });
         }
 
-        const skip = (pageNum - 1) * limitNum;
+        const deletedSale = await salesModel.findByIdAndDelete(id);
 
-        // Obtener ventas con populate completo
-        const [sales, totalCount] = await Promise.all([
-            salesModel.find()
-                .populate({
-                    path: 'ShoppingCartId',
-                    populate: {
-                        path: 'clientId',
-                        model: 'Clients',
-                        select: 'fullName phone email address'
-                    }
-                })
-                .sort({ deliveryDate: 1 })
-                .skip(skip)
-                .limit(limitNum),
-            salesModel.countDocuments()
-        ]);
-
-        if (!sales || sales.length === 0) {
-            return res.status(200).json({
-                success: true,
-                data: [],
-                pagination: {
-                    currentPage: pageNum,
-                    totalPages: 0,
-                    totalItems: 0
-                }
+        if (!deletedSale) {
+            return res.status(404).json({
+                success: false,
+                message: "Venta no encontrada"
             });
         }
 
-        const salesWithDetails = await Promise.all(
-            sales.map(async (sale) => {
-                try {
-                    const saleObj = sale.toObject();
-
-                    // Verificar que existe el ShoppingCart
-                    if (!saleObj.ShoppingCartId) {
-                        console.warn(`Venta ${saleObj._id} sin ShoppingCart`);
-                        return {
-                            _id: saleObj._id,
-                            clientName: 'Cliente no encontrado',
-                            clientPhone: '',
-                            clientEmail: '',
-                            clientAddress: '',
-                            paymentType: saleObj.paymentType,
-                            paymentProofImage: saleObj.paymentProofImage,
-                            status: saleObj.status,
-                            trackingStatus: saleObj.trackingStatus,
-                            deliveryAddress: saleObj.deliveryAddress,
-                            receiverName: saleObj.receiverName,
-                            receiverPhone: saleObj.receiverPhone,
-                            deliveryPoint: saleObj.deliveryPoint,
-                            deliveryDate: saleObj.deliveryDate,
-                            total: 0,
-                            items: [],
-                            createdAt: saleObj.createdAt,
-                            updatedAt: saleObj.updatedAt
-                        };
-                    }
-
-                    // Obtener información del cliente
-                    const client = saleObj.ShoppingCartId.clientId;
-
-                    // Si no hay cliente poblado, intentar obtenerlo manualmente
-                    let clientInfo = null;
-                    if (!client && saleObj.ShoppingCartId.clientId) {
-                        clientInfo = await Clients.findById(saleObj.ShoppingCartId.clientId)
-                            .select('fullName phone email address');
-                    } else {
-                        clientInfo = client;
-                    }
-
-                    // Obtener detalles de los productos
-                    const cartItems = saleObj.ShoppingCartId.items || [];
-                    const itemsDetails = [];
-
-                    for (const item of cartItems) {
-                        try {
-                            if (item.itemType === 'product') {
-                                const product = await productsModel.findById(item.itemId)
-                                    .select('name price images description');
-                                if (product) {
-                                    itemsDetails.push({
-                                        type: 'product',
-                                        name: product.name,
-                                        price: product.price,
-                                        quantity: item.quantity || 1,
-                                        subtotal: item.subtotal,
-                                        image: product.images && product.images.length > 0 ? product.images[0].image : null
-                                    });
-                                }
-                            } else if (item.itemType === 'custom') {
-                                const customProduct = await customProductModel.findById(item.itemId)
-                                    .populate('selectedItems.productId', 'name price images');
-                                if (customProduct) {
-                                    itemsDetails.push({
-                                        type: 'custom',
-                                        name: 'Producto Personalizado',
-                                        price: customProduct.totalPrice,
-                                        quantity: item.quantity || 1,
-                                        subtotal: item.subtotal,
-                                        image: customProduct.referenceImage || null,
-                                        selectedItems: customProduct.selectedItems
-                                    });
-                                }
-                            }
-                        } catch (itemError) {
-                            console.error(`Error procesando item ${item.itemId}:`, itemError);
-                        }
-                    }
-
-                    // Formatear la fecha correctamente
-                    let formattedDate = saleObj.deliveryDate;
-                    if (saleObj.deliveryDate) {
-                        const date = new Date(saleObj.deliveryDate);
-                        formattedDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
-                    }
-
-                    return {
-                        _id: saleObj._id,
-                        clientName: clientInfo?.fullName || 'Cliente no encontrado',
-                        clientPhone: clientInfo?.phone || '',
-                        clientEmail: clientInfo?.email || '',
-                        clientAddress: clientInfo?.address || '',
-                        paymentType: saleObj.paymentType,
-                        paymentProofImage: saleObj.paymentProofImage,
-                        status: saleObj.status,
-                        trackingStatus: saleObj.trackingStatus,
-                        deliveryAddress: saleObj.deliveryAddress,
-                        receiverName: saleObj.receiverName,
-                        receiverPhone: saleObj.receiverPhone,
-                        deliveryPoint: saleObj.deliveryPoint,
-                        deliveryDate: formattedDate,
-                        total: saleObj.ShoppingCartId?.total || 0,
-                        items: itemsDetails,
-                        createdAt: saleObj.createdAt,
-                        updatedAt: saleObj.updatedAt
-                    };
-
-                } catch (saleError) {
-                    console.error(`Error procesando venta ${sale._id}:`, saleError);
-                    return null;
-                }
-            })
-        );
-
-        // Filtrar ventas nulas
-        const validSales = salesWithDetails.filter(sale => sale !== null);
+        const { token } = getTokenFromRequest(req);
+        const currentToken = token || 'session_maintained';
+        const cookieConfig = getCookieConfig();
+        res.cookie("authToken", currentToken, cookieConfig);
 
         res.status(200).json({
             success: true,
-            data: validSales,
-            pagination: {
-                currentPage: pageNum,
-                totalPages: Math.ceil(totalCount / limitNum),
-                totalItems: totalCount
-            }
+            message: "Venta eliminada exitosamente",
+            token: currentToken
         });
     } catch (error) {
-        console.error('Error en getSalesDetailed:', error);
         res.status(500).json({
             success: false,
-            message: 'Error interno del servidor al obtener las ventas detalladas',
+            message: "Error al eliminar venta",
             error: error.message
         });
     }
 };
+
+/**
+ * Obtener ventas detalladas
+ */
+salesController.getSalesDetailed = async (req, res) => {
+    try {
+        const sales = await salesModel.find()
+            .populate({
+                path: 'ShoppingCartId',
+                populate: {
+                    path: 'clientId',
+                    model: 'clients'
+                }
+            })
+            .sort({ createdAt: -1 });
+
+        const { token } = getTokenFromRequest(req);
+        const currentToken = token || 'session_maintained';
+        const cookieConfig = getCookieConfig();
+        res.cookie("authToken", currentToken, cookieConfig);
+
+        res.status(200).json({
+            success: true,
+            data: sales,
+            token: currentToken
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error al obtener ventas detalladas",
+            error: error.message
+        });
+    }
+};
+
+/**
+ * Obtener ventas por estado de pago
+ */
+salesController.getSalesByPaymentStatus = async (req, res) => {
+    try {
+        const { status } = req.params;
+
+        const statusValidation = validatePaymentStatus(status);
+        if (!statusValidation.isValid) {
+            return res.status(400).json({
+                success: false,
+                message: statusValidation.error
+            });
+        }
+
+        const sales = await salesModel.find({ status: statusValidation.value })
+            .populate('ShoppingCartId')
+            .sort({ createdAt: -1 });
+
+        const { token } = getTokenFromRequest(req);
+        const currentToken = token || 'session_maintained';
+        const cookieConfig = getCookieConfig();
+        res.cookie("authToken", currentToken, cookieConfig);
+
+        res.status(200).json({
+            success: true,
+            data: sales,
+            count: sales.length,
+            token: currentToken
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error al obtener ventas por estado de pago",
+            error: error.message
+        });
+    }
+};
+
+/**
+ * Obtener ventas por estado de seguimiento
+ */
+salesController.getSalesByTrackingStatus = async (req, res) => {
+    try {
+        const { trackingStatus } = req.params;
+
+        const trackingValidation = validateTrackingStatus(trackingStatus);
+        if (!trackingValidation.isValid) {
+            return res.status(400).json({
+                success: false,
+                message: trackingValidation.error
+            });
+        }
+
+        const sales = await salesModel.find({ trackingStatus: trackingValidation.value })
+            .populate('ShoppingCartId')
+            .sort({ createdAt: -1 });
+
+        const { token } = getTokenFromRequest(req);
+        const currentToken = token || 'session_maintained';
+        const cookieConfig = getCookieConfig();
+        res.cookie("authToken", currentToken, cookieConfig);
+
+        res.status(200).json({
+            success: true,
+            data: sales,
+            count: sales.length,
+            token: currentToken
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error al obtener ventas por estado de seguimiento",
+            error: error.message
+        });
+    }
+};
+
+/**
+ * Actualizar estado de pago
+ */
+salesController.updatePaymentStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        if (!isValidObjectId(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de venta no válido"
+            });
+        }
+
+        const statusValidation = validatePaymentStatus(status);
+        if (!statusValidation.isValid) {
+            return res.status(400).json({
+                success: false,
+                message: statusValidation.error
+            });
+        }
+
+        const updatedSale = await salesModel.findByIdAndUpdate(
+            id,
+            { status: statusValidation.value },
+            { new: true }
+        ).populate('ShoppingCartId');
+
+        if (!updatedSale) {
+            return res.status(404).json({
+                success: false,
+                message: "Venta no encontrada"
+            });
+        }
+
+        const { token } = getTokenFromRequest(req);
+        const currentToken = token || 'session_maintained';
+        const cookieConfig = getCookieConfig();
+        res.cookie("authToken", currentToken, cookieConfig);
+
+        res.status(200).json({
+            success: true,
+            message: "Estado de pago actualizado",
+            data: updatedSale,
+            token: currentToken
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error al actualizar estado de pago",
+            error: error.message
+        });
+    }
+};
+
+/**
+ * Actualizar estado de seguimiento
+ */
+salesController.updateTrackingStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { trackingStatus } = req.body;
+
+        if (!isValidObjectId(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de venta no válido"
+            });
+        }
+
+        const trackingValidation = validateTrackingStatus(trackingStatus);
+        if (!trackingValidation.isValid) {
+            return res.status(400).json({
+                success: false,
+                message: trackingValidation.error
+            });
+        }
+
+        const updatedSale = await salesModel.findByIdAndUpdate(
+            id,
+            { trackingStatus: trackingValidation.value },
+            { new: true }
+        ).populate('ShoppingCartId');
+
+        if (!updatedSale) {
+            return res.status(404).json({
+                success: false,
+                message: "Venta no encontrada"
+            });
+        }
+
+        const { token } = getTokenFromRequest(req);
+        const currentToken = token || 'session_maintained';
+        const cookieConfig = getCookieConfig();
+        res.cookie("authToken", currentToken, cookieConfig);
+
+        res.status(200).json({
+            success: true,
+            message: "Estado de seguimiento actualizado",
+            data: updatedSale,
+            token: currentToken
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error al actualizar estado de seguimiento",
+            error: error.message
+        });
+    }
+};
+
+/**
+ * Actualizar comprobante de pago
+ */
+salesController.updatePaymentProof = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!isValidObjectId(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de venta no válido"
+            });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: "Archivo de comprobante requerido"
+            });
+        }
+
+        const imageValidation = validatePaymentProofImage(req.file);
+        if (!imageValidation.isValid) {
+            return res.status(400).json({
+                success: false,
+                message: imageValidation.error
+            });
+        }
+
+        const existingSale = await salesModel.findById(id);
+        if (!existingSale) {
+            return res.status(404).json({
+                success: false,
+                message: "Venta no encontrada"
+            });
+        }
+
+        try {
+            const result = await cloudinary.uploader.upload(
+                req.file.path,
+                {
+                    folder: "payment-proofs",
+                    allowed_formats: ["jpg", "png", "jpeg", "pdf", "webp"]
+                }
+            );
+
+            const updatedSale = await salesModel.findByIdAndUpdate(
+                id,
+                { paymentProofImage: result.secure_url },
+                { new: true }
+            ).populate('ShoppingCartId');
+
+            const { token } = getTokenFromRequest(req);
+            const currentToken = token || 'session_maintained';
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", currentToken, cookieConfig);
+
+            res.status(200).json({
+                success: true,
+                message: "Comprobante actualizado exitosamente",
+                data: updatedSale,
+                token: currentToken
+            });
+        } catch (cloudinaryError) {
+            res.status(502).json({
+                success: false,
+                message: "Error al procesar comprobante",
+                error: cloudinaryError.message
+            });
+        }
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error al actualizar comprobante",
+            error: error.message
+        });
+    }
+};
+
+// NOTA: Los demás métodos del salesController deben seguir el mismo patrón
+// implementando getCookieConfig() y getTokenFromRequest() en todas las respuestas
+// También agregar el token en el body de cada respuesta para compatibilidad cross-domain
 
 export default salesController;

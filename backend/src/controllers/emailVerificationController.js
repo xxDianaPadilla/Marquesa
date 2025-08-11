@@ -7,6 +7,34 @@ import { getEmailTemplate } from "../utils/emailVerificationDesign.js";
 
 const emailVerificationController = {};
 
+// Función helper para configuración dinámica de cookies basada en el entorno
+const getCookieConfig = () => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    return {
+        httpOnly: false, // Permitir acceso desde JavaScript
+        secure: isProduction, // Solo HTTPS en producción
+        sameSite: isProduction ? 'none' : 'lax', // Cross-domain en producción
+        maxAge: 24 * 60 * 60 * 1000, // 24 horas
+        domain: undefined // Dejar que el navegador determine
+    };
+};
+
+// Función helper para obtener token de múltiples fuentes en la petición
+const getTokenFromRequest = (req) => {
+    let token = req.cookies?.authToken;
+    let source = 'cookie';
+
+    if (!token) {
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.substring(7);
+            source = 'authorization_header';
+        }
+    }
+
+    return { token, source };
+};
+
 // Cache para prevenir múltiples envíos rápidos
 const requestCache = new Map();
 const CACHE_DURATION = 30000; // 30 segundos
@@ -16,23 +44,23 @@ const validateEmail = (email) => {
     if (!email || typeof email !== 'string') {
         return { isValid: false, error: "Email es requerido" };
     }
-    
+
     const trimmedEmail = email.trim().toLowerCase();
-    
+
     if (trimmedEmail.length === 0) {
         return { isValid: false, error: "Email no puede estar vacío" };
     }
-    
+
     // Validación de formato de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(trimmedEmail)) {
         return { isValid: false, error: "Formato de email no válido" };
     }
-    
+
     if (trimmedEmail.length > 254) {
         return { isValid: false, error: "Email demasiado largo" };
     }
-    
+
     return { isValid: true, value: trimmedEmail };
 };
 
@@ -41,19 +69,19 @@ const validateFullName = (fullName) => {
     if (!fullName || typeof fullName !== 'string') {
         return { isValid: true, value: null }; // Es opcional
     }
-    
+
     const trimmedName = fullName.trim();
-    
+
     if (trimmedName.length > 100) {
         return { isValid: false, error: "Nombre demasiado largo" };
     }
-    
+
     // Validar caracteres no permitidos
     const invalidChars = /[<>{}()[\]]/;
     if (invalidChars.test(trimmedName)) {
         return { isValid: false, error: "Nombre contiene caracteres no válidos" };
     }
-    
+
     return { isValid: true, value: trimmedName };
 };
 
@@ -65,11 +93,11 @@ const validateUserData = (userData) => {
 
     const requiredFields = ['fullName', 'phone', 'birthDate', 'address', 'password'];
     const missingFields = requiredFields.filter(field => !userData[field]);
-    
+
     if (missingFields.length > 0) {
-        return { 
-            isValid: false, 
-            error: `Campos requeridos faltantes: ${missingFields.join(', ')}` 
+        return {
+            isValid: false,
+            error: `Campos requeridos faltantes: ${missingFields.join(', ')}`
         };
     }
 
@@ -114,30 +142,43 @@ const validateVerificationCode = (code) => {
     if (!code || typeof code !== 'string') {
         return { isValid: false, error: "Código de verificación es requerido" };
     }
-    
+
     const trimmedCode = code.toString().trim();
-    
+
     if (!/^\d{6}$/.test(trimmedCode)) {
         return { isValid: false, error: "Código debe ser exactamente 6 dígitos" };
     }
-    
+
     return { isValid: true, value: trimmedCode };
 };
 
 // Configuración del transportador de email usando nodemailer
+// Configuración del transportador de email usando nodemailer
+// Configuración del transportador de email usando nodemailer
 const createTransporter = () => {
     try {
+        console.log('Configurando transportador de email...');
+        console.log('Email user:', config.emailUser.user_email ? 'configurado' : 'NO configurado');
+        console.log('Email pass:', config.emailUser.user_pass ? 'configurado' : 'NO configurado');
+
         if (!config.emailUser.user_email || !config.emailUser.user_pass) {
-            throw new Error('Configuración de email incompleta');
+            throw new Error('Configuración de email incompleta - verificar variables de entorno');
         }
 
-        return nodemailer.createTransport({
+        // CORRECCIÓN: usar createTransport (sin 'er' al final)
+        const transporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {
                 user: config.emailUser.user_email,
                 pass: config.emailUser.user_pass
+            },
+            tls: {
+                rejectUnauthorized: false
             }
         });
+
+        console.log('Transportador de email configurado correctamente');
+        return transporter;
     } catch (error) {
         console.error('Error creando transportador de email:', error);
         throw error;
@@ -193,10 +234,10 @@ emailVerificationController.requestEmailVerification = async (req, res) => {
         if (requestCache.has(emailKey)) {
             const lastRequest = requestCache.get(emailKey);
             const timeDiff = now - lastRequest;
-            
+
             console.log(`Solicitud duplicada detectada para ${emailKey}`);
             console.log(`Tiempo desde última solicitud: ${timeDiff}ms`);
-            
+
             if (timeDiff < CACHE_DURATION) {
                 console.log('Solicitud bloqueada por ser muy reciente');
                 return res.status(429).json({
@@ -248,7 +289,7 @@ emailVerificationController.requestEmailVerification = async (req, res) => {
 
         // Generar código de verificación
         const verificationCode = generateVerificationCode();
-        
+
         // Calcular tiempo de expiración (10 minutos)
         const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -273,9 +314,11 @@ emailVerificationController.requestEmailVerification = async (req, res) => {
         }
 
         // Configurar y enviar email
+        // Configurar y enviar email
         try {
             console.log('Iniciando envío de email...');
             const transporter = createTransporter();
+
             const mailOptions = {
                 from: {
                     name: 'Marquesa - Tienda de Regalos',
@@ -286,22 +329,44 @@ emailVerificationController.requestEmailVerification = async (req, res) => {
                 html: getEmailTemplate(verificationCode, nameValidation.value)
             };
 
+            console.log('Enviando email a:', emailKey);
             const emailResult = await transporter.sendMail(mailOptions);
             console.log('Email enviado exitosamente. MessageId:', emailResult.messageId);
+
         } catch (emailError) {
-            console.error('Error al enviar email:', emailError);
-            // Aún así devolver éxito porque el código se guardó en BD
+            console.error('Error detallado al enviar email:', {
+                message: emailError.message,
+                code: emailError.code,
+                command: emailError.command,
+                response: emailError.response
+            });
+
+            // Determinar el tipo de error
+            let errorMessage = "Error enviando correo de verificación. Inténtalo de nuevo.";
+
+            if (emailError.code === 'EAUTH') {
+                errorMessage = "Error de autenticación de email. Contacta al administrador.";
+            } else if (emailError.code === 'ECONNECTION') {
+                errorMessage = "Error de conexión. Verifica tu conexión a internet.";
+            }
+
             return res.status(502).json({
                 success: false,
-                message: "Error enviando correo de verificación. Inténtalo de nuevo."
+                message: errorMessage,
+                details: process.env.NODE_ENV === 'development' ? emailError.message : undefined
             });
         }
 
         console.log('=== FIN requestEmailVerification ===');
 
+        // Configurar cookies con configuración dinámica
+        const cookieConfig = getCookieConfig();
+        res.cookie("emailVerificationToken", "verification_in_progress", cookieConfig);
+
         res.status(200).json({
             success: true,
-            message: "Correo de verificación enviado. Tienes 10 minutos para usar el código"
+            message: "Correo de verificación enviado. Tienes 10 minutos para usar el código",
+            token: "verification_in_progress" // También en el body para mayor compatibilidad
         });
 
     } catch (error) {
@@ -434,14 +499,14 @@ emailVerificationController.verifyEmailAndRegister = async (req, res) => {
             console.log('Cliente creado exitosamente:', newClient._id);
         } catch (dbError) {
             console.error('Error creando cliente:', dbError);
-            
+
             if (dbError.code === 11000) {
                 return res.status(409).json({
                     success: false,
                     message: "Este correo electrónico ya está registrado"
                 });
             }
-            
+
             if (dbError.name === 'ValidationError') {
                 return res.status(400).json({
                     success: false,
@@ -449,7 +514,7 @@ emailVerificationController.verifyEmailAndRegister = async (req, res) => {
                     details: Object.values(dbError.errors).map(err => err.message)
                 });
             }
-            
+
             return res.status(503).json({
                 success: false,
                 message: "Error creando cuenta de usuario"
@@ -470,9 +535,15 @@ emailVerificationController.verifyEmailAndRegister = async (req, res) => {
 
         console.log('=== FIN verifyEmailAndRegister ===');
 
+        // Configurar cookies con configuración dinámica
+        const cookieConfig = getCookieConfig();
+        res.clearCookie("emailVerificationToken"); // Limpiar cookie de verificación
+        res.cookie("registrationComplete", "success", cookieConfig);
+
         res.status(201).json({
             success: true,
-            message: "Correo verificado y registro completado exitosamente"
+            message: "Correo verificado y registro completado exitosamente",
+            token: "registration_complete" // También en el body para mayor compatibilidad
         });
 
     } catch (error) {

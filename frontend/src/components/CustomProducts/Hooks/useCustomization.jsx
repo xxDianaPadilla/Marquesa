@@ -38,7 +38,7 @@ const useCustomization = () => {
                     console.log(`${key}:`, value);
                 }
 
-                const response = await fetch('http://localhost:4000/api/customProducts', {
+                const response = await fetch('https://test-9gs3.onrender.com/api/customProducts', {
                     method: 'POST',
                     body: formData,
                     credentials: 'include'
@@ -74,7 +74,7 @@ const useCustomization = () => {
                 console.log('JSON data:', JSON.stringify(customProductData, null, 2));
                 
                 // Sin imagen, enviar como JSON
-                const response = await fetch('http://localhost:4000/api/customProducts', {
+                const response = await fetch('https://test-9gs3.onrender.com/api/customProducts', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -121,7 +121,7 @@ const useCustomization = () => {
             console.log('userId:', userId);
             console.log('itemData:', itemData);
 
-            const response = await fetch(`http://localhost:4000/api/shoppingCart/${userId}/add-item`, {
+            const response = await fetch(`https://test-9gs3.onrender.com/api/shoppingCart/${userId}/add-item`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

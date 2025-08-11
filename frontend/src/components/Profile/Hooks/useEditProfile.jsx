@@ -3,10 +3,11 @@ import { useAuth } from '../../../context/AuthContext';
 
 /**
  * Hook personalizado para manejar la edición del perfil de usuario
+ * ACTUALIZADO: Sistema de autenticación cross-domain híbrido
  * Maneja la lógica de validación, envío de datos y manejo de archivos
  */
 const useEditProfile = () => {
-    const { userInfo, getUserInfo } = useAuth();
+    const { userInfo, getUserInfo, getBestAvailableToken, setAuthToken } = useAuth();
 
     // Estados del formulario
     const [formData, setFormData] = useState({
@@ -20,6 +21,20 @@ const useEditProfile = () => {
     const [errors, setErrors] = useState({});
     const [isLoading, setIsLoading] = useState(false);
     const [previewImage, setPreviewImage] = useState(null);
+
+    /**
+     * ✅ NUEVA FUNCIÓN: Crear headers de autenticación híbridos
+     */
+    const getAuthHeaders = useCallback(() => {
+        const token = getBestAvailableToken();
+        const headers = {
+            'Content-Type': 'application/json',
+        };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        return headers;
+    }, [getBestAvailableToken]);
 
     /**
      * Función de validación para el nombre
@@ -228,7 +243,7 @@ const useEditProfile = () => {
     }, [formData, validateFullName, validatePhone, validateAddress, validateImage]);
 
     /**
-     * Envía el formulario al backend
+     * ✅ ACTUALIZADA: Envía el formulario al backend con sistema híbrido
      */
     const submitForm = useCallback(async () => {
         if (!validateForm()) {
@@ -250,15 +265,48 @@ const useEditProfile = () => {
 
             console.log('Enviando datos del perfil...');
 
-            const response = await fetch('http://localhost:4000/api/clients/profile', {
+            // ✅ NUEVA LÓGICA: Petición con sistema híbrido
+            // Nota: Para FormData, no incluimos Content-Type en headers
+            const token = getBestAvailableToken();
+            const headers = {};
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            const operationPromise = fetch('https://test-9gs3.onrender.com/api/clients/profile', {
                 method: 'PUT',
-                credentials: 'include',
+                credentials: 'include', // ✅ NUEVO: Incluir cookies
+                headers: headers, // ✅ NUEVO: Headers híbridos (sin Content-Type para FormData)
                 body: formDataToSend
             });
 
+            // ✅ NUEVO: Timeout para conexiones lentas
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
+            });
+
+            const response = await Promise.race([operationPromise, timeoutPromise]);
             const data = await response.json();
 
             if (data.success) {
+                // ✅ NUEVO: Manejo híbrido de tokens
+                let token = null;
+
+                // Primera prioridad: response body
+                if (data.token) {
+                    token = data.token;
+                    setAuthToken(token); // Guardar en estado local
+                }
+
+                // Segunda prioridad: cookie (con retraso)
+                if (!token) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    token = getBestAvailableToken();
+                    if (token) {
+                        setAuthToken(token);
+                    }
+                }
+
                 await getUserInfo();
                 return {
                     success: true,
@@ -272,14 +320,28 @@ const useEditProfile = () => {
             }
         } catch (error) {
             console.error('Error actualizando perfil:', error);
+            
+            // ✅ NUEVO: Manejo específico de errores de red vs servidor
+            let errorMessage = 'Error de conexión. Verifica tu internet e inténtalo nuevamente.';
+            
+            if (error.message === 'TIMEOUT') {
+                errorMessage = 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
+            } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
+            } else if (error.message?.includes('timeout')) {
+                errorMessage = 'La conexión tardó demasiado. Inténtalo nuevamente.';
+            } else if (error.message?.includes('network')) {
+                errorMessage = 'Error de red. Verifica tu conexión a internet.';
+            }
+            
             return {
                 success: false,
-                message: 'Error de conexión. Verifica tu internet e inténtalo nuevamente.'
+                message: errorMessage
             };
         } finally {
             setIsLoading(false);
         }
-    }, [formData, validateForm, getUserInfo]);
+    }, [formData, validateForm, getUserInfo, getBestAvailableToken, setAuthToken]);
 
     /**
      * Inicializa el formulario con datos del usuario

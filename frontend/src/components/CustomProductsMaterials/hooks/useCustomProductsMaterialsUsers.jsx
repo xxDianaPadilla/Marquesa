@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const API_BASE_URL = 'http://localhost:4000/api/customProductsMaterials';
+const API_BASE_URL = 'https://test-9gs3.onrender.com/api/customProductsMaterials';
 
 export const useCustomProductsMaterialsUsers = () => {
     const [materials, setMaterials] = useState([]);

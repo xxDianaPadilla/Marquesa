@@ -45,7 +45,7 @@ const RuletaPage = () => {
         try {
             setLoadingCodes(true);
             
-            const response = await fetch('http://localhost:4000/api/clients/ruleta/codes', {
+            const response = await fetch('https://test-9gs3.onrender.com/api/clients/ruleta/codes', {
                 method: 'GET',
                 credentials: 'include',
                 headers: {

@@ -5,116 +5,105 @@ import { config } from "../config.js";
 
 const loginController = {};
 
-// ===== CONFIGURACIÓN DEL SISTEMA DE BLOQUEO =====
+// Configuración del sistema de límite de intentos de login
 const RATE_LIMIT_CONFIG = {
-    maxAttempts: 5,              // Máximo 5 intentos fallidos
-    lockoutDuration: 15 * 60,    // 15 minutos de bloqueo (en segundos)
-    warningThreshold: 3          // Mostrar advertencia después de 3 intentos
+    maxAttempts: 5, // Máximo número de intentos fallidos permitidos
+    lockoutDuration: 15 * 60, // Duración del bloqueo en segundos (15 minutos)
+    warningThreshold: 3 // Número de intentos después del cual se muestra advertencia
 };
 
-// ===== ALMACENAMIENTO EN MEMORIA PARA INTENTOS =====
-// En producción, considera usar Redis o una base de datos
+// Función para determinar la configuración de cookies según el entorno
+const getCookieConfig = () => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    return {
+        httpOnly: false, // Permite acceso desde JavaScript para lectura
+        secure: isProduction, // Solo HTTPS en producción
+        sameSite: isProduction ? 'none' : 'lax', // Configuración para peticiones cross-domain
+        maxAge: 24 * 60 * 60 * 1000, // Duración de 24 horas
+        domain: undefined // Permite que el navegador determine el dominio
+    };
+};
+
+// Almacenamiento en memoria para los intentos de login fallidos
 const loginAttempts = new Map();
 
-// ===== UTILIDADES PARA MANEJO DE INTENTOS =====
+// Utilidades para el manejo del sistema de límite de intentos
 const RateLimitUtils = {
-    /**
-     * Obtiene la clave para almacenar intentos por email
-     */
+    // Genera una clave única para almacenar los intentos por email
     getStorageKey: (email) => `login_attempts_${email.toLowerCase()}`,
-
-    /**
-     * Obtiene los datos de intentos desde memoria
-     */
+    
+    // Obtiene los datos de intentos almacenados para un email
     getAttemptData: (email) => {
         const key = RateLimitUtils.getStorageKey(email);
         return loginAttempts.get(key) || { attempts: 0, lockedUntil: null };
     },
-
-    /**
-     * Guarda los datos de intentos en memoria
-     */
+    
+    // Guarda los datos de intentos para un email
     saveAttemptData: (email, data) => {
         const key = RateLimitUtils.getStorageKey(email);
         loginAttempts.set(key, data);
     },
-
-    /**
-     * Verifica si una cuenta está bloqueada
-     */
+    
+    // Verifica si una cuenta está bloqueada
     isAccountLocked: (email) => {
         const data = RateLimitUtils.getAttemptData(email);
-
         if (!data.lockedUntil) return false;
-
+        
         const now = Date.now();
         if (now >= data.lockedUntil) {
-            // El bloqueo ha expirado, limpiar datos
+            // El bloqueo ha expirado, limpiar los datos
             RateLimitUtils.clearAttempts(email);
             return false;
         }
-
         return true;
     },
-
-    /**
-     * Obtiene el tiempo restante de bloqueo en segundos
-     */
+    
+    // Obtiene el tiempo restante de bloqueo en segundos
     getRemainingLockTime: (email) => {
         const data = RateLimitUtils.getAttemptData(email);
-
         if (!data.lockedUntil) return 0;
-
+        
         const now = Date.now();
         const remaining = Math.max(0, Math.ceil((data.lockedUntil - now) / 1000));
-
         return remaining;
     },
-
-    /**
-     * Registra un intento fallido
-     */
+    
+    // Registra un intento fallido y determina si se debe bloquear la cuenta
     recordFailedAttempt: (email) => {
         const data = RateLimitUtils.getAttemptData(email);
         const newAttempts = data.attempts + 1;
-
+        
         let newData = {
             attempts: newAttempts,
             lockedUntil: data.lockedUntil,
             lastAttempt: Date.now()
         };
-
+        
         // Si se alcanza el máximo de intentos, bloquear la cuenta
         if (newAttempts >= RATE_LIMIT_CONFIG.maxAttempts) {
-            const lockDuration = RATE_LIMIT_CONFIG.lockoutDuration * 1000; // Convertir a millisegundos
+            const lockDuration = RATE_LIMIT_CONFIG.lockoutDuration * 1000;
             newData.lockedUntil = Date.now() + lockDuration;
-
-            console.warn(`Cuenta bloqueada por ${RATE_LIMIT_CONFIG.lockoutDuration / 60} minutos: ${email}`);
         }
-
+        
         RateLimitUtils.saveAttemptData(email, newData);
         return newData;
     },
-
-    /**
-     * Limpia los intentos después de un login exitoso
-     */
+    
+    // Limpia los intentos después de un login exitoso
     clearAttempts: (email) => {
         const key = RateLimitUtils.getStorageKey(email);
         loginAttempts.delete(key);
-        console.log(`Intentos de login limpiados para: ${email}`);
     },
-
-    /**
-     * Formatea el tiempo restante para mostrar al usuario
-     */
+    
+    // Formatea el tiempo restante en un formato legible
     formatRemainingTime: (seconds) => {
         if (seconds <= 0) return '';
-
+        
         const hours = Math.floor(seconds / 3600);
         const minutes = Math.floor((seconds % 3600) / 60);
         const secs = seconds % 60;
-
+        
         if (hours > 0) {
             return `${hours}h ${minutes}m ${secs}s`;
         } else if (minutes > 0) {
@@ -123,23 +112,21 @@ const RateLimitUtils = {
             return `${secs}s`;
         }
     },
-
-    /**
-     * Obtiene información de advertencia sobre intentos restantes
-     */
+    
+    // Obtiene un mensaje de advertencia sobre intentos restantes
     getAttemptsWarning: (email) => {
         const data = RateLimitUtils.getAttemptData(email);
-
-        if (data.attempts >= RATE_LIMIT_CONFIG.warningThreshold && data.attempts < RATE_LIMIT_CONFIG.maxAttempts) {
+        
+        if (data.attempts >= RATE_LIMIT_CONFIG.warningThreshold && 
+            data.attempts < RATE_LIMIT_CONFIG.maxAttempts) {
             const remaining = RATE_LIMIT_CONFIG.maxAttempts - data.attempts;
-            return `⚠️ Te quedan ${remaining} intento${remaining === 1 ? '' : 's'} antes de que tu cuenta sea bloqueada temporalmente.`;
+            return `Te quedan ${remaining} intento${remaining === 1 ? '' : 's'} antes de que tu cuenta sea bloqueada temporalmente.`;
         }
-
         return null;
     }
 };
 
-// ===== FUNCIONES DE VALIDACIÓN (SIN CAMBIOS) =====
+// Función para validar el formato del email
 const validateEmail = (email) => {
     if (!email || typeof email !== 'string') {
         return { isValid: false, error: "Email es requerido" };
@@ -163,6 +150,7 @@ const validateEmail = (email) => {
     return { isValid: true, value: trimmedEmail };
 };
 
+// Función para validar la contraseña
 const validatePassword = (password) => {
     if (!password || typeof password !== 'string') {
         return { isValid: false, error: "Contraseña es requerida" };
@@ -183,6 +171,7 @@ const validatePassword = (password) => {
     return { isValid: true };
 };
 
+// Función para generar un token JWT de forma asíncrona
 const generateJWT = (payload) => {
     return new Promise((resolve, reject) => {
         jsonwebtoken.sign(
@@ -200,12 +189,12 @@ const generateJWT = (payload) => {
     });
 };
 
-// ===== FUNCIÓN DE LOGIN CON SISTEMA DE BLOQUEO =====
+// Función principal de inicio de sesión
 loginController.login = async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        // 1. VALIDACIONES BÁSICAS
+        // Validar el formato del email
         const emailValidation = validateEmail(email);
         if (!emailValidation.isValid) {
             return res.status(400).json({
@@ -214,6 +203,7 @@ loginController.login = async (req, res) => {
             });
         }
 
+        // Validar el formato de la contraseña
         const passwordValidation = validatePassword(password);
         if (!passwordValidation.isValid) {
             return res.status(400).json({
@@ -224,14 +214,12 @@ loginController.login = async (req, res) => {
 
         const cleanEmail = emailValidation.value;
 
-        // 2. VERIFICAR SI LA CUENTA ESTÁ BLOQUEADA
+        // Verificar si la cuenta está bloqueada por intentos fallidos
         if (RateLimitUtils.isAccountLocked(cleanEmail)) {
             const remainingTime = RateLimitUtils.getRemainingLockTime(cleanEmail);
             const formattedTime = RateLimitUtils.formatRemainingTime(remainingTime);
-
-            console.warn(`Intento de login en cuenta bloqueada: ${cleanEmail}`);
-
-            return res.status(429).json({ // 429 Too Many Requests
+            
+            return res.status(429).json({
                 success: false,
                 message: `Tu cuenta está temporalmente bloqueada debido a múltiples intentos fallidos. Inténtalo nuevamente en ${formattedTime}.`,
                 isAccountLocked: true,
@@ -240,21 +228,20 @@ loginController.login = async (req, res) => {
             });
         }
 
-        // 3. VERIFICAR CREDENCIALES
+        // Verificar las credenciales del usuario
         let userFound;
         let userType;
 
-        // Verificar si es el admin
+        // Verificar si es el administrador
         if (cleanEmail === config.admin.email && password === config.admin.password) {
             userType = "admin";
             userFound = { _id: "admin" };
         } else {
-            // Buscar en customers
+            // Buscar el usuario en la base de datos de clientes
             try {
                 userFound = await clientsModel.findOne({ email: cleanEmail });
                 userType = "Customer";
             } catch (dbError) {
-                console.error("Error en consulta de base de datos:", dbError);
                 return res.status(503).json({
                     success: false,
                     message: "Servicio de base de datos no disponible temporalmente"
@@ -262,11 +249,9 @@ loginController.login = async (req, res) => {
             }
         }
 
-        // 4. VERIFICAR SI EL USUARIO EXISTE
+        // Verificar si el usuario existe
         if (!userFound) {
-            // REGISTRAR INTENTO FALLIDO - Usuario no encontrado
             const attemptData = RateLimitUtils.recordFailedAttempt(cleanEmail);
-            
             let errorMessage = "user not found";
             
             // Agregar advertencia si está cerca del límite
@@ -280,7 +265,7 @@ loginController.login = async (req, res) => {
                 const lockDuration = Math.ceil(RATE_LIMIT_CONFIG.lockoutDuration / 60);
                 errorMessage = `Tu cuenta ha sido bloqueada temporalmente por ${lockDuration} minutos debido a múltiples intentos fallidos.`;
             }
-
+            
             return res.status(401).json({
                 success: false,
                 message: errorMessage,
@@ -289,14 +274,12 @@ loginController.login = async (req, res) => {
             });
         }
 
-        // 5. VERIFICAR CONTRASEÑA PARA USUARIOS NO ADMIN
+        // Verificar la contraseña para usuarios que no son administradores
         if (userType !== "admin") {
             try {
                 const isMatch = await bcryptjs.compare(password, userFound.password);
                 if (!isMatch) {
-                    // REGISTRAR INTENTO FALLIDO - Contraseña incorrecta  
                     const attemptData = RateLimitUtils.recordFailedAttempt(cleanEmail);
-                    
                     let errorMessage = "Invalid password";
                     
                     // Agregar advertencia si está cerca del límite
@@ -310,7 +293,7 @@ loginController.login = async (req, res) => {
                         const lockDuration = Math.ceil(RATE_LIMIT_CONFIG.lockoutDuration / 60);
                         errorMessage = `Tu cuenta ha sido bloqueada temporalmente por ${lockDuration} minutos debido a múltiples intentos fallidos.`;
                     }
-
+                    
                     return res.status(401).json({
                         success: false,
                         message: errorMessage,
@@ -319,7 +302,6 @@ loginController.login = async (req, res) => {
                     });
                 }
             } catch (hashError) {
-                console.error("Error en comparación de contraseña:", hashError);
                 return res.status(500).json({
                     success: false,
                     message: "Error en verificación de credenciales"
@@ -327,36 +309,30 @@ loginController.login = async (req, res) => {
             }
         }
 
-        // 6. VERIFICAR CONFIGURACIÓN JWT
+        // Verificar que la configuración JWT esté completa
         if (!config.JWT.secret || !config.JWT.expires) {
-            console.error("Configuración JWT incompleta");
             return res.status(500).json({
                 success: false,
                 message: "Error de configuración del servidor"
             });
         }
 
-        // 7. LOGIN EXITOSO - LIMPIAR INTENTOS Y GENERAR TOKEN
+        // Login exitoso - generar token y establecer cookie
         try {
-            // LIMPIAR INTENTOS FALLIDOS
+            // Limpiar los intentos fallidos
             RateLimitUtils.clearAttempts(cleanEmail);
-
+            
+            // Generar el token JWT
             const token = await generateJWT({
                 id: userFound._id,
                 userType
             });
 
-            // Establecer cookie con el token
-            res.cookie("authToken", token, {
-                httpOnly: false,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
-                maxAge: 24 * 60 * 60 * 1000 // 24 horas
-            });
+            // Configurar y establecer la cookie con el token
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
 
-            console.log(`Successful login for: ${cleanEmail} as ${userType}`);
-
-            // RESPUESTA EXACTA COMO ESPERA EL FRONTEND
+            // Enviar respuesta exitosa con el token también en el body
             res.status(200).json({
                 success: true,
                 message: "login successful",
@@ -364,14 +340,12 @@ loginController.login = async (req, res) => {
                 token: token
             });
         } catch (jwtError) {
-            console.error("Error generating token:", jwtError);
             return res.status(500).json({
                 success: false,
                 message: "Error generating authentication token"
             });
         }
     } catch (error) {
-        console.error("Login error:", error);
         res.status(500).json({
             success: false,
             message: "Internal server error"
@@ -379,106 +353,21 @@ loginController.login = async (req, res) => {
     }
 };
 
-// ===== ENDPOINT ADICIONAL PARA VERIFICAR ESTADO DE BLOQUEO =====
-loginController.checkLockStatus = (req, res) => {
-    try {
-        const { email } = req.query;
-
-        if (!email) {
-            return res.status(400).json({
-                success: false,
-                message: "Email es requerido"
-            });
-        }
-
-        const emailValidation = validateEmail(email);
-        if (!emailValidation.isValid) {
-            return res.status(400).json({
-                success: false,
-                message: emailValidation.error
-            });
-        }
-
-        const cleanEmail = emailValidation.value;
-        const isLocked = RateLimitUtils.isAccountLocked(cleanEmail);
-        const attemptData = RateLimitUtils.getAttemptData(cleanEmail);
-
-        if (isLocked) {
-            const remainingTime = RateLimitUtils.getRemainingLockTime(cleanEmail);
-            const formattedTime = RateLimitUtils.formatRemainingTime(remainingTime);
-
-            return res.status(200).json({
-                success: true,
-                isLocked: true,
-                remainingTime: remainingTime,
-                formattedTime: formattedTime,
-                attempts: attemptData.attempts,
-                maxAttempts: RATE_LIMIT_CONFIG.maxAttempts
-            });
-        }
-
-        const warning = RateLimitUtils.getAttemptsWarning(cleanEmail);
-
-        res.status(200).json({
-            success: true,
-            isLocked: false,
-            attempts: attemptData.attempts,
-            maxAttempts: RATE_LIMIT_CONFIG.maxAttempts,
-            remainingAttempts: RATE_LIMIT_CONFIG.maxAttempts - attemptData.attempts,
-            warning: warning
-        });
-
-    } catch (error) {
-        console.error("Error checking lock status:", error);
-        res.status(500).json({
-            success: false,
-            message: "Internal server error"
-        });
-    }
-};
-
-// ===== ENDPOINT PARA LIMPIAR INTENTOS (USO ADMINISTRATIVO) =====
-loginController.clearLoginAttempts = (req, res) => {
-    try {
-        const { email } = req.body;
-
-        if (!email) {
-            return res.status(400).json({
-                success: false,
-                message: "Email es requerido"
-            });
-        }
-
-        const emailValidation = validateEmail(email);
-        if (!emailValidation.isValid) {
-            return res.status(400).json({
-                success: false,
-                message: emailValidation.error
-            });
-        }
-
-        const cleanEmail = emailValidation.value;
-        RateLimitUtils.clearAttempts(cleanEmail);
-
-        res.status(200).json({
-            success: true,
-            message: `Intentos de login limpiados para: ${cleanEmail}`
-        });
-
-    } catch (error) {
-        console.error("Error clearing login attempts:", error);
-        res.status(500).json({
-            success: false,
-            message: "Internal server error"
-        });
-    }
-};
-
-// ===== RESTO DE FUNCIONES SIN CAMBIOS =====
+// Función para verificar la validez de un token JWT
 loginController.verifyToken = (req, res) => {
     try {
-        const token = req.cookies.authToken;
+        // Intentar obtener el token de las cookies
+        let token = req.cookies.authToken;
         
+        // Si no hay token en cookies, buscar en el header Authorization
+        if (!token) {
+            const authHeader = req.headers.authorization;
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                token = authHeader.substring(7);
+            }
+        }
+        
+        // Si no se encuentra token en ningún lugar
         if (!token) {
             return res.status(200).json({ 
                 success: false,
@@ -487,8 +376,8 @@ loginController.verifyToken = (req, res) => {
             });
         }
 
+        // Verificar que la configuración JWT esté disponible
         if (!config.JWT.secret) {
-            console.error("JWT secret no configurado");
             return res.status(200).json({
                 success: false,
                 message: 'Server configuration error',
@@ -497,8 +386,10 @@ loginController.verifyToken = (req, res) => {
         }
 
         try {
+            // Verificar y decodificar el token
             const decoded = jsonwebtoken.verify(token, config.JWT.secret);
             
+            // Validar que el token contenga los datos necesarios
             if (!decoded.id || !decoded.userType) {
                 return res.status(200).json({
                     success: false,
@@ -507,6 +398,7 @@ loginController.verifyToken = (req, res) => {
                 });
             }
             
+            // Responder con los datos del usuario autenticado
             res.status(200).json({
                 success: true,
                 id: decoded.id,
@@ -514,7 +406,7 @@ loginController.verifyToken = (req, res) => {
                 isAuthenticated: true
             });
         } catch (jwtError) {
-            console.error('JWT verification error:', jwtError);
+            // Limpiar la cookie si el token es inválido
             res.clearCookie("authToken");
             
             let message = 'Invalid or expired token';
@@ -531,7 +423,7 @@ loginController.verifyToken = (req, res) => {
             });
         }
     } catch (error) {
-        console.error('Error verificando token:', error);
+        // Limpiar cookie en caso de error general
         res.clearCookie("authToken");
         
         res.status(200).json({ 
@@ -542,9 +434,19 @@ loginController.verifyToken = (req, res) => {
     }
 };
 
+// Función para obtener la información completa del usuario autenticado
 loginController.getUserInfo = async (req, res) => {
     try {
-        const token = req.cookies.authToken;
+        // Intentar obtener el token de las cookies
+        let token = req.cookies.authToken;
+        
+        // Si no hay token en cookies, buscar en el header Authorization
+        if (!token) {
+            const authHeader = req.headers.authorization;
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                token = authHeader.substring(7);
+            }
+        }
         
         if (!token) {
             return res.status(401).json({
@@ -554,7 +456,6 @@ loginController.getUserInfo = async (req, res) => {
         }
 
         if (!config.JWT.secret) {
-            console.error("JWT secret no configurado");
             return res.status(500).json({
                 success: false,
                 message: 'Error de configuración del servidor'
@@ -563,9 +464,10 @@ loginController.getUserInfo = async (req, res) => {
 
         let decoded;
         try {
+            // Verificar y decodificar el token
             decoded = jsonwebtoken.verify(token, config.JWT.secret);
         } catch (jwtError) {
-            console.error('Error verificando token:', jwtError);
+            // Limpiar cookie si el token es inválido
             res.clearCookie("authToken");
             
             if (jwtError.name === 'TokenExpiredError') {
@@ -583,6 +485,7 @@ loginController.getUserInfo = async (req, res) => {
 
         const { id, userType } = decoded;
 
+        // Validar que el token contenga los datos necesarios
         if (!id || !userType) {
             return res.status(401).json({
                 success: false,
@@ -590,6 +493,7 @@ loginController.getUserInfo = async (req, res) => {
             });
         }
 
+        // Si es administrador, devolver información del admin
         if (userType === 'admin') {
             if (!config.admin.email) {
                 return res.status(500).json({
@@ -610,6 +514,7 @@ loginController.getUserInfo = async (req, res) => {
                 user: adminInfo
             });
         } else {
+            // Si es cliente, buscar información en la base de datos
             try {
                 const client = await clientsModel.findById(id).select('-password');
                 
@@ -621,6 +526,7 @@ loginController.getUserInfo = async (req, res) => {
                     });
                 }
 
+                // Preparar información del cliente para enviar
                 const clientInfo = {
                     id: client._id,
                     name: client.fullName,
@@ -640,7 +546,6 @@ loginController.getUserInfo = async (req, res) => {
                     user: clientInfo
                 });
             } catch (dbError) {
-                console.error('Error consultando base de datos:', dbError);
                 return res.status(503).json({
                     success: false,
                     message: 'Servicio de base de datos no disponible'
@@ -648,8 +553,6 @@ loginController.getUserInfo = async (req, res) => {
             }
         }
     } catch (error) {
-        console.error('Error obteniendo información del usuario:', error);
-        
         res.status(500).json({
             success: false,
             message: 'Error interno del servidor'
@@ -657,9 +560,19 @@ loginController.getUserInfo = async (req, res) => {
     }
 };
 
+// Función para renovar un token JWT existente
 loginController.refreshToken = async (req, res) => {
     try {
-        const token = req.cookies.authToken;
+        // Intentar obtener el token de las cookies
+        let token = req.cookies.authToken;
+        
+        // Si no hay token en cookies, buscar en el header Authorization
+        if (!token) {
+            const authHeader = req.headers.authorization;
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                token = authHeader.substring(7);
+            }
+        }
         
         if (!token) {
             return res.status(401).json({
@@ -669,7 +582,6 @@ loginController.refreshToken = async (req, res) => {
         }
 
         if (!config.JWT.secret || !config.JWT.expires) {
-            console.error("Configuración JWT incompleta");
             return res.status(500).json({
                 success: false,
                 message: 'Error de configuración del servidor'
@@ -678,9 +590,9 @@ loginController.refreshToken = async (req, res) => {
 
         let decoded;
         try {
+            // Verificar el token actual
             decoded = jsonwebtoken.verify(token, config.JWT.secret);
         } catch (jwtError) {
-            console.error('Error verificando token para refresh:', jwtError);
             res.clearCookie("authToken");
             
             if (jwtError.name === 'TokenExpiredError') {
@@ -696,6 +608,7 @@ loginController.refreshToken = async (req, res) => {
             });
         }
 
+        // Validar que el token contenga los datos necesarios
         if (!decoded.id || !decoded.userType) {
             res.clearCookie("authToken");
             return res.status(401).json({
@@ -705,24 +618,23 @@ loginController.refreshToken = async (req, res) => {
         }
 
         try {
+            // Generar un nuevo token con los mismos datos
             const newToken = await generateJWT({
                 id: decoded.id,
                 userType: decoded.userType
             });
 
-            res.cookie("authToken", newToken, {
-                httpOnly: false,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
-                maxAge: 24 * 60 * 60 * 1000 // 24 horas
-            });
+            // Establecer el nuevo token en la cookie
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", newToken, cookieConfig);
 
+            // Responder con éxito incluyendo el nuevo token
             res.status(200).json({
                 success: true,
-                message: "Token refreshed successfully"
+                message: "Token refreshed successfully",
+                token: newToken
             });
         } catch (jwtError) {
-            console.error('Error generando nuevo token:', jwtError);
             return res.status(500).json({
                 success: false,
                 message: 'Error generando nuevo token'
@@ -730,11 +642,108 @@ loginController.refreshToken = async (req, res) => {
         }
 
     } catch (error) {
-        console.error('Error refrescando token:', error);
         res.clearCookie("authToken");
         res.status(500).json({
             success: false,
             message: 'Error interno del servidor'
+        });
+    }
+};
+
+// Función para verificar el estado de bloqueo de una cuenta
+loginController.checkLockStatus = (req, res) => {
+    try {
+        const { email } = req.query;
+
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: "Email es requerido"
+            });
+        }
+
+        // Validar el formato del email
+        const emailValidation = validateEmail(email);
+        if (!emailValidation.isValid) {
+            return res.status(400).json({
+                success: false,
+                message: emailValidation.error
+            });
+        }
+
+        const cleanEmail = emailValidation.value;
+        const isLocked = RateLimitUtils.isAccountLocked(cleanEmail);
+        const attemptData = RateLimitUtils.getAttemptData(cleanEmail);
+
+        // Si la cuenta está bloqueada
+        if (isLocked) {
+            const remainingTime = RateLimitUtils.getRemainingLockTime(cleanEmail);
+            const formattedTime = RateLimitUtils.formatRemainingTime(remainingTime);
+
+            return res.status(200).json({
+                success: true,
+                isLocked: true,
+                remainingTime: remainingTime,
+                formattedTime: formattedTime,
+                attempts: attemptData.attempts,
+                maxAttempts: RATE_LIMIT_CONFIG.maxAttempts
+            });
+        }
+
+        // Si la cuenta no está bloqueada
+        const warning = RateLimitUtils.getAttemptsWarning(cleanEmail);
+
+        res.status(200).json({
+            success: true,
+            isLocked: false,
+            attempts: attemptData.attempts,
+            maxAttempts: RATE_LIMIT_CONFIG.maxAttempts,
+            remainingAttempts: RATE_LIMIT_CONFIG.maxAttempts - attemptData.attempts,
+            warning: warning
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+};
+
+// Función para limpiar manualmente los intentos de login de una cuenta
+loginController.clearLoginAttempts = (req, res) => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: "Email es requerido"
+            });
+        }
+
+        // Validar el formato del email
+        const emailValidation = validateEmail(email);
+        if (!emailValidation.isValid) {
+            return res.status(400).json({
+                success: false,
+                message: emailValidation.error
+            });
+        }
+
+        const cleanEmail = emailValidation.value;
+        // Limpiar los intentos fallidos para este email
+        RateLimitUtils.clearAttempts(cleanEmail);
+
+        res.status(200).json({
+            success: true,
+            message: `Intentos de login limpiados para: ${cleanEmail}`
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Internal server error"
         });
     }
 };

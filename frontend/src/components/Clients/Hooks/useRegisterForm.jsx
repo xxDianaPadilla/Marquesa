@@ -1,8 +1,10 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
 
 /**
  * Hook personalizado para manejar el formulario de registro
+ * ACTUALIZADO: Sistema de autenticación cross-domain híbrido
  * COMPLETAMENTE OPTIMIZADO: Uso de useCallback y useMemo para evitar re-renderizados innecesarios
  * Maneja la lógica de validación en tiempo real y activación del modal de verificación
  * Incluye validaciones robustas para datos salvadoreños y mejores prácticas de UX
@@ -51,6 +53,9 @@ const useRegisterForm = () => {
     // ============ REFERENCIAS Y NAVEGACIÓN ============
     
     const navigate = useNavigate();
+    
+    // ✅ NUEVO: Hook de autenticación para sistema híbrido
+    const { getBestAvailableToken, setAuthToken } = useAuth();
     
     /**
      * Ref para prevenir múltiples envíos rápidos
@@ -255,6 +260,22 @@ const useRegisterForm = () => {
         }
     }), []);
 
+    // ============ NUEVAS FUNCIONES DE AUTENTICACIÓN HÍBRIDA ============
+    
+    /**
+     * ✅ NUEVA FUNCIÓN: Crear headers de autenticación híbridos
+     */
+    const getAuthHeaders = useCallback(() => {
+        const token = getBestAvailableToken();
+        const headers = {
+            'Content-Type': 'application/json',
+        };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        return headers;
+    }, [getBestAvailableToken]);
+
     // ============ FUNCIONES DE VALIDACIÓN ============
     
     /**
@@ -416,10 +437,10 @@ const useRegisterForm = () => {
         setShowPassword(prev => !prev);
     }, []);
 
-    // ============ FUNCIÓN PRINCIPAL DE ENVÍO ============
+    // ============ FUNCIÓN PRINCIPAL DE ENVÍO ACTUALIZADA ============
     
     /**
-     * Maneja el envío del formulario de registro
+     * ✅ ACTUALIZADA: Maneja el envío del formulario de registro con sistema híbrido
      * Incluye validación completa, prevención de spam y manejo de errores
      * Memoizada para evitar re-creaciones
      */
@@ -509,19 +530,42 @@ const useRegisterForm = () => {
 
             console.log('Enviando solicitud de verificación:', requestData);
 
-            // Verificar que el email no exista previamente y enviar código
-            const checkEmailResponse = await fetch('http://localhost:4000/api/emailVerification/request', {
+            // ✅ NUEVA LÓGICA: Verificar que el email no exista previamente y enviar código con sistema híbrido
+            const operationPromise = fetch('https://test-9gs3.onrender.com/api/emailVerification/request', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                credentials: 'include', // ✅ NUEVO: Incluir cookies
+                headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
                 body: JSON.stringify(requestData),
             });
 
+            // ✅ NUEVO: Timeout para conexiones lentas
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
+            });
+
+            const checkEmailResponse = await Promise.race([operationPromise, timeoutPromise]);
             const checkEmailData = await checkEmailResponse.json();
             console.log('Respuesta del servidor:', checkEmailData);
 
             if (checkEmailData.success) {
+                // ✅ NUEVO: Manejo híbrido de tokens
+                let token = null;
+
+                // Primera prioridad: response body
+                if (checkEmailData.token) {
+                    token = checkEmailData.token;
+                    setAuthToken(token); // Guardar en estado local
+                }
+
+                // Segunda prioridad: cookie (con retraso)
+                if (!token) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    token = getBestAvailableToken();
+                    if (token) {
+                        setAuthToken(token);
+                    }
+                }
+
                 // Email disponible, abrir modal de verificación
                 console.log('Abriendo modal de verificación');
                 setShowEmailVerificationModal(true);
@@ -540,13 +584,17 @@ const useRegisterForm = () => {
         } catch (error) {
             console.error('Error en verificación previa:', error);
             
+            // ✅ NUEVO: Manejo específico de errores de red vs servidor
             let errorMessage = 'Error de conexión. Verifica tu internet e intenta nuevamente.';
             
-            // Personalizar mensaje según el tipo de error
-            if (error.name === 'TypeError') {
-                errorMessage = 'Error de conexión con el servidor. Verifica tu internet.';
+            if (error.message === 'TIMEOUT') {
+                errorMessage = 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
+            } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
             } else if (error.message?.includes('timeout')) {
                 errorMessage = 'La conexión tardó demasiado. Inténtalo nuevamente.';
+            } else if (error.message?.includes('network')) {
+                errorMessage = 'Error de red. Verifica tu conexión a internet.';
             }
             
             setErrors({ general: errorMessage });
@@ -559,7 +607,7 @@ const useRegisterForm = () => {
         }
 
         console.log('=== FIN handleSubmit ===');
-    }, [formData, isFormEmpty, validateAllFields]);
+    }, [formData, isFormEmpty, validateAllFields, getAuthHeaders, getBestAvailableToken, setAuthToken]);
 
     // ============ MANEJADORES DEL MODAL DE VERIFICACIÓN ============
     

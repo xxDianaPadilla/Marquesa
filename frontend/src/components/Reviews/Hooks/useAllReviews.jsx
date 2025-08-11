@@ -12,7 +12,7 @@ const useAllReviews = () => {
             setLoading(true);
             setError(null);
             
-            const response = await fetch(`http://localhost:4000/api/reviews?limit=${limit}&status=replied`);
+            const response = await fetch(`https://test-9gs3.onrender.com/api/reviews?limit=${limit}&status=replied`);
 
             if (!response.ok) {
                 throw new Error('Error al obtener las reseñas');

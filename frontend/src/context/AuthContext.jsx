@@ -1,22 +1,7 @@
 /**
- * Context de autenticación para la aplicación - COMENTARIOS ACTUALIZADOS
- * 
- * NOTA: No se requieren cambios en este archivo para la nueva funcionalidad 401.
- * El AuthContext mantiene toda su funcionalidad existente, pero ahora trabaja
- * en conjunto con el ProtectedRoutes modificado para mostrar páginas 401.
- * 
- * FUNCIONALIDADES EXISTENTES QUE SIGUEN FUNCIONANDO:
- * - Estado isLoggingOut para evitar interferencias durante logout
- * - Mejor manejo de transiciones de estado
- * - Evita redirecciones a páginas 401 durante procesos normales
- * - Mantiene todas las funcionalidades de autenticación
- * 
- * CÓMO TRABAJA CON EL NUEVO SISTEMA:
- * - Los estados isLoggingIn/isLoggingOut previenen mostrar 401 durante transiciones
- * - El estado loading evita mostrar 401 durante verificaciones iniciales
- * - Los estados de autenticación se usan en ProtectedRoutes para decidir 401 vs 403
- * 
- * Ubicación: frontend/src/context/AuthContext.jsx
+ * Context de autenticación para la aplicación
+ * Maneja el estado de autenticación, login, logout y límite de intentos
+ * Implementa verificación híbrida de tokens y compatibilidad cross-domain
  */
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
@@ -24,9 +9,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 const AuthContext = createContext();
 
 /**
- * Hook personalizado para usar el contexto de autenticación
- * @returns {Object} Contexto de autenticación con user, login, logout, etc.
- * @throws {Error} Si se usa fuera del AuthProvider
+ * Hook personalizado para acceder al contexto de autenticación
+ * Debe ser usado dentro de un AuthProvider
  */
 export const useAuth = () => {
     const context = useContext(AuthContext);
@@ -37,93 +21,72 @@ export const useAuth = () => {
 };
 
 /**
- * Configuración del sistema de límite de intentos
+ * Configuración del sistema de límite de intentos de login
  */
 const RATE_LIMIT_CONFIG = {
-    maxAttempts: 5,              // Máximo 5 intentos fallidos
-    lockoutDuration: 15 * 60,    // 15 minutos de bloqueo (en segundos)
-    warningThreshold: 3          // Mostrar advertencia después de 3 intentos
+    maxAttempts: 5, // Máximo número de intentos fallidos
+    lockoutDuration: 15 * 60, // Duración del bloqueo en segundos (15 minutos)
+    warningThreshold: 3 // Número de intentos antes de mostrar advertencia
 };
 
 /**
- * Validaciones básicas y no restrictivas
- * NOTA: Estas validaciones siguen siendo las mismas, sin cambios requeridos
+ * Funciones de validación para datos de entrada
  */
 const validators = {
-    /**
-     * Valida el formato de email de manera básica
-     */
+    // Validar formato de email
     email: (email) => {
         if (!email || typeof email !== 'string') {
             return { isValid: false, error: 'El email es requerido' };
         }
-
         const trimmedEmail = email.trim();
         if (!trimmedEmail) {
             return { isValid: false, error: 'El email no puede estar vacío' };
         }
-
-        // Validación básica de email
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(trimmedEmail)) {
             return { isValid: false, error: 'El formato del email no es válido' };
         }
-
         return { isValid: true, error: null };
     },
-
-    /**
-     * Valida la contraseña de manera básica
-     */
+    
+    // Validar contraseña
     password: (password) => {
         if (!password || typeof password !== 'string') {
             return { isValid: false, error: 'La contraseña es requerida' };
         }
-
         if (password.length < 8) {
             return { isValid: false, error: 'La contraseña debe tener al menos 8 caracteres' };
         }
-
         return { isValid: true, error: null };
     },
-
-    /**
-     * Valida el token JWT básico
-     */
+    
+    // Validar token JWT
     token: (token) => {
         if (!token || typeof token !== 'string') {
             return { isValid: false, error: 'Token inválido' };
         }
-
         const parts = token.split('.');
         if (parts.length !== 3) {
             return { isValid: false, error: 'Formato de token inválido' };
         }
-
         return { isValid: true, error: null };
     }
 };
 
 /**
- * Utilidades para manejo de límite de intentos de login
+ * Utilidades para manejar el sistema de límite de intentos
  */
 const RateLimitUtils = {
-    /**
-     * Obtiene la clave para almacenar intentos por email
-     */
+    // Genera clave única para almacenar intentos por email
     getStorageKey: (email) => `login_attempts_${email.toLowerCase()}`,
-
-    /**
-     * Obtiene los datos de intentos desde memoria (no localStorage)
-     */
+    
+    // Obtiene datos de intentos almacenados
     getAttemptData: (email, attemptsStorage) => {
         const key = RateLimitUtils.getStorageKey(email);
         return attemptsStorage[key] || { attempts: 0, lockedUntil: null };
     },
-
-    /**
-     * Guarda los datos de intentos en memoria
-     */
+    
+    // Guarda datos de intentos en el almacenamiento
     saveAttemptData: (email, data, attemptsStorage, setAttemptsStorage) => {
         const key = RateLimitUtils.getStorageKey(email);
         setAttemptsStorage(prev => ({
@@ -131,65 +94,45 @@ const RateLimitUtils = {
             [key]: data
         }));
     },
-
-    /**
-     * Verifica si una cuenta está bloqueada
-     */
+    
+    // Verifica si una cuenta está bloqueada
     isAccountLocked: (email, attemptsStorage) => {
         const data = RateLimitUtils.getAttemptData(email, attemptsStorage);
-
         if (!data.lockedUntil) return false;
-
         const now = Date.now();
         if (now >= data.lockedUntil) {
-            // El bloqueo ha expirado
             return false;
         }
-
         return true;
     },
-
-    /**
-     * Obtiene el tiempo restante de bloqueo en segundos
-     */
+    
+    // Obtiene tiempo restante de bloqueo
     getRemainingLockTime: (email, attemptsStorage) => {
         const data = RateLimitUtils.getAttemptData(email, attemptsStorage);
-
         if (!data.lockedUntil) return 0;
-
         const now = Date.now();
         const remaining = Math.max(0, Math.ceil((data.lockedUntil - now) / 1000));
-
         return remaining;
     },
-
-    /**
-     * Registra un intento fallido
-     */
+    
+    // Registra un intento fallido
     recordFailedAttempt: (email, attemptsStorage, setAttemptsStorage) => {
         const data = RateLimitUtils.getAttemptData(email, attemptsStorage);
         const newAttempts = data.attempts + 1;
-
         let newData = {
             attempts: newAttempts,
             lockedUntil: data.lockedUntil
         };
-
-        // Si se alcanza el máximo de intentos, bloquear la cuenta
+        // Si alcanza el máximo de intentos, bloquear la cuenta
         if (newAttempts >= RATE_LIMIT_CONFIG.maxAttempts) {
-            const lockDuration = RATE_LIMIT_CONFIG.lockoutDuration * 1000; // Convertir a millisegundos
+            const lockDuration = RATE_LIMIT_CONFIG.lockoutDuration * 1000;
             newData.lockedUntil = Date.now() + lockDuration;
-
-            console.warn(`Cuenta bloqueada por ${RATE_LIMIT_CONFIG.lockoutDuration / 60} minutos: ${email}`);
         }
-
         RateLimitUtils.saveAttemptData(email, newData, attemptsStorage, setAttemptsStorage);
         return newData;
     },
-
-    /**
-     * Limpia los intentos después de un login exitoso
-     */
+    
+    // Limpia intentos después de login exitoso
     clearAttempts: (email, attemptsStorage, setAttemptsStorage) => {
         const key = RateLimitUtils.getStorageKey(email);
         setAttemptsStorage(prev => {
@@ -197,20 +140,14 @@ const RateLimitUtils = {
             delete newStorage[key];
             return newStorage;
         });
-
-        console.log(`Intentos de login limpiados para: ${email}`);
     },
-
-    /**
-     * Formatea el tiempo restante para mostrar al usuario
-     */
+    
+    // Formatea tiempo restante en formato legible
     formatRemainingTime: (seconds) => {
         if (seconds <= 0) return '';
-
         const hours = Math.floor(seconds / 3600);
         const minutes = Math.floor((seconds % 3600) / 60);
         const secs = seconds % 60;
-
         if (hours > 0) {
             return `${hours}h ${minutes}m ${secs}s`;
         } else if (minutes > 0) {
@@ -222,304 +159,270 @@ const RateLimitUtils = {
 };
 
 /**
- * Proveedor del contexto de autenticación con sistema de límite de intentos
+ * Proveedor del contexto de autenticación
+ * Maneja todo el estado y lógica de autenticación de la aplicación
+ * Implementa verificación híbrida de tokens para compatibilidad cross-domain
  */
 export const AuthProvider = ({ children }) => {
-    // Estados del contexto de autenticación (EXISTENTES - Sin cambios)
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [userInfo, setUserInfo] = useState(null);
-    const [authError, setAuthError] = useState(null);
+    // Estados principales del contexto de autenticación
+    const [user, setUser] = useState(null); // Datos básicos del usuario autenticado
+    const [loading, setLoading] = useState(true); // Estado de carga inicial
+    const [isAuthenticated, setIsAuthenticated] = useState(false); // Estado de autenticación
+    const [userInfo, setUserInfo] = useState(null); // Información completa del usuario
+    const [authError, setAuthError] = useState(null); // Errores de autenticación
+    const [isLoggingOut, setIsLoggingOut] = useState(false); // Estado durante logout
+    const [isLoggingIn, setIsLoggingIn] = useState(false); // Estado durante login
 
-    // Estados para manejo de páginas de error (EXISTENTES - Sin cambios)
-    const [isLoggingOut, setIsLoggingOut] = useState(false);
-    const [isLoggingIn, setIsLoggingIn] = useState(false);
+    // Estados para el sistema de límite de intentos
+    const [attemptsStorage, setAttemptsStorage] = useState({}); // Almacenamiento de intentos en memoria
+    const [lockoutInfo, setLockoutInfo] = useState(null); // Información de bloqueo actual
+    const [userOrderStats, setUserOrderStats] = useState(null); // Estadísticas de pedidos del usuario
 
-    // NUEVOS ESTADOS para el sistema de límite de intentos
-    const [attemptsStorage, setAttemptsStorage] = useState({}); // Almacenamiento en memoria de intentos
-    const [lockoutInfo, setLockoutInfo] = useState(null); // Info de bloqueo para mostrar al usuario
-    const [userOrderStats, setUserOrderStats] = useState(null);
+    // Estado para almacenar token en memoria como respaldo (verificación híbrida)
+    const [authToken, setAuthToken] = useState(null);
 
     /**
-     * Obtiene el token de autenticación de las cookies
-     * (FUNCIÓN EXISTENTE - Sin cambios)
+     * Obtiene el token de autenticación de las cookies del navegador
+     * Primera prioridad en la verificación híbrida
      */
     const getTokenFromCookies = () => {
         try {
             if (typeof document === 'undefined') {
                 return null;
             }
-
             const cookies = document.cookie.split(';');
             const authCookie = cookies.find(cookie => cookie.trim().startsWith('authToken='));
-
             if (!authCookie) {
                 return null;
             }
-
             const token = authCookie.split('=')[1];
             return token || null;
-
         } catch (error) {
-            console.error('Error al obtener el token de las cookies:', error);
             return null;
         }
     };
 
     /**
-     * Decodifica un token JWT - simplificado
-     * (FUNCIÓN EXISTENTE - Sin cambios)
+     * Obtiene el mejor token disponible de múltiples fuentes (verificación híbrida)
+     * Prioriza cookies sobre el almacenamiento en memoria
+     * Implementa el patrón requerido para compatibilidad cross-domain
+     */
+    const getBestAvailableToken = () => {
+        // Primera prioridad: cookies (funcionan mejor en misma domain)
+        const cookieToken = getTokenFromCookies();
+        if (cookieToken) {
+            return cookieToken;
+        }
+        // Segunda prioridad: estado en memoria (respaldo para cross-domain)
+        if (authToken) {
+            return authToken;
+        }
+        return null;
+    };
+
+    /**
+     * Crea headers de autenticación para peticiones HTTP
+     * Incluye el token en el header Authorization si está disponible
+     * Implementa el patrón híbrido requerido
+     */
+    const getAuthHeaders = () => {
+        const token = getBestAvailableToken();
+        const headers = {
+            'Content-Type': 'application/json',
+        };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        return headers;
+    };
+
+    /**
+     * Decodifica un token JWT para extraer su contenido
+     * Valida estructura y expiración del token
      */
     const decodeToken = (token) => {
         try {
             if (!token) {
                 return null;
             }
-
             const parts = token.split('.');
             if (parts.length !== 3) {
-                console.error('Token con formato inválido');
                 return null;
             }
-
             const payload = parts[1];
             if (!payload) {
-                console.error('Payload del token vacío');
                 return null;
             }
-
             const decodedPayload = atob(payload);
             const parsedPayload = JSON.parse(decodedPayload);
-
-            // Validación mínima - solo verificar que existan los campos básicos
             if (!parsedPayload || !parsedPayload.id || !parsedPayload.exp) {
-                console.error('Token no contiene campos requeridos');
                 return null;
             }
-
-            // Verificar expiración
+            // Verificar si el token ha expirado
             const currentTime = Math.floor(Date.now() / 1000);
             if (parsedPayload.exp <= currentTime) {
-                console.info('El token ha expirado');
                 return null;
             }
-
             return parsedPayload;
         } catch (error) {
-            console.error('Error al decodificar el token:', error);
             return null;
         }
     };
 
+    /**
+     * Obtiene las estadísticas de pedidos del usuario
+     * Utiliza headers de autenticación híbridos
+     */
     const getUserOrderStats = async (userId) => {
-    try {
-        console.log('Obteniendo estadísticas de pedidos para usuario: ', userId);
-        
-        // Validar que tenemos un userId
-        if (!userId) {
-            console.warn('No se proporcionó userId para obtener estadísticas');
-            return null;
-        }
-
-        const response = await fetch(`http://localhost:4000/api/sales/user/${userId}/stats`, {
-            method: 'GET',
-            credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-
-        console.log('Status de respuesta getUserOrderStats:', response.status);
-
-        if (response.ok) {
-            const data = await response.json();
-            console.log('Respuesta completa getUserOrderStats:', data);
-
-            if (data && data.success && data.data && data.data.orderStats) {
-                console.log('Estadísticas de pedidos obtenidas exitosamente:', data.data.orderStats);
-                setUserOrderStats(data.data.orderStats);
-                return data.data.orderStats;
-            } else {
-                console.warn('Respuesta sin estructura esperada:', data);
-                // Aún así, intentar establecer estadísticas vacías
-                const emptyStats = {
-                    totalOrders: 0,
-                    pendingOrders: 0,
-                    cancelledOrders: 0,
-                    scheduledOrders: 0,
-                    inProcessOrders: 0,
-                    deliveredOrders: 0
-                };
-                setUserOrderStats(emptyStats);
-                return emptyStats;
-            }
-        } else {
-            const errorText = await response.text();
-            console.error('Error en respuesta del servidor:', response.status, errorText);
-            
-            // Si es 404 o error del servidor, establecer estadísticas vacías
-            if (response.status === 404 || response.status >= 500) {
-                const emptyStats = {
-                    totalOrders: 0,
-                    pendingOrders: 0,
-                    cancelledOrders: 0,
-                    scheduledOrders: 0,
-                    inProcessOrders: 0,
-                    deliveredOrders: 0
-                };
-                setUserOrderStats(emptyStats);
-                return emptyStats;
-            }
-            
-            return null;
-        }
-    } catch (error) {
-        console.error('Error al obtener estadísticas de pedidos:', error);
-        
-        // En caso de error de red, establecer estadísticas vacías
-        const emptyStats = {
-            totalOrders: 0,
-            pendingOrders: 0,
-            cancelledOrders: 0,
-            scheduledOrders: 0,
-            inProcessOrders: 0,
-            deliveredOrders: 0
-        };
-        setUserOrderStats(emptyStats);
-        return emptyStats;
-    }
-};
-
-/**
- * Obtiene información completa del usuario desde el servidor
- * MEJORADO para mejor manejo de errores
- */
-const getUserInfo = async () => {
-    try {
-        console.log('Obteniendo información del usuario...');
-
-        const response = await fetch('http://localhost:4000/api/login/user-info', {
-            method: 'GET',
-            credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            console.log('Respuesta getUserInfo:', data);
-
-            if (data && data.success && data.user) {
-                console.log('Información del usuario obtenida:', data.user);
-                setUserInfo(data.user);
-                setAuthError(null);
-
-                // Intentar obtener estadísticas si tenemos el ID del usuario
-                const userId = data.user._id || data.user.id;
-                if (userId) {
-                    console.log('Llamando a getUserOrderStats con userId:', userId);
-                    await getUserOrderStats(userId);
-                } else {
-                    console.warn('Usuario sin ID válido:', data.user);
-                }
-
-                return data.user;
-            } else {
-                console.warn('Respuesta sin éxito:', data?.message);
+        try {
+            if (!userId) {
                 return null;
             }
-        } else {
-            console.error('Error en respuesta del servidor:', response.status);
-            const errorText = await response.text();
-            console.error('Texto del error:', errorText);
-            return null;
+            const response = await fetch(`https://test-9gs3.onrender.com/api/sales/user/${userId}/stats`, {
+                method: 'GET',
+                credentials: 'include', // Incluir cookies para verificación híbrida
+                headers: getAuthHeaders(),
+            });
+            if (response.ok) {
+                const data = await response.json();
+                if (data && data.success && data.data && data.data.orderStats) {
+                    setUserOrderStats(data.data.orderStats);
+                    return data.data.orderStats;
+                } else {
+                    // Establecer estadísticas vacías si no hay datos
+                    const emptyStats = {
+                        totalOrders: 0,
+                        pendingOrders: 0,
+                        cancelledOrders: 0,
+                        scheduledOrders: 0,
+                        inProcessOrders: 0,
+                        deliveredOrders: 0
+                    };
+                    setUserOrderStats(emptyStats);
+                    return emptyStats;
+                }
+            } else {
+                // En caso de error, establecer estadísticas vacías
+                const emptyStats = {
+                    totalOrders: 0,
+                    pendingOrders: 0,
+                    cancelledOrders: 0,
+                    scheduledOrders: 0,
+                    inProcessOrders: 0,
+                    deliveredOrders: 0
+                };
+                setUserOrderStats(emptyStats);
+                return emptyStats;
+            }
+        } catch (error) {
+            // En caso de error de red, establecer estadísticas vacías
+            const emptyStats = {
+                totalOrders: 0,
+                pendingOrders: 0,
+                cancelledOrders: 0,
+                scheduledOrders: 0,
+                inProcessOrders: 0,
+                deliveredOrders: 0
+            };
+            setUserOrderStats(emptyStats);
+            return emptyStats;
         }
-    } catch (error) {
-        console.error('Error al obtener información del usuario:', error);
-        setAuthError('Error al obtener información del usuario');
-        return null;
-    }
-};
+    };
 
     /**
-     * Limpia todos los datos de autenticación
-     * (FUNCIÓN EXISTENTE - Sin cambios)
+     * Obtiene la información completa del usuario desde el servidor
+     * Utiliza headers de autenticación híbridos y credentials para cookies
+     */
+    const getUserInfo = async () => {
+        try {
+            const response = await fetch('https://test-9gs3.onrender.com/api/login/user-info', {
+                method: 'GET',
+                credentials: 'include', // Incluir cookies para verificación híbrida
+                headers: getAuthHeaders(),
+            });
+            if (response.ok) {
+                const data = await response.json();
+                if (data && data.success && data.user) {
+                    setUserInfo(data.user);
+                    setAuthError(null);
+                    // Obtener estadísticas de pedidos si tenemos el ID del usuario
+                    const userId = data.user._id || data.user.id;
+                    if (userId) {
+                        await getUserOrderStats(userId);
+                    }
+                    return data.user;
+                } else {
+                    return null;
+                }
+            } else {
+                return null;
+            }
+        } catch (error) {
+            setAuthError('Error al obtener información del usuario');
+            return null;
+        }
+    };
+
+    /**
+     * Limpia todos los datos de autenticación del estado y cookies
      */
     const clearAuthData = (isVoluntaryLogout = false) => {
         try {
-            console.log('Limpiando datos de autenticación...', { isVoluntaryLogout });
-
+            // Limpiar cookie del navegador con configuración cross-domain
             if (typeof document !== 'undefined') {
+                // Limpiar con todas las configuraciones posibles para asegurar eliminación
                 document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; secure;';
+                document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; secure; sameSite=none';
             }
-
+            // Limpiar estado de la aplicación
+            setAuthToken(null);
             setUser(null);
             setIsAuthenticated(false);
             setUserInfo(null);
-
-            // Solo limpiar errores si es logout voluntario o login fallido
+            // Solo limpiar errores si es logout voluntario
             if (isVoluntaryLogout) {
                 setAuthError(null);
             }
         } catch (error) {
-            console.error('Error al limpiar los datos de autenticación:', error);
+            // Error al limpiar datos, pero continuar
         }
     };
 
     /**
-     * Verifica el estado de autenticación del usuario
-     * (FUNCIÓN EXISTENTE - Sin cambios)
+     * Verifica el estado de autenticación del usuario al cargar la aplicación
+     * Implementa verificación híbrida de tokens
      */
     const checkAuthStatus = async () => {
         try {
-            // No verificar si se está haciendo login o logout
+            // No verificar si hay procesos de autenticación en curso
             if (isLoggingOut || isLoggingIn) {
-                console.log('Proceso de autenticación en progreso, saltando verificación');
                 return;
             }
-
             setLoading(true);
             setAuthError(null);
-
-            console.log('Verificando estado de autenticación...');
-
-            const token = getTokenFromCookies();
-
+            const token = getBestAvailableToken();
             if (token) {
-                console.log('Token encontrado, decodificando...');
                 const decodedToken = decodeToken(token);
-
                 if (decodedToken && decodedToken.exp * 1000 > Date.now()) {
-                    console.log('Token válido, configurando usuario...');
-
-                    // Crear userData con valores del token
                     const userData = {
                         id: decodedToken.id,
                         userType: decodedToken.userType || 'user'
                     };
-
                     setUser(userData);
                     setIsAuthenticated(true);
-
-                    // Obtener información completa del usuario
-                    console.log('Obteniendo información completa del usuario...');
-                    await getUserInfo();
+                    setAuthToken(token); // Guardar token en memoria para verificación híbrida
+                    await getUserInfo(); // Obtener información completa
                 } else {
-                    console.info('Token expirado o inválido');
                     clearAuthData(false);
                 }
             } else {
-                console.info('No se encontró token');
                 clearAuthData(false);
             }
         } catch (error) {
-            console.error('Error al verificar la autenticación:', error);
             setAuthError('Error al verificar el estado de autenticación');
             clearAuthData(false);
         } finally {
-            // Solo marcar como no loading si NO estamos en proceso de login
             if (!isLoggingIn) {
                 setLoading(false);
             }
@@ -527,17 +430,14 @@ const getUserInfo = async () => {
     };
 
     /**
-     * NUEVA FUNCIÓN: Verifica si un email está bloqueado antes del login
+     * Verifica si una cuenta está bloqueada por intentos fallidos
      */
     const checkAccountLockStatus = (email) => {
         if (!email) return { isLocked: false };
-
         const isLocked = RateLimitUtils.isAccountLocked(email, attemptsStorage);
-
         if (isLocked) {
             const remainingTime = RateLimitUtils.getRemainingLockTime(email, attemptsStorage);
             const formattedTime = RateLimitUtils.formatRemainingTime(remainingTime);
-
             return {
                 isLocked: true,
                 remainingTime,
@@ -545,39 +445,35 @@ const getUserInfo = async () => {
                 message: `Tu cuenta está temporalmente bloqueada debido a múltiples intentos fallidos. Inténtalo nuevamente en ${formattedTime}.`
             };
         }
-
         return { isLocked: false };
     };
 
     /**
-     * NUEVA FUNCIÓN: Obtiene información de advertencia sobre intentos restantes
+     * Obtiene advertencia sobre intentos restantes antes del bloqueo
      */
     const getAttemptsWarning = (email) => {
         if (!email) return null;
-
         const data = RateLimitUtils.getAttemptData(email, attemptsStorage);
-
-        if (data.attempts >= RATE_LIMIT_CONFIG.warningThreshold && data.attempts < RATE_LIMIT_CONFIG.maxAttempts) {
+        if (data.attempts >= RATE_LIMIT_CONFIG.warningThreshold && 
+            data.attempts < RATE_LIMIT_CONFIG.maxAttempts) {
             const remaining = RATE_LIMIT_CONFIG.maxAttempts - data.attempts;
             return `Cuidado: Te quedan ${remaining} intento${remaining === 1 ? '' : 's'} antes de que tu cuenta sea bloqueada temporalmente.`;
         }
-
         return null;
     };
 
     /**
-     * Función de login MEJORADA con sistema de límite de intentos
+     * Función principal de inicio de sesión
+     * Implementa verificación híbrida de tokens y manejo de respuesta cross-domain
      */
     const login = async (email, password) => {
         try {
             setIsLoggingIn(true);
             setLoading(true);
             setAuthError(null);
-            setLockoutInfo(null); // Limpiar info de bloqueo previa
+            setLockoutInfo(null);
 
-            console.log('Iniciando proceso de login con verificación de límites...');
-
-            // Validación básica de entrada
+            // Validar datos de entrada
             const emailValidation = validators.email(email);
             if (!emailValidation.isValid) {
                 setAuthError(emailValidation.error);
@@ -585,7 +481,6 @@ const getUserInfo = async () => {
                 setLoading(false);
                 return { success: false, message: emailValidation.error };
             }
-
             const passwordValidation = validators.password(password);
             if (!passwordValidation.isValid) {
                 setAuthError(passwordValidation.error);
@@ -596,21 +491,17 @@ const getUserInfo = async () => {
 
             const cleanEmail = email.trim().toLowerCase();
 
-            // NUEVA VERIFICACIÓN: Comprobar si la cuenta está bloqueada
+            // Verificar si la cuenta está bloqueada
             const lockStatus = checkAccountLockStatus(cleanEmail);
             if (lockStatus.isLocked) {
-                console.warn('Intento de login en cuenta bloqueada:', cleanEmail);
-
                 setLockoutInfo({
                     isLocked: true,
                     remainingTime: lockStatus.remainingTime,
                     formattedTime: lockStatus.formattedTime
                 });
-
                 setAuthError(lockStatus.message);
                 setIsLoggingIn(false);
                 setLoading(false);
-
                 return {
                     success: false,
                     message: lockStatus.message,
@@ -619,61 +510,55 @@ const getUserInfo = async () => {
                 };
             }
 
-            // Proceder con el login normal
-            const response = await fetch('http://localhost:4000/api/login', {
+            // Realizar petición de login al servidor con credentials para cookies
+            const response = await fetch('https://test-9gs3.onrender.com/api/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: cleanEmail, password }),
-                credentials: 'include'
+                credentials: 'include' // Incluir cookies para verificación híbrida
             });
 
             const data = await response.json();
-            console.log('📡 Login response:', data);
 
             if (data.message === "login successful" || data.message === "Inicio de sesión exitoso") {
-                console.log('Login exitoso detectado');
-
-                // NUEVO: Limpiar intentos fallidos después de login exitoso
+                // Login exitoso
                 RateLimitUtils.clearAttempts(cleanEmail, attemptsStorage, setAttemptsStorage);
 
-                // Esperar para que se establezca la cookie
-                await new Promise(resolve => setTimeout(resolve, 800));
-
-                const token = getTokenFromCookies();
-                console.log('Token encontrado después del login:', !!token);
+                // Obtener token de múltiples fuentes (verificación híbrida)
+                let token = null;
+                
+                // Primera prioridad: token en response body
+                if (data.token) {
+                    token = data.token;
+                    setAuthToken(token); // Guardar en memoria
+                }
+                
+                // Segunda prioridad: esperar por cookie con timeout
+                if (!token) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    token = getTokenFromCookies();
+                    if (token) {
+                        setAuthToken(token); // Guardar en memoria también
+                    }
+                }
 
                 if (token) {
                     const decodedToken = decodeToken(token);
-                    console.log('Token decodificado exitosamente:', !!decodedToken);
-
                     if (decodedToken) {
                         const userData = {
                             id: decodedToken.id,
                             userType: decodedToken.userType || data.userType || 'user'
                         };
-
-                        console.log('Configurando datos del usuario:', userData);
-
-                        // Configurar todos los estados de una vez
+                        // Establecer estado de usuario autenticado
                         setUser(userData);
                         setIsAuthenticated(true);
                         setAuthError(null);
                         setLockoutInfo(null);
-
                         // Obtener información completa del usuario
-                        console.log('Obteniendo información completa...');
                         const userInfoResult = await getUserInfo();
-                        console.log('Información del usuario obtenida:', !!userInfoResult);
-
-                        // Finalizar todos los procesos ANTES de retornar
                         setIsLoggingIn(false);
                         setLoading(false);
-
-                        // Esperar para asegurar que el estado se propagó
                         await new Promise(resolve => setTimeout(resolve, 200));
-
-                        console.log('Login completado exitosamente para:', userData.userType);
-
                         return {
                             success: true,
                             message: data.message,
@@ -682,45 +567,35 @@ const getUserInfo = async () => {
                         };
                     }
                 }
-
                 const errorMsg = 'Error al procesar el token de autenticación';
                 setAuthError(errorMsg);
                 setIsLoggingIn(false);
                 setLoading(false);
                 return { success: false, message: errorMsg };
             } else {
-                // NUEVO: Registrar intento fallido
-                console.log('Login fallido, registrando intento:', cleanEmail);
-
+                // Login fallido - registrar intento
                 const attemptData = RateLimitUtils.recordFailedAttempt(cleanEmail, attemptsStorage, setAttemptsStorage);
-
                 let errorMsg = data.message || 'Error en la autenticación';
-
-                // Verificar si la cuenta se bloqueó con este intento
                 if (attemptData.attempts >= RATE_LIMIT_CONFIG.maxAttempts) {
                     const lockDuration = Math.ceil(RATE_LIMIT_CONFIG.lockoutDuration / 60);
                     errorMsg = `Tu cuenta ha sido bloqueada temporalmente por ${lockDuration} minutos debido a múltiples intentos fallidos.`;
-
                     setLockoutInfo({
                         isLocked: true,
                         remainingTime: RATE_LIMIT_CONFIG.lockoutDuration,
                         formattedTime: RateLimitUtils.formatRemainingTime(RATE_LIMIT_CONFIG.lockoutDuration)
                     });
                 } else {
-                    // Mostrar advertencia si está cerca del límite
                     const warning = getAttemptsWarning(cleanEmail);
                     if (warning) {
-                        errorMsg += `\n\n⚠️ ${warning}`;
+                        errorMsg += `\n\n${warning}`;
                     }
                 }
-
                 setAuthError(errorMsg);
                 setIsLoggingIn(false);
                 setLoading(false);
                 return { success: false, message: errorMsg };
             }
         } catch (error) {
-            console.error('Error en el proceso de login:', error);
             const errorMsg = 'Error de conexión con el servidor';
             setAuthError(errorMsg);
             setIsLoggingIn(false);
@@ -730,44 +605,33 @@ const getUserInfo = async () => {
     };
 
     /**
-     * Función de logout - FUNCIONALIDAD EXISTENTE sin cambios
+     * Función de cierre de sesión
+     * Utiliza headers de autenticación híbridos y credentials para cookies
      */
     const logout = async () => {
         try {
             setIsLoggingOut(true);
             setAuthError(null);
-            setLockoutInfo(null); // Limpiar info de bloqueo
-
-            console.log('Iniciando proceso de logout...');
+            setLockoutInfo(null);
 
             try {
-                // Intentar hacer logout en el servidor
-                const response = await fetch('http://localhost:4000/api/logout', {
+                // Intentar cerrar sesión en el servidor con verificación híbrida
+                const response = await fetch('https://test-9gs3.onrender.com/api/logout', {
                     method: 'POST',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    credentials: 'include', // Incluir cookies para verificación híbrida
+                    headers: getAuthHeaders(),
                 });
-
-                if (response && response.ok) {
-                    console.log('Sesión cerrada correctamente en el servidor');
-                } else {
-                    console.warn('Error al cerrar sesión en el servidor, pero continuando con logout local');
-                }
+                // Continuar con logout local independientemente de la respuesta del servidor
             } catch (serverError) {
-                console.warn('Error de red al cerrar sesión en el servidor, continuando localmente:', serverError);
+                // Error de servidor, pero continuar con logout local
             }
 
             // Limpiar datos locales
             clearAuthData(true);
-
-            console.log('Logout completado correctamente');
             return { success: true };
 
         } catch (error) {
-            console.error('Error durante logout:', error);
-            // Aún así limpiar datos locales
+            // Aún así limpiar datos locales en caso de error
             clearAuthData(true);
             return { success: true, warning: 'Sesión cerrada localmente' };
         } finally {
@@ -776,8 +640,7 @@ const getUserInfo = async () => {
     };
 
     /**
-     * Limpia errores de autenticación
-     * MEJORADA para limpiar también info de bloqueo
+     * Limpia errores de autenticación y información de bloqueo
      */
     const clearAuthError = () => {
         setAuthError(null);
@@ -785,55 +648,33 @@ const getUserInfo = async () => {
     };
 
     /**
-     * NUEVA FUNCIÓN: Limpia manualmente los intentos de un email (uso administrativo)
+     * Limpia manualmente los intentos de login para un email específico
      */
     const clearLoginAttempts = (email) => {
         if (!email) return;
-
         const cleanEmail = email.trim().toLowerCase();
         RateLimitUtils.clearAttempts(cleanEmail, attemptsStorage, setAttemptsStorage);
-
-        // Si se está limpiando el email actual, también limpiar la UI
         setLockoutInfo(null);
         setAuthError(null);
-
-        console.log('Intentos de login limpiados manualmente para:', cleanEmail);
     };
 
-    // Verificar estado de autenticación al cargar la aplicación
+    // Efecto para verificar estado de autenticación al cargar la aplicación
     useEffect(() => {
         if (!isLoggingOut && !isLoggingIn) {
-            console.log('Inicializando AuthProvider...');
             checkAuthStatus();
         }
     }, [isLoggingOut, isLoggingIn]);
 
-    // Debug: Mostrar cambios en el estado
-    useEffect(() => {
-        console.log('Estado de autenticación actualizado:', {
-            isAuthenticated,
-            hasUser: !!user,
-            hasUserInfo: !!userInfo,
-            userType: user?.userType,
-            isLoggingOut,
-            isLoggingIn,
-            hasLockoutInfo: !!lockoutInfo
-        });
-    }, [isAuthenticated, user, userInfo, isLoggingOut, isLoggingIn, lockoutInfo]);
-
-    // NUEVO: Efecto para manejar el countdown del bloqueo en tiempo real
+    // Efecto para manejar el countdown del bloqueo en tiempo real
     useEffect(() => {
         let interval;
-
         if (lockoutInfo && lockoutInfo.isLocked && lockoutInfo.remainingTime > 0) {
             interval = setInterval(() => {
                 const newRemainingTime = lockoutInfo.remainingTime - 1;
-
                 if (newRemainingTime <= 0) {
                     // El bloqueo ha expirado
                     setLockoutInfo(null);
                     setAuthError(null);
-                    console.log('Bloqueo de cuenta expirado');
                 } else {
                     // Actualizar tiempo restante
                     setLockoutInfo(prev => ({
@@ -844,7 +685,6 @@ const getUserInfo = async () => {
                 }
             }, 1000);
         }
-
         return () => {
             if (interval) {
                 clearInterval(interval);
@@ -852,36 +692,38 @@ const getUserInfo = async () => {
         };
     }, [lockoutInfo]);
 
-    // Valor del contexto EXPANDIDO con nuevas funcionalidades
+    // Valor del contexto que se proporciona a los componentes hijos
     const contextValue = {
-        // Estados existentes
-        user,
-        userInfo,
-        loading,
-        isAuthenticated,
-        authError,
-        isLoggingOut,
-        isLoggingIn,
+        // Estados principales
+        user, // Datos básicos del usuario autenticado
+        userInfo, // Información completa del usuario
+        loading, // Estado de carga
+        isAuthenticated, // Estado de autenticación
+        authError, // Errores de autenticación
+        isLoggingOut, // Estado durante logout
+        isLoggingIn, // Estado durante login
+        lockoutInfo, // Información de bloqueo actual
+        userOrderStats, // Estadísticas de pedidos
+        authToken, // Token almacenado en memoria para verificación híbrida
 
-        // NUEVOS ESTADOS para límite de intentos
-        lockoutInfo,                    // Información sobre bloqueo actual
-        userOrderStats,
+        // Funciones principales
+        login, // Función de inicio de sesión
+        logout, // Función de cierre de sesión
+        checkAuthStatus, // Verificar estado de autenticación
+        getUserInfo, // Obtener información del usuario
+        clearAuthError, // Limpiar errores
+        checkAccountLockStatus, // Verificar bloqueo de cuenta
+        getAttemptsWarning, // Obtener advertencias de intentos
+        clearLoginAttempts, // Limpiar intentos manualmente
+        getUserOrderStats, // Obtener estadísticas de pedidos
 
-        // Funciones existentes
-        login,
-        logout,
-        checkAuthStatus,
-        getUserInfo,
-        clearAuthError,
+        // Funciones utilitarias para verificación híbrida
+        getBestAvailableToken, // Obtener mejor token disponible
+        getAuthHeaders, // Crear headers de autenticación
+        getTokenFromCookies, // Obtener token de cookies específicamente
 
-        // NUEVAS FUNCIONES para límite de intentos
-        checkAccountLockStatus,         // Verificar si una cuenta está bloqueada
-        getAttemptsWarning,            // Obtener advertencia sobre intentos restantes
-        clearLoginAttempts,            // Limpiar intentos manualmente (uso administrativo)
-        getUserOrderStats,
-
-        // NUEVAS CONSTANTES útiles para la UI
-        rateLimitConfig: RATE_LIMIT_CONFIG  // Configuración del sistema para mostrar en UI
+        // Configuración
+        rateLimitConfig: RATE_LIMIT_CONFIG // Configuración del sistema de límites
     };
 
     return (

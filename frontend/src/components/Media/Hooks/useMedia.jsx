@@ -22,7 +22,7 @@ const useMedia = () => {
       }
       
       const queryString = params.toString();
-      const url = `http://localhost:4000/api/media${queryString ? `?${queryString}` : ''}`;
+      const url = `https://test-9gs3.onrender.com/api/media${queryString ? `?${queryString}` : ''}`;
       
       console.log('Fetching from URL:', url);
       

@@ -3,6 +3,34 @@ import mongoose from "mongoose";
 
 const reviewsController = {};
 
+// Función helper para configuración dinámica de cookies basada en el entorno
+const getCookieConfig = () => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    return {
+        httpOnly: false, // Permitir acceso desde JavaScript
+        secure: isProduction, // Solo HTTPS en producción
+        sameSite: isProduction ? 'none' : 'lax', // Cross-domain en producción
+        maxAge: 24 * 60 * 60 * 1000, // 24 horas
+        domain: undefined // Dejar que el navegador determine
+    };
+};
+
+// Función helper para obtener token de múltiples fuentes en la petición
+const getTokenFromRequest = (req) => {
+    let token = req.cookies?.authToken;
+    let source = 'cookie';
+    
+    if (!token) {
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.substring(7);
+            source = 'authorization_header';
+        }
+    }
+    
+    return { token, source };
+};
+
 // Función helper para validar ObjectId
 const isValidObjectId = (id) => {
     return mongoose.Types.ObjectId.isValid(id);
@@ -135,6 +163,7 @@ const getClientPopulateOptions = () => ({
 });
 
 // CORREGIDO: Devolver array directo para compatibilidad con frontend
+// Implementa configuración de cookies cross-domain
 reviewsController.getReviews = async (req, res) => {
     try {
         const { page = 1, limit = 10, status, rating } = req.query;
@@ -185,6 +214,13 @@ reviewsController.getReviews = async (req, res) => {
 
         console.log('Reviews encontradas:', reviews.length);
 
+        // Configurar cookies con configuración dinámica cross-domain
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
+        }
+
         // CORREGIDO: Devolver array directo para compatibilidad
         res.status(200).json(reviews);
     } catch (error) {
@@ -197,6 +233,10 @@ reviewsController.getReviews = async (req, res) => {
     }
 };
 
+/**
+ * Obtener reseña por ID
+ * Implementa configuración de cookies cross-domain
+ */
 reviewsController.getReviewById = async (req, res) => {
     try {
         const { id } = req.params;
@@ -219,9 +259,17 @@ reviewsController.getReviewById = async (req, res) => {
             });
         }
 
+        // Configurar cookies con configuración dinámica cross-domain
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
+        }
+
         res.status(200).json({
             success: true,
-            data: review
+            data: review,
+            token: token || 'session_maintained' // También en el body para mayor compatibilidad
         });
     } catch (error) {
         console.error('Error en getReviewById:', error);
@@ -233,6 +281,10 @@ reviewsController.getReviewById = async (req, res) => {
     }
 };
 
+/**
+ * Obtener reseñas por cliente
+ * Implementa configuración de cookies cross-domain
+ */
 reviewsController.getReviewByClient = async (req, res) => {
     try {
         const { clientId } = req.params;
@@ -267,6 +319,13 @@ reviewsController.getReviewByClient = async (req, res) => {
             reviewsModel.countDocuments({ clientId })
         ]);
 
+        // Configurar cookies con configuración dinámica cross-domain
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
+        }
+
         res.status(200).json({
             success: true,
             data: reviews,
@@ -274,7 +333,8 @@ reviewsController.getReviewByClient = async (req, res) => {
                 currentPage: pageNum,
                 totalPages: Math.ceil(totalCount / limitNum),
                 totalItems: totalCount
-            }
+            },
+            token: token || 'session_maintained' // También en el body para mayor compatibilidad
         });
     } catch (error) {
         console.error('Error en getReviewByClient:', error);
@@ -286,6 +346,10 @@ reviewsController.getReviewByClient = async (req, res) => {
     }
 };
 
+/**
+ * Obtener reseñas de un producto específico
+ * Implementa configuración de cookies cross-domain
+ */
 reviewsController.getProductReviews = async (req, res) => {
     try {
         const { productId } = req.params;
@@ -347,6 +411,13 @@ reviewsController.getProductReviews = async (req, res) => {
             };
         });
 
+        // Configurar cookies con configuración dinámica cross-domain
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
+        }
+
         res.status(200).json({
             success: true,
             message: "Reseñas obtenidas exitosamente",
@@ -355,7 +426,8 @@ reviewsController.getProductReviews = async (req, res) => {
                 totalReviews,
                 averageRating: Math.round(averageRating * 10) / 10,
                 productId
-            }
+            },
+            token: token || 'session_maintained' // También en el body para mayor compatibilidad
         });
 
     } catch (error) {
@@ -376,6 +448,10 @@ reviewsController.getProductReviews = async (req, res) => {
     }
 };
 
+/**
+ * Crear nueva reseña
+ * Implementa configuración de cookies cross-domain
+ */
 reviewsController.createReview = async (req, res) => {
     try {
         const { clientId, products, rating, message } = req.body;
@@ -434,10 +510,17 @@ reviewsController.createReview = async (req, res) => {
 
         console.log('Nueva review creada y populada: ', populatedReview);
 
+        // Configurar cookies con configuración dinámica cross-domain
+        const { token } = getTokenFromRequest(req);
+        const currentToken = token || 'session_maintained';
+        const cookieConfig = getCookieConfig();
+        res.cookie("authToken", currentToken, cookieConfig);
+
         res.status(201).json({
             success: true,
             message: "Reseña guardada exitosamente",
-            data: populatedReview
+            data: populatedReview,
+            token: currentToken // También en el body para mayor compatibilidad
         });
     } catch (error) {
         console.error('Error en createReview:', error);
@@ -465,6 +548,10 @@ reviewsController.createReview = async (req, res) => {
     }
 };
 
+/**
+ * Actualizar reseña existente
+ * Implementa configuración de cookies cross-domain
+ */
 reviewsController.updateReview = async (req, res) => {
     try {
         const { id } = req.params;
@@ -547,10 +634,17 @@ reviewsController.updateReview = async (req, res) => {
         ).populate(getClientPopulateOptions())
             .populate(getPopulateOptions());
 
+        // Configurar cookies con configuración dinámica cross-domain
+        const { token } = getTokenFromRequest(req);
+        const currentToken = token || 'session_maintained';
+        const cookieConfig = getCookieConfig();
+        res.cookie("authToken", currentToken, cookieConfig);
+
         res.status(200).json({
             success: true,
             message: "Reseña actualizada exitosamente",
-            data: updatedReview
+            data: updatedReview,
+            token: currentToken // También en el body para mayor compatibilidad
         });
     } catch (error) {
         console.error('Error en updateReview:', error);
@@ -578,6 +672,10 @@ reviewsController.updateReview = async (req, res) => {
     }
 };
 
+/**
+ * Eliminar reseña
+ * Implementa configuración de cookies cross-domain
+ */
 reviewsController.deleteReview = async (req, res) => {
     try {
         const { id } = req.params;
@@ -598,12 +696,19 @@ reviewsController.deleteReview = async (req, res) => {
             });
         }
 
+        // Configurar cookies con configuración dinámica cross-domain
+        const { token } = getTokenFromRequest(req);
+        const currentToken = token || 'session_maintained';
+        const cookieConfig = getCookieConfig();
+        res.cookie("authToken", currentToken, cookieConfig);
+
         res.status(200).json({
             success: true,
             message: "Reseña eliminada exitosamente",
             data: {
                 id: deletedReview._id
-            }
+            },
+            token: currentToken // También en el body para mayor compatibilidad
         });
     } catch (error) {
         console.error('Error en deleteReview:', error);
@@ -615,7 +720,10 @@ reviewsController.deleteReview = async (req, res) => {
     }
 };
 
-// Agregar endpoints para moderar y responder reseñas
+/**
+ * Moderar reseña (aprobar/rechazar)
+ * Implementa configuración de cookies cross-domain
+ */
 reviewsController.moderateReview = async (req, res) => {
     try {
         const { id } = req.params;
@@ -651,10 +759,17 @@ reviewsController.moderateReview = async (req, res) => {
             });
         }
 
+        // Configurar cookies con configuración dinámica cross-domain
+        const { token } = getTokenFromRequest(req);
+        const currentToken = token || 'session_maintained';
+        const cookieConfig = getCookieConfig();
+        res.cookie("authToken", currentToken, cookieConfig);
+
         res.status(200).json({
             success: true,
             message: "Reseña moderada exitosamente",
-            data: updatedReview
+            data: updatedReview,
+            token: currentToken // También en el body para mayor compatibilidad
         });
     } catch (error) {
         console.error('Error en moderateReview:', error);
@@ -666,6 +781,10 @@ reviewsController.moderateReview = async (req, res) => {
     }
 };
 
+/**
+ * Responder a una reseña
+ * Implementa configuración de cookies cross-domain
+ */
 reviewsController.replyToReview = async (req, res) => {
     try {
         console.log('=== BACKEND replyToReview DEBUG ===');
@@ -717,10 +836,17 @@ reviewsController.replyToReview = async (req, res) => {
 
         console.log('Reseña actualizada exitosamente:', updatedReview);
 
+        // Configurar cookies con configuración dinámica cross-domain
+        const { token } = getTokenFromRequest(req);
+        const currentToken = token || 'session_maintained';
+        const cookieConfig = getCookieConfig();
+        res.cookie("authToken", currentToken, cookieConfig);
+
         res.status(200).json({
             success: true,
             message: 'Respuesta guardada correctamente',
-            data: updatedReview
+            data: updatedReview,
+            token: currentToken // También en el body para mayor compatibilidad
         });
 
     } catch (error) {
@@ -733,7 +859,11 @@ reviewsController.replyToReview = async (req, res) => {
     }
 };
 
-// CORREGIDO: Devolver estadísticas en formato simple para compatibilidad
+/**
+ * Obtener estadísticas de reseñas
+ * CORREGIDO: Devolver estadísticas en formato simple para compatibilidad
+ * Implementa configuración de cookies cross-domain
+ */
 reviewsController.getReviewStats = async (req, res) => {
     try {
         const [generalStats, ratingDistribution] = await Promise.all([
@@ -779,13 +909,21 @@ reviewsController.getReviewStats = async (req, res) => {
             fullDistribution[item._id] = item.count;
         });
 
+        // Configurar cookies con configuración dinámica cross-domain
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
+        }
+
         // CORREGIDO: Devolver formato simple para compatibilidad
         res.status(200).json({
             totalReviews: stats.totalReviews,
             averageRating: stats.averageRating,
             minRating: stats.minRating,
             maxRating: stats.maxRating,
-            ratingDistribution: fullDistribution
+            ratingDistribution: fullDistribution,
+            token: token || 'session_maintained' // También en el body para mayor compatibilidad
         });
     } catch (error) {
         console.error('Error en getReviewStats:', error);
@@ -797,6 +935,10 @@ reviewsController.getReviewStats = async (req, res) => {
     }
 };
 
+/**
+ * Obtener productos mejor calificados
+ * Implementa configuración de cookies cross-domain
+ */
 reviewsController.getBestRankedProducts = async (req, res) => {
     try {
         const { limit = 10 } = req.query;
@@ -910,10 +1052,18 @@ reviewsController.getBestRankedProducts = async (req, res) => {
 
         console.log('Productos rankeados:', rankedProducts.length);
 
+        // Configurar cookies con configuración dinámica cross-domain
+        const { token } = getTokenFromRequest(req);
+        if (token) {
+            const cookieConfig = getCookieConfig();
+            res.cookie("authToken", token, cookieConfig);
+        }
+
         res.status(200).json({
             success: true,
             data: rankedProducts,
-            count: rankedProducts.length
+            count: rankedProducts.length,
+            token: token || 'session_maintained' // También en el body para mayor compatibilidad
         });
     } catch (error) {
         console.error('Error completo en getBestRankedProducts:', error);

@@ -1,3 +1,5 @@
+// REEMPLAZAR COMPLETAMENTE: frontend/src/components/Products/Hooks/useBestRankedProducts.jsx
+
 import { useState, useEffect } from "react";
 
 // Define y exporta un custom hook para obtener los productos mejor calificados.
@@ -15,29 +17,42 @@ export const useBestRankedProducts = () => {
     const fetchBestRankedProducts = async () => {
       try {
         setLoading(true);
+        setError(null);
+
+        // CORREGIDO: Usar el endpoint correcto que existe en el backend
         const response = await fetch(
-          "http://localhost:4000/api/reviews/bestRanked"
+          "https://test-9gs3.onrender.com/api/products/best-rated", // ← BACKEND URL CORRECTA
+          {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          }
         );
 
         if (!response.ok) {
-          throw new Error("Error al obtener productos mejor calificados");
+          throw new Error(`Error ${response.status}: Error al obtener productos mejor calificados`);
         }
 
         const responseData = await response.json();
-        console.log("Datos recibidos del servidor:", responseData);
+        console.log("Datos recibidos del servidor (best-rated):", responseData);
 
-        // Verifica que la respuesta tenga el formato esperado
-        if (responseData.success && Array.isArray(responseData.data)) {
-          const limitedProducts = responseData.data.slice(0, 5);
+        // CORREGIDO: Verificar la estructura correcta que devuelve el backend
+        if (responseData.success && Array.isArray(responseData.bestRated)) {
+          const limitedProducts = responseData.bestRated.slice(0, 10);
           setBestProducts(limitedProducts);
+          console.log(`✅ ${limitedProducts.length} productos mejor calificados cargados`);
         } else {
-          throw new Error("Formato de respuesta inválido del servidor");
+          console.warn("Estructura de respuesta inesperada:", responseData);
+          setBestProducts([]);
         }
 
         setError(null);
       } catch (err) {
-        setError(err.message);
         console.error("Error fetching best ranked products:", err);
+        setError(err.message);
+        setBestProducts([]);
       } finally {
         setLoading(false);
       }

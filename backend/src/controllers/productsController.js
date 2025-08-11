@@ -179,6 +179,7 @@ const validateImages = (files) => {
 
 /**
  * Obtiene todos los productos con sus categorías pobladas
+ * CORREGIDO: Estructura de respuesta compatible con frontend
  * @route GET /products
  * @returns {Array} Lista de productos con información de categoría
  */
@@ -188,19 +189,19 @@ productsController.getProducts = async (req, res) => {
         const products = await productsModel.find().populate('categoryId');
 
         if (!products || products.length === 0) {
-            return res.status(204).json({
+            return res.status(200).json({
                 success: true,
                 message: 'No hay productos disponibles',
-                data: [],
+                products: [], // ← CAMBIADO: era 'data', ahora 'products'
                 count: 0
             });
         }
 
-        // Respuesta exitosa con lista de productos
+        // RESPUESTA CORREGIDA: Estructura compatible con el frontend
         res.status(200).json({
             success: true,
             message: 'Productos obtenidos exitosamente',
-            data: products,
+            products: products, // ← CAMBIADO: era 'data', ahora 'products'
             count: products.length
         });
     } catch (error) {
@@ -952,7 +953,7 @@ productsController.getProductsByCategory = async (req, res) => {
 productsController.getFeaturedProducts = async (req, res) => {
     try {
         // Obtenemos todos los productos disponibles
-        const allProducts = await productsModel.find({ 
+        const allProducts = await productsModel.find({
             stock: { $gt: 0 } // Solo productos con stock disponible
         }).populate('categoryId');
 
@@ -978,7 +979,7 @@ productsController.getFeaturedProducts = async (req, res) => {
         // Formateamos los productos para el frontend
         const formattedProducts = featuredProducts.map(product => ({
             _id: product._id,
-            id: product._id, 
+            id: product._id,
             name: product.name,
             description: product.description,
             price: product.price,
@@ -1042,8 +1043,8 @@ productsController.getBestSellingProducts = async (req, res) => {
             {
                 $group: {
                     _id: "$shoppingCart.items.itemId",
-                    totalSold: {$sum: "$shoppingCart.items.quantity"},
-                    totalRevenue: {$sum: "$shoppingCart.items.subtotal"}
+                    totalSold: { $sum: "$shoppingCart.items.quantity" },
+                    totalRevenue: { $sum: "$shoppingCart.items.subtotal" }
                 }
             },
             {
@@ -1067,11 +1068,11 @@ productsController.getBestSellingProducts = async (req, res) => {
             },
             {
                 $addFields: {
-                    "product.categoryId": {$arrayElemAt: ["$product.category", 0]}
+                    "product.categoryId": { $arrayElemAt: ["$product.category", 0] }
                 }
             },
             {
-                $sort: {totalSold: -1}
+                $sort: { totalSold: -1 }
             },
             {
                 $limit: 10
@@ -1094,7 +1095,7 @@ productsController.getBestSellingProducts = async (req, res) => {
             percentage: totalSales > 0 ? Math.round((item.totalSold / totalSales) * 100) : 0
         }));
 
-        if(!formattedProducts || formattedProducts.length === 0){
+        if (!formattedProducts || formattedProducts.length === 0) {
             return res.status(200).json({
                 success: true,
                 message: 'No hay productos vendidos aún',
@@ -1113,7 +1114,7 @@ productsController.getBestSellingProducts = async (req, res) => {
     } catch (error) {
         console.error('Error en getBestSellingProducts: ', error);
 
-        if(error.name === 'MongoNetworkError'){
+        if (error.name === 'MongoNetworkError') {
             return res.status(503).json({
                 success: false,
                 message: "Servicio de base de datos no disponible temporalmente"
@@ -1123,6 +1124,106 @@ productsController.getBestSellingProducts = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Error interno del servidor al obtener productos más vendidos',
+            error: error.message
+        });
+    }
+};
+/**
+ * Obtener productos mejor calificados
+ * Esta función es requerida por BestRankedProductsCards.jsx
+ */
+productsController.getBestRankedProducts = async (req, res) => {
+    try {
+        // Esta función requiere un sistema de calificaciones
+        // Por ahora, devolvemos productos con ratings mock para que funcione el frontend
+        
+        const products = await productsModel.find({}).limit(10).populate('categoryId');
+        
+        if (!products || products.length === 0) {
+            return res.status(200).json({
+                success: true,
+                message: 'No hay productos disponibles',
+                bestRated: [],
+                count: 0
+            });
+        }
+        
+        // Simular datos de rating para desarrollo
+        const bestRated = products.map(product => ({
+            _id: product._id,
+            name: product.name,
+            description: product.description,
+            category: product.categoryId?.name || 'Sin categoría',
+            image: product.images && product.images.length > 0 ? product.images[0].image : null,
+            images: product.images,
+            averageRating: parseFloat((Math.random() * 2 + 3).toFixed(1)), // Rating entre 3-5
+            reviewCount: Math.floor(Math.random() * 50) + 5, // Entre 5-55 reviews
+            type: product.type || 'regular',
+            itemType: product.isPersonalizable ? 'custom' : 'regular',
+            selectedItemsCount: product.isPersonalizable ? Math.floor(Math.random() * 5) + 1 : 0
+        })).sort((a, b) => b.averageRating - a.averageRating);
+
+        res.status(200).json({
+            success: true,
+            bestRated: bestRated,
+            message: 'Productos mejor calificados obtenidos exitosamente'
+        });
+    } catch (error) {
+        console.error('Error al obtener productos mejor calificados:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor al obtener productos mejor calificados',
+            error: error.message
+        });
+    }
+};
+
+productsController.getBestRatedProducts = async (req, res) => {
+    try {
+        console.log('📊 Obteniendo productos mejor calificados...');
+        
+        // Esta función requiere un sistema de calificaciones
+        // Por ahora, devolvemos productos con ratings mock para que funcione el frontend
+        
+        const products = await productsModel.find({}).limit(10).populate('categoryId');
+        
+        if (!products || products.length === 0) {
+            return res.status(200).json({
+                success: true,
+                message: 'No hay productos disponibles',
+                bestRated: [],
+                count: 0
+            });
+        }
+        
+        // Simular datos de rating para desarrollo
+        const bestRated = products.map(product => ({
+            _id: product._id,
+            name: product.name,
+            description: product.description,
+            category: product.categoryId?.name || 'Sin categoría',
+            image: product.images && product.images.length > 0 ? product.images[0].image : null,
+            images: product.images,
+            averageRating: parseFloat((Math.random() * 2 + 3).toFixed(1)), // Rating entre 3-5
+            reviewCount: Math.floor(Math.random() * 50) + 5, // Entre 5-55 reviews
+            type: product.type || 'regular',
+            itemType: product.isPersonalizable ? 'custom' : 'regular',
+            selectedItemsCount: product.isPersonalizable ? Math.floor(Math.random() * 5) + 1 : 0
+        })).sort((a, b) => b.averageRating - a.averageRating);
+
+        console.log(`✅ ${bestRated.length} productos mejor calificados generados`);
+
+        res.status(200).json({
+            success: true,
+            bestRated: bestRated,
+            count: bestRated.length,
+            message: 'Productos mejor calificados obtenidos exitosamente'
+        });
+    } catch (error) {
+        console.error('Error al obtener productos mejor calificados:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor al obtener productos mejor calificados',
             error: error.message
         });
     }

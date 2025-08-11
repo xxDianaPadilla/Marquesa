@@ -7,6 +7,34 @@ import { config } from "../config.js";
 
 const registerClientsController = {};
 
+// Función helper para configuración dinámica de cookies basada en el entorno
+const getCookieConfig = () => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    return {
+        httpOnly: false, // Permitir acceso desde JavaScript
+        secure: isProduction, // Solo HTTPS en producción
+        sameSite: isProduction ? 'none' : 'lax', // Cross-domain en producción
+        maxAge: 24 * 60 * 60 * 1000, // 24 horas
+        domain: undefined // Dejar que el navegador determine
+    };
+};
+
+// Función helper para obtener token de múltiples fuentes en la petición
+const getTokenFromRequest = (req) => {
+    let token = req.cookies?.authToken;
+    let source = 'cookie';
+    
+    if (!token) {
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.substring(7);
+            source = 'authorization_header';
+        }
+    }
+    
+    return { token, source };
+};
+
 // Función helper para validar email
 const validateEmail = (email) => {
     if (!email || typeof email !== 'string') {
@@ -178,11 +206,15 @@ const validateAddress = (address) => {
     return { isValid: true, value: trimmedAddress };
 };
 
+/**
+ * Función principal de registro de clientes
+ * Implementa configuración de cookies cross-domain y respuesta híbrida
+ */
 registerClientsController.register = async (req, res) => {
     try {
         const { fullName, phone, birthDate, email, password, address, favorites, discount } = req.body;
 
-        // Validar campos requeridos
+        // Validar campos requeridos con las funciones helper
         const fullNameValidation = validateFullName(fullName);
         if (!fullNameValidation.isValid) {
             return res.status(400).json({
@@ -334,14 +366,17 @@ registerClientsController.register = async (req, res) => {
             });
         }
 
-        // Limpiar cookie de verificación si existe
-        res.clearCookie("emailVerificationToken");
+        // Configurar cookies con configuración dinámica cross-domain
+        const cookieConfig = getCookieConfig();
+        res.clearCookie("emailVerificationToken"); // Limpiar cookie de verificación si existe
+        res.cookie("registrationComplete", "success", cookieConfig);
 
         console.log(`Cliente registrado exitosamente: ${emailValidation.value}`);
 
         res.status(201).json({
             success: true,
-            message: "Cliente registrado exitosamente"
+            message: "Cliente registrado exitosamente",
+            token: "registration_complete" // También en el body para mayor compatibilidad
         });
 
     } catch (error) {

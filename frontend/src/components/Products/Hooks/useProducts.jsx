@@ -1,3 +1,5 @@
+// REEMPLAZAR COMPLETAMENTE: frontend/src/components/Products/Hooks/useProducts.jsx
+
 // Importa los hooks useState y useEffect desde la biblioteca de React.
 import { useState, useEffect } from "react";
 
@@ -17,19 +19,52 @@ export const useProducts = () => {
       try {
         // Inicia el estado de carga.
         setLoading(true);
-        // Realiza la petición fetch a la API de productos. (Nota: hay un typo, 'reponse' en lugar de 'response').
-        const reponse = await fetch("http://localhost:4000/api/products");
+        setError(null);
+
+        console.log('📦 Obteniendo productos desde API...');
+
+        // CORREGIDO: Arreglar el typo y agregar headers apropiados
+        const response = await fetch("https://test-9gs3.onrender.com/api/products", {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+
         // Si la respuesta no es exitosa (ej. status 404, 500), lanza un error.
-        if (!reponse.ok) {
-          throw new Error("Error al obtener productos");
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}: Error al obtener productos`);
         }
+
         // Convierte la respuesta de la API a formato JSON.
-        const data = await reponse.json();
-        // Actualiza el estado con los datos de los productos obtenidos.
-        setProducts(data);
+        const data = await response.json();
+        console.log('📦 Respuesta recibida:', data);
+
+        // CORREGIDO: Manejar la estructura correcta de respuesta del backend
+        if (data.success && Array.isArray(data.products)) {
+          // Estructura nueva: { success: true, products: [...], count: N }
+          setProducts(data.products);
+          console.log(`✅ ${data.products.length} productos cargados exitosamente`);
+        } else if (Array.isArray(data.products)) {
+          // Fallback si no hay success pero sí products
+          setProducts(data.products);
+          console.log(`✅ ${data.products.length} productos cargados (fallback)`);
+        } else if (Array.isArray(data)) {
+          // Retrocompatibilidad si devuelve array directo
+          setProducts(data);
+          console.log(`✅ ${data.length} productos cargados (formato anterior)`);
+        } else {
+          console.warn('⚠️ Estructura de respuesta inesperada:', data);
+          setProducts([]);
+        }
+
+        setError(null);
       } catch (error) {
         // Si ocurre un error en el bloque try, se captura y se guarda el mensaje en el estado de error.
+        console.error('❌ Error al obtener productos:', error);
         setError(error.message);
+        setProducts([]);
       } finally {
         // El bloque finally se ejecuta siempre, al finalizar el try o el catch.
         // Finaliza el estado de carga, indicando que la operación ha terminado.

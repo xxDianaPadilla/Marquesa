@@ -21,7 +21,7 @@ import ErrorHeroSection from "../../components/Errors/ErrorHeroSection";
 import ErrorDescriptionCard from "../../components/Errors/ErrorDescriptionCard";
 import ErrorActionButton from "../../components/Errors/ErrorActionButton";
 import ErrorSuggestionsGrid from "../../components/Errors/ErrorSuggestionsGrid";
-import ErrorInfoCard from "../../components/errors/ErrorInfoCard";
+import ErrorInfoCard2 from "../../components/Errors/ErrorInfoCard2";
 
 const Conflict = () => {
 
@@ -103,7 +103,7 @@ const Conflict = () => {
       />
 
       {/* Mensaje de ayuda adicional */}
-      <ErrorInfoCard 
+      <ErrorInfoCard2
         icon={
           <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
             <path
@@ -117,7 +117,7 @@ const Conflict = () => {
         gradient="linear-gradient(to right, #FDB4B7, #F2C6C2)"
       >
         <p>Si el problema persiste, no dudes en contactar nuestro equipo de soporte</p>
-      </ErrorInfoCard>
+      </ErrorInfoCard2>
 
     </ErrorPageContainer>
   );

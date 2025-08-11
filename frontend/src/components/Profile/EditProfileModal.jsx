@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { X, Edit, User, Phone, MapPin } from 'lucide-react';
 import { FaEdit } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
-import useEditProfile from './hooks/useEditProfile';
+import useEditProfile from './Hooks/useEditProfile';
 
 /**
  * Modal para editar el perfil del usuario

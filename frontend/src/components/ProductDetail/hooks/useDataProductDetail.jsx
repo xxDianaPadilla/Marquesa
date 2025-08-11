@@ -35,7 +35,7 @@ const useDataBaseProductsDetail = (productId) => {
         setError(null);
         
         // Construye la URL para la petición al backend
-        const url = `https://test-9gs3.onrender.com/api/products/${productId}`;        
+        const url = `https://marquesa.onrender.com/api/products/${productId}`;        
         // Realiza la solicitud fetch al servidor
         const response = await fetch(url, {
           method: 'GET', // Método GET para obtener datos

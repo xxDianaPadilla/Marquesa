@@ -27,7 +27,7 @@ const useDataProducts = () => {
   // ============ CONFIGURACIÓN DE API ============
 
   // URL base para todas las operaciones de productos
-  const API = "https://test-9gs3.onrender.com/api/products";
+  const API = "https://marquesa.onrender.com/api/products";
 
   // ============ ESTADOS DEL FORMULARIO ============
 
@@ -226,7 +226,7 @@ const useDataProducts = () => {
   const fetchCategories = async () => {
     try {
       console.log('📂 Cargando categorías...');
-      const response = await fetch("https://test-9gs3.onrender.com/api/categories");
+      const response = await fetch("https://marquesa.onrender.com/api/categories");
       const data = await handleResponse(response);
 
       // Manejar nueva estructura de respuesta { success, data, message }
@@ -393,7 +393,7 @@ const useDataProducts = () => {
       console.log('Enviando petición al servidor...');
 
       // ---- Enviar petición POST ----
-      const res = await fetch("https://test-9gs3.onrender.com/api/products", {
+      const res = await fetch("https://marquesa.onrender.com/api/products", {
         method: "POST",
         body: formData // FormData maneja automáticamente el Content-Type
       });

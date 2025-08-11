@@ -1,7 +1,7 @@
 // REEMPLAZAR COMPLETAMENTE: frontend/src/components/Products/Hooks/useFeaturedProductsService.jsx
 
 // CORREGIDO: URL del backend en lugar del frontend
-const API_BASE_URL = 'https://test-9gs3.onrender.com/api';
+const API_BASE_URL = 'https://marquesa.onrender.com/api';
 
 export const useFeaturedProductsService = {
     getFeaturedProducts: async () => {

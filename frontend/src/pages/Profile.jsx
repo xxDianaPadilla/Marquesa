@@ -47,7 +47,7 @@ const Perfil = () => {
       console.log('Obteniendo códigos de ruleta del usuario...');
       setLoadingCodes(true);
 
-      const response = await fetch('https://test-9gs3.onrender.com/api/clients/ruleta/codes', {
+      const response = await fetch('https://marquesa.onrender.com/api/clients/ruleta/codes', {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -134,7 +134,7 @@ const Perfil = () => {
         return;
       }
 
-      const response = await fetch(`https://test-9gs3.onrender.com/api/sales/user/${userId}/orders`, {
+      const response = await fetch(`https://marquesa.onrender.com/api/sales/user/${userId}/orders`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -247,7 +247,7 @@ const Perfil = () => {
   const handleOrderDetails = async (pedido) => {
     try {
       // Obtener datos del cliente
-      const customerResponse = await fetch(`https://test-9gs3.onrender.com/api/users/${pedido.shoppingCart.clientId}`, {
+      const customerResponse = await fetch(`https://marquesa.onrender.com/api/users/${pedido.shoppingCart.clientId}`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -271,13 +271,13 @@ const Perfil = () => {
 
             // Determinar el endpoint según el tipo de item
             if (item.itemType === 'product') {
-              productResponse = await fetch(`https://test-9gs3.onrender.com/api/products/${item.itemId}`, {
+              productResponse = await fetch(`https://marquesa.onrender.com/api/products/${item.itemId}`, {
                 method: 'GET',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
               });
             } else if (item.itemType === 'custom') {
-              productResponse = await fetch(`https://test-9gs3.onrender.com/api/customproducts/${item.itemId}`, {
+              productResponse = await fetch(`https://marquesa.onrender.com/api/customproducts/${item.itemId}`, {
                 method: 'GET',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },

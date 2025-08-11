@@ -40,7 +40,7 @@ export const useEmailVerification = () => {
             console.log('Enviando solicitud de verificación:', { email, fullName });
 
             // ✅ NUEVA LÓGICA: Petición con sistema híbrido
-            const operationPromise = fetch('https://test-9gs3.onrender.com/api/emailVerification/request', {
+            const operationPromise = fetch('https://marquesa.onrender.com/api/emailVerification/request', {
                 method: 'POST',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
@@ -197,7 +197,7 @@ export const useEmailVerification = () => {
             });
 
             // ✅ NUEVA LÓGICA: Petición con sistema híbrido
-            const operationPromise = fetch('https://test-9gs3.onrender.com/api/emailVerification/verify', {
+            const operationPromise = fetch('https://marquesa.onrender.com/api/emailVerification/verify', {
                 method: 'POST',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos

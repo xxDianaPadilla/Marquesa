@@ -33,7 +33,7 @@ export const useMediaManager = () => {
 
     // ============ CONFIGURACIÓN DE API ============
     
-    const API_BASE_URL = 'https://test-9gs3.onrender.com/api/media'; // URL base de la API de medios
+    const API_BASE_URL = 'https://marquesa.onrender.com/api/media'; // URL base de la API de medios
 
     // ============ FUNCIONES DE PETICIONES HTTP ============
     

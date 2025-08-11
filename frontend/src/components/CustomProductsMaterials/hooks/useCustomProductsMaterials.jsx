@@ -6,7 +6,7 @@ const useCustomProductsMaterials = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const API_BASE_URL = 'https://test-9gs3.onrender.com/api/customProductsMaterials';
+  const API_BASE_URL = 'https://marquesa.onrender.com/api/customProductsMaterials';
 
   // Función helper para manejar respuestas del servidor
   const handleResponse = async (response) => {

@@ -19,7 +19,7 @@ export const useCustomProducts = () => {
         setLoading(true);
         // Realiza la petición fetch a la API.
         const response = await fetch(
-          "https://test-9gs3.onrender.com/api/customProducts"
+          "https://marquesa.onrender.com/api/customProducts"
         );
         // Si la respuesta no es exitosa (ej: error 404 o 500), lanza un error.
         if (!response.ok) {

@@ -175,7 +175,7 @@ const PaymentProcessPage = () => {
                 formData.append('paymentProofImage', saleData.paymentProofImage);
             }
 
-            const response = await fetch('https://test-9gs3.onrender.com/api/sales', {
+            const response = await fetch('https://marquesa.onrender.com/api/sales', {
                 method: 'POST',
                 credentials: 'include',
                 body: formData
@@ -238,7 +238,7 @@ const PaymentProcessPage = () => {
             }
 
             // Obtener el ShoppingCartId del usuario actual
-            const cartResponse = await fetch(`https://test-9gs3.onrender.com/api/shoppingCart/client/${user.id}`, {
+            const cartResponse = await fetch(`https://marquesa.onrender.com/api/shoppingCart/client/${user.id}`, {
                 method: 'GET',
                 credentials: 'include',
                 headers: {

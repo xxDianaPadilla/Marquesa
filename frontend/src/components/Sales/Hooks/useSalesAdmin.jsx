@@ -30,7 +30,7 @@ const useSalesAdmin = () => {
       setLoading(true);
 
       // ✅ NUEVA LÓGICA: Petición con sistema híbrido
-      const operationPromise = fetch("https://test-9gs3.onrender.com/api/sales/detailed", {
+      const operationPromise = fetch("https://marquesa.onrender.com/api/sales/detailed", {
         method: 'GET',
         credentials: 'include', // ✅ NUEVO: Incluir cookies
         headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
@@ -101,7 +101,7 @@ const useSalesAdmin = () => {
     try {
       // ✅ NUEVA LÓGICA: Petición con sistema híbrido
       const operationPromise = fetch(
-        `https://test-9gs3.onrender.com/api/sales/${saleId}/trackingStatus`,
+        `https://marquesa.onrender.com/api/sales/${saleId}/trackingStatus`,
         {
           method: "PATCH",
           credentials: 'include', // ✅ NUEVO: Incluir cookies

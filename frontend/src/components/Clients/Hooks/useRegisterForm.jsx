@@ -531,7 +531,7 @@ const useRegisterForm = () => {
             console.log('Enviando solicitud de verificación:', requestData);
 
             // ✅ NUEVA LÓGICA: Verificar que el email no exista previamente y enviar código con sistema híbrido
-            const operationPromise = fetch('https://test-9gs3.onrender.com/api/emailVerification/request', {
+            const operationPromise = fetch('https://marquesa.onrender.com/api/emailVerification/request', {
                 method: 'POST',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos

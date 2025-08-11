@@ -47,20 +47,20 @@ export const useDashboardStats = () => {
       // Utiliza Promise.all para ejecutar las peticiones de clientes (actual y anterior) en paralelo.
       const [currentClients, previousClients] = await Promise.all([
         fetchJSON(
-          "https://test-9gs3.onrender.com/api/clients/newClientsStats?period=current"
+          "https://marquesa.onrender.com/api/clients/newClientsStats?period=current"
         ),
         fetchJSON(
-          "https://test-9gs3.onrender.com/api/clients/newClientsStats?period=previous"
+          "https://marquesa.onrender.com/api/clients/newClientsStats?period=previous"
         ),
       ]);
 
       // Hace lo mismo para las estadísticas de ventas, también en paralelo.
       const [currentSales, previousSales] = await Promise.all([
         fetchJSON(
-          "https://test-9gs3.onrender.com/api/sales/soldProductsStats?period=current"
+          "https://marquesa.onrender.com/api/sales/soldProductsStats?period=current"
         ),
         fetchJSON(
-          "https://test-9gs3.onrender.com/api/sales/soldProductsStats?period=previous"
+          "https://marquesa.onrender.com/api/sales/soldProductsStats?period=previous"
         ),
       ]);
 

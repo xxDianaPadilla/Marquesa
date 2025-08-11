@@ -35,7 +35,7 @@ export const useSales = () => {
   const fetchSales = useCallback(async () => {
     try {
       // ✅ NUEVA LÓGICA: Petición con sistema híbrido
-      const operationPromise = fetch("https://test-9gs3.onrender.com/api/sales", {
+      const operationPromise = fetch("https://marquesa.onrender.com/api/sales", {
         method: 'GET',
         credentials: 'include', // ✅ NUEVO: Incluir cookies
         headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
@@ -94,7 +94,7 @@ export const useSales = () => {
   const fetchTotalSales = useCallback(async () => {
     try {
       // ✅ NUEVA LÓGICA: Petición con sistema híbrido
-      const operationPromise = fetch("https://test-9gs3.onrender.com/api/sales/total", {
+      const operationPromise = fetch("https://marquesa.onrender.com/api/sales/total", {
         method: 'GET',
         credentials: 'include', // ✅ NUEVO: Incluir cookies
         headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos

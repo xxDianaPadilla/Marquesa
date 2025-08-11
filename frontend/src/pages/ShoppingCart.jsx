@@ -113,7 +113,7 @@ const ShoppingCart = () => {
 
         // ✅ CAMBIO PRINCIPAL: Usar el endpoint /active para obtener el carrito activo
         try {
-            const response = await fetch(`https://test-9gs3.onrender.com/api/shoppingCart/active/${user.id}`, {
+            const response = await fetch(`https://marquesa.onrender.com/api/shoppingCart/active/${user.id}`, {
                 method: 'GET',
                 credentials: 'include',
                 headers: {

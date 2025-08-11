@@ -273,7 +273,7 @@ const useEditProfile = () => {
                 headers['Authorization'] = `Bearer ${token}`;
             }
 
-            const operationPromise = fetch('https://test-9gs3.onrender.com/api/clients/profile', {
+            const operationPromise = fetch('https://marquesa.onrender.com/api/clients/profile', {
                 method: 'PUT',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: headers, // ✅ NUEVO: Headers híbridos (sin Content-Type para FormData)

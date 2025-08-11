@@ -112,7 +112,7 @@ export const useRuleta = () => {
             // Generar código real en el backend mientras el fullscreen sigue activo
             try {
                 // ✅ NUEVA LÓGICA: Llamar al backend para generar código real con sistema híbrido
-                const operationPromise = fetch('https://test-9gs3.onrender.com/api/clients/ruleta/generate', {
+                const operationPromise = fetch('https://marquesa.onrender.com/api/clients/ruleta/generate', {
                     method: 'POST',
                     credentials: 'include', // ✅ NUEVO: Incluir cookies
                     headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
@@ -239,7 +239,7 @@ export const useRuleta = () => {
         }
 
         try {
-            const operationPromise = fetch('https://test-9gs3.onrender.com/api/clients/ruleta/codes', {
+            const operationPromise = fetch('https://marquesa.onrender.com/api/clients/ruleta/codes', {
                 method: 'GET',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos

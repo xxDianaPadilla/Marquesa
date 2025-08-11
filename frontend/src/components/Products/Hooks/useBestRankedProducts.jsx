@@ -21,7 +21,7 @@ export const useBestRankedProducts = () => {
 
         // CORREGIDO: Usar el endpoint correcto que existe en el backend
         const response = await fetch(
-          "https://test-9gs3.onrender.com/api/products/best-rated", // ← BACKEND URL CORRECTA
+          "https://marquesa.onrender.com/api/products/best-rated", // ← BACKEND URL CORRECTA
           {
             method: 'GET',
             credentials: 'include',

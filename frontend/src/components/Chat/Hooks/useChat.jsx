@@ -59,7 +59,7 @@ export const useChat = () => {
         onMessageDeleted
     } = useSocket();
 
-    const API_BASE = "https://test-9gs3.onrender.com/api/chat";
+    const API_BASE = "https://marquesa.onrender.com/api/chat";
 
     useEffect(() => {
         activeConversationRef.current = activeConversation;

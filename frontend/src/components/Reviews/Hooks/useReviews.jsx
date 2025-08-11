@@ -62,7 +62,7 @@ export const useReviews = () => {
                 console.log('=== Fetch Reviews Debug ===');
                 console.log('Iniciando solicitud a /api/reviews');
                 
-                const response = await fetch('https://test-9gs3.onrender.com/api/reviews');
+                const response = await fetch('https://marquesa.onrender.com/api/reviews');
                 
                 console.log('Response status:', response.status);
                 console.log('Response ok:', response.ok);
@@ -123,7 +123,7 @@ export const useReviews = () => {
                 throw new Error('reviewId es requerido');
             }
 
-            const response = await fetch(`https://test-9gs3.onrender.com/api/reviews/${reviewId}`, {
+            const response = await fetch(`https://marquesa.onrender.com/api/reviews/${reviewId}`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
@@ -187,7 +187,7 @@ export const useReviews = () => {
             const requestBody = { response: replyText.trim() };
             console.log('Request body:', JSON.stringify(requestBody));
 
-            const response = await fetch(`https://test-9gs3.onrender.com/api/reviews/${reviewId}/reply`, {
+            const response = await fetch(`https://marquesa.onrender.com/api/reviews/${reviewId}/reply`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -264,7 +264,7 @@ export const useReviews = () => {
             const requestBody = { action };
             console.log('Request body:', JSON.stringify(requestBody));
 
-            const response = await fetch(`https://test-9gs3.onrender.com/api/reviews/${reviewId}/moderate`, {
+            const response = await fetch(`https://marquesa.onrender.com/api/reviews/${reviewId}/moderate`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

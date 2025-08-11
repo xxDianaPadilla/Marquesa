@@ -37,7 +37,7 @@ export const usePasswordReset = () => {
             setIsLoading(true);
 
             // ✅ NUEVA LÓGICA: Petición con sistema híbrido
-            const operationPromise = fetch('https://test-9gs3.onrender.com/api/passwordReset/request', {
+            const operationPromise = fetch('https://marquesa.onrender.com/api/passwordReset/request', {
                 method: 'POST',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
@@ -154,7 +154,7 @@ export const usePasswordReset = () => {
         try {
             setIsLoading(true);
 
-            const response = await fetch('https://test-9gs3.onrender.com/api/passwordReset/verify', {
+            const response = await fetch('https://marquesa.onrender.com/api/passwordReset/verify', {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
@@ -225,7 +225,7 @@ export const usePasswordReset = () => {
         try {
             setIsLoading(true);
 
-            const response = await fetch('https://test-9gs3.onrender.com/api/passwordReset/update', {
+            const response = await fetch('https://marquesa.onrender.com/api/passwordReset/update', {
                 method: 'POST',
                 credentials: 'include',
                 headers: {

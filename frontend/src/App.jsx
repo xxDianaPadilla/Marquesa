@@ -51,7 +51,7 @@ import RuletaPage from './pages/RuletaPage';
 import ConditionsPromotions from './pages/ConditionsPromotions';
 import ShippingInformation from './pages/ShippingInformation';
 import AboutUs from './pages/AboutUs';
-import PrivacyPolicies from './pages/PrivacyPolicies.JSX';
+import PrivacyPolicies from './pages/PrivacyPolicies';
 import TermsandConditions from './pages/TermsandConditions';
 import MediaDetailPage from './pages/MediaDetailPage';
 import CustomProductsManager from './pages/CustomProductsManager';

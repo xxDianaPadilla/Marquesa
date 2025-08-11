@@ -31,10 +31,10 @@ const app = express();
 
 // 1. CORS - Debe ir primero para manejar cookies correctamente
 app.use(
-   cors({
-       origin: "http://localhost:5173",
-       credentials: true,  // Habilita el envío de cookies
-   })
+    cors({
+        origin: "",
+        credentials: true
+    })
 );
 
 // 2. Middleware de parsing de datos

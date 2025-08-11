@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  Image
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useAuth } from '../context/AuthContext';
@@ -22,12 +23,12 @@ const isMediumDevice = screenWidth >= 375 && screenWidth < 414;
 const horizontalPadding = isSmallDevice ? 16 : isMediumDevice ? 20 : 24;
 
 const FavoritesScreen = ({ navigation }) => {
-  const { 
-    favorites, 
-    favoritesLoading, 
-    favoritesError, 
-    removeFromFavorites, 
-    getFavorites, 
+  const {
+    favorites,
+    favoritesLoading,
+    favoritesError,
+    removeFromFavorites,
+    getFavorites,
     clearFavoritesError,
     isAuthenticated,
     userInfo
@@ -107,7 +108,7 @@ const FavoritesScreen = ({ navigation }) => {
   const getProductImage = (product) => {
     if (product.images && Array.isArray(product.images) && product.images.length > 0) {
       const firstImage = product.images[0];
-      
+
       if (typeof firstImage === 'object' && firstImage.image) {
         return firstImage.image;
       }
@@ -116,26 +117,26 @@ const FavoritesScreen = ({ navigation }) => {
         return firstImage;
       }
     }
-    
+
     if (product.image) {
       return product.image;
     }
-    
+
     return 'https://via.placeholder.com/150x150?text=Sin+Imagen';
   };
 
   // Función para renderizar cada item favorito
   const renderFavoriteItem = (product) => (
-    <TouchableOpacity 
-      key={product._id} 
+    <TouchableOpacity
+      key={product._id}
       style={styles.favoriteItem}
       onPress={() => handleProductPress(product)}
       disabled={localLoading}
     >
       <View style={styles.imageContainer}>
-        <Image 
-          source={{ uri: getProductImage(product) }} 
-          style={styles.favoriteImage} 
+        <Image
+          source={{ uri: getProductImage(product) }}
+          style={styles.favoriteImage}
           resizeMode="cover"
         />
 
@@ -171,7 +172,7 @@ const FavoritesScreen = ({ navigation }) => {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-        
+
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -192,36 +193,11 @@ const FavoritesScreen = ({ navigation }) => {
           <Text style={styles.emptyMessage}>
             Debes iniciar sesión para ver tus productos favoritos
           </Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.shopButton}
             onPress={() => navigation.navigate('Login')}
           >
             <Text style={styles.shopButtonText}>Iniciar sesión</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Bottom Navigation */}
-        <View style={styles.bottomNav}>
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => navigation.navigate('Home')}
-          >
-            <Icon name="home" size={isSmallDevice ? 20 : 24} color="#ccc" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navItem}>
-            <Image source={favoritesIcon} style={styles.navIcon} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => navigation.navigate('Chat')}
-          >
-            <Icon name="chat" size={isSmallDevice ? 20 : 24} color="#ccc" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => navigation.navigate('Cart')}
-          >
-            <Icon name="shopping-cart" size={isSmallDevice ? 20 : 24} color="#ccc" />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -233,7 +209,7 @@ const FavoritesScreen = ({ navigation }) => {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-        
+
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -252,31 +228,6 @@ const FavoritesScreen = ({ navigation }) => {
           <ActivityIndicator size="large" color="#f5c7e6ff" />
           <Text style={styles.loadingText}>Cargando favoritos...</Text>
         </View>
-
-        {/* Bottom Navigation */}
-        <View style={styles.bottomNav}>
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => navigation.navigate('Home')}
-          >
-            <Icon name="home" size={isSmallDevice ? 20 : 24} color="#ccc" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navItem}>
-            <Image source={favoritesIcon} style={styles.navIcon} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => navigation.navigate('Chat')}
-          >
-            <Icon name="chat" size={isSmallDevice ? 20 : 24} color="#ccc" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => navigation.navigate('Cart')}
-          >
-            <Icon name="shopping-cart" size={isSmallDevice ? 20 : 24} color="#ccc" />
-          </TouchableOpacity>
-        </View>
       </SafeAreaView>
     );
   }
@@ -286,7 +237,7 @@ const FavoritesScreen = ({ navigation }) => {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-        
+
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -305,7 +256,7 @@ const FavoritesScreen = ({ navigation }) => {
           <Icon name="error-outline" size={64} color="#ff6b6b" />
           <Text style={styles.errorTitle}>Error al cargar favoritos</Text>
           <Text style={styles.errorMessage}>{favoritesError}</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.retryButton}
             onPress={() => {
               clearFavoritesError();
@@ -313,31 +264,6 @@ const FavoritesScreen = ({ navigation }) => {
             }}
           >
             <Text style={styles.retryButtonText}>Reintentar</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Bottom Navigation */}
-        <View style={styles.bottomNav}>
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => navigation.navigate('Home')}
-          >
-            <Icon name="home" size={isSmallDevice ? 20 : 24} color="#ccc" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navItem}>
-            <Image source={favoritesIcon} style={styles.navIcon} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => navigation.navigate('Chat')}
-          >
-            <Icon name="chat" size={isSmallDevice ? 20 : 24} color="#ccc" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => navigation.navigate('Cart')}
-          >
-            <Icon name="shopping-cart" size={isSmallDevice ? 20 : 24} color="#ccc" />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -364,10 +290,10 @@ const FavoritesScreen = ({ navigation }) => {
           onPress={onRefresh}
           disabled={refreshing}
         >
-          <Icon 
-            name="refresh" 
-            size={24} 
-            color={refreshing ? "#ccc" : "#333"} 
+          <Icon
+            name="refresh"
+            size={24}
+            color={refreshing ? "#ccc" : "#333"}
           />
         </TouchableOpacity>
       </View>
@@ -376,8 +302,8 @@ const FavoritesScreen = ({ navigation }) => {
 
       {/* Content */}
       {favorites.length === 0 ? (
-        <ScrollView 
-          style={styles.content} 
+        <ScrollView
+          style={styles.content}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -394,7 +320,7 @@ const FavoritesScreen = ({ navigation }) => {
             <Text style={styles.emptyMessage}>
               Cuando agregues productos a tus favoritos, aparecerán aquí
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.shopButton}
               onPress={() => navigation.navigate('Home')}
             >
@@ -403,8 +329,8 @@ const FavoritesScreen = ({ navigation }) => {
           </View>
         </ScrollView>
       ) : (
-        <ScrollView 
-          style={styles.content} 
+        <ScrollView
+          style={styles.content}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -427,31 +353,6 @@ const FavoritesScreen = ({ navigation }) => {
           <ActivityIndicator size="large" color="#f5c7e6ff" />
         </View>
       )}
-
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate('Home')}
-        >
-          <Icon name="home" size={isSmallDevice ? 20 : 24} color="#ccc" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Image source={favoritesIcon} style={styles.navIcon} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate('Chat')}
-        >
-          <Icon name="chat" size={isSmallDevice ? 20 : 24} color="#ccc" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate('Cart')}
-        >
-          <Icon name="shopping-cart" size={isSmallDevice ? 20 : 24} color="#ccc" />
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 };
@@ -562,7 +463,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
-  
+
   // Estados de carga, error y vacío
   loadingContainer: {
     flex: 1,
@@ -649,7 +550,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 16,
   },
-  
+
   bottomNav: {
     position: 'absolute',
     bottom: 0,

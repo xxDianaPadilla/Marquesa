@@ -12,7 +12,14 @@ import { useAuth } from "../context/AuthContext";
 
 const Saves = () => {
     const navigate = useNavigate();
-    const { favorites, isLoading, removeFromFavorites } = useFavorites();
+    const { 
+        favorites, 
+        isLoading, 
+        favoritesError,
+        removeFromFavorites, 
+        refreshFavorites,
+        clearFavoritesError 
+    } = useFavorites();
     const { isAuthenticated, user } = useAuth();
     const [localLoading, setLocalLoading] = useState(true);
 
@@ -28,9 +35,18 @@ const Saves = () => {
         return () => clearTimeout(timer);
     }, []);
 
-    const handleRemoveProduct = (productId) => {
+    // Limpiar errores al montar el componente
+    useEffect(() => {
+        clearFavoritesError();
+    }, [clearFavoritesError]);
+
+    const handleRemoveProduct = async (productId) => {
         try {
-            removeFromFavorites(productId);
+            const success = await removeFromFavorites(productId);
+            if (!success) {
+                console.error('Failed to remove product from favorites');
+                // Aquí podrías mostrar una notificación de error
+            }
         } catch (error) {
             console.error('Error removing product:', error);
         }
@@ -44,6 +60,56 @@ const Saves = () => {
         navigate('/shoppingCart');
     };
 
+    const handleRetry = () => {
+        clearFavoritesError();
+        refreshFavorites();
+    };
+
+    const handleLogin = () => {
+        navigate('/login');
+    };
+
+    // Si el usuario no está autenticado
+    if (!isAuthenticated) {
+        return (
+            <div className="min-h-screen bg-white-50">
+                <Header />
+                <main className="py-8">
+                    <Container>
+                        <div className="text-center mb-8">
+                            <h1
+                                className="text-3xl font-bold text-gray-800 mb-2"
+                                style={{ fontFamily: 'Poppins, sans-serif' }}
+                            >
+                                Mis guardados
+                            </h1>
+                            <p
+                                className="text-gray-600"
+                                style={{ fontFamily: 'Poppins, sans-serif' }}
+                            >
+                                Inicia sesión para ver tus productos favoritos
+                            </p>
+                        </div>
+
+                        <EmptyState
+                            icon={
+                                <svg className="w-20 h-20 text-gray-300 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
+                                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                            }
+                            title="Debes iniciar sesión"
+                            description="Para ver y guardar tus productos favoritos necesitas tener una cuenta"
+                            actionText="Iniciar sesión"
+                            onAction={handleLogin}
+                        />
+                    </Container>
+                </main>
+                <Footer />
+            </div>
+        );
+    }
+
     // Mostrar loading mientras se cargan los datos
     if (localLoading || isLoading) {
         return (
@@ -54,6 +120,41 @@ const Saves = () => {
                         <LoadingSpinner
                             text="Cargando productos guardados..."
                             className="min-h-[400px]"
+                        />
+                    </Container>
+                </main>
+                <Footer />
+            </div>
+        );
+    }
+
+    // Mostrar error si hay algún problema
+    if (favoritesError) {
+        return (
+            <div className="min-h-screen bg-white-50">
+                <Header />
+                <main className="py-8">
+                    <Container>
+                        <div className="text-center mb-8">
+                            <h1
+                                className="text-3xl font-bold text-gray-800 mb-2"
+                                style={{ fontFamily: 'Poppins, sans-serif' }}
+                            >
+                                Mis guardados
+                            </h1>
+                        </div>
+
+                        <EmptyState
+                            icon={
+                                <svg className="w-20 h-20 text-red-300 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
+                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                </svg>
+                            }
+                            title="Error al cargar favoritos"
+                            description={favoritesError}
+                            actionText="Reintentar"
+                            onAction={handleRetry}
                         />
                     </Container>
                 </main>
@@ -85,6 +186,17 @@ const Saves = () => {
                                 : "Aquí encontrarás tus productos favoritos"
                             }
                         </p>
+                        
+                        {/* Botón de refrescar si hay favoritos */}
+                        {favoritesCount > 0 && (
+                            <button
+                                onClick={refreshFavorites}
+                                className="mt-4 text-sm text-blue-600 hover:text-blue-800 transition-colors duration-200"
+                                style={{ fontFamily: 'Poppins, sans-serif' }}
+                            >
+                                🔄 Actualizar lista
+                            </button>
+                        )}
                     </div>
 
                     {/* Contenido principal */}

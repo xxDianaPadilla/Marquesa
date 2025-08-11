@@ -14,6 +14,7 @@ export const useFavorites = () => {
 export const FavoritesProvider = ({ children }) => {
     const [favorites, setFavorites] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [favoritesError, setFavoritesError] = useState(null);
     const { user, isAuthenticated } = useAuth();
 
     // Debug: Log cada vez que favorites cambie
@@ -26,11 +27,15 @@ export const FavoritesProvider = ({ children }) => {
         });
     }, [favorites]);
 
-    // Generar key única para cada usuario
-    const getFavoritesKey = useCallback(() => {
-        if (!isAuthenticated || !user?.id) return 'favorites_guest';
-        return `favorites_user_${user.id}`;
-    }, [isAuthenticated, user?.id]);
+    // Función para obtener el token del localStorage
+    const getTokenFromStorage = useCallback(() => {
+        try {
+            return localStorage.getItem('authToken');
+        } catch (error) {
+            console.error('Error al obtener el token del storage:', error);
+            return null;
+        }
+    }, []);
 
     // Función para normalizar el ID del producto (maneja tanto _id como id)
     const getProductId = useCallback((product) => {
@@ -90,86 +95,143 @@ export const FavoritesProvider = ({ children }) => {
         return normalizedProduct;
     }, [user?.id, getProductId]);
 
-    // Cargar favoritos cuando cambie el usuario
-    useEffect(() => {
-        loadFavorites();
-    }, [isAuthenticated, user?.id]);
-
-    const loadFavorites = useCallback(() => {
+    // NUEVA: Obtener favoritos desde el servidor
+    const getFavorites = useCallback(async (token = null) => {
         try {
             setIsLoading(true);
-            const favoritesKey = getFavoritesKey();
-            const savedFavorites = localStorage.getItem(favoritesKey);
-            
-            console.log('Loading favorites from localStorage:', {
-                key: favoritesKey,
-                rawData: savedFavorites
+            setFavoritesError(null);
+
+            if (!isAuthenticated) {
+                console.log('Usuario no autenticado, limpiando favoritos');
+                setFavorites([]);
+                return [];
+            }
+
+            const authToken = token || getTokenFromStorage();
+            if (!authToken) {
+                console.log('No hay token para obtener favoritos');
+                setFavorites([]);
+                return [];
+            }
+
+            console.log('Obteniendo favoritos desde el servidor...');
+
+            const response = await fetch('https://marquesa.onrender.com/api/clients/favorites', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`,
+                },
             });
-            
-            if (savedFavorites) {
-                const parsed = JSON.parse(savedFavorites);
-                console.log('Parsed favorites:', parsed, 'isArray:', Array.isArray(parsed));
-                
-                // Validación extra para asegurar que siempre sea un array
-                if (Array.isArray(parsed)) {
-                    // Re-normalizar productos al cargar (por si la estructura ha cambiado)
-                    const normalizedFavorites = parsed
-                        .map(product => normalizeProduct(product))
-                        .filter(product => product !== null);
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Respuesta de favoritos:', data);
+
+                if (data && data.success) {
+                    const userFavorites = data.favorites || data.data || [];
+                    console.log('Favoritos obtenidos:', userFavorites);
+                    
+                    // Normalizar favoritos si es necesario
+                    const normalizedFavorites = userFavorites.map(fav => {
+                        if (typeof fav === 'string') {
+                            // Si es solo un ID, crear un objeto básico
+                            return { _id: fav, id: fav };
+                        }
+                        return normalizeProduct(fav) || fav;
+                    }).filter(fav => fav !== null);
                     
                     setFavorites(normalizedFavorites);
+                    return normalizedFavorites;
                 } else {
-                    console.warn('Parsed favorites is not an array, setting empty array');
+                    console.warn('Error al obtener favoritos:', data?.message);
                     setFavorites([]);
-                    // Limpiar localStorage si los datos están corruptos
-                    localStorage.removeItem(favoritesKey);
+                    return [];
                 }
-            } else {
+            } else if (response.status === 401) {
+                console.log('Token expirado o inválido');
                 setFavorites([]);
+                return [];
+            } else {
+                console.error('Error en respuesta del servidor:', response.status);
+                throw new Error(`Error del servidor: ${response.status}`);
             }
         } catch (error) {
-            console.error('Error cargando favoritos:', error);
+            console.error('Error al obtener favoritos:', error);
+            setFavoritesError('Error al obtener favoritos');
             setFavorites([]);
-            // Limpiar localStorage en caso de error de parsing
-            try {
-                const favoritesKey = getFavoritesKey();
-                localStorage.removeItem(favoritesKey);
-            } catch (cleanupError) {
-                console.error('Error cleaning up localStorage:', cleanupError);
-            }
+            return [];
         } finally {
             setIsLoading(false);
         }
-    }, [getFavoritesKey, normalizeProduct]);
+    }, [isAuthenticated, getTokenFromStorage, normalizeProduct]);
 
-    const saveFavorites = useCallback((newFavorites) => {
+    // NUEVA: Función para obtener datos completos de productos favoritos
+    const fetchFavoriteProducts = useCallback(async (productIds, token) => {
         try {
-            // Validación antes de guardar
-            if (!Array.isArray(newFavorites)) {
-                console.error('Attempting to save non-array as favorites:', newFavorites);
-                return false;
+            if (!productIds || productIds.length === 0) {
+                return [];
             }
 
-            const favoritesKey = getFavoritesKey();
-            console.log('Saving favorites:', {
-                key: favoritesKey,
-                favorites: newFavorites,
-                count: newFavorites.length
-            });
-            
-            localStorage.setItem(favoritesKey, JSON.stringify(newFavorites));
-            setFavorites(newFavorites);
-            return true;
-        } catch (error) {
-            console.error('Error guardando favoritos:', error);
-            return false;
-        }
-    }, [getFavoritesKey]);
+            console.log('Obteniendo datos completos de productos favoritos:', productIds);
 
-    const addToFavorites = useCallback((product) => {
+            const authToken = token || getTokenFromStorage();
+            
+            // Obtener todos los productos
+            const response = await fetch('https://marquesa.onrender.com/api/products', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`,
+                },
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                
+                if (data && data.products) {
+                    // Filtrar solo los productos que están en favoritos
+                    const favoriteProducts = data.products.filter(product => 
+                        productIds.includes(product._id)
+                    );
+                    
+                    console.log('Productos favoritos obtenidos:', favoriteProducts);
+                    return favoriteProducts;
+                }
+            }
+            
+            return [];
+        } catch (error) {
+            console.error('Error al obtener datos de productos favoritos:', error);
+            return [];
+        }
+    }, [getTokenFromStorage]);
+
+    // Cargar favoritos cuando cambie el usuario
+    useEffect(() => {
+        if (isAuthenticated && user?.id) {
+            getFavorites();
+        } else {
+            setFavorites([]);
+        }
+    }, [isAuthenticated, user?.id, getFavorites]);
+
+    // ACTUALIZADA: Agregar producto a favoritos usando API
+    const addToFavorites = useCallback(async (product) => {
         try {
             console.log('Adding to favorites - Raw product:', product);
             
+            if (!isAuthenticated) {
+                setFavoritesError('Debes iniciar sesión para agregar favoritos');
+                return false;
+            }
+
+            const token = getTokenFromStorage();
+            if (!token) {
+                setFavoritesError('No hay sesión activa');
+                return false;
+            }
+
             // Normalizar el producto antes de agregarlo
             const normalizedProduct = normalizeProduct(product);
             
@@ -180,85 +242,158 @@ export const FavoritesProvider = ({ children }) => {
 
             const productId = getProductId(normalizedProduct);
             
-            // Asegurar que favorites sea un array antes de usar some()
-            const currentFavorites = Array.isArray(favorites) ? favorites : [];
-            const isAlreadyFavorite = currentFavorites.some(fav => getProductId(fav) === productId);
-            
-            if (!isAlreadyFavorite) {
-                const newFavorites = [...currentFavorites, normalizedProduct];
-                console.log('Adding product to favorites:', {
-                    productId,
-                    productName: normalizedProduct.name,
-                    newCount: newFavorites.length
-                });
-                
-                return saveFavorites(newFavorites);
+            if (!productId) {
+                console.error('Product has no valid ID:', product);
+                return false;
+            }
+
+            console.log('Agregando a favoritos:', productId);
+
+            const response = await fetch('https://marquesa.onrender.com/api/clients/favorites/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({ 
+                    productId: productId 
+                })
+            });
+
+            const data = await response.json();
+            console.log('Respuesta agregar favorito:', data);
+
+            if (response.ok && data.success) {
+                console.log('Producto agregado a favoritos exitosamente');
+                // Actualizar la lista de favoritos
+                await getFavorites(token);
+                return true;
             } else {
-                console.log('Product already in favorites:', productId);
+                const errorMsg = data.message || 'Error al agregar a favoritos';
+                console.error('Error del servidor:', data);
+                setFavoritesError(errorMsg);
                 return false;
             }
         } catch (error) {
             console.error('Error adding to favorites:', error);
+            setFavoritesError('Error de conexión con el servidor');
             return false;
         }
-    }, [favorites, normalizeProduct, getProductId, saveFavorites]);
+    }, [isAuthenticated, getTokenFromStorage, normalizeProduct, getProductId, getFavorites]);
 
-    const removeFromFavorites = useCallback((productId) => {
+    // ACTUALIZADA: Remover producto de favoritos usando API
+    const removeFromFavorites = useCallback(async (productId) => {
         try {
             if (!productId) {
                 console.error('No productId provided for removal');
                 return false;
             }
 
-            // Asegurar que favorites sea un array antes de usar filter()
-            const currentFavorites = Array.isArray(favorites) ? favorites : [];
-            
-            // Buscar por cualquiera de los dos campos de ID
-            const newFavorites = currentFavorites.filter(fav => {
-                const favId = getProductId(fav);
-                return favId !== productId;
+            if (!isAuthenticated) {
+                setFavoritesError('Debes iniciar sesión');
+                return false;
+            }
+
+            const token = getTokenFromStorage();
+            if (!token) {
+                setFavoritesError('No hay sesión activa');
+                return false;
+            }
+
+            console.log('Removiendo de favoritos:', productId);
+
+            const response = await fetch('https://marquesa.onrender.com/api/clients/favorites/remove', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({ 
+                    productId: productId 
+                })
             });
-            
-            console.log('Removing from favorites:', {
-                productId,
-                oldCount: currentFavorites.length,
-                newCount: newFavorites.length,
-                removed: currentFavorites.length !== newFavorites.length
-            });
-            
-            return saveFavorites(newFavorites);
+
+            const data = await response.json();
+            console.log('Respuesta remover favorito:', data);
+
+            if (response.ok && data.success) {
+                console.log('Producto removido de favoritos exitosamente');
+                // Actualizar la lista de favoritos
+                await getFavorites(token);
+                return true;
+            } else {
+                const errorMsg = data.message || 'Error al remover de favoritos';
+                console.error('Error del servidor:', data);
+                setFavoritesError(errorMsg);
+                return false;
+            }
         } catch (error) {
             console.error('Error removing from favorites:', error);
+            setFavoritesError('Error de conexión con el servidor');
             return false;
         }
-    }, [favorites, getProductId, saveFavorites]);
+    }, [isAuthenticated, getTokenFromStorage, getFavorites]);
 
+    // ACTUALIZADA: Verificar si un producto es favorito
     const isFavorite = useCallback((productId) => {
         try {
-            if (!productId) return false;
+            if (!productId || !isAuthenticated) return false;
             
             // Asegurar que favorites sea un array antes de usar some()
             const currentFavorites = Array.isArray(favorites) ? favorites : [];
-            return currentFavorites.some(fav => getProductId(fav) === productId);
+            return currentFavorites.some(fav => {
+                if (typeof fav === 'string') {
+                    return fav === productId;
+                }
+                if (typeof fav === 'object' && fav !== null) {
+                    return getProductId(fav) === productId;
+                }
+                return false;
+            });
         } catch (error) {
             console.error('Error checking if favorite:', error);
             return false;
         }
-    }, [favorites, getProductId]);
+    }, [favorites, getProductId, isAuthenticated]);
 
-    const clearAllFavorites = useCallback(() => {
+    // ACTUALIZADA: Limpiar todos los favoritos
+    const clearAllFavorites = useCallback(async () => {
         try {
-            return saveFavorites([]);
+            if (!isAuthenticated) {
+                return false;
+            }
+
+            const token = getTokenFromStorage();
+            if (!token) {
+                return false;
+            }
+
+            // Si el backend tiene un endpoint para limpiar todos los favoritos
+            // puedes implementarlo aquí, por ahora simplemente recargamos
+            await getFavorites(token);
+            return true;
         } catch (error) {
             console.error('Error clearing favorites:', error);
             return false;
         }
-    }, [saveFavorites]);
+    }, [isAuthenticated, getTokenFromStorage, getFavorites]);
 
-    const toggleFavorite = useCallback((product) => {
+    // ACTUALIZADA: Toggle favorito usando API
+    const toggleFavorite = useCallback(async (product) => {
         try {
             if (!product) {
                 console.error('No product provided to toggle');
+                return false;
+            }
+
+            if (!isAuthenticated) {
+                setFavoritesError('Debes iniciar sesión');
+                return false;
+            }
+
+            const token = getTokenFromStorage();
+            if (!token) {
+                setFavoritesError('No hay sesión activa');
                 return false;
             }
 
@@ -275,17 +410,37 @@ export const FavoritesProvider = ({ children }) => {
                 currentlyFavorite: isFavorite(productId)
             });
 
-            if (isFavorite(productId)) {
-                removeFromFavorites(productId);
-                return false; // Was removed
+            const response = await fetch('https://marquesa.onrender.com/api/clients/favorites/toggle', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({ 
+                    productId: productId 
+                })
+            });
+
+            const data = await response.json();
+            console.log('Respuesta toggle favorito:', data);
+
+            if (response.ok && data.success) {
+                console.log('Toggle favorito exitoso');
+                // Actualizar la lista de favoritos
+                await getFavorites(token);
+                return data.isAdded || !isFavorite(productId); // Retorna si fue agregado
             } else {
-                return addToFavorites(product); // Returns true if added successfully
+                const errorMsg = data.message || 'Error al actualizar favorito';
+                console.error('Error del servidor:', data);
+                setFavoritesError(errorMsg);
+                return false;
             }
         } catch (error) {
             console.error('Error toggling favorite:', error);
+            setFavoritesError('Error de conexión con el servidor');
             return false;
         }
-    }, [getProductId, isFavorite, removeFromFavorites, addToFavorites]);
+    }, [isAuthenticated, getTokenFromStorage, getProductId, isFavorite, getFavorites]);
 
     // Función para obtener un producto favorito por ID (útil para debugging)
     const getFavoriteProduct = useCallback((productId) => {
@@ -297,8 +452,15 @@ export const FavoritesProvider = ({ children }) => {
 
     // Función para refrescar/recargar favoritos (útil para debugging)
     const refreshFavorites = useCallback(() => {
-        loadFavorites();
-    }, [loadFavorites]);
+        if (isAuthenticated) {
+            getFavorites();
+        }
+    }, [getFavorites, isAuthenticated]);
+
+    // Función para limpiar errores
+    const clearFavoritesError = useCallback(() => {
+        setFavoritesError(null);
+    }, []);
 
     // Asegurar que favorites siempre sea un array para el value
     const safeFavorites = Array.isArray(favorites) ? favorites : [];
@@ -306,13 +468,17 @@ export const FavoritesProvider = ({ children }) => {
     const value = {
         favorites: safeFavorites,
         isLoading,
+        favoritesError,
         addToFavorites,
         removeFromFavorites,
         isFavorite,
         clearAllFavorites,
         toggleFavorite,
-        getFavoriteProduct, // Nueva función para debugging
-        refreshFavorites, // Nueva función para debugging
+        getFavoriteProduct,
+        refreshFavorites,
+        getFavorites,
+        fetchFavoriteProducts,
+        clearFavoritesError,
         favoritesCount: safeFavorites.length
     };
 

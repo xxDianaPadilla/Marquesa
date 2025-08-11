@@ -60,11 +60,11 @@ import CustomProductsManager from './pages/CustomProductsManager';
 import ChatManager from './pages/ChatManager';
 
 // PÁGINAS DE MANEJO DE ERRORES HTTP
-import BadRequest from './pages/errors/BadRequest';
-import Unauthorized from './pages/errors/Unauthorized';
-import Forbidden from './pages/errors/Forbidden';
-import NotFound from './pages/errors/NotFound';
-import Conflict from './pages/errors/Conflict';
+import BadRequest from './pages/Errors/BadRequest';
+import Unauthorized from './pages/Errors/Unauthorized';
+import Forbidden from './pages/Errors/Forbidden';
+import NotFound from './pages/Errors/NotFound';
+import Conflict from './pages/Errors/Conflict';
 
 function App() {
   return (

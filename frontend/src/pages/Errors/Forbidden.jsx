@@ -14,8 +14,6 @@
 
 import React from "react";
 import { useNavigate } from "react-router-dom";
-
-// Componentes específicos para páginas de error
 import ErrorPageContainer from "../../components/errors/ErrorPageContainer";
 import ErrorHeroSection from "../../components/errors/ErrorHeroSection";
 import ErrorDescriptionCard from "../../components/errors/ErrorDescriptionCard";

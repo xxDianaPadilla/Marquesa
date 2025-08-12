@@ -278,7 +278,7 @@ export const AuthProvider = ({ children }) => {
             if (!userId) {
                 return null;
             }
-            const response = await fetch(`https://test-9gs3.onrender.com/api/sales/user/${userId}/stats`, {
+            const response = await fetch(`https://marquesa.onrender.com/api/sales/user/${userId}/stats`, {
                 method: 'GET',
                 credentials: 'include', // Incluir cookies para verificación híbrida
                 headers: getAuthHeaders(),
@@ -335,7 +335,7 @@ export const AuthProvider = ({ children }) => {
      */
     const getUserInfo = async () => {
         try {
-            const response = await fetch('https://test-9gs3.onrender.com/api/login/user-info', {
+            const response = await fetch('https://marquesa.onrender.com/api/login/user-info', {
                 method: 'GET',
                 credentials: 'include', // Incluir cookies para verificación híbrida
                 headers: getAuthHeaders(),
@@ -511,7 +511,7 @@ export const AuthProvider = ({ children }) => {
             }
 
             // Realizar petición de login al servidor con credentials para cookies
-            const response = await fetch('https://test-9gs3.onrender.com/api/login', {
+            const response = await fetch('https://marquesa.onrender.com/api/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: cleanEmail, password }),
@@ -616,7 +616,7 @@ export const AuthProvider = ({ children }) => {
 
             try {
                 // Intentar cerrar sesión en el servidor con verificación híbrida
-                const response = await fetch('https://test-9gs3.onrender.com/api/logout', {
+                const response = await fetch('hhttps://marquesa.onrender.com/api/logout', {
                     method: 'POST',
                     credentials: 'include', // Incluir cookies para verificación híbrida
                     headers: getAuthHeaders(),

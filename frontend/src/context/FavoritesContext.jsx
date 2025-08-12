@@ -126,7 +126,7 @@ export const FavoritesProvider = ({ children }) => {
             console.log('Obteniendo favoritos desde el servidor...');
 
             // ✅ NUEVA LÓGICA: Petición con sistema híbrido
-            const operationPromise = fetch('https://test-9gs3.onrender.com/api/clients/favorites', {
+            const operationPromise = fetch('https://marquesa.onrender.com/api/clients/favorites', {
                 method: 'GET',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
@@ -270,7 +270,7 @@ export const FavoritesProvider = ({ children }) => {
             const authToken = token || getBestAvailableToken();
             
             // ✅ NUEVA LÓGICA: Obtener todos los productos con sistema híbrido
-            const operationPromise = fetch('https://test-9gs3.onrender.com/api/products', {
+            const operationPromise = fetch('https://marquesa.onrender.com/api/products', {
                 method: 'GET',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
@@ -354,7 +354,7 @@ export const FavoritesProvider = ({ children }) => {
             console.log('Agregando a favoritos:', productId);
 
             // ✅ NUEVA LÓGICA: Petición con sistema híbrido
-            const operationPromise = fetch('https://test-9gs3.onrender.com/api/clients/favorites/add', {
+            const operationPromise = fetch('https://marquesa.onrender.com/api/clients/favorites/add', {
                 method: 'POST',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
@@ -434,7 +434,7 @@ export const FavoritesProvider = ({ children }) => {
             console.log('Removiendo de favoritos:', productId);
 
             // ✅ NUEVA LÓGICA: Petición con sistema híbrido
-            const operationPromise = fetch('https://test-9gs3.onrender.com/api/clients/favorites/remove', {
+            const operationPromise = fetch('https://marquesa.onrender.com/api/clients/favorites/remove', {
                 method: 'DELETE',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
@@ -571,7 +571,7 @@ export const FavoritesProvider = ({ children }) => {
             });
 
             // ✅ NUEVA LÓGICA: Petición con sistema híbrido
-            const operationPromise = fetch('https://test-9gs3.onrender.com/api/clients/favorites/toggle', {
+            const operationPromise = fetch('https://marquesa.onrender.com/api/clients/favorites/toggle', {
                 method: 'POST',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos

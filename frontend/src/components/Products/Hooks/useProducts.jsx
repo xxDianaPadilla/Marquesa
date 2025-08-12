@@ -16,7 +16,7 @@ export const useProducts = () => {
         console.log('📦 Obteniendo productos desde API...');
 
         // ✅ CORRECCIÓN: Headers y manejo de errores mejorado
-        const response = await fetch("https://test-9gs3.onrender.com/api/products", {
+        const response = await fetch("https://marquesa.onrender.com/api/products", {
           method: 'GET',
           credentials: 'include',
           headers: {

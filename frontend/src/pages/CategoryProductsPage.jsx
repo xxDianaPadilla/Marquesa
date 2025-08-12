@@ -10,20 +10,13 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import Container from "../components/Container";
 import ProductCard from "../components/ProductCard";
 
-/**
- * CategoryProductsPage - VERSIÓN SIN CACHE
- * Siempre carga desde el servidor, como la primera vez
- */
-
-// **VARIABLE PARA MANEJAR REQUESTS ACTIVOS (SIN CACHE)**
 let currentFetch = null;
 
 const CategoryProductsPage = () => {
     const navigate = useNavigate();
     const location = useLocation();
     
-    // **CONFIGURACIÓN ESTÁTICA**
-    const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'https://marquesa.onrender.com/api';
+    const API_BASE_URL = 'https://test-9gs3.onrender.com/api';
 
     const categories = useMemo(() => [
         { _id: 'todos', name: 'Todos' },
@@ -42,7 +35,6 @@ const CategoryProductsPage = () => {
         '688175e79579a7cde1657ac6': 'Tarjetas'
     }), []);
 
-    // **FUNCIÓN PARA DETERMINAR CATEGORÍA DESDE URL**
     const getCurrentCategory = useCallback(() => {
         const pathParts = location.pathname.split('/');
         
@@ -57,24 +49,22 @@ const CategoryProductsPage = () => {
         return 'todos';
     }, [location.pathname]);
 
-    // **ESTADOS PRINCIPALES**
     const [activeCategory, setActiveCategory] = useState(getCurrentCategory());
     const [products, setProducts] = useState([]);
-    const [isLoading, setIsLoading] = useState(true); // Iniciar en true para primera carga
+    const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [favoriteToggling, setFavoriteToggling] = useState(new Set());
-    const [hasLoadedOnce, setHasLoadedOnce] = useState(false); // Para controlar primera carga
+    const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
-    // **HOOKS**
     const { isFavorite, toggleFavorite } = useFavorites();
 
     /**
-     * **FUNCIÓN DE CARGA SIN CACHE - SIEMPRE DESDE SERVIDOR**
+     * ✅ SOLO CAMBIAR ESTA FUNCIÓN - fetchProducts
+     * Mantener todo el resto igual
      */
     const fetchProducts = useCallback(async (categoryId) => {
         console.log(`🎯 CategoryProductsPage - Cargando productos desde servidor para: ${categoryId}`);
 
-        // **CANCELAR FETCH ANTERIOR SI EXISTE**
         if (currentFetch) {
             console.log(`🚫 Cancelando fetch anterior: ${currentFetch.categoryId}`);
             currentFetch.controller.abort();
@@ -85,25 +75,24 @@ const CategoryProductsPage = () => {
             console.log(`🚀 CategoryProductsPage - Iniciando carga fresca para: ${categoryId}`);
             setIsLoading(true);
             setError(null);
-            
-            // **NO LIMPIAR PRODUCTOS HASTA QUE TERMINE LA CARGA**
-            // setProducts([]); // ❌ Comentado para evitar parpadeo
 
             const controller = new AbortController();
             currentFetch = { categoryId, controller };
 
-            // **DETERMINAR ENDPOINT**
             const endpoint = categoryId === 'todos' 
                 ? `${API_BASE_URL}/products`
                 : `${API_BASE_URL}/products/by-category/${categoryId}`;
 
             console.log(`📡 CategoryProductsPage - Fetching desde: ${endpoint}`);
 
+            // ✅ CONFIGURACIÓN DE FETCH CORREGIDA
             const response = await fetch(endpoint, {
+                method: 'GET',
                 signal: controller.signal,
+                credentials: 'include',
                 headers: { 
                     'Content-Type': 'application/json',
-                    // **AGREGAR HEADERS PARA EVITAR CACHE DEL NAVEGADOR**
+                    'Accept': 'application/json',
                     'Cache-Control': 'no-cache, no-store, must-revalidate',
                     'Pragma': 'no-cache',
                     'Expires': '0'
@@ -117,7 +106,7 @@ const CategoryProductsPage = () => {
             const data = await response.json();
             let productsData = [];
 
-            // **NORMALIZAR RESPUESTA**
+            // ✅ MANEJO ROBUSTO DE RESPUESTA
             if (Array.isArray(data)) {
                 productsData = data;
             } else if (data.success && Array.isArray(data.data)) {
@@ -130,13 +119,12 @@ const CategoryProductsPage = () => {
 
             console.log(`✅ CategoryProductsPage - ${productsData.length} productos cargados desde servidor para: ${categoryId}`);
 
-            // **VERIFICAR QUE SIGUE SIENDO LA CATEGORÍA ACTUAL ANTES DE ACTUALIZAR**
             const currentCat = getCurrentCategory();
             if (categoryId === currentCat) {
                 console.log(`🔄 CategoryProductsPage - Actualizando UI para: ${categoryId}`);
                 setProducts(productsData);
                 setError(null);
-                setHasLoadedOnce(true); // Marcar que ya se cargó una vez
+                setHasLoadedOnce(true);
             } else {
                 console.log(`⚠️ CategoryProductsPage - Categoría cambió durante fetch: ${categoryId} → ${currentCat}`);
             }
@@ -151,48 +139,41 @@ const CategoryProductsPage = () => {
             
             const errorMsg = `Error al cargar ${categoryMap[categoryId] || 'productos'}`;
             
-            // **SOLO MOSTRAR ERROR SI ES LA CATEGORÍA ACTUAL**
             const currentCat = getCurrentCategory();
             if (categoryId === currentCat) {
                 setError(errorMsg);
                 setProducts([]);
-                setHasLoadedOnce(true); // Marcar como cargado aunque haya error
+                setHasLoadedOnce(true);
                 toast.error(errorMsg, { duration: 3000, position: 'top-center' });
             }
 
         } finally {
-            // **SOLO QUITAR LOADING SI ES LA CATEGORÍA ACTUAL**
             const currentCat = getCurrentCategory();
             if (categoryId === currentCat) {
                 setIsLoading(false);
             }
 
-            // **LIMPIAR FETCH ACTUAL**
             if (currentFetch && currentFetch.categoryId === categoryId) {
                 currentFetch = null;
             }
         }
     }, [API_BASE_URL, categoryMap, getCurrentCategory]);
 
-    /**
-     * **EFECTO PRINCIPAL - SIEMPRE CARGA DESDE SERVIDOR**
-     */
+    // ✅ MANTENER RESTO DEL COMPONENTE EXACTAMENTE IGUAL
+
     useEffect(() => {
         const urlCategory = getCurrentCategory();
         
         console.log(`🔄 CategoryProductsPage Effect - URL: ${location.pathname}, Categoría: ${urlCategory}`);
 
-        // **ACTUALIZAR CATEGORÍA ACTIVA SI ES DIFERENTE**
         if (urlCategory !== activeCategory) {
             console.log(`📝 CategoryProductsPage - Actualizando categoría activa: ${activeCategory} → ${urlCategory}`);
             setActiveCategory(urlCategory);
         }
 
-        // **SIEMPRE CARGAR DESDE SERVIDOR**
         console.log(`📦 CategoryProductsPage - Cargando productos desde servidor para: ${urlCategory}`);
         fetchProducts(urlCategory);
 
-        // **CLEANUP AL DESMONTAR O CAMBIAR**
         return () => {
             if (currentFetch) {
                 console.log(`🧹 CategoryProductsPage Cleanup: cancelando fetch para ${currentFetch.categoryId}`);
@@ -202,32 +183,23 @@ const CategoryProductsPage = () => {
         };
     }, [location.pathname, getCurrentCategory, fetchProducts, activeCategory]);
 
-    /**
-     * **MANEJO DE CAMBIO DE CATEGORÍA DESDE NAVEGACIÓN**
-     */
     const handleCategoryChange = useCallback((categoryId) => {
         console.log(`👆 CategoryProductsPage - Cambio de categoría solicitado: ${activeCategory} → ${categoryId}`);
 
-        // **EVITAR CAMBIO REDUNDANTE**
         if (categoryId === activeCategory) {
             console.log(`⚠️ CategoryProductsPage - Ya estamos en la categoría: ${categoryId}`);
             return;
         }
 
-        // **RESETEAR SOLO LOADING Y ERROR (NO PRODUCTOS PARA EVITAR PARPADEO)**
         setIsLoading(true);
         setError(null);
-        // NO limpiar productos aquí para evitar parpadeo
-        // setProducts([]);
 
-        // **NAVEGAR INMEDIATAMENTE**
         if (categoryId === 'todos') {
             navigate('/categoryProducts', { replace: true });
         } else {
             navigate(`/categoria/${categoryId}`, { replace: true });
         }
 
-        // **SCROLL SUAVE**
         setTimeout(() => {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }, 100);
@@ -238,9 +210,6 @@ const CategoryProductsPage = () => {
         navigate(`/personalizar/${categoryId}`);
     }, [navigate]);
 
-    /**
-     * **FUNCIONES AUXILIARES PARA FAVORITOS**
-     */
     const getProductId = useCallback((product) => {
         return product?._id || product?.id || null;
     }, []);
@@ -338,9 +307,6 @@ const CategoryProductsPage = () => {
         }
     }, [getProductId, normalizeProductForFavorites, toggleFavorite, favoriteToggling]);
 
-    /**
-     * **AGRUPACIÓN DE PRODUCTOS**
-     */
     const productsByCategory = useMemo(() => {
         if (!Array.isArray(products) || products.length === 0) {
             return {};
@@ -466,21 +432,17 @@ const CategoryProductsPage = () => {
     const handleRetry = useCallback(() => {
         console.log('🔄 CategoryProductsPage - Retry solicitado - Recargando desde servidor');
         setError(null);
-        setHasLoadedOnce(false); // Resetear para mostrar loading completo
+        setHasLoadedOnce(false);
         
-        // **CANCELAR FETCH ACTUAL SI EXISTE**
         if (currentFetch) {
             currentFetch.controller.abort();
             currentFetch = null;
         }
         
-        // **CARGAR DESDE SERVIDOR**
         fetchProducts(activeCategory);
     }, [activeCategory, fetchProducts]);
 
-    // **RENDERIZADO CONDICIONAL**
-    
-    // **MOSTRAR LOADING EN PRIMERA CARGA O SI NO HAY PRODUCTOS Y ESTÁ CARGANDO**
+    // ✅ MANTENER RENDERIZADO ORIGINAL EXACTO
     if (isLoading && (!hasLoadedOnce || products.length === 0)) {
         return (
             <div className="min-h-screen bg-white-50">
@@ -526,7 +488,6 @@ const CategoryProductsPage = () => {
         <div className="min-h-screen bg-white-50">
             <Header />
 
-            {/* **NAVEGACIÓN** */}
             <section className="bg-white pt-2 sm:pt-4 pb-4 sm:pb-6 shadow-sm">
                 <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
                     <CategoryNavigation
@@ -537,29 +498,24 @@ const CategoryProductsPage = () => {
                 </div>
             </section>
 
-            {/* **CONTENIDO PRINCIPAL** */}
             <main className="py-4 sm:py-8 relative">
                 <Container>
                     <div className="space-y-8 sm:space-y-12">
 
-                        {/* **SECCIÓN DE PERSONALIZACIÓN** */}
                         {activeCategory === 'todos' && (
                             <PersonalizableSection
                                 onPersonalizeClick={handlePersonalizeClick}
                             />
                         )}
 
-                        {/* **OVERLAY DE CARGA SUTIL** */}
                         {isLoading && hasLoadedOnce && (
                             <div className="absolute inset-0 bg-white/30 backdrop-blur-[0.5px] z-10 pointer-events-none">
                                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
                                     <div className="flex flex-col items-center space-y-3">
-                                        {/* Spinner principal */}
                                         <div className="relative">
                                             <div className="w-8 h-8 border-3 border-pink-200 rounded-full"></div>
                                             <div className="absolute top-0 left-0 w-8 h-8 border-3 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
                                         </div>
-                                        {/* Puntos animados */}
                                         <div className="flex space-x-1">
                                             <div className="w-2 h-2 bg-pink-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
                                             <div className="w-2 h-2 bg-pink-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
@@ -570,7 +526,6 @@ const CategoryProductsPage = () => {
                             </div>
                         )}
 
-                        {/* **SECCIONES DE PRODUCTOS** */}
                         {Object.entries(productsByCategory).map(([categoryId, categoryData]) => (
                             <section 
                                 key={`categorypage-section-${categoryId}-${activeCategory}`}
@@ -609,7 +564,6 @@ const CategoryProductsPage = () => {
                             </section>
                         ))}
 
-                        {/* **ESTADO VACÍO - SOLO SI YA CARGÓ Y NO HAY PRODUCTOS** */}
                         {Object.keys(productsByCategory).length === 0 && !isLoading && hasLoadedOnce && (
                             <div className="text-center py-16">
                                 <div className="text-6xl mb-4">🔍</div>
@@ -638,7 +592,6 @@ const CategoryProductsPage = () => {
 
             <Footer />
 
-            {/* **ESTILOS PERSONALIZADOS PARA ANIMACIONES** */}
             <style jsx>{`
                 @keyframes shimmer {
                     0% { transform: translateX(-100%); }
@@ -653,7 +606,6 @@ const CategoryProductsPage = () => {
                     border-width: 3px;
                 }
                 
-                /* Animación de entrada suave para el indicador */
                 @keyframes slideInRight {
                     from {
                         transform: translateX(100%);

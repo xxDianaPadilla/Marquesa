@@ -185,41 +185,53 @@ const validateImages = (files) => {
  */
 productsController.getProducts = async (req, res) => {
     try {
-        // Buscar todos los productos y poblar la información de categoría
+        console.log('📦 [getProducts] Iniciando obtención de productos');
+        console.log('📦 [getProducts] Origin:', req.get('Origin'));
+        console.log('📦 [getProducts] Method:', req.method);
+
         const products = await productsModel.find().populate('categoryId');
 
+        console.log(`📦 [getProducts] Productos encontrados: ${products.length}`);
+
+        // Log de las primeras 3 productos para debugging
+        if (products.length > 0) {
+            products.slice(0, 3).forEach((product, index) => {
+                console.log(`  ${index + 1}. ${product.name} (Categoría: ${product.categoryId?.name || 'Sin categoría'})`);
+            });
+        }
+
         if (!products || products.length === 0) {
+            console.log('⚠️ [getProducts] No se encontraron productos');
             return res.status(200).json({
                 success: true,
                 message: 'No hay productos disponibles',
-                products: [], // ← CAMBIADO: era 'data', ahora 'products'
+                products: [],
+                data: [],
                 count: 0
             });
         }
 
-        // RESPUESTA CORREGIDA: Estructura compatible con el frontend
-        res.status(200).json({
+        const response = {
             success: true,
             message: 'Productos obtenidos exitosamente',
-            products: products, // ← CAMBIADO: era 'data', ahora 'products'
+            products: products,
+            data: products,
             count: products.length
-        });
+        };
+
+        console.log(`✅ [getProducts] Enviando respuesta: ${products.length} productos`);
+        
+        res.status(200).json(response);
+        
     } catch (error) {
-        console.error('Error en getProducts:', error);
-
-        // Manejar errores específicos de MongoDB
-        if (error.name === 'MongoNetworkError') {
-            return res.status(503).json({
-                success: false,
-                message: "Servicio de base de datos no disponible temporalmente"
-            });
-        }
-
-        // Error interno del servidor
+        console.error('❌ [getProducts] Error:', error);
+        
         res.status(500).json({
             success: false,
             message: 'Error interno del servidor al obtener productos',
-            error: error.message
+            error: error.message,
+            products: [],
+            data: []
         });
     }
 };
@@ -933,19 +945,70 @@ productsController.getProduct = async (req, res) => {
 productsController.getProductsByCategory = async (req, res) => {
     try {
         const categoryId = req.params.categoryId;
+        console.log(`🏷️ [getProductsByCategory] Categoría solicitada: ${categoryId}`);
+        console.log(`🏷️ [getProductsByCategory] Origin: ${req.get('Origin')}`);
+
+        // Validar categoryId
+        if (!categoryId) {
+            console.error('❌ [getProductsByCategory] CategoryId no proporcionado');
+            return res.status(400).json({
+                success: false,
+                message: 'ID de categoría requerido',
+                products: [],
+                data: []
+            });
+        }
+
+        if (!isValidObjectId(categoryId)) {
+            console.error(`❌ [getProductsByCategory] CategoryId inválido: ${categoryId}`);
+            return res.status(400).json({
+                success: false,
+                message: `ID de categoría inválido: ${categoryId}`,
+                products: [],
+                data: []
+            });
+        }
+
+        console.log(`🔍 [getProductsByCategory] Buscando productos con categoryId: ${categoryId}`);
 
         const products = await productsModel.find({ categoryId }).populate('categoryId');
 
-        res.status(200).json({
+        console.log(`📊 [getProductsByCategory] Productos encontrados: ${products.length}`);
+        
+        // Log detallado de productos encontrados
+        if (products.length > 0) {
+            console.log(`📋 [getProductsByCategory] Lista de productos:`);
+            products.forEach((product, index) => {
+                console.log(`  ${index + 1}. ${product.name} (ID: ${product._id})`);
+            });
+        } else {
+            console.log(`⚠️ [getProductsByCategory] No se encontraron productos para categoryId: ${categoryId}`);
+        }
+
+        const response = {
             success: true,
-            products
-        });
+            message: `${products.length} productos encontrados para la categoría`,
+            products: products,
+            data: products,
+            count: products.length,
+            categoryId: categoryId
+        };
+
+        console.log(`✅ [getProductsByCategory] Enviando respuesta exitosa`);
+        
+        res.status(200).json(response);
+
     } catch (error) {
-        console.error('Error al obtener productos por categoría:', error);
+        console.error('❌ [getProductsByCategory] Error:', error);
+        console.error('❌ [getProductsByCategory] Stack:', error.stack);
+        
         res.status(500).json({
             success: false,
-            message: 'Error al obtener productos por categoría',
-            error: error.message
+            message: 'Error interno del servidor al obtener productos por categoría',
+            error: error.message,
+            products: [],
+            data: [],
+            categoryId: req.params.categoryId
         });
     }
 };

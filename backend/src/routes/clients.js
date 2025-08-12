@@ -46,24 +46,36 @@ const upload = multer({
 // Crear una instancia del enrutador de Express
 const router = express.Router();
 
-// ==================== RUTAS EXISTENTES ====================
+// ==================== RUTAS DE FAVORITOS CORREGIDAS ====================
 
+// ✅ CORRECCIÓN CRÍTICA: Cambiar el orden de las rutas
+// Las rutas más específicas deben ir ANTES que las rutas con parámetros
+
+// Ruta para obtener favoritos del usuario - DEBE IR PRIMERA
 router.get("/favorites", 
     verifyToken, 
     clientsController.getFavorites
 );
+
+// Ruta para agregar a favoritos - DEBE IR SEGUNDA
 router.post("/favorites/add", 
     verifyToken, 
     clientsController.addToFavorites
 );
+
+// Ruta para remover de favoritos - DEBE IR TERCERA
 router.delete("/favorites/remove", 
     verifyToken, 
     clientsController.removeFromFavorites
 );
+
+// Ruta para toggle favoritos - DEBE IR CUARTA
 router.post("/favorites/toggle", 
     verifyToken, 
     clientsController.toggleFavorite
 );
+
+// ==================== RUTAS EXISTENTES ====================
 
 // Ruta para actualizar perfil - requiere autenticación
 router.put("/profile",
@@ -81,35 +93,33 @@ router.get("/total", clientsController.getTotalClients);
 // Ruta para estadísticas detalladas
 router.get("/detailedStats", clientsController.getDetailedClientsStats);
 
-// ==================== NUEVAS RUTAS PARA CÓDIGOS DE RULETA ====================
+// ==================== RUTAS PARA CÓDIGOS DE RULETA ====================
 
 // Ruta para generar un nuevo código de descuento desde la ruleta
-// POST /api/clients/ruleta/generate
 router.post("/ruleta/generate", 
     verifyToken, 
     clientsController.generateRuletaCode
 );
 
 // Ruta para obtener todos los códigos de descuento del usuario
-// GET /api/clients/ruleta/codes
 router.get("/ruleta/codes", 
     verifyToken, 
     clientsController.getUserRuletaCodes
 );
 
 // Ruta para validar un código de descuento específico
-// GET /api/clients/ruleta/validate/:code
 router.get("/ruleta/validate/:code", 
     verifyToken, 
     clientsController.validateRuletaCode
 );
 
 // Ruta para marcar un código como utilizado
-// PUT /api/clients/ruleta/use
 router.put("/ruleta/use", 
     verifyToken, 
     clientsController.useRuletaCode
 );
+
+// ==================== RUTAS CON PARÁMETROS (VAN AL FINAL) ====================
 
 router.route("/:clientId/validate-code")
     .post(clientsController.validatePromotionalCode);

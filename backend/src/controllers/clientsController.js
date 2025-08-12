@@ -1005,6 +1005,9 @@ clientsController.addToFavorites = async (req, res) => {
         client.favorites.push({ productId });
         await client.save();
 
+        // Poblar los favoritos después de guardar
+        await client.populate('favorites.productId');
+
         console.log('Producto agregado a favoritos exitosamente:', productId);
 
         // Configurar cookies con configuración dinámica
@@ -1015,7 +1018,7 @@ clientsController.addToFavorites = async (req, res) => {
         res.status(200).json({
             success: true,
             message: "Producto agregado a favoritos exitosamente",
-            token: currentToken, // También en el body para mayor compatibilidad
+            token: currentToken,
             favorites: client.favorites
         });
 
@@ -1113,6 +1116,9 @@ clientsController.getClientPromotionalCodes = async (req, res) => {
  */
 clientsController.getFavorites = async (req, res) => {
     try {
+        console.log('=== INICIO getFavorites ===');
+        console.log('User ID del token:', req.user?.id);
+
         const userId = req.user?.id;
 
         if (!userId) {
@@ -1122,12 +1128,9 @@ clientsController.getFavorites = async (req, res) => {
             });
         }
 
-        const client = await clientsModel.findById(userId)
-            .populate({
-                path: 'favorites.productId',
-                model: 'products'
-            });
-
+        // Buscar el cliente y poblar los favoritos
+        const client = await clientsModel.findById(userId).populate('favorites.productId');
+        
         if (!client) {
             return res.status(404).json({
                 success: false,
@@ -1135,20 +1138,36 @@ clientsController.getFavorites = async (req, res) => {
             });
         }
 
-        const { token } = getTokenFromRequest(req);
-        const currentToken = token || 'session_maintained';
+        // Configurar cookies con configuración dinámica
         const cookieConfig = getCookieConfig();
+        const currentToken = req.cookies?.authToken || 'session_maintained';
         res.cookie("authToken", currentToken, cookieConfig);
 
-        res.status(200).json({
+        console.log('Favoritos encontrados:', client.favorites.length);
+
+        return res.status(200).json({
             success: true,
+            message: "Favoritos obtenidos exitosamente",
+            token: currentToken,
             favorites: client.favorites,
-            token: currentToken
+            user: {
+                id: client._id,
+                name: client.fullName,
+                email: client.email,
+                phone: client.phone,
+                address: client.address,
+                birthDate: client.birthDate,
+                profilePicture: client.profilePicture,
+                favorites: client.favorites,
+                discount: client.discount
+            }
         });
+
     } catch (error) {
+        console.error('Error en getFavorites:', error);
         res.status(500).json({
             success: false,
-            message: "Error al obtener favoritos",
+            message: "Error interno del servidor al obtener favoritos",
             error: error.message
         });
     }
@@ -1190,6 +1209,9 @@ clientsController.removeFromFavorites = async (req, res) => {
         client.favorites.splice(favoriteIndex, 1);
         await client.save();
 
+        // Poblar favoritos restantes
+        await client.populate('favorites.productId');
+
         const { token } = getTokenFromRequest(req);
         const currentToken = token || 'session_maintained';
         const cookieConfig = getCookieConfig();
@@ -1198,7 +1220,8 @@ clientsController.removeFromFavorites = async (req, res) => {
         res.status(200).json({
             success: true,
             message: "Producto removido de favoritos",
-            token: currentToken
+            token: currentToken,
+            favorites: client.favorites
         });
     } catch (error) {
         res.status(500).json({
@@ -1246,6 +1269,9 @@ clientsController.toggleFavorite = async (req, res) => {
         }
 
         await client.save();
+        
+        // Poblar favoritos después de guardar
+        await client.populate('favorites.productId');
 
         const { token } = getTokenFromRequest(req);
         const currentToken = token || 'session_maintained';
@@ -1256,7 +1282,8 @@ clientsController.toggleFavorite = async (req, res) => {
             success: true,
             message: `Producto ${action === 'added' ? 'agregado a' : 'removido de'} favoritos`,
             action,
-            token: currentToken
+            token: currentToken,
+            favorites: client.favorites
         });
     } catch (error) {
         res.status(500).json({

@@ -11,11 +11,10 @@ import Container from "../components/Container";
 import ProductCard from "../components/ProductCard";
 
 /**
- * CategoryProducts.jsx - VERSIÓN SIN CACHE
- * Siempre carga desde el servidor, como la primera vez
+ * CategoryProducts.jsx - MANTENER DISEÑO ORIGINAL
+ * Solo cambiar la función loadProducts
  */
 
-// **VARIABLE PARA MANEJAR REQUESTS ACTIVOS (SIN CACHE)**
 let currentFetch = null;
 
 const CategoryProducts = () => {
@@ -23,8 +22,8 @@ const CategoryProducts = () => {
     const location = useLocation();
     const params = useParams();
 
-    // **CONFIGURACIÓN ESTÁTICA**
-    const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'https://marquesa.onrender.com/api';
+    // ✅ MANTENER CONFIGURACIÓN ORIGINAL
+    const API_BASE_URL = 'https://test-9gs3.onrender.com/api';
 
     const categories = useMemo(() => [
         { _id: 'todos', name: 'Todos' },
@@ -43,7 +42,6 @@ const CategoryProducts = () => {
         '688175e79579a7cde1657ac6': 'Tarjetas'
     }), []);
 
-    // **FUNCIÓN PARA DETERMINAR CATEGORÍA DESDE URL**
     const getCurrentCategory = useCallback(() => {
         const pathParts = location.pathname.split('/');
         
@@ -62,23 +60,22 @@ const CategoryProducts = () => {
         return 'todos';
     }, [location.pathname, params.categoryId]);
 
-    // **ESTADOS PRINCIPALES**
+    // ✅ MANTENER ESTADOS ORIGINALES
     const [activeCategory, setActiveCategory] = useState(getCurrentCategory());
     const [products, setProducts] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
     const [favoriteToggling, setFavoriteToggling] = useState(new Set());
 
-    // **HOOKS**
     const { isFavorite, toggleFavorite } = useFavorites();
 
     /**
-     * **FUNCIÓN DE CARGA SIN CACHE - SIEMPRE DESDE SERVIDOR**
+     * ✅ SOLO CAMBIAR ESTA FUNCIÓN - loadProducts
+     * Mantener todo el resto igual
      */
     const loadProducts = useCallback(async (categoryId) => {
         console.log(`🎯 Cargando productos desde servidor para: ${categoryId}`);
 
-        // **CANCELAR FETCH ANTERIOR SI EXISTE**
         if (currentFetch) {
             console.log(`🚫 Cancelando fetch anterior: ${currentFetch.categoryId}`);
             currentFetch.controller.abort();
@@ -93,18 +90,21 @@ const CategoryProducts = () => {
             const controller = new AbortController();
             currentFetch = { categoryId, controller };
 
-            // **DETERMINAR ENDPOINT**
+            // ✅ CORREGIR ENDPOINT
             const endpoint = categoryId === 'todos' 
                 ? `${API_BASE_URL}/products`
                 : `${API_BASE_URL}/products/by-category/${categoryId}`;
 
             console.log(`📡 Fetching desde: ${endpoint}`);
 
+            // ✅ CONFIGURACIÓN DE FETCH CORREGIDA
             const response = await fetch(endpoint, {
+                method: 'GET',
                 signal: controller.signal,
+                credentials: 'include',
                 headers: { 
                     'Content-Type': 'application/json',
-                    // **AGREGAR HEADERS PARA EVITAR CACHE DEL NAVEGADOR**
+                    'Accept': 'application/json',
                     'Cache-Control': 'no-cache, no-store, must-revalidate',
                     'Pragma': 'no-cache',
                     'Expires': '0'
@@ -118,7 +118,7 @@ const CategoryProducts = () => {
             const data = await response.json();
             let productsData = [];
 
-            // **NORMALIZAR RESPUESTA**
+            // ✅ MANEJO ROBUSTO DE RESPUESTA
             if (Array.isArray(data)) {
                 productsData = data;
             } else if (data.success && Array.isArray(data.data)) {
@@ -131,7 +131,6 @@ const CategoryProducts = () => {
 
             console.log(`✅ ${productsData.length} productos cargados desde servidor para: ${categoryId}`);
 
-            // **VERIFICAR QUE SIGUE SIENDO LA CATEGORÍA ACTUAL ANTES DE ACTUALIZAR**
             const currentCat = getCurrentCategory();
             if (categoryId === currentCat) {
                 console.log(`🔄 Actualizando UI para: ${categoryId}`);
@@ -151,7 +150,6 @@ const CategoryProducts = () => {
             
             const errorMsg = `Error al cargar ${categoryMap[categoryId] || 'productos'}`;
             
-            // **SOLO MOSTRAR ERROR SI ES LA CATEGORÍA ACTUAL**
             const currentCat = getCurrentCategory();
             if (categoryId === currentCat) {
                 setError(errorMsg);
@@ -160,38 +158,32 @@ const CategoryProducts = () => {
             }
 
         } finally {
-            // **SOLO QUITAR LOADING SI ES LA CATEGORÍA ACTUAL**
             const currentCat = getCurrentCategory();
             if (categoryId === currentCat) {
                 setIsLoading(false);
             }
 
-            // **LIMPIAR FETCH ACTUAL**
             if (currentFetch && currentFetch.categoryId === categoryId) {
                 currentFetch = null;
             }
         }
     }, [API_BASE_URL, categoryMap, getCurrentCategory]);
 
-    /**
-     * **EFECTO PRINCIPAL - SIEMPRE CARGA DESDE SERVIDOR**
-     */
+    // ✅ MANTENER RESTO DEL COMPONENTE EXACTAMENTE IGUAL
+
     useEffect(() => {
         const urlCategory = getCurrentCategory();
         
         console.log(`🔄 Effect principal - URL: ${location.pathname}, Categoría: ${urlCategory}`);
 
-        // **ACTUALIZAR CATEGORÍA ACTIVA SI ES DIFERENTE**
         if (urlCategory !== activeCategory) {
             console.log(`📝 Actualizando categoría activa: ${activeCategory} → ${urlCategory}`);
             setActiveCategory(urlCategory);
         }
 
-        // **SIEMPRE CARGAR DESDE SERVIDOR**
         console.log(`📦 Cargando productos desde servidor para: ${urlCategory}`);
         loadProducts(urlCategory);
 
-        // **CLEANUP AL DESMONTAR O CAMBIAR**
         return () => {
             if (currentFetch) {
                 console.log(`🧹 Cleanup: cancelando fetch para ${currentFetch.categoryId}`);
@@ -201,31 +193,24 @@ const CategoryProducts = () => {
         };
     }, [location.pathname, getCurrentCategory, loadProducts, activeCategory]);
 
-    /**
-     * **MANEJO DE CAMBIO DE CATEGORÍA DESDE NAVEGACIÓN**
-     */
     const handleCategoryChange = useCallback((categoryId) => {
         console.log(`👆 Cambio de categoría solicitado: ${activeCategory} → ${categoryId}`);
 
-        // **EVITAR CAMBIO REDUNDANTE**
         if (categoryId === activeCategory) {
             console.log(`⚠️ Ya estamos en la categoría: ${categoryId}`);
             return;
         }
 
-        // **RESETEAR ESTADO COMPLETAMENTE ANTES DE NAVEGAR**
         setIsLoading(true);
         setError(null);
         setProducts([]);
 
-        // **NAVEGAR INMEDIATAMENTE**
         if (categoryId === 'todos') {
             navigate('/categoryProducts', { replace: true });
         } else {
             navigate(`/categoria/${categoryId}`, { replace: true });
         }
 
-        // **SCROLL SUAVE**
         setTimeout(() => {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }, 100);
@@ -236,9 +221,6 @@ const CategoryProducts = () => {
         navigate(`/personalizar/${categoryId}`);
     }, [navigate]);
 
-    /**
-     * **FUNCIONES AUXILIARES PARA FAVORITOS**
-     */
     const getProductId = useCallback((product) => {
         return product?._id || product?.id || null;
     }, []);
@@ -336,9 +318,6 @@ const CategoryProducts = () => {
         }
     }, [getProductId, normalizeProductForFavorites, toggleFavorite, favoriteToggling]);
 
-    /**
-     * **AGRUPACIÓN DE PRODUCTOS**
-     */
     const productsByCategory = useMemo(() => {
         if (!Array.isArray(products) || products.length === 0) {
             return {};
@@ -465,17 +444,15 @@ const CategoryProducts = () => {
         console.log('🔄 Retry solicitado - Recargando desde servidor');
         setError(null);
         
-        // **CANCELAR FETCH ACTUAL SI EXISTE**
         if (currentFetch) {
             currentFetch.controller.abort();
             currentFetch = null;
         }
         
-        // **CARGAR DESDE SERVIDOR**
         loadProducts(activeCategory);
     }, [activeCategory, loadProducts]);
 
-    // **RENDERIZADO CONDICIONAL**
+    // ✅ MANTENER RENDERIZADO ORIGINAL EXACTO
     if (isLoading) {
         return (
             <div className="min-h-screen bg-white-50">
@@ -521,7 +498,6 @@ const CategoryProducts = () => {
         <div className="min-h-screen bg-white-50">
             <Header />
 
-            {/* **NAVEGACIÓN** */}
             <section className="bg-white pt-2 sm:pt-4 pb-4 sm:pb-6 shadow-sm">
                 <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
                     <CategoryNavigation
@@ -532,19 +508,16 @@ const CategoryProducts = () => {
                 </div>
             </section>
 
-            {/* **CONTENIDO PRINCIPAL** */}
             <main className="py-4 sm:py-8">
                 <Container>
                     <div className="space-y-8 sm:space-y-12">
 
-                        {/* **SECCIÓN DE PERSONALIZACIÓN** */}
                         {activeCategory === 'todos' && (
                             <PersonalizableSection
                                 onPersonalizeClick={handlePersonalizeClick}
                             />
                         )}
 
-                        {/* **SECCIONES DE PRODUCTOS** */}
                         {Object.entries(productsByCategory).map(([categoryId, categoryData]) => (
                             <section 
                                 key={`section-${categoryId}-${activeCategory}`}
@@ -581,7 +554,6 @@ const CategoryProducts = () => {
                             </section>
                         ))}
 
-                        {/* **ESTADO VACÍO** */}
                         {Object.keys(productsByCategory).length === 0 && !isLoading && (
                             <div className="text-center py-16">
                                 <div className="text-6xl mb-4">🔍</div>

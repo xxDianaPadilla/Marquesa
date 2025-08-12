@@ -16,6 +16,8 @@ export const FavoritesProvider = ({ children }) => {
     const [favorites, setFavorites] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [favoritesError, setFavoritesError] = useState(null);
+    
+    // ✅ CORRECCIÓN CRÍTICA: Usar setAuthToken del contexto
     const { user, isAuthenticated, getBestAvailableToken, setAuthToken } = useAuth();
 
     // Debug: Log cada vez que favorites cambie
@@ -124,7 +126,7 @@ export const FavoritesProvider = ({ children }) => {
             console.log('Obteniendo favoritos desde el servidor...');
 
             // ✅ NUEVA LÓGICA: Petición con sistema híbrido
-            const operationPromise = fetch('https://marquesa.onrender.com/api/clients/favorites', {
+            const operationPromise = fetch('https://test-9gs3.onrender.com/api/clients/favorites', {
                 method: 'GET',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
@@ -147,33 +149,76 @@ export const FavoritesProvider = ({ children }) => {
                 // Primera prioridad: response body
                 if (data.token) {
                     receivedToken = data.token;
-                    setAuthToken(receivedToken); // Guardar en estado local
+                    if (setAuthToken && typeof setAuthToken === 'function') {
+                        setAuthToken(receivedToken); // Guardar en estado local
+                    }
                 }
 
                 // Segunda prioridad: cookie (con retraso)
                 if (!receivedToken) {
                     await new Promise(resolve => setTimeout(resolve, 1000));
                     receivedToken = getBestAvailableToken();
-                    if (receivedToken) {
+                    if (receivedToken && setAuthToken && typeof setAuthToken === 'function') {
                         setAuthToken(receivedToken);
                     }
                 }
 
                 if (data && data.success) {
-                    const userFavorites = data.favorites || data.data || [];
-                    console.log('Favoritos obtenidos:', userFavorites);
+                    // ✅ CORRECCIÓN CRÍTICA: Procesar favoritos correctamente
+                    let userFavorites = [];
                     
-                    // Normalizar favoritos si es necesario
-                    const normalizedFavorites = userFavorites.map(fav => {
-                        if (typeof fav === 'string') {
-                            // Si es solo un ID, crear un objeto básico
-                            return { _id: fav, id: fav };
+                    if (data.user && data.user.favorites) {
+                        // Los favoritos están en data.user.favorites
+                        userFavorites = data.user.favorites;
+                    } else if (data.favorites) {
+                        // Los favoritos están directamente en data.favorites
+                        userFavorites = data.favorites;
+                    } else if (data.data) {
+                        // Los favoritos están en data.data
+                        userFavorites = data.data;
+                    }
+
+                    console.log('Favoritos obtenidos del servidor:', userFavorites);
+                    
+                    // ✅ NUEVA LÓGICA: Procesar favoritos que pueden venir como array de objetos con productId
+                    const processedFavorites = [];
+                    
+                    if (Array.isArray(userFavorites)) {
+                        for (const fav of userFavorites) {
+                            if (typeof fav === 'string') {
+                                // Es solo un ID de producto
+                                processedFavorites.push({ _id: fav, id: fav });
+                            } else if (fav && typeof fav === 'object') {
+                                if (fav.productId) {
+                                    // Tiene estructura { productId: "id", _id: "..." }
+                                    if (typeof fav.productId === 'object' && fav.productId._id) {
+                                        // El productId es un objeto poblado
+                                        processedFavorites.push(normalizeProduct(fav.productId));
+                                    } else if (typeof fav.productId === 'string') {
+                                        // El productId es solo un string ID
+                                        processedFavorites.push({ 
+                                            _id: fav.productId, 
+                                            id: fav.productId,
+                                            favId: fav._id // Mantener ID del favorito si existe
+                                        });
+                                    }
+                                } else {
+                                    // Es un producto directo
+                                    const normalized = normalizeProduct(fav);
+                                    if (normalized) {
+                                        processedFavorites.push(normalized);
+                                    }
+                                }
+                            }
                         }
-                        return normalizeProduct(fav) || fav;
-                    }).filter(fav => fav !== null);
+                    }
                     
-                    setFavorites(normalizedFavorites);
-                    return normalizedFavorites;
+                    // Filtrar null/undefined
+                    const cleanFavorites = processedFavorites.filter(fav => fav !== null && fav !== undefined);
+                    
+                    console.log('Favoritos procesados:', cleanFavorites);
+                    setFavorites(cleanFavorites);
+                    return cleanFavorites;
                 } else {
                     console.warn('Error al obtener favoritos:', data?.message);
                     setFavorites([]);
@@ -225,7 +270,7 @@ export const FavoritesProvider = ({ children }) => {
             const authToken = token || getBestAvailableToken();
             
             // ✅ NUEVA LÓGICA: Obtener todos los productos con sistema híbrido
-            const operationPromise = fetch('https://marquesa.onrender.com/api/products', {
+            const operationPromise = fetch('https://test-9gs3.onrender.com/api/products', {
                 method: 'GET',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
@@ -242,7 +287,7 @@ export const FavoritesProvider = ({ children }) => {
                 const data = await response.json();
                 
                 // ✅ NUEVO: Manejo híbrido de tokens
-                if (data.token) {
+                if (data.token && setAuthToken && typeof setAuthToken === 'function') {
                     setAuthToken(data.token);
                 }
                 
@@ -309,7 +354,7 @@ export const FavoritesProvider = ({ children }) => {
             console.log('Agregando a favoritos:', productId);
 
             // ✅ NUEVA LÓGICA: Petición con sistema híbrido
-            const operationPromise = fetch('https://marquesa.onrender.com/api/clients/favorites/add', {
+            const operationPromise = fetch('https://test-9gs3.onrender.com/api/clients/favorites/add', {
                 method: 'POST',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
@@ -331,7 +376,7 @@ export const FavoritesProvider = ({ children }) => {
                 console.log('Producto agregado a favoritos exitosamente');
                 
                 // ✅ NUEVO: Manejo híbrido de tokens
-                if (data.token) {
+                if (data.token && setAuthToken && typeof setAuthToken === 'function') {
                     setAuthToken(data.token);
                 }
                 
@@ -389,7 +434,7 @@ export const FavoritesProvider = ({ children }) => {
             console.log('Removiendo de favoritos:', productId);
 
             // ✅ NUEVA LÓGICA: Petición con sistema híbrido
-            const operationPromise = fetch('https://marquesa.onrender.com/api/clients/favorites/remove', {
+            const operationPromise = fetch('https://test-9gs3.onrender.com/api/clients/favorites/remove', {
                 method: 'DELETE',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
@@ -411,7 +456,7 @@ export const FavoritesProvider = ({ children }) => {
                 console.log('Producto removido de favoritos exitosamente');
                 
                 // ✅ NUEVO: Manejo híbrido de tokens
-                if (data.token) {
+                if (data.token && setAuthToken && typeof setAuthToken === 'function') {
                     setAuthToken(data.token);
                 }
                 
@@ -526,7 +571,7 @@ export const FavoritesProvider = ({ children }) => {
             });
 
             // ✅ NUEVA LÓGICA: Petición con sistema híbrido
-            const operationPromise = fetch('https://marquesa.onrender.com/api/clients/favorites/toggle', {
+            const operationPromise = fetch('https://test-9gs3.onrender.com/api/clients/favorites/toggle', {
                 method: 'POST',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
@@ -548,13 +593,13 @@ export const FavoritesProvider = ({ children }) => {
                 console.log('Toggle favorito exitoso');
                 
                 // ✅ NUEVO: Manejo híbrido de tokens
-                if (data.token) {
+                if (data.token && setAuthToken && typeof setAuthToken === 'function') {
                     setAuthToken(data.token);
                 }
                 
                 // Actualizar la lista de favoritos
                 await getFavorites(token);
-                return data.isAdded || !isFavorite(productId); // Retorna si fue agregado
+                return data.action === 'added'; // Retorna si fue agregado
             } else {
                 const errorMsg = data.message || 'Error al actualizar favorito';
                 console.error('Error del servidor:', data);

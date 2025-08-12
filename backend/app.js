@@ -30,17 +30,9 @@ const app = express();
 // Se especifica el origen exacto del frontend y se habilitan las credenciales
 app.use(
     cors({
-        origin: "https://marquesa.vercel.app", // URL del frontend en Vercel
+        origin: "https://test-pink-five-44.vercel.app", // URL del frontend en Vercel
         credentials: true, // Permite envío de cookies entre dominios
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Métodos HTTP permitidos
-        allowedHeaders: [
-            'Content-Type', 
-            'Authorization', 
-            'Cookie',
-            'X-Requested-With',
-            'Accept'
-        ], // Headers permitidos en las peticiones
-        exposedHeaders: ['Set-Cookie'] // Permite que el frontend lea las cookies enviadas
     })
 );
 

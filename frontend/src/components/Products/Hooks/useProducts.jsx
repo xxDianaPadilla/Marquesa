@@ -1,81 +1,129 @@
-// REEMPLAZAR COMPLETAMENTE: frontend/src/components/Products/Hooks/useProducts.jsx
+// frontend/src/components/Products/Hooks/useProducts.jsx
 
-// Importa los hooks useState y useEffect desde la biblioteca de React.
 import { useState, useEffect } from "react";
 
-// Define y exporta un custom hook llamado useProducts.
 export const useProducts = () => {
-  // Declara un estado para almacenar la lista de productos.
   const [products, setProducts] = useState([]);
-  // Declara un estado para manejar el estado de carga de la petición.
   const [loading, setLoading] = useState(true);
-  // Declara un estado para almacenar cualquier error que ocurra durante la petición.
   const [error, setError] = useState(null);
 
-  // Hook de efecto que se ejecuta una sola vez cuando el componente que lo usa se monta.
   useEffect(() => {
-    // Define una función asíncrona para obtener los productos desde la API.
     const fetchProducts = async () => {
       try {
-        // Inicia el estado de carga.
         setLoading(true);
         setError(null);
 
         console.log('📦 Obteniendo productos desde API...');
 
-        // CORREGIDO: Arreglar el typo y agregar headers apropiados
-        const response = await fetch("https://marquesa.onrender.com/api/products", {
+        // ✅ CORRECCIÓN: Headers y manejo de errores mejorado
+        const response = await fetch("https://test-9gs3.onrender.com/api/products", {
           method: 'GET',
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            // ✅ Headers para evitar cache en producción
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
           }
         });
 
-        // Si la respuesta no es exitosa (ej. status 404, 500), lanza un error.
+        console.log(`📡 Respuesta del servidor: ${response.status} ${response.statusText}`);
+
         if (!response.ok) {
-          throw new Error(`Error ${response.status}: Error al obtener productos`);
+          // ✅ MEJOR MANEJO DE ERRORES HTTP
+          const errorText = await response.text();
+          console.error(`❌ Error HTTP ${response.status}:`, errorText);
+          throw new Error(`Error ${response.status}: ${response.statusText}`);
         }
 
-        // Convierte la respuesta de la API a formato JSON.
         const data = await response.json();
-        console.log('📦 Respuesta recibida:', data);
+        console.log('📦 Datos recibidos del servidor:', data);
 
-        // CORREGIDO: Manejar la estructura correcta de respuesta del backend
-        if (data.success && Array.isArray(data.products)) {
-          // Estructura nueva: { success: true, products: [...], count: N }
-          setProducts(data.products);
-          console.log(`✅ ${data.products.length} productos cargados exitosamente`);
-        } else if (Array.isArray(data.products)) {
-          // Fallback si no hay success pero sí products
-          setProducts(data.products);
-          console.log(`✅ ${data.products.length} productos cargados (fallback)`);
-        } else if (Array.isArray(data)) {
-          // Retrocompatibilidad si devuelve array directo
-          setProducts(data);
-          console.log(`✅ ${data.length} productos cargados (formato anterior)`);
-        } else {
-          console.warn('⚠️ Estructura de respuesta inesperada:', data);
-          setProducts([]);
+        // ✅ MANEJO ROBUSTO DE MÚLTIPLES ESTRUCTURAS DE RESPUESTA
+        let productsData = [];
+
+        if (data.success === true) {
+          // Estructura: { success: true, products: [...] }
+          if (Array.isArray(data.products)) {
+            productsData = data.products;
+            console.log(`✅ Productos encontrados en data.products: ${productsData.length}`);
+          }
+          // Estructura: { success: true, data: [...] }
+          else if (Array.isArray(data.data)) {
+            productsData = data.data;
+            console.log(`✅ Productos encontrados en data.data: ${productsData.length}`);
+          }
+          // Estructura: { success: true, message: "...", pero sin productos }
+          else {
+            console.warn('⚠️ Respuesta exitosa pero sin array de productos:', data);
+            productsData = [];
+          }
+        }
+        // Retrocompatibilidad: Array directo
+        else if (Array.isArray(data)) {
+          productsData = data;
+          console.log(`✅ Array directo de productos: ${productsData.length}`);
+        }
+        // Estructura sin success pero con data
+        else if (Array.isArray(data.products)) {
+          productsData = data.products;
+          console.log(`✅ Productos en data.products (sin success): ${productsData.length}`);
+        }
+        else if (Array.isArray(data.data)) {
+          productsData = data.data;
+          console.log(`✅ Productos en data.data (sin success): ${productsData.length}`);
+        }
+        else {
+          console.error('❌ Estructura de respuesta no reconocida:', data);
+          throw new Error('Estructura de respuesta inválida del servidor');
         }
 
+        // ✅ VALIDACIÓN ADICIONAL DE LOS PRODUCTOS
+        const validProducts = productsData.filter(product => {
+          const isValid = product && 
+                         typeof product === 'object' && 
+                         (product._id || product.id) && 
+                         product.name;
+          
+          if (!isValid) {
+            console.warn('⚠️ Producto inválido filtrado:', product);
+          }
+          
+          return isValid;
+        });
+
+        console.log(`✅ ${validProducts.length} productos válidos de ${productsData.length} totales`);
+
+        setProducts(validProducts);
         setError(null);
+
       } catch (error) {
-        // Si ocurre un error en el bloque try, se captura y se guarda el mensaje en el estado de error.
         console.error('❌ Error al obtener productos:', error);
-        setError(error.message);
+        
+        // ✅ MENSAJES DE ERROR MÁS ESPECÍFICOS
+        let errorMessage = 'Error desconocido al cargar productos';
+        
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+          errorMessage = 'No se pudo conectar con el servidor. Verifica que esté funcionando.';
+        } else if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
+          errorMessage = 'Error de conexión. Verifica tu conexión a internet.';
+        } else if (error.message.includes('CORS')) {
+          errorMessage = 'Error de configuración del servidor (CORS).';
+        } else {
+          errorMessage = error.message || 'Error al cargar productos';
+        }
+        
+        setError(errorMessage);
         setProducts([]);
       } finally {
-        // El bloque finally se ejecuta siempre, al finalizar el try o el catch.
-        // Finaliza el estado de carga, indicando que la operación ha terminado.
         setLoading(false);
       }
     };
 
-    // Llama a la función para que se ejecute.
     fetchProducts();
-  }, []); // El array de dependencias vacío asegura que el efecto se ejecute solo una vez.
+  }, []);
 
-  // El hook retorna un objeto con los productos, el estado de carga y el estado de error.
   return { products, loading, error };
 };

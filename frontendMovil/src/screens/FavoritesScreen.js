@@ -9,13 +9,13 @@ import {
   StatusBar,
   Dimensions,
   ActivityIndicator,
-  Alert,
   RefreshControl,
-  Image
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useAuth } from '../context/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
+import FavoriteCards from '../components/FavoriteCards';
+import { ConfirmationDialog } from '../components/CustomAlerts'; 
 
 const { width: screenWidth } = Dimensions.get('window');
 const isSmallDevice = screenWidth < 375;
@@ -36,22 +36,27 @@ const FavoritesScreen = ({ navigation }) => {
 
   const [localLoading, setLocalLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Estado para el dialog de confirmación
+  const [confirmationDialog, setConfirmationDialog] = useState({
+    visible: false,
+    product: null
+  });
 
   // Cargar favoritos cuando la pantalla gana foco
-  // Removemos getFavorites de las dependencias para evitar el bucle
   useFocusEffect(
     useCallback(() => {
       if (isAuthenticated && userInfo) {
         console.log('FavoritesScreen - Cargando favoritos...');
         getFavorites();
       }
-    }, [isAuthenticated, userInfo]) // Removimos getFavorites de aquí
+    }, [isAuthenticated, userInfo])
   );
 
   // Limpiar errores cuando el componente se monta
   useEffect(() => {
     clearFavoritesError();
-  }, []); // También removemos clearFavoritesError de las dependencias
+  }, []);
 
   // Función para refrescar favoritos
   const onRefresh = useCallback(async () => {
@@ -65,107 +70,56 @@ const FavoritesScreen = ({ navigation }) => {
     }
   }, [getFavorites]);
 
-  // Función para remover favorito con confirmación
-  const handleRemoveFavorite = async (product) => {
-    Alert.alert(
-      "Remover de favoritos",
-      `¿Estás seguro de que deseas remover "${product.name}" de tus favoritos?`,
-      [
-        {
-          text: "Cancelar",
-          style: "cancel"
-        },
-        {
-          text: "Remover",
-          style: "destructive",
-          onPress: async () => {
-            setLocalLoading(true);
-            try {
-              const result = await removeFromFavorites(product._id);
-              if (result.success) {
-                console.log('Producto removido de favoritos');
-              } else {
-                Alert.alert('Error', result.message || 'No se pudo remover el producto de favoritos');
-              }
-            } catch (error) {
-              console.error('Error al remover favorito:', error);
-              Alert.alert('Error', 'Error de conexión. Intenta nuevamente.');
-            } finally {
-              setLocalLoading(false);
-            }
-          }
-        }
-      ]
-    );
+  // Función para mostrar confirmación de remover favorito
+  const handleRemoveFavorite = (product) => {
+    setConfirmationDialog({
+      visible: true,
+      product
+    });
+  };
+
+  // Función para confirmar la eliminación
+  const confirmRemoveFavorite = async () => {
+    const { product } = confirmationDialog;
+    
+    // Cerrar el dialog
+    setConfirmationDialog({
+      visible: false,
+      product: null
+    });
+
+    if (!product) return;
+
+    setLocalLoading(true);
+    try {
+      const result = await removeFromFavorites(product._id);
+      if (result.success) {
+        console.log('Producto removido de favoritos');
+      } else {
+        // Aquí podrías usar otro CustomAlert para mostrar errores si quisieras
+        Alert.alert('Error', result.message || 'No se pudo remover el producto de favoritos');
+      }
+    } catch (error) {
+      console.error('Error al remover favorito:', error);
+      // Aquí podrías usar otro CustomAlert para mostrar errores si quisieras
+      Alert.alert('Error', 'Error de conexión. Intenta nuevamente.');
+    } finally {
+      setLocalLoading(false);
+    }
+  };
+
+  // Función para cancelar la eliminación
+  const cancelRemoveFavorite = () => {
+    setConfirmationDialog({
+      visible: false,
+      product: null
+    });
   };
 
   // Función para navegar al detalle del producto
   const handleProductPress = (product) => {
     navigation.navigate('ProductDetail', { productId: product._id });
   };
-
-  // Obtener la imagen del producto
-  const getProductImage = (product) => {
-    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
-      const firstImage = product.images[0];
-
-      if (typeof firstImage === 'object' && firstImage.image) {
-        return firstImage.image;
-      }
-
-      if (typeof firstImage === 'string') {
-        return firstImage;
-      }
-    }
-
-    if (product.image) {
-      return product.image;
-    }
-
-    return 'https://via.placeholder.com/150x150?text=Sin+Imagen';
-  };
-
-  // Función para renderizar cada item favorito
-  const renderFavoriteItem = (product) => (
-    <TouchableOpacity
-      key={product._id}
-      style={styles.favoriteItem}
-      onPress={() => handleProductPress(product)}
-      disabled={localLoading}
-    >
-      <View style={styles.imageContainer}>
-        <Image
-          source={{ uri: getProductImage(product) }}
-          style={styles.favoriteImage}
-          resizeMode="cover"
-        />
-
-        {/* Degradado inferior para el texto */}
-        <View style={styles.textOverlay}>
-          <Text style={styles.favoriteTitle} numberOfLines={2}>
-            {product.name || 'Producto sin nombre'}
-          </Text>
-          <Text style={styles.favoritePrice}>
-            ${product.price ? product.price.toFixed(2) : '0.00'}
-          </Text>
-        </View>
-
-        {/* Corazón flotante para remover */}
-        <TouchableOpacity
-          style={styles.heartIcon}
-          onPress={() => handleRemoveFavorite(product)}
-          disabled={localLoading}
-          activeOpacity={0.7}
-        >
-          <Icon
-            name="favorite"
-            size={18}
-            color="#fff"
-          />
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
-  );
 
   // Verificar si el usuario está autenticado
   if (!isAuthenticated) {
@@ -341,9 +295,13 @@ const FavoritesScreen = ({ navigation }) => {
             />
           }
         >
-          <View style={styles.favoritesGrid}>
-            {favorites.map(renderFavoriteItem)}
-          </View>
+          {/* Usando el componente FavoriteCards */}
+          <FavoriteCards
+            data={favorites}
+            onToggleFavorite={handleRemoveFavorite}
+            onCardPress={handleProductPress}
+            isLoading={localLoading}
+          />
         </ScrollView>
       )}
 
@@ -353,6 +311,22 @@ const FavoritesScreen = ({ navigation }) => {
           <ActivityIndicator size="large" color="#f5c7e6ff" />
         </View>
       )}
+
+      {/* Dialog de confirmación para remover favorito */}
+      <ConfirmationDialog
+        visible={confirmationDialog.visible}
+        title="Remover de favoritos"
+        message={
+          confirmationDialog.product 
+            ? `¿Estás seguro de que deseas remover "${confirmationDialog.product.name}" de tus favoritos?`
+            : ''
+        }
+        onConfirm={confirmRemoveFavorite}
+        onCancel={cancelRemoveFavorite}
+        confirmText="Remover"
+        cancelText="Cancelar"
+        isDangerous={true}
+      />
     </SafeAreaView>
   );
 };
@@ -394,74 +368,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
     paddingBottom: isSmallDevice ? 90 : 100,
-  },
-  favoritesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    padding: 16,
-    justifyContent: 'space-between',
-  },
-  favoriteItem: {
-    width: '48%',
-    marginBottom: 16,
-    borderRadius: 23,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  imageContainer: {
-    position: 'relative',
-    width: '100%',
-    height: 150,
-  },
-  favoriteImage: {
-    width: '100%',
-    height: '100%',
-  },
-  textOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  favoriteTitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#fff',
-    marginBottom: 2,
-  },
-  favoritePrice: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#f5c7e6ff',
-  },
-  heartIcon: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#ff6b8a',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
   },
 
   // Estados de carga, error y vacío

@@ -12,34 +12,76 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 const { width: screenWidth } = Dimensions.get('window');
 const isSmallDevice = screenWidth < 375;
 
-const FavoriteCards = ({ 
-  data, 
-  favorites, 
-  onToggleFavorite, 
-  onCardPress 
+const FavoriteCards = ({
+  data,
+  onToggleFavorite,
+  onCardPress,
+  isLoading = false
 }) => {
+  // Función para obtener la imagen del producto
+  const getProductImage = (product) => {
+    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+      const firstImage = product.images[0];
+
+      if (typeof firstImage === 'object' && firstImage.image) {
+        return { uri: firstImage.image };
+      }
+
+      if (typeof firstImage === 'string') {
+        return { uri: firstImage };
+      }
+    }
+
+    if (product.image) {
+      // Si es un objeto con uri, devolverlo tal como está
+      if (typeof product.image === 'object' && product.image.uri) {
+        return product.image;
+      }
+      // Si es una string, convertirlo a objeto con uri
+      if (typeof product.image === 'string') {
+        return { uri: product.image };
+      }
+    }
+
+    return { uri: 'https://via.placeholder.com/150x150?text=Sin+Imagen' };
+  };
+
   const renderFavoriteItem = (item) => (
-    <TouchableOpacity 
-      key={item.id} 
+    <TouchableOpacity
+      key={item._id || item.id}
       style={styles.favoriteItem}
       onPress={() => onCardPress && onCardPress(item)}
+      disabled={isLoading}
     >
       <View style={styles.imageContainer}>
-        <Image source={item.image} style={styles.favoriteImage} />
+        <Image 
+          source={getProductImage(item)} 
+          style={styles.favoriteImage}
+          resizeMode="cover"
+        />
 
         {/* Degradado inferior para el texto */}
         <View style={styles.textOverlay}>
-          <Text style={styles.favoriteTitle}>{item.title}</Text>
+          <Text style={styles.favoriteTitle} numberOfLines={2}>
+            {item.name || item.title || 'Producto sin nombre'}
+          </Text>
+          {item.price && (
+            <Text style={styles.favoritePrice}>
+              ${item.price.toFixed(2)}
+            </Text>
+          )}
         </View>
 
-        {/* Corazón flotante */}
+        {/* Corazón flotante para remover */}
         <TouchableOpacity
           style={styles.heartIcon}
-          onPress={() => onToggleFavorite(item.id)}
+          onPress={() => onToggleFavorite(item)}
+          disabled={isLoading}
+          activeOpacity={0.7}
         >
           <Icon
-            name={favorites[item.id] ? "favorite" : "favorite-border"}
-            size={20}
+            name="favorite"
+            size={18}
             color="#fff"
           />
         </TouchableOpacity>
@@ -89,25 +131,39 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingVertical: 6,
+    paddingVertical: 8,
     paddingHorizontal: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   favoriteTitle: {
     fontSize: 14,
     fontWeight: '500',
     color: '#fff',
+    marginBottom: 2,
+  },
+  favoritePrice: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#f5c7e6ff',
   },
   heartIcon: {
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    borderRadius: 20,
-    width: 36,
-    height: 36,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#ff6b8a',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
 });
 

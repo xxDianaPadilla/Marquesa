@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const AuthContext = createContext();
@@ -62,14 +62,24 @@ export const AuthProvider = ({ children }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [userInfo, setUserInfo] = useState(null);
     const [authError, setAuthError] = useState(null);
-    
-    // Estados para favoritos
+
+    // Estados para favoritos - mejorados
     const [favorites, setFavorites] = useState([]);
     const [favoritesLoading, setFavoritesLoading] = useState(false);
     const [favoritesError, setFavoritesError] = useState(null);
 
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+    // Obtenemos token con mejor manejo de errores
+    const getBestAvailableToken = useCallback(async () => {
+        try {
+            return await getTokenFromStorage();
+        } catch (error) {
+            console.error('Error al obtener token:', error);
+            return null;
+        }
+    }, []);
 
     const getTokenFromStorage = async () => {
         try {
@@ -100,6 +110,64 @@ export const AuthProvider = ({ children }) => {
             return false;
         }
     };
+
+    // Función para normalizar el ID del producto
+    const getProductId = useCallback((product) => {
+        if (!product) return null;
+        return product._id || product.id || null;
+    }, []);
+
+    // Normalizamos y validar el producto antes de guardarlo
+    const normalizeProduct = useCallback((product) => {
+        if (!product) return null;
+
+        const productId = getProductId(product);
+        if (!productId) {
+            console.error('Product has no valid ID:', product);
+            return null;
+        }
+
+        // Creamos una copia normalizada del producto con todos los campos necesarios
+        const normalizedProduct = {
+            // IDs - asegurar que ambos estén presentes
+            id: productId,
+            _id: productId,
+
+            // Información básica del producto
+            name: product.name || 'Producto sin nombre',
+            description: product.description || '',
+            category: product.category || '',
+
+            // Precio - manejar diferentes formatos
+            price: product.price || 0,
+
+            // Stock - puede ser undefined si no se proporciona
+            stock: product.stock !== undefined ? Number(product.stock) : undefined,
+
+            // Imágenes - normalizar estructura
+            image: product.image || '',
+            images: Array.isArray(product.images) ? product.images : (product.images ? [product.images] : []),
+
+            // Metadatos de favoritos
+            addedAt: new Date().toISOString(),
+            userId: user?.id || 'guest',
+
+            // Preservamos cualquier otro campo que pueda ser importante
+            ...Object.keys(product).reduce((acc, key) => {
+                if (!['id', '_id', 'name', 'description', 'category', 'price', 'stock', 'image', 'images'].includes(key)) {
+                    acc[key] = product[key];
+                }
+                return acc;
+            }, {})
+        };
+
+        console.log('Product normalized:', {
+            original: product,
+            normalized: normalizedProduct
+        });
+
+        return normalizedProduct;
+    }, [user?.id, getProductId]);
 
     const decodeToken = (token) => {
         try {
@@ -176,62 +244,142 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // ACTUALIZADO: Obtener favoritos del usuario
-const getFavorites = async (token = null) => {
-    try {
-        setFavoritesLoading(true);
-        setFavoritesError(null);
+    // Obtenemos favoritos con lógica mejorada
+    const getFavorites = useCallback(async (token = null) => {
+        try {
+            setFavoritesLoading(true);
+            setFavoritesError(null);
 
-        const authToken = token || await getTokenFromStorage();
-        if (!authToken) {
-            console.log('No hay token para obtener favoritos');
-            setFavorites([]);
-            return [];
-        }
-
-        console.log('Obteniendo favoritos usando ruta específica...');
-
-        // Usar la ruta específica de favoritos
-        const response = await fetch('https://marquesa.onrender.com/api/clients/favorites', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`,
-            },
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            console.log('Respuesta de favoritos: ', data);
-
-            if (data && data.success) {
-                const userFavorites = data.favorites || data.data || [];
-                console.log('Favoritos obtenidos: ', userFavorites);
-                setFavorites(userFavorites);
-                return userFavorites;
-            } else {
-                console.warn('Error al obtener favoritos: ', data?.message);
+            if (!isAuthenticated) {
+                console.log('Usuario no autenticado, limpiando favoritos');
                 setFavorites([]);
                 return [];
             }
-        } else {
-            console.error('Error en respuesta del servidor: ', response.status);
+
+            const authToken = token || await getBestAvailableToken();
+            if (!authToken) {
+                console.log('No hay token para obtener favoritos');
+                setFavorites([]);
+                return [];
+            }
+
+            console.log('Obteniendo favoritos desde el servidor...');
+
+            // Petición con timeout
+            const operationPromise = fetch('https://marquesa.onrender.com/api/clients/favorites', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`,
+                },
+            });
+
+            // Timeout para conexiones lentas
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
+            });
+
+            const response = await Promise.race([operationPromise, timeoutPromise]);
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Respuesta de favoritos:', data);
+
+                if (data && data.success) {
+                    // Procesamos favoritos correctamente
+                    let userFavorites = [];
+
+                    if (data.user && data.user.favorites) {
+                        // Los favoritos están en data.user.favorites
+                        userFavorites = data.user.favorites;
+                    } else if (data.favorites) {
+                        // Los favoritos están directamente en data.favorites
+                        userFavorites = data.favorites;
+                    } else if (data.data) {
+                        // Los favoritos están en data.data
+                        userFavorites = data.data;
+                    }
+
+                    console.log('Favoritos obtenidos del servidor:', userFavorites);
+
+                    // Procesamos favoritos que pueden venir como array de objetos con productId
+                    const processedFavorites = [];
+
+                    if (Array.isArray(userFavorites)) {
+                        for (const fav of userFavorites) {
+                            if (typeof fav === 'string') {
+                                // Es solo un ID de producto
+                                processedFavorites.push({ _id: fav, id: fav });
+                            } else if (fav && typeof fav === 'object') {
+                                if (fav.productId) {
+                                    // Tiene estructura { productId: "id", _id: "..." }
+                                    if (typeof fav.productId === 'object' && fav.productId._id) {
+                                        // El productId es un objeto poblado
+                                        processedFavorites.push(normalizeProduct(fav.productId));
+                                    } else if (typeof fav.productId === 'string') {
+                                        // El productId es solo un string ID
+                                        processedFavorites.push({
+                                            _id: fav.productId,
+                                            id: fav.productId,
+                                            favId: fav._id
+                                        });
+                                    }
+                                } else {
+                                    // Es un producto directo
+                                    const normalized = normalizeProduct(fav);
+                                    if (normalized) {
+                                        processedFavorites.push(normalized);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Filtramos null/undefined
+                    const cleanFavorites = processedFavorites.filter(fav => fav !== null && fav !== undefined);
+
+                    console.log('Favoritos procesados:', cleanFavorites);
+                    setFavorites(cleanFavorites);
+                    return cleanFavorites;
+                } else {
+                    console.warn('Error al obtener favoritos:', data?.message);
+                    setFavorites([]);
+                    return [];
+                }
+            } else if (response.status === 401) {
+                console.log('Token expirado o inválido');
+                setFavorites([]);
+                return [];
+            } else {
+                console.error('Error en respuesta del servidor:', response.status);
+                throw new Error(`Error del servidor: ${response.status}`);
+            }
+        } catch (error) {
+            console.error('Error al obtener favoritos:', error);
+
+            // Manejo específico de errores de red vs servidor
+            let errorMessage = 'Error al obtener favoritos';
+
+            if (error.message === 'TIMEOUT') {
+                errorMessage = 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
+            } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
+            } else if (error.message?.includes('timeout')) {
+                errorMessage = 'La conexión tardó demasiado. Inténtalo nuevamente.';
+            } else if (error.message?.includes('network')) {
+                errorMessage = 'Error de red. Verifica tu conexión a internet.';
+            }
+
+            setFavoritesError(errorMessage);
             setFavorites([]);
             return [];
+        } finally {
+            setFavoritesLoading(false);
         }
-    } catch (error) {
-        console.error('Error al obtener favoritos: ', error);
-        setFavoritesError('Error al obtener favoritos');
-        setFavorites([]);
-        return [];
-    } finally {
-        setFavoritesLoading(false);
-    }
-};
+    }, [isAuthenticated, getBestAvailableToken, normalizeProduct]);
 
-
-    // NUEVA: Función para obtener datos completos de productos favoritos
-    const fetchFavoriteProducts = async (productIds, token) => {
+    // Obtenemos datos completos de productos favoritos
+    const fetchFavoriteProducts = useCallback(async (productIds, token) => {
         try {
             if (!productIds || productIds.length === 0) {
                 return [];
@@ -239,237 +387,393 @@ const getFavorites = async (token = null) => {
 
             console.log('Obteniendo datos completos de productos favoritos:', productIds);
 
-            // Obtener todos los productos
-            const response = await fetch('https://marquesa.onrender.com/api/products', {
+            const authToken = token || await getBestAvailableToken();
+
+            // Obtenemos todos los productos
+            const operationPromise = fetch('https://marquesa.onrender.com/api/products', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
+                    'Authorization': `Bearer ${authToken}`,
                 },
             });
 
+            // Timeout para conexiones lentas
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
+            });
+
+            const response = await Promise.race([operationPromise, timeoutPromise]);
+
             if (response.ok) {
                 const data = await response.json();
-                
+
                 if (data && data.products) {
-                    // Filtrar solo los productos que están en favoritos
-                    const favoriteProducts = data.products.filter(product => 
+                    // Filtramos solo los productos que están en favoritos
+                    const favoriteProducts = data.products.filter(product =>
                         productIds.includes(product._id)
                     );
-                    
+
                     console.log('Productos favoritos obtenidos:', favoriteProducts);
                     return favoriteProducts;
                 }
             }
-            
+
             return [];
         } catch (error) {
             console.error('Error al obtener datos de productos favoritos:', error);
             return [];
         }
+    }, [getBestAvailableToken]);
+
+    // Verificamos si un producto es favorito con lógica robusta
+    const isFavorite = useCallback((productId) => {
+        try {
+            if (!productId || !isAuthenticated) return false;
+
+            // Aseguramos que favorites sea un array antes de usar some()
+            const currentFavorites = Array.isArray(favorites) ? favorites : [];
+            return currentFavorites.some(fav => {
+                if (typeof fav === 'string') {
+                    return fav === productId;
+                }
+                if (typeof fav === 'object' && fav !== null) {
+                    return getProductId(fav) === productId;
+                }
+                return false;
+            });
+        } catch (error) {
+            console.error('Error checking if favorite:', error);
+            return false;
+        }
+    }, [favorites, getProductId, isAuthenticated]);
+
+    const clearAuthData = async (fromLogout = false) => {
+        try {
+            console.log('Limpiando datos de autenticación...');
+
+            // Limpiamos token del storage
+            await removeTokenFromStorage();
+
+            // Limpiamos estados de usuario
+            setUser(null);
+            setUserInfo(null);
+            setIsAuthenticated(false);
+            setAuthError(null);
+
+            // Limpiamos estados de favoritos
+            setFavorites([]);
+            setFavoritesError(null);
+
+            // Solo cambiamos loading si no viene del logout
+            if (!fromLogout) {
+                setLoading(false);
+            }
+
+            console.log('Datos de autenticación limpiados exitosamente');
+        } catch (error) {
+            console.error('Error al limpiar datos de autenticación:', error);
+
+            // Aseguramos que al menos se limpien los estados principales
+            setUser(null);
+            setUserInfo(null);
+            setIsAuthenticated(false);
+            setFavorites([]);
+
+            if (!fromLogout) {
+                setLoading(false);
+            }
+        }
     };
-    const isFavorite = (productId) => {
-    if (!favorites || !Array.isArray(favorites)) {
-        console.log('No hay favoritos o no es un array');
-        return false;
-    }
-    
-    // Verificar si el productId está en el array de favoritos
-    const found = favorites.some(fav => {
-        if (typeof fav === 'string') {
-            return fav === productId;
+
+    // Agregamos producto a favoritos con lógica mejorada
+    const addToFavorites = useCallback(async (product) => {
+        try {
+            console.log('Adding to favorites - Raw product:', product);
+
+            if (!isAuthenticated) {
+                setFavoritesError('Debes iniciar sesión para agregar favoritos');
+                return { success: false, message: 'Debes iniciar sesión para agregar favoritos' };
+            }
+
+            const token = await getBestAvailableToken();
+            if (!token) {
+                setFavoritesError('No hay sesión activa');
+                return { success: false, message: 'No hay sesión activa' };
+            }
+
+            // Normalizamos el producto antes de agregarlo
+            const normalizedProduct = normalizeProduct(product);
+
+            if (!normalizedProduct) {
+                console.error('Failed to normalize product:', product);
+                return { success: false, message: 'Producto inválido' };
+            }
+
+            const productId = getProductId(normalizedProduct);
+
+            if (!productId) {
+                console.error('Product has no valid ID:', product);
+                return { success: false, message: 'Producto sin ID válido' };
+            }
+
+            console.log('Agregando a favoritos:', productId);
+
+            // Petición con timeout
+            const operationPromise = fetch('https://marquesa.onrender.com/api/clients/favorites/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    productId: productId
+                })
+            });
+
+            // Timeout para conexiones lentas
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
+            });
+
+            const response = await Promise.race([operationPromise, timeoutPromise]);
+            const data = await response.json();
+            console.log('Respuesta agregar favorito:', data);
+
+            if (response.ok && data.success) {
+                console.log('Producto agregado a favoritos exitosamente');
+
+                // Actualizamos la lista de favoritos
+                await getFavorites(token);
+                return { success: true, message: data.message || 'Producto agregado a favoritos' };
+            } else {
+                const errorMsg = data.message || 'Error al agregar a favoritos';
+                console.error('Error del servidor:', data);
+                setFavoritesError(errorMsg);
+                return { success: false, message: errorMsg };
+            }
+        } catch (error) {
+            console.error('Error adding to favorites:', error);
+
+            // Manejo específico de errores de red vs servidor
+            let errorMessage = 'Error de conexión con el servidor';
+
+            if (error.message === 'TIMEOUT') {
+                errorMessage = 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
+            } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
+            } else if (error.message?.includes('timeout')) {
+                errorMessage = 'La conexión tardó demasiado. Inténtalo nuevamente.';
+            } else if (error.message?.includes('network')) {
+                errorMessage = 'Error de red. Verifica tu conexión a internet.';
+            }
+
+            setFavoritesError(errorMessage);
+            return { success: false, message: errorMessage };
         }
-        if (typeof fav === 'object' && fav !== null) {
-            // Verificar diferentes posibles estructuras del objeto favorito
-            return fav._id === productId || fav.productId === productId || fav.id === productId;
+    }, [isAuthenticated, getBestAvailableToken, normalizeProduct, getProductId, getFavorites]);
+
+    // Removemos producto de favoritos con lógica mejorada
+    const removeFromFavorites = useCallback(async (productId) => {
+        try {
+            if (!productId) {
+                console.error('No productId provided for removal');
+                return { success: false, message: 'ID de producto requerido' };
+            }
+
+            if (!isAuthenticated) {
+                setFavoritesError('Debes iniciar sesión');
+                return { success: false, message: 'Debes iniciar sesión' };
+            }
+
+            const token = await getBestAvailableToken();
+            if (!token) {
+                setFavoritesError('No hay sesión activa');
+                return { success: false, message: 'No hay sesión activa' };
+            }
+
+            console.log('Removiendo de favoritos:', productId);
+
+            // Petición con timeout
+            const operationPromise = fetch('https://marquesa.onrender.com/api/clients/favorites/remove', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    productId: productId
+                })
+            });
+
+            // Timeout para conexiones lentas
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
+            });
+
+            const response = await Promise.race([operationPromise, timeoutPromise]);
+            const data = await response.json();
+            console.log('Respuesta remover favorito:', data);
+
+            if (response.ok && data.success) {
+                console.log('Producto removido de favoritos exitosamente');
+
+                // Actualizamos la lista de favoritos
+                await getFavorites(token);
+                return { success: true, message: data.message || 'Producto removido de favoritos' };
+            } else {
+                const errorMsg = data.message || 'Error al remover de favoritos';
+                console.error('Error del servidor:', data);
+                setFavoritesError(errorMsg);
+                return { success: false, message: errorMsg };
+            }
+        } catch (error) {
+            console.error('Error removing from favorites:', error);
+
+            // Manejo específico de errores de red vs servidor
+            let errorMessage = 'Error de conexión con el servidor';
+
+            if (error.message === 'TIMEOUT') {
+                errorMessage = 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
+            } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
+            } else if (error.message?.includes('timeout')) {
+                errorMessage = 'La conexión tardó demasiado. Inténtalo nuevamente.';
+            } else if (error.message?.includes('network')) {
+                errorMessage = 'Error de red. Verifica tu conexión a internet.';
+            }
+
+            setFavoritesError(errorMessage);
+            return { success: false, message: errorMessage };
         }
-        return false;
-    });
-    
-    console.log(`¿Producto ${productId} está en favoritos?`, found);
-    return found;
-};
-const clearAuthData = async (fromLogout = false) => {
-    try {
-        console.log('Limpiando datos de autenticación...');
-        
-        // Limpiar token del storage
-        await removeTokenFromStorage();
-        
-        // Limpiar estados de usuario
-        setUser(null);
-        setUserInfo(null);
-        setIsAuthenticated(false);
-        setAuthError(null);
-        
-        // Limpiar estados de favoritos
-        setFavorites([]);
-        setFavoritesError(null);
-        
-        // Solo cambiar loading si no viene del logout
-        if (!fromLogout) {
-            setLoading(false);
+    }, [isAuthenticated, getBestAvailableToken, getFavorites]);
+
+    // Toggle favorito con lógica mejorada
+    const toggleFavorite = useCallback(async (product) => {
+        try {
+            if (!product) {
+                console.error('No product provided to toggle');
+                return { success: false, message: 'Producto requerido' };
+            }
+
+            if (!isAuthenticated) {
+                setFavoritesError('Debes iniciar sesión');
+                return { success: false, message: 'Debes iniciar sesión' };
+            }
+
+            const token = await getBestAvailableToken();
+            if (!token) {
+                setFavoritesError('No hay sesión activa');
+                return { success: false, message: 'No hay sesión activa' };
+            }
+
+            const productId = getProductId(product);
+
+            if (!productId) {
+                console.error('Product has no valid ID for toggle:', product);
+                return { success: false, message: 'Producto sin ID válido' };
+            }
+
+            console.log('Toggling favorite for product:', {
+                productId,
+                productName: product.name,
+                currentlyFavorite: isFavorite(productId)
+            });
+
+            // Petición con timeout
+            const operationPromise = fetch('https://marquesa.onrender.com/api/clients/favorites/toggle', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    productId: productId
+                })
+            });
+
+            // Timeout para conexiones lentas
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
+            });
+
+            const response = await Promise.race([operationPromise, timeoutPromise]);
+            const data = await response.json();
+            console.log('Respuesta toggle favorito:', data);
+
+            if (response.ok && data.success) {
+                console.log('Toggle favorito exitoso');
+
+                // Actualizamos la lista de favoritos
+                await getFavorites(token);
+                return {
+                    success: true,
+                    message: data.message || 'Favorito actualizado',
+                    isAdded: data.action === 'added' || data.isAdded
+                };
+            } else {
+                const errorMsg = data.message || 'Error al actualizar favorito';
+                console.error('Error del servidor:', data);
+                setFavoritesError(errorMsg);
+                return { success: false, message: errorMsg };
+            }
+        } catch (error) {
+            console.error('Error toggling favorite:', error);
+
+            // Manejamos específico de errores de red vs servidor
+            let errorMessage = 'Error de conexión con el servidor';
+
+            if (error.message === 'TIMEOUT') {
+                errorMessage = 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
+            } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
+            } else if (error.message?.includes('timeout')) {
+                errorMessage = 'La conexión tardó demasiado. Inténtalo nuevamente.';
+            } else if (error.message?.includes('network')) {
+                errorMessage = 'Error de red. Verifica tu conexión a internet.';
+            }
+
+            setFavoritesError(errorMessage);
+            return { success: false, message: errorMessage };
         }
-        
-        console.log('Datos de autenticación limpiados exitosamente');
-    } catch (error) {
-        console.error('Error al limpiar datos de autenticación:', error);
-        
-        // Asegurar que al menos se limpien los estados principales
-        setUser(null);
-        setUserInfo(null);
-        setIsAuthenticated(false);
-        setFavorites([]);
-        
-        if (!fromLogout) {
-            setLoading(false);
-        }
-    }
-};
+    }, [isAuthenticated, getBestAvailableToken, getProductId, isFavorite, getFavorites]);
 
-   // ACTUALIZADO: Agregar producto a favoritos
-const addToFavorites = async (productId) => {
-    try {
-        setFavoritesError(null);
+    // NUEVA FUNCIÓN: Limpiar todos los favoritos
+    const clearAllFavorites = useCallback(async () => {
+        try {
+            if (!isAuthenticated) {
+                return { success: false, message: 'Usuario no autenticado' };
+            }
 
-        const token = await getTokenFromStorage();
-        if (!token) {
-            setFavoritesError('No hay sesión activa');
-            return { success: false, message: 'No hay sesión activa' };
-        }
+            const token = await getBestAvailableToken();
+            if (!token) {
+                return { success: false, message: 'No hay sesión activa' };
+            }
 
-        console.log('Agregando a favoritos:', productId);
-
-        const response = await fetch('https://marquesa.onrender.com/api/clients/favorites/add', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify({ 
-                productId: productId 
-            })
-        });
-
-        const data = await response.json();
-        console.log('Respuesta agregar favorito:', data);
-
-        if (response.ok && data.success) {
-            console.log('Producto agregado a favoritos exitosamente');
-            // Actualizar la lista de favoritos
+            // Recargar favoritos desde el servidor
             await getFavorites(token);
-            return { success: true, message: data.message || 'Producto agregado a favoritos' };
-        } else {
-            const errorMsg = data.message || 'Error al agregar a favoritos';
-            console.error('Error del servidor:', data);
-            setFavoritesError(errorMsg);
-            return { success: false, message: errorMsg };
+            return { success: true, message: 'Favoritos actualizados' };
+        } catch (error) {
+            console.error('Error clearing favorites:', error);
+            return { success: false, message: 'Error al limpiar favoritos' };
         }
-    } catch (error) {
-        console.error('Error al agregar a favoritos: ', error);
-        const errorMsg = 'Error de conexión con el servidor';
-        setFavoritesError(errorMsg);
-        return { success: false, message: errorMsg };
-    }
-};
+    }, [isAuthenticated, getBestAvailableToken, getFavorites]);
 
+    // Obtenemos un producto favorito por ID
+    const getFavoriteProduct = useCallback((productId) => {
+        if (!productId) return null;
 
-    // ACTUALIZADO: Remover producto de favoritos
-const removeFromFavorites = async (productId) => {
-    try {
-        setFavoritesError(null);
+        const currentFavorites = Array.isArray(favorites) ? favorites : [];
+        return currentFavorites.find(fav => getProductId(fav) === productId) || null;
+    }, [favorites, getProductId]);
 
-        const token = await getTokenFromStorage();
-        if (!token) {
-            setFavoritesError('No hay sesión activa');
-            return { success: false, message: 'No hay sesión activa' };
+    // Refrescamos/recargamos favoritos
+    const refreshFavorites = useCallback(async () => {
+        if (isAuthenticated) {
+            return await getFavorites();
         }
-
-        console.log('Removiendo de favoritos:', productId);
-
-        const response = await fetch('https://marquesa.onrender.com/api/clients/favorites/remove', {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify({ 
-                productId: productId 
-            })
-        });
-
-        const data = await response.json();
-        console.log('Respuesta remover favorito:', data);
-
-        if (response.ok && data.success) {
-            console.log('Producto removido de favoritos exitosamente');
-            // Actualizar la lista de favoritos
-            await getFavorites(token);
-            return { success: true, message: data.message || 'Producto removido de favoritos' };
-        } else {
-            const errorMsg = data.message || 'Error al remover de favoritos';
-            console.error('Error del servidor:', data);
-            setFavoritesError(errorMsg);
-            return { success: false, message: errorMsg };
-        }
-    } catch (error) {
-        console.error('Error al remover de favoritos: ', error);
-        const errorMsg = 'Error de conexión con el servidor';
-        setFavoritesError(errorMsg);
-        return { success: false, message: errorMsg };
-    }
-};
-
-
-    // Toggle favorito (agregar o remover)
-   const toggleFavorite = async (productId) => {
-    try {
-        setFavoritesError(null);
-
-        const token = await getTokenFromStorage();
-        if (!token) {
-            setFavoritesError('No hay sesión activa');
-            return { success: false, message: 'No hay sesión activa' };
-        }
-
-        console.log('Toggle favorito:', productId);
-
-        const response = await fetch('https://marquesa.onrender.com/api/clients/favorites/toggle', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify({ 
-                productId: productId 
-            })
-        });
-
-        const data = await response.json();
-        console.log('Respuesta toggle favorito:', data);
-
-        if (response.ok && data.success) {
-            console.log('Toggle favorito exitoso');
-            // Actualizar la lista de favoritos
-            await getFavorites(token);
-            return { 
-                success: true, 
-                message: data.message || 'Favorito actualizado',
-                isAdded: data.isAdded // Por si el servidor devuelve si fue agregado o removido
-            };
-        } else {
-            const errorMsg = data.message || 'Error al actualizar favorito';
-            console.error('Error del servidor:', data);
-            setFavoritesError(errorMsg);
-            return { success: false, message: errorMsg };
-        }
-    } catch (error) {
-        console.error('Error al hacer toggle favorito: ', error);
-        const errorMsg = 'Error de conexión con el servidor';
-        setFavoritesError(errorMsg);
-        return { success: false, message: errorMsg };
-    }
-};
+        return [];
+    }, [getFavorites, isAuthenticated]);
 
     const checkAuthStatus = async () => {
         try {
@@ -502,7 +806,7 @@ const removeFromFavorites = async (productId) => {
 
                     console.log('Obteniendo información completa del usuario...');
                     await getUserInfo(token);
-                    
+
                     // Obtener favoritos después de la autenticación
                     console.log('Obteniendo favoritos del usuario...');
                     await getFavorites(token);
@@ -675,10 +979,20 @@ const removeFromFavorites = async (productId) => {
         setAuthError(null);
     };
 
-    // Limpiar errores de favoritos
-    const clearFavoritesError = () => {
+    // Limpiamos errores de favoritos
+    const clearFavoritesError = useCallback(() => {
         setFavoritesError(null);
-    };
+    }, []);
+
+    // Debug para ver cambios en favoritos
+    useEffect(() => {
+        console.log('Favorites updated:', {
+            favorites,
+            isArray: Array.isArray(favorites),
+            length: favorites.length,
+            type: typeof favorites
+        });
+    }, [favorites]);
 
     useEffect(() => {
         if (!isLoggingOut && !isLoggingIn) {
@@ -699,6 +1013,18 @@ const removeFromFavorites = async (productId) => {
         });
     }, [isAuthenticated, user, userInfo, favorites, isLoggingOut, isLoggingIn]);
 
+    // Cargamos favoritos cuando cambie el usuario
+    useEffect(() => {
+        if (isAuthenticated && user?.id) {
+            getFavorites();
+        } else {
+            setFavorites([]);
+        }
+    }, [isAuthenticated, user?.id, getFavorites]);
+
+    // Aseguramos que favorites siempre sea un array
+    const safeFavorites = Array.isArray(favorites) ? favorites : [];
+
     const contextValue = {
         user,
         userInfo,
@@ -708,28 +1034,36 @@ const removeFromFavorites = async (productId) => {
         isLoggingOut,
         isLoggingIn,
 
-        // Funciones y estados de favoritos
-        favorites,
+        // Estados de favoritos
+        favorites: safeFavorites,
         favoritesLoading,
         favoritesError,
-        
-        // Funciones originales
+        favoritesCount: safeFavorites.length,
+
+        // Funciones login
         login,
         logout,
         checkAuthStatus,
         getUserInfo,
         clearAuthError,
 
-       // Funciones de favoritos
-    getFavorites,
-    addToFavorites,
-    removeFromFavorites,
-    toggleFavorite,
-    isFavorite,  // ← Esta es la función que faltaba
-    clearFavoritesError,
+        // Funciones de favoritos
+        getFavorites,
+        addToFavorites,
+        removeFromFavorites,
+        toggleFavorite,
+        isFavorite,
+        clearFavoritesError,
+        clearAllFavorites,
+        getFavoriteProduct,
+        refreshFavorites,
+        fetchFavoriteProducts,
+        getBestAvailableToken,
+        getProductId,
+        normalizeProduct,
 
-    // Función de limpieza (si la necesitas exportar)
-    clearAuthData
+        // Función de limpieza 
+        clearAuthData
     };
 
     return (

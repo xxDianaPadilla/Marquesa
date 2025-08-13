@@ -8,7 +8,8 @@ import {
     FlatList,
     Dimensions,
     ScrollView,
-    Alert
+    Alert,
+    RefreshControl
 } from "react-native";
 import { useAuth } from "../context/AuthContext";
 import perfilIcon from "../images/perfilIcon.png";
@@ -22,15 +23,25 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const isSmallDevice = screenWidth < 375;
 const isMediumDevice = screenWidth >= 375 && screenWidth < 414;
-const isLargeDevice = screenWidth >= 414;
 
 const horizontalPadding = isSmallDevice ? 16 : isMediumDevice ? 20 : 24;
 const elementGap = isSmallDevice ? 8 : isMediumDevice ? 10 : 12;
 
 export default function HomeScreen({ navigation }) {
-    const { user, userInfo, isAuthenticated, getFavorites } = useAuth();
-    const { productos, loading } = useFetchProducts();
+    const { 
+        user, 
+        userInfo, 
+        isAuthenticated, 
+        getFavorites, 
+        favorites, 
+        favoritesLoading,
+        favoritesError,
+        refreshFavorites
+    } = useAuth();
+    
+    const { productos, loading, refetch } = useFetchProducts();
     const [selectedCategory, setSelectedCategory] = useState('Todo');
+    const [refreshing, setRefreshing] = useState(false);
     
     const [showPriceFilter, setShowPriceFilter] = useState(false);
     const [priceRange, setPriceRange] = useState({ min: 0, max: 100 });
@@ -40,9 +51,42 @@ export default function HomeScreen({ navigation }) {
     // Cargar favoritos cuando el usuario esté autenticado
     useEffect(() => {
         if (isAuthenticated && userInfo) {
+            console.log('Usuario autenticado, cargando favoritos...');
             getFavorites();
+        } else {
+            console.log('Usuario no autenticado, limpiando favoritos');
         }
     }, [isAuthenticated, userInfo]);
+
+    // Escuchar cambios en el estado de autenticación
+    useEffect(() => {
+        console.log('Estado de favoritos actualizado:', {
+            favoritesCount: favorites.length,
+            isAuthenticated,
+            favoritesLoading,
+            hasError: !!favoritesError
+        });
+    }, [favorites, isAuthenticated, favoritesLoading, favoritesError]);
+
+    // Función para refrescar toda la pantalla
+    const onRefresh = async () => {
+        setRefreshing(true);
+        try {
+            // Refrescar productos
+            if (refetch) {
+                await refetch();
+            }
+            
+            // Refrescar favoritos si está autenticado
+            if (isAuthenticated) {
+                await refreshFavorites();
+            }
+        } catch (error) {
+            console.error('Error al refrescar:', error);
+        } finally {
+            setRefreshing(false);
+        }
+    };
 
     const handleProfilePress = () => {
         navigation.navigate('Profile');
@@ -53,20 +97,20 @@ export default function HomeScreen({ navigation }) {
     };
 
     const handleAddToCart = (product) => {
-    if (!isAuthenticated) {
-        Alert.alert(
-            "Iniciar sesión",
-            "Debes iniciar sesión para agregar productos al carrito",
-            [
-                { text: "Cancelar", style: "cancel" },
-                { text: "Iniciar sesión", onPress: () => navigation.navigate('Login') }
-            ]
-        );
-        return;
-    }
-    console.log('Agregar al carrito:', product);
-    // Aquí iría la lógica del carrito
-};
+        if (!isAuthenticated) {
+            Alert.alert(
+                "Iniciar sesión",
+                "Debes iniciar sesión para agregar productos al carrito",
+                [
+                    { text: "Cancelar", style: "cancel" },
+                    { text: "Iniciar sesión", onPress: () => navigation.navigate('Login') }
+                ]
+            );
+            return;
+        }
+        console.log('Agregar al carrito:', product);
+        // Aquí iría la lógica del carrito
+    };
 
     const handleApplyPriceFilter = (minPrice, maxPrice) => {
         setPriceRange({ min: minPrice, max: maxPrice });
@@ -82,17 +126,16 @@ export default function HomeScreen({ navigation }) {
         return matchesCategory && matchesPrice;
     });
 
-   const renderProduct = ({ item, index }) => (
-    <View style={[styles.cardWrapper, { marginRight: index % 2 === 0 ? elementGap : 0 }]}>
-        <ProductCard
-            product={item}
-            onPress={handleProductPress}
-            onAddToCart={handleAddToCart}
-            navigation={navigation} // ← Pasar navigation como prop
-        />
-    </View>
-);
-
+    const renderProduct = ({ item, index }) => (
+        <View style={[styles.cardWrapper, { marginRight: index % 2 === 0 ? elementGap : 0 }]}>
+            <ProductCard
+                product={item}
+                onPress={handleProductPress}
+                onAddToCart={handleAddToCart}
+                navigation={navigation}
+            />
+        </View>
+    );
 
     return (
         <View style={styles.container}>
@@ -173,6 +216,7 @@ export default function HomeScreen({ navigation }) {
                 </ScrollView>
             </View>
 
+            {/* Indicador de filtros aplicados */}
             {(priceRange.min > 0 || priceRange.max < 100) && (
                 <View style={styles.filterIndicatorContainer}>
                     <View style={styles.filterChip}>
@@ -190,6 +234,21 @@ export default function HomeScreen({ navigation }) {
                 </View>
             )}
 
+            {/* Indicador de estado de favoritos */}
+            {isAuthenticated && favoritesError && (
+                <View style={styles.errorContainer}>
+                    <Icon name="error-outline" size={16} color="#e74c3c" />
+                    <Text style={styles.errorText}>{favoritesError}</Text>
+                    <TouchableOpacity 
+                        onPress={() => getFavorites()}
+                        style={styles.retryButton}
+                    >
+                        <Text style={styles.retryButtonText}>Reintentar</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+
+            {/* Lista de productos */}
             <FlatList
                 data={filteredProducts}
                 renderItem={renderProduct}
@@ -202,13 +261,34 @@ export default function HomeScreen({ navigation }) {
                 maxToRenderPerBatch={10}
                 windowSize={10}
                 removeClippedSubviews={true}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={['#4A4170']}
+                        tintColor="#4A4170"
+                    />
+                }
                 getItemLayout={(data, index) => ({
                     length: 200,
                     offset: 200 * Math.floor(index / 2),
                     index,
                 })}
+                ListEmptyComponent={
+                    loading ? (
+                        <View style={styles.loadingContainer}>
+                            <Text style={styles.loadingText}>Cargando productos...</Text>
+                        </View>
+                    ) : (
+                        <View style={styles.emptyContainer}>
+                            <Icon name="inventory" size={48} color="#ccc" />
+                            <Text style={styles.emptyText}>No se encontraron productos</Text>
+                        </View>
+                    )
+                }
             />
 
+            {/* Modal de filtro de precios */}
             <PriceFilterModal
                 visible={showPriceFilter}
                 onClose={() => setShowPriceFilter(false)}
@@ -229,6 +309,14 @@ export default function HomeScreen({ navigation }) {
                     onPress={() => navigation.navigate('Favorites')}
                 >
                     <Image source={favoritesIcon} style={styles.navIcon} />
+                    {/* Indicador de cantidad de favoritos */}
+                    {isAuthenticated && favorites.length > 0 && (
+                        <View style={styles.favoriteBadge}>
+                            <Text style={styles.favoriteBadgeText}>
+                                {favorites.length > 99 ? '99+' : favorites.length}
+                            </Text>
+                        </View>
+                    )}
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={styles.navItem}
@@ -433,6 +521,58 @@ const styles = StyleSheet.create({
         marginLeft: 4,
         padding: 2,
     },
+    errorContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#ffebee',
+        margin: horizontalPadding,
+        padding: 12,
+        borderRadius: 8,
+        borderLeftWidth: 4,
+        borderLeftColor: '#e74c3c',
+    },
+    errorText: {
+        flex: 1,
+        fontSize: 12,
+        color: '#e74c3c',
+        marginLeft: 8,
+        fontFamily: 'Poppins-Regular',
+    },
+    retryButton: {
+        paddingHorizontal: 12,
+        paddingVertical: 4,
+        backgroundColor: '#e74c3c',
+        borderRadius: 4,
+        marginLeft: 8,
+    },
+    retryButtonText: {
+        color: '#fff',
+        fontSize: 12,
+        fontFamily: 'Poppins-Medium',
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 40,
+    },
+    loadingText: {
+        fontSize: 14,
+        color: '#666',
+        fontFamily: 'Poppins-Regular',
+    },
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 40,
+    },
+    emptyText: {
+        fontSize: 14,
+        color: '#999',
+        marginTop: 12,
+        fontFamily: 'Poppins-Regular',
+    },
     productsContainer: {
         paddingHorizontal: horizontalPadding,
         paddingTop: 5,
@@ -474,10 +614,30 @@ const styles = StyleSheet.create({
         minWidth: isSmallDevice ? 40 : 44,
         minHeight: isSmallDevice ? 40 : 44,
         borderRadius: isSmallDevice ? 20 : 22,
+        position: 'relative',
     },
     navIcon: {
         width: isSmallDevice ? 20 : 24,
         height: isSmallDevice ? 20 : 24,
         resizeMode: 'contain',
+    },
+    favoriteBadge: {
+        position: 'absolute',
+        top: -2,
+        right: -2,
+        backgroundColor: '#ff6b8a',
+        borderRadius: 10,
+        minWidth: 20,
+        height: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#fff',
+    },
+    favoriteBadgeText: {
+        fontSize: 10,
+        color: '#fff',
+        fontFamily: 'Poppins-Bold',
+        textAlign: 'center',
     },
 });

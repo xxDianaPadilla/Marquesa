@@ -12,13 +12,13 @@ import { useAuth } from "../context/AuthContext";
 
 const Saves = () => {
     const navigate = useNavigate();
-    const { 
-        favorites, 
-        isLoading, 
+    const {
+        favorites,
+        isLoading,
         favoritesError,
-        removeFromFavorites, 
+        removeFromFavorites,
         refreshFavorites,
-        clearFavoritesError 
+        clearFavoritesError
     } = useFavorites();
     const { isAuthenticated, user } = useAuth();
     const [localLoading, setLocalLoading] = useState(true);
@@ -186,17 +186,6 @@ const Saves = () => {
                                 : "Aquí encontrarás tus productos favoritos"
                             }
                         </p>
-                        
-                        {/* Botón de refrescar si hay favoritos */}
-                        {favoritesCount > 0 && (
-                            <button
-                                onClick={refreshFavorites}
-                                className="mt-4 text-sm text-blue-600 hover:text-blue-800 transition-colors duration-200"
-                                style={{ fontFamily: 'Poppins, sans-serif' }}
-                            >
-                                🔄 Actualizar lista
-                            </button>
-                        )}
                     </div>
 
                     {/* Contenido principal */}
@@ -225,7 +214,7 @@ const Saves = () => {
                                     }
 
                                     const productKey = product._id || product.id || `product-${index}`;
-                                    
+
                                     // Crear un producto validado para evitar errores en ProductCard
                                     const validatedProduct = {
                                         _id: product._id || product.id,

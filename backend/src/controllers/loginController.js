@@ -15,14 +15,25 @@ const RATE_LIMIT_CONFIG = {
 // Función para determinar la configuración de cookies según el entorno
 const getCookieConfig = () => {
     const isProduction = process.env.NODE_ENV === 'production';
-    
-    return {
-        httpOnly: false, // Permite acceso desde JavaScript para lectura
-        secure: isProduction, // Solo HTTPS en producción
-        sameSite: isProduction ? 'none' : 'lax', // Configuración para peticiones cross-domain
-        maxAge: 24 * 60 * 60 * 1000, // Duración de 24 horas
-        domain: undefined // Permite que el navegador determine el dominio
-    };
+
+    // Seguir intentando cookies pero no depender de ellas
+    if (isProduction) {
+        return {
+            httpOnly: false,
+            secure: true,
+            sameSite: 'none',
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
+            path: '/',
+        };
+    } else {
+        return {
+            httpOnly: false,
+            secure: false,
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            path: '/',
+        };
+    }
 };
 
 // Almacenamiento en memoria para los intentos de login fallidos
@@ -32,24 +43,24 @@ const loginAttempts = new Map();
 const RateLimitUtils = {
     // Genera una clave única para almacenar los intentos por email
     getStorageKey: (email) => `login_attempts_${email.toLowerCase()}`,
-    
+
     // Obtiene los datos de intentos almacenados para un email
     getAttemptData: (email) => {
         const key = RateLimitUtils.getStorageKey(email);
         return loginAttempts.get(key) || { attempts: 0, lockedUntil: null };
     },
-    
+
     // Guarda los datos de intentos para un email
     saveAttemptData: (email, data) => {
         const key = RateLimitUtils.getStorageKey(email);
         loginAttempts.set(key, data);
     },
-    
+
     // Verifica si una cuenta está bloqueada
     isAccountLocked: (email) => {
         const data = RateLimitUtils.getAttemptData(email);
         if (!data.lockedUntil) return false;
-        
+
         const now = Date.now();
         if (now >= data.lockedUntil) {
             // El bloqueo ha expirado, limpiar los datos
@@ -58,52 +69,52 @@ const RateLimitUtils = {
         }
         return true;
     },
-    
+
     // Obtiene el tiempo restante de bloqueo en segundos
     getRemainingLockTime: (email) => {
         const data = RateLimitUtils.getAttemptData(email);
         if (!data.lockedUntil) return 0;
-        
+
         const now = Date.now();
         const remaining = Math.max(0, Math.ceil((data.lockedUntil - now) / 1000));
         return remaining;
     },
-    
+
     // Registra un intento fallido y determina si se debe bloquear la cuenta
     recordFailedAttempt: (email) => {
         const data = RateLimitUtils.getAttemptData(email);
         const newAttempts = data.attempts + 1;
-        
+
         let newData = {
             attempts: newAttempts,
             lockedUntil: data.lockedUntil,
             lastAttempt: Date.now()
         };
-        
+
         // Si se alcanza el máximo de intentos, bloquear la cuenta
         if (newAttempts >= RATE_LIMIT_CONFIG.maxAttempts) {
             const lockDuration = RATE_LIMIT_CONFIG.lockoutDuration * 1000;
             newData.lockedUntil = Date.now() + lockDuration;
         }
-        
+
         RateLimitUtils.saveAttemptData(email, newData);
         return newData;
     },
-    
+
     // Limpia los intentos después de un login exitoso
     clearAttempts: (email) => {
         const key = RateLimitUtils.getStorageKey(email);
         loginAttempts.delete(key);
     },
-    
+
     // Formatea el tiempo restante en un formato legible
     formatRemainingTime: (seconds) => {
         if (seconds <= 0) return '';
-        
+
         const hours = Math.floor(seconds / 3600);
         const minutes = Math.floor((seconds % 3600) / 60);
         const secs = seconds % 60;
-        
+
         if (hours > 0) {
             return `${hours}h ${minutes}m ${secs}s`;
         } else if (minutes > 0) {
@@ -112,12 +123,12 @@ const RateLimitUtils = {
             return `${secs}s`;
         }
     },
-    
+
     // Obtiene un mensaje de advertencia sobre intentos restantes
     getAttemptsWarning: (email) => {
         const data = RateLimitUtils.getAttemptData(email);
-        
-        if (data.attempts >= RATE_LIMIT_CONFIG.warningThreshold && 
+
+        if (data.attempts >= RATE_LIMIT_CONFIG.warningThreshold &&
             data.attempts < RATE_LIMIT_CONFIG.maxAttempts) {
             const remaining = RATE_LIMIT_CONFIG.maxAttempts - data.attempts;
             return `Te quedan ${remaining} intento${remaining === 1 ? '' : 's'} antes de que tu cuenta sea bloqueada temporalmente.`;
@@ -131,22 +142,22 @@ const validateEmail = (email) => {
     if (!email || typeof email !== 'string') {
         return { isValid: false, error: "Email es requerido" };
     }
-    
+
     const trimmedEmail = email.trim().toLowerCase();
-    
+
     if (trimmedEmail.length === 0) {
         return { isValid: false, error: "Email no puede estar vacío" };
     }
-    
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(trimmedEmail)) {
         return { isValid: false, error: "Formato de email no válido" };
     }
-    
+
     if (trimmedEmail.length > 254) {
         return { isValid: false, error: "Email demasiado largo" };
     }
-    
+
     return { isValid: true, value: trimmedEmail };
 };
 
@@ -155,19 +166,19 @@ const validatePassword = (password) => {
     if (!password || typeof password !== 'string') {
         return { isValid: false, error: "Contraseña es requerida" };
     }
-    
+
     if (password.length === 0) {
         return { isValid: false, error: "Contraseña no puede estar vacía" };
     }
-    
+
     if (password.length < 8) {
         return { isValid: false, error: "Contraseña debe tener al menos 8 caracteres" };
     }
-    
+
     if (password.length > 128) {
         return { isValid: false, error: "Contraseña demasiado larga" };
     }
-    
+
     return { isValid: true };
 };
 
@@ -218,7 +229,7 @@ loginController.login = async (req, res) => {
         if (RateLimitUtils.isAccountLocked(cleanEmail)) {
             const remainingTime = RateLimitUtils.getRemainingLockTime(cleanEmail);
             const formattedTime = RateLimitUtils.formatRemainingTime(remainingTime);
-            
+
             return res.status(429).json({
                 success: false,
                 message: `Tu cuenta está temporalmente bloqueada debido a múltiples intentos fallidos. Inténtalo nuevamente en ${formattedTime}.`,
@@ -253,7 +264,7 @@ loginController.login = async (req, res) => {
         if (!userFound) {
             const attemptData = RateLimitUtils.recordFailedAttempt(cleanEmail);
             let errorMessage = "user not found";
-            
+
             // Agregar advertencia si está cerca del límite
             if (attemptData.attempts < RATE_LIMIT_CONFIG.maxAttempts) {
                 const warning = RateLimitUtils.getAttemptsWarning(cleanEmail);
@@ -265,7 +276,7 @@ loginController.login = async (req, res) => {
                 const lockDuration = Math.ceil(RATE_LIMIT_CONFIG.lockoutDuration / 60);
                 errorMessage = `Tu cuenta ha sido bloqueada temporalmente por ${lockDuration} minutos debido a múltiples intentos fallidos.`;
             }
-            
+
             return res.status(401).json({
                 success: false,
                 message: errorMessage,
@@ -281,7 +292,7 @@ loginController.login = async (req, res) => {
                 if (!isMatch) {
                     const attemptData = RateLimitUtils.recordFailedAttempt(cleanEmail);
                     let errorMessage = "Invalid password";
-                    
+
                     // Agregar advertencia si está cerca del límite
                     if (attemptData.attempts < RATE_LIMIT_CONFIG.maxAttempts) {
                         const warning = RateLimitUtils.getAttemptsWarning(cleanEmail);
@@ -293,7 +304,7 @@ loginController.login = async (req, res) => {
                         const lockDuration = Math.ceil(RATE_LIMIT_CONFIG.lockoutDuration / 60);
                         errorMessage = `Tu cuenta ha sido bloqueada temporalmente por ${lockDuration} minutos debido a múltiples intentos fallidos.`;
                     }
-                    
+
                     return res.status(401).json({
                         success: false,
                         message: errorMessage,
@@ -321,25 +332,58 @@ loginController.login = async (req, res) => {
         try {
             // Limpiar los intentos fallidos
             RateLimitUtils.clearAttempts(cleanEmail);
-            
-            // Generar el token JWT
-            const token = await generateJWT({
+
+            // ✅ NUEVO: Generar token con expiración más larga para compensar falta de cookies
+            const tokenPayload = {
                 id: userFound._id,
-                userType
-            });
+                userType,
+                email: cleanEmail, // ✅ NUEVO: Incluir email para mejor identificación
+                iat: Math.floor(Date.now() / 1000), // ✅ NUEVO: Timestamp de creación
+            };
 
-            // Configurar y establecer la cookie con el token
-            const cookieConfig = getCookieConfig();
-            res.cookie("authToken", token, cookieConfig);
+            const token = await generateJWT(tokenPayload);
 
-            // Enviar respuesta exitosa con el token también en el body
+            console.log('🍪 Intentando establecer cookie (puede fallar en cross-domain)');
+
+            // ✅ ESTRATEGIA DUAL: Intentar cookie pero no depender de ella
+            try {
+                const cookieConfig = getCookieConfig();
+                res.cookie("authToken", token, cookieConfig);
+                console.log('✅ Cookie establecida (si el navegador la acepta)');
+            } catch (cookieError) {
+                console.log('⚠️ Error al establecer cookie (esperado en cross-domain):', cookieError.message);
+            }
+
+            // ✅ HEADERS MEJORADOS: Para cross-domain
+            if (process.env.NODE_ENV === 'production') {
+                res.header('Access-Control-Allow-Credentials', 'true');
+                res.header('Access-Control-Allow-Origin', 'https://marquesa.vercel.app');
+                res.header('Access-Control-Expose-Headers', 'Authorization, Set-Cookie');
+            }
+
+            console.log('✅ Login exitoso - enviando respuesta con token');
+
+            // ✅ RESPUESTA OPTIMIZADA: Token como fuente principal de verdad
             res.status(200).json({
                 success: true,
                 message: "login successful",
                 userType: userType,
-                token: token
+                token: token, // ✅ CRÍTICO: Token siempre en el body
+                tokenExpiry: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60), // 7 días desde ahora
+                cookieAttempted: true,
+                user: {
+                    id: userFound._id,
+                    userType: userType,
+                    email: cleanEmail
+                },
+                sessionInfo: {
+                    loginTime: new Date().toISOString(),
+                    expiresIn: '7 days',
+                    persistent: true // ✅ NUEVO: Indicar que es sesión persistente
+                }
             });
         } catch (jwtError) {
+            console.error('❌ Error generando token:', jwtError);
             return res.status(500).json({
                 success: false,
                 message: "Error generating authentication token"
@@ -358,7 +402,7 @@ loginController.verifyToken = (req, res) => {
     try {
         // Intentar obtener el token de las cookies
         let token = req.cookies.authToken;
-        
+
         // Si no hay token en cookies, buscar en el header Authorization
         if (!token) {
             const authHeader = req.headers.authorization;
@@ -366,13 +410,13 @@ loginController.verifyToken = (req, res) => {
                 token = authHeader.substring(7);
             }
         }
-        
+
         // Si no se encuentra token en ningún lugar
         if (!token) {
-            return res.status(200).json({ 
+            return res.status(200).json({
                 success: false,
                 message: 'No token provided',
-                isAuthenticated: false 
+                isAuthenticated: false
             });
         }
 
@@ -388,7 +432,7 @@ loginController.verifyToken = (req, res) => {
         try {
             // Verificar y decodificar el token
             const decoded = jsonwebtoken.verify(token, config.JWT.secret);
-            
+
             // Validar que el token contenga los datos necesarios
             if (!decoded.id || !decoded.userType) {
                 return res.status(200).json({
@@ -397,7 +441,7 @@ loginController.verifyToken = (req, res) => {
                     isAuthenticated: false
                 });
             }
-            
+
             // Responder con los datos del usuario autenticado
             res.status(200).json({
                 success: true,
@@ -408,28 +452,28 @@ loginController.verifyToken = (req, res) => {
         } catch (jwtError) {
             // Limpiar la cookie si el token es inválido
             res.clearCookie("authToken");
-            
+
             let message = 'Invalid or expired token';
             if (jwtError.name === 'TokenExpiredError') {
                 message = 'Token has expired';
             } else if (jwtError.name === 'JsonWebTokenError') {
                 message = 'Invalid token format';
             }
-            
-            res.status(200).json({ 
+
+            res.status(200).json({
                 success: false,
                 message: message,
-                isAuthenticated: false 
+                isAuthenticated: false
             });
         }
     } catch (error) {
         // Limpiar cookie en caso de error general
         res.clearCookie("authToken");
-        
-        res.status(200).json({ 
+
+        res.status(200).json({
             success: false,
             message: 'Internal server error',
-            isAuthenticated: false 
+            isAuthenticated: false
         });
     }
 };
@@ -439,7 +483,7 @@ loginController.getUserInfo = async (req, res) => {
     try {
         // Intentar obtener el token de las cookies
         let token = req.cookies.authToken;
-        
+
         // Si no hay token en cookies, buscar en el header Authorization
         if (!token) {
             const authHeader = req.headers.authorization;
@@ -447,7 +491,7 @@ loginController.getUserInfo = async (req, res) => {
                 token = authHeader.substring(7);
             }
         }
-        
+
         if (!token) {
             return res.status(401).json({
                 success: false,
@@ -469,14 +513,14 @@ loginController.getUserInfo = async (req, res) => {
         } catch (jwtError) {
             // Limpiar cookie si el token es inválido
             res.clearCookie("authToken");
-            
+
             if (jwtError.name === 'TokenExpiredError') {
                 return res.status(401).json({
                     success: false,
                     message: 'Token expirado'
                 });
             }
-            
+
             return res.status(401).json({
                 success: false,
                 message: 'Token inválido'
@@ -510,14 +554,14 @@ loginController.getUserInfo = async (req, res) => {
             };
 
             return res.status(200).json({
-                success: true, 
+                success: true,
                 user: adminInfo
             });
         } else {
             // Si es cliente, buscar información en la base de datos
             try {
                 const client = await clientsModel.findById(id).select('-password');
-                
+
                 if (!client) {
                     res.clearCookie("authToken");
                     return res.status(404).json({
@@ -565,7 +609,7 @@ loginController.refreshToken = async (req, res) => {
     try {
         // Intentar obtener el token de las cookies
         let token = req.cookies.authToken;
-        
+
         // Si no hay token en cookies, buscar en el header Authorization
         if (!token) {
             const authHeader = req.headers.authorization;
@@ -573,7 +617,7 @@ loginController.refreshToken = async (req, res) => {
                 token = authHeader.substring(7);
             }
         }
-        
+
         if (!token) {
             return res.status(401).json({
                 success: false,
@@ -594,14 +638,14 @@ loginController.refreshToken = async (req, res) => {
             decoded = jsonwebtoken.verify(token, config.JWT.secret);
         } catch (jwtError) {
             res.clearCookie("authToken");
-            
+
             if (jwtError.name === 'TokenExpiredError') {
                 return res.status(401).json({
                     success: false,
                     message: 'Token expirado, inicia sesión nuevamente'
                 });
             }
-            
+
             return res.status(401).json({
                 success: false,
                 message: 'Token inválido'

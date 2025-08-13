@@ -1,33 +1,36 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import useCustomization from './CustomProducts/Hooks/useCustomization';
-
+ 
 // Componente Modal de Finalización de Personalización
-const CustomizationModal = ({ 
-    isOpen, 
-    onClose, 
-    selectedProducts, 
+const CustomizationModal = ({
+    isOpen,
+    onClose,
+    selectedProducts,
     productType,
-    onConfirmCustomization 
+    onConfirmCustomization
 }) => {
     const [referenceImage, setReferenceImage] = useState(null);
     const [comments, setComments] = useState('');
     const [imagePreview, setImagePreview] = useState(null);
-    
+ 
     // Obtener datos de autenticación
     const { user, userInfo } = useAuth();
-
+    const navigate = useNavigate(); // ← Agregar esta línea
+ 
     // Usar el hook personalizado para manejar las operaciones de customización
     const { isLoading, processCustomization } = useCustomization();
-
+ 
     // Calcular precio total
     const totalPrice = selectedProducts.reduce((total, product) => total + product.price, 0);
-
+ 
     const handleImageUpload = (event) => {
         const file = event.target.files[0];
         if (file) {
             setReferenceImage(file);
-            
+ 
             // Crear preview de la imagen
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -36,7 +39,7 @@ const CustomizationModal = ({
             reader.readAsDataURL(file);
         }
     };
-
+ 
     const handleRemoveImage = () => {
         setReferenceImage(null);
         setImagePreview(null);
@@ -46,7 +49,7 @@ const CustomizationModal = ({
             fileInput.value = '';
         }
     };
-
+ 
     const handleConfirm = async () => {
         try {
             // Preparar parámetros para el hook
@@ -58,30 +61,49 @@ const CustomizationModal = ({
                 comments,
                 totalPrice
             };
-
+ 
             // Procesar la personalización usando el hook
             const customizationData = await processCustomization(customizationParams);
-
+ 
             // Paso 6: Llamar callback de confirmación si existe
             if (onConfirmCustomization) {
                 onConfirmCustomization(customizationData);
             }
-
-            // Mostrar mensaje de éxito
-            alert('¡Producto personalizado agregado al carrito exitosamente!');
-            
-            // Limpiar formulario y cerrar modal
+ 
+            // Limpiar formulario y cerrar modal inmediatamente
             setReferenceImage(null);
             setImagePreview(null);
             setComments('');
             onClose();
-
+ 
+            // ✅ REDIRECCIÓN AUTOMÁTICA después de 3.5 segundos
+            setTimeout(() => {
+                navigate('/categoryProducts');
+            }, 3500);
+ 
         } catch (error) {
             console.error('Error en el proceso de confirmación:', error);
-            alert(`Error: ${error.message}`);
+ 
+            // ✅ ALERTA DE ERROR BONITA también
+            toast.error(`Error: ${error.message}`, {
+                duration: 4000,
+                position: 'top-center',
+                style: {
+                    background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    padding: '16px 24px',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    boxShadow: '0 10px 25px rgba(239, 68, 68, 0.3)',
+                    maxWidth: '500px'
+                },
+                icon: '❌'
+            });
         }
     };
-
+ 
     const handleCancel = () => {
         // Limpiar formulario
         setReferenceImage(null);
@@ -89,9 +111,9 @@ const CustomizationModal = ({
         setComments('');
         onClose();
     };
-
+ 
     if (!isOpen) return null;
-
+ 
     return (
         <div className="fixed inset-0 flex items-center justify-center z-[9999] p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
             <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -104,7 +126,7 @@ const CustomizationModal = ({
                         <button
                             onClick={handleCancel}
                             disabled={isLoading}
-                            style={{cursor: isLoading ? 'not-allowed' : 'pointer'}}
+                            style={{ cursor: isLoading ? 'not-allowed' : 'pointer' }}
                             className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -113,7 +135,7 @@ const CustomizationModal = ({
                         </button>
                     </div>
                 </div>
-
+ 
                 {/* Content */}
                 <div className="p-6">
                     {/* Resumen de productos seleccionados */}
@@ -136,14 +158,14 @@ const CustomizationModal = ({
                             </div>
                         </div>
                     </div>
-
+ 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Imagen de referencia */}
                         <div>
                             <h3 className="text-sm font-medium text-gray-700 mb-3">
                                 ¿Ya tenías un diseño en mente?
                             </h3>
-                            
+ 
                             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-pink-400 transition-colors">
                                 {imagePreview ? (
                                     <div className="relative">
@@ -155,7 +177,7 @@ const CustomizationModal = ({
                                         <button
                                             onClick={handleRemoveImage}
                                             disabled={isLoading}
-                                            style={{cursor: isLoading ? 'not-allowed' : 'pointer'}}
+                                            style={{ cursor: isLoading ? 'not-allowed' : 'pointer' }}
                                             className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors disabled:opacity-50"
                                         >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -178,7 +200,7 @@ const CustomizationModal = ({
                                         </p>
                                     </div>
                                 )}
-                                
+ 
                                 <input
                                     id="reference-image-input"
                                     type="file"
@@ -187,12 +209,12 @@ const CustomizationModal = ({
                                     disabled={isLoading}
                                     className="hidden"
                                 />
-                                
+ 
                                 {!imagePreview && (
                                     <button
                                         onClick={() => document.getElementById('reference-image-input').click()}
                                         disabled={isLoading}
-                                        style={{cursor: isLoading ? 'not-allowed' : 'pointer'}}
+                                        style={{ cursor: isLoading ? 'not-allowed' : 'pointer' }}
                                         className="mt-3 px-4 py-2 bg-pink-100 text-pink-700 text-sm rounded-lg hover:bg-pink-200 transition-colors disabled:opacity-50"
                                     >
                                         Subir imagen
@@ -200,7 +222,7 @@ const CustomizationModal = ({
                                 )}
                             </div>
                         </div>
-
+ 
                         {/* Comentarios */}
                         <div>
                             <h3 className="text-sm font-medium text-gray-700 mb-3">
@@ -221,29 +243,29 @@ const CustomizationModal = ({
                                     </svg>
                                 </button>
                             </div>
-                            
+ 
                             <p className="text-xs text-gray-500 mt-2">
                                 Describe cualquier detalle específico que quieras para tu personalización
                             </p>
                         </div>
                     </div>
                 </div>
-
+ 
                 {/* Footer */}
                 <div className="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row gap-3 sm:justify-end">
                     <button
                         onClick={handleCancel}
                         disabled={isLoading}
-                        style={{cursor: isLoading ? 'not-allowed' : 'pointer'}}
+                        style={{ cursor: isLoading ? 'not-allowed' : 'pointer' }}
                         className="w-full sm:w-auto px-6 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors font-medium disabled:opacity-50"
                     >
                         Cancelar
                     </button>
-                    
+ 
                     <button
                         onClick={handleConfirm}
                         disabled={isLoading || !user}
-                        style={{cursor: (isLoading || !user) ? 'not-allowed' : 'pointer'}}
+                        style={{ cursor: (isLoading || !user) ? 'not-allowed' : 'pointer' }}
                         className="w-full sm:w-auto px-6 py-2 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white rounded-lg transition-all font-medium flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isLoading ? (
@@ -268,5 +290,5 @@ const CustomizationModal = ({
         </div>
     );
 };
-
+ 
 export default CustomizationModal;

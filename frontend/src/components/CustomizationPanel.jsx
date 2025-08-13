@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import CustomizationModal from './CustomizationModal';
-
+ 
 const CustomizationPanel = ({
     selectedProducts = [],
     onRemoveProduct,
@@ -9,10 +10,11 @@ const CustomizationPanel = ({
     productType = ''
 }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
-
+    const navigate = useNavigate();
+ 
     // Calcular precio total
     const totalPrice = selectedProducts.reduce((total, product) => total + product.price, 0);
-
+ 
     // Agrupar productos por categoría
     const productsByCategory = selectedProducts.reduce((acc, product) => {
         const category = product.category || 'Sin categoría';
@@ -22,10 +24,10 @@ const CustomizationPanel = ({
         acc[category].push(product);
         return acc;
     }, {});
-
+ 
     // Verificar si la personalización está completa (al menos un producto)
     const isCustomizationComplete = selectedProducts.length > 0;
-
+ 
     const handleOpenModal = () => {
         if (!isCustomizationComplete) {
             toast.error('Selecciona al menos un producto para personalizar', {
@@ -41,28 +43,34 @@ const CustomizationPanel = ({
         }
         setIsModalOpen(true);
     };
-
+ 
     const handleCloseModal = () => {
         setIsModalOpen(false);
     };
-
+ 
     const handleConfirmCustomization = (customizationData) => {
         // Llamar a la función original con los datos adicionales
         onFinishCustomization(customizationData);
         setIsModalOpen(false);
-
-        // Mostrar toast de éxito
-        toast.success('¡Personalización completada exitosamente!', {
-            duration: 4000,
+ 
+        // Mostrar toast de éxito con redirección automática
+        toast.success('¡Personalización completada exitosamente! Redirigiendo...', {
+            duration: 3000,
             position: 'top-center',
             style: {
                 background: '#F0FDF4',
                 color: '#16A34A',
-                border: '1px solid #BBF7D0'
-            }
+                border: '1px solid #BBF7D0',
+                fontWeight: '500'
+            },
+            icon: '✅'
         });
+ 
+        // Redirección automática después de 3 segundos usando navigate
+        setTimeout(() => {
+            navigate('/categoryProducts');
+        }, 3000);
     };
-
     const handleClearSelection = () => {
         // Crear un toast personalizado de confirmación
         toast.custom((t) => (
@@ -104,7 +112,7 @@ const CustomizationPanel = ({
                 <div className="flex border-l border-gray-200">
                     <button
                         onClick={() => toast.dismiss(t.id)}
-                        style={{cursor: 'pointer'}}
+                        style={{ cursor: 'pointer' }}
                         className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-gray-600 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500"
                     >
                         Cancelar
@@ -116,7 +124,7 @@ const CustomizationPanel = ({
             position: 'top-center'
         });
     };
-
+ 
     const handleRemoveProduct = (productId) => {
         onRemoveProduct(productId);
         toast.success('Producto eliminado de la selección', {
@@ -129,7 +137,7 @@ const CustomizationPanel = ({
             }
         });
     };
-
+ 
     return (
         <>
             <div className="bg-white rounded-lg border-2 border-gray-200 shadow-sm sticky top-4">
@@ -145,7 +153,7 @@ const CustomizationPanel = ({
                         {productType}
                     </p>
                 </div>
-
+ 
                 {/* Contenido del panel */}
                 <div className="p-4">
                     {selectedProducts.length === 0 ? (
@@ -178,7 +186,7 @@ const CustomizationPanel = ({
                                     </div>
                                 </div>
                             </div>
-
+ 
                             {/* Lista detallada de productos */}
                             <div className="space-y-3 max-h-60 overflow-y-auto">
                                 {Object.entries(productsByCategory).map(([category, products]) => (
@@ -196,7 +204,7 @@ const CustomizationPanel = ({
                                     </div>
                                 ))}
                             </div>
-
+ 
                             {/* Total de precio */}
                             <div className="border-t pt-3">
                                 <div className="flex justify-between items-center">
@@ -210,7 +218,7 @@ const CustomizationPanel = ({
                             </div>
                         </div>
                     )}
-
+ 
                     {/* Botones de acción */}
                     <div className="mt-6 space-y-2">
                         {selectedProducts.length > 0 && (
@@ -222,7 +230,7 @@ const CustomizationPanel = ({
                                 Limpiar selección
                             </button>
                         )}
-
+ 
                         <button
                             onClick={handleOpenModal}
                             disabled={!isCustomizationComplete}
@@ -244,7 +252,7 @@ const CustomizationPanel = ({
                             )}
                         </button>
                     </div>
-
+ 
                     {/* Información adicional */}
                     {selectedProducts.length > 0 && (
                         <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -265,7 +273,7 @@ const CustomizationPanel = ({
                     )}
                 </div>
             </div>
-
+ 
             {/* Modal de finalización */}
             <CustomizationModal
                 isOpen={isModalOpen}
@@ -277,7 +285,7 @@ const CustomizationPanel = ({
         </>
     );
 };
-
+ 
 // Componente para mostrar cada producto seleccionado
 const SelectedProductItem = ({ product, onRemove }) => {
     return (
@@ -293,7 +301,7 @@ const SelectedProductItem = ({ product, onRemove }) => {
                     }}
                 />
             </div>
-
+ 
             {/* Información del producto */}
             <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">
@@ -303,7 +311,7 @@ const SelectedProductItem = ({ product, onRemove }) => {
                     ${product.price.toFixed(2)}
                 </p>
             </div>
-
+ 
             {/* Botón de eliminar */}
             <button
                 onClick={onRemove}
@@ -317,5 +325,5 @@ const SelectedProductItem = ({ product, onRemove }) => {
         </div>
     );
 };
-
+ 
 export default CustomizationPanel;

@@ -1,6 +1,5 @@
 // Importé el modelo de clientes para trabajar con la base de datos
 import clientsModel from "../models/Clients.js";
-import productsModel from "../models/products.js"; // Ajusta la ruta según tu estructura
 // Importé Cloudinary para manejar imágenes y configuraciones
 import { v2 as cloudinary } from "cloudinary";
 import { config } from "../config.js";
@@ -16,13 +15,28 @@ cloudinary.config({
 // Función helper para configuración dinámica de cookies basada en el entorno
 const getCookieConfig = () => {
     const isProduction = process.env.NODE_ENV === 'production';
-    return {
-        httpOnly: false, // Permitir acceso desde JavaScript
-        secure: isProduction, // Solo HTTPS en producción
-        sameSite: isProduction ? 'none' : 'lax', // Cross-domain en producción
-        maxAge: 24 * 60 * 60 * 1000, // 24 horas
-        domain: undefined // Dejar que el navegador determine
-    };
+    
+    // Configuración específica para Render + Vercel
+    if (isProduction) {
+        return {
+            httpOnly: false, // Permitir acceso desde JavaScript (crítico para cross-domain)
+            secure: true, // HTTPS obligatorio en producción
+            sameSite: 'none', // Permitir cookies cross-domain
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días (más duradero)
+            domain: undefined, // No especificar domain para cross-domain
+            path: '/'
+        };
+    } else {
+        // Configuración para desarrollo local
+        return {
+            httpOnly: false,
+            secure: false,
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
+            domain: undefined,
+            path: '/'
+        };
+    }
 };
 
 // Función helper para obtener token de múltiples fuentes en la petición
@@ -1317,37 +1331,142 @@ clientsController.generateRuletaCode = async (req, res) => {
             });
         }
 
+        // ✅ NUEVA LISTA: Nombres específicos de promociones que coinciden con el frontend
+        const promotionNames = [
+            'Verano 2025',
+            'Ruleta marquesa', 
+            'Primavera 2025',
+            'Flores especiales',
+            'Giftbox deluxe',
+            'Cuadros únicos',
+            'Colección Rosa',
+            'Especial Marquesa',
+            'Descuento Premium',
+            'Oferta Exclusiva'
+        ];
+
+        // ✅ NUEVA LISTA: Descuentos específicos para cada promoción
+        const promotionDiscounts = [
+            '25% OFF',
+            '20% OFF', 
+            '15% OFF',
+            '30% OFF',
+            '18% OFF',
+            '22% OFF',
+            '12% OFF',
+            '35% OFF',
+            '28% OFF',
+            '10% OFF'
+        ];
+
+        // ✅ NUEVA LISTA: Colores específicos para cada promoción (coinciden con frontend)
+        const promotionColors = [
+            '#FADDDD', // Rosa claro
+            '#E8ACD2', // Rosa medio
+            '#C6E2C6', // Verde claro
+            '#FADDDD', // Rosa claro
+            '#E8ACD2', // Rosa medio
+            '#C6E2C6', // Verde claro
+            '#F8D7DA', // Rosa pastel
+            '#D1ECF1', // Azul claro
+            '#D4EDDA', // Verde pastel
+            '#FFF3CD'  // Amarillo claro
+        ];
+
+        // ✅ NUEVA LISTA: Colores de texto para cada promoción
+        const textColors = [
+            '#374151', // Gris oscuro
+            '#FFFFFF', // Blanco
+            '#374151', // Gris oscuro
+            '#374151', // Gris oscuro
+            '#FFFFFF', // Blanco
+            '#374151', // Gris oscuro
+            '#721C24', // Rojo oscuro
+            '#0C5460', // Azul oscuro
+            '#155724', // Verde oscuro
+            '#856404'  // Amarillo oscuro
+        ];
+
+        // ✅ FUNCIÓN MEJORADA: Seleccionar promoción aleatoria o usar datos proporcionados
+        let selectedName, selectedDiscount, selectedColor, selectedTextColor;
+
+        if (name && discount && color && textColor) {
+            // Si se proporcionan todos los datos, usarlos
+            selectedName = name;
+            selectedDiscount = discount;
+            selectedColor = color;
+            selectedTextColor = textColor;
+        } else {
+            // ✅ NUEVA LÓGICA: Seleccionar aleatoriamente de las listas predefinidas
+            const randomIndex = Math.floor(Math.random() * promotionNames.length);
+            selectedName = promotionNames[randomIndex];
+            selectedDiscount = promotionDiscounts[randomIndex];
+            selectedColor = promotionColors[randomIndex];
+            selectedTextColor = textColors[randomIndex];
+        }
+
+        // ✅ FUNCIÓN MEJORADA: Crear el nuevo código con nombres específicos
         const newCode = {
             codeId: new mongoose.Types.ObjectId().toString(),
             code: Math.random().toString(36).substring(2, 10).toUpperCase(),
-            name: name || `Descuento ${discount}%`,
-            discount: discount || 10,
-            color: color || '#FF6B6B',
-            textColor: textColor || '#FFFFFF',
+            name: selectedName, // ✅ CORREGIDO: Usar nombre específico de promoción
+            discount: selectedDiscount, // ✅ CORREGIDO: Usar descuento específico
+            color: selectedColor, // ✅ CORREGIDO: Usar color específico
+            textColor: selectedTextColor, // ✅ CORREGIDO: Usar color de texto específico
             status: 'active',
             createdAt: new Date(),
             expiresAt: new Date(Date.now() + (expiresInDays * 24 * 60 * 60 * 1000))
         };
 
+        // Verificar si el usuario ya tiene demasiados códigos activos
+        const activeCodes = client.ruletaCodes ? client.ruletaCodes.filter(code => code.status === 'active') : [];
+        const maxActiveCodes = 10; // Límite máximo de códigos activos
+
+        if (activeCodes.length >= maxActiveCodes) {
+            return res.status(400).json({
+                success: false,
+                message: `Has alcanzado el máximo de códigos activos (${maxActiveCodes}). Usa tus códigos existentes o espera a que expiren.`,
+                activeCodes: activeCodes.length,
+                maxActiveAllowed: maxActiveCodes
+            });
+        }
+
+        // Inicializar array si no existe
         if (!client.ruletaCodes) {
             client.ruletaCodes = [];
         }
 
+        // Agregar el nuevo código
         client.ruletaCodes.push(newCode);
         await client.save();
 
-        const { token } = getTokenFromRequest(req);
-        const currentToken = token || 'session_maintained';
+        // Configurar cookies con configuración dinámica
         const cookieConfig = getCookieConfig();
+        const currentToken = req.cookies?.authToken || 'session_maintained';
         res.cookie("authToken", currentToken, cookieConfig);
+
+        console.log('✅ Código de ruleta generado exitosamente:', {
+            codeId: newCode.codeId,
+            code: newCode.code,
+            name: newCode.name, // ✅ VERIFICAR: El nombre debería ser específico ahora
+            discount: newCode.discount,
+            color: newCode.color
+        });
 
         res.status(201).json({
             success: true,
             message: "Código de ruleta generado exitosamente",
             code: newCode,
-            token: currentToken
+            token: currentToken,
+            // ✅ NUEVA INFO: Información adicional para debugging
+            debug: {
+                selectedPromotion: selectedName,
+                totalActiveCodes: activeCodes.length + 1,
+                maxAllowed: maxActiveCodes
+            }
         });
     } catch (error) {
+        console.error('❌ Error en generateRuletaCode:', error);
         res.status(500).json({
             success: false,
             message: "Error al generar código de ruleta",

@@ -10,13 +10,28 @@ const emailVerificationController = {};
 // Función helper para configuración dinámica de cookies basada en el entorno
 const getCookieConfig = () => {
     const isProduction = process.env.NODE_ENV === 'production';
-    return {
-        httpOnly: false, // Permitir acceso desde JavaScript
-        secure: isProduction, // Solo HTTPS en producción
-        sameSite: isProduction ? 'none' : 'lax', // Cross-domain en producción
-        maxAge: 24 * 60 * 60 * 1000, // 24 horas
-        domain: undefined // Dejar que el navegador determine
-    };
+    
+    // ✅ CORRECCIÓN CRÍTICA: Configuración específica para Render + Vercel
+    if (isProduction) {
+        return {
+            httpOnly: false, // Permitir acceso desde JavaScript (crítico para cross-domain)
+            secure: true, // HTTPS obligatorio en producción
+            sameSite: 'none', // Permitir cookies cross-domain
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días (más duradero)
+            domain: undefined, // No especificar domain para cross-domain
+            path: '/'
+        };
+    } else {
+        // Configuración para desarrollo local
+        return {
+            httpOnly: false,
+            secure: false,
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
+            domain: undefined,
+            path: '/'
+        };
+    }
 };
 
 // Función helper para obtener token de múltiples fuentes en la petición

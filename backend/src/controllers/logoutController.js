@@ -9,13 +9,77 @@ const logoutController = {};
  */
 const getCookieConfig = () => {
     const isProduction = process.env.NODE_ENV === 'production';
-    return {
-        httpOnly: false, // Permitir acceso desde JavaScript
-        secure: isProduction, // Solo HTTPS en producción
-        sameSite: isProduction ? 'none' : 'lax', // Cross-domain en producción
-        maxAge: 24 * 60 * 60 * 1000, // 24 horas
-        domain: undefined // Dejar que el navegador determine
-    };
+    
+    if (isProduction) {
+        return {
+            httpOnly: false, // Permitir acceso desde JavaScript (crítico para cross-domain)
+            secure: true, // HTTPS obligatorio en producción
+            sameSite: 'none', // Permitir cookies cross-domain
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
+            domain: undefined, // No especificar domain para cross-domain
+            path: '/'
+        };
+    } else {
+        return {
+            httpOnly: false,
+            secure: false,
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
+            domain: undefined,
+            path: '/'
+        };
+    }
+};
+
+// ✅ NUEVA FUNCIÓN: Limpiar cookies con múltiples configuraciones
+const clearAuthCookieComprehensively = (res) => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    // Configuración principal
+    const mainConfig = getCookieConfig();
+    res.clearCookie("authToken", mainConfig);
+    
+    // ✅ CORRECCIÓN CRÍTICA: Limpiar con configuraciones alternativas
+    // Esto es esencial para asegurar que la cookie se elimine en todos los casos
+    
+    if (isProduction) {
+        // Configuraciones adicionales para producción cross-domain
+        res.clearCookie("authToken", {
+            httpOnly: false,
+            secure: true,
+            sameSite: 'none',
+            path: '/'
+        });
+        
+        res.clearCookie("authToken", {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'none',
+            path: '/'
+        });
+        
+        // Fallback para casos edge
+        res.clearCookie("authToken", {
+            secure: true,
+            sameSite: 'strict',
+            path: '/'
+        });
+    } else {
+        // Configuraciones adicionales para desarrollo
+        res.clearCookie("authToken", {
+            httpOnly: false,
+            secure: false,
+            sameSite: 'lax',
+            path: '/'
+        });
+        
+        res.clearCookie("authToken", {
+            path: '/'
+        });
+    }
+    
+    // Limpieza básica como último recurso
+    res.clearCookie("authToken");
 };
 
 /**

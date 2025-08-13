@@ -51,7 +51,7 @@ const useShoppingCart = () => {
             setError(null);
 
             // ✅ CAMBIO PRINCIPAL: Usar la nueva ruta /active/:userId con sistema híbrido
-            const operationPromise = fetch(`https://test-9gs3.onrender.com/api/shoppingCart/active/${user.id}`, {
+            const operationPromise = fetch(`https://marquesa.onrender.com/api/shoppingCart/active/${user.id}`, {
                 method: 'GET',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
@@ -185,7 +185,7 @@ const useShoppingCart = () => {
             setUpdating(true);
             setError(null);
 
-            const operationPromise = fetch(`https://test-9gs3.onrender.com/api/shoppingCart/update-quantity`, {
+            const operationPromise = fetch(`https://marquesa.onrender.com/api/shoppingCart/update-quantity`, {
                 method: 'PUT',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
@@ -264,7 +264,7 @@ const useShoppingCart = () => {
             setError(null);
 
             // ✅ OPCIÓN 1: Usar la ruta específica (preferida)
-            let response = await fetch(`https://test-9gs3.onrender.com/api/shoppingCart/remove-item`, {
+            let response = await fetch(`https://marquesa.onrender.com/api/shoppingCart/remove-item`, {
                 method: 'DELETE',
                 credentials: 'include',
                 headers: getAuthHeaders(),
@@ -278,7 +278,7 @@ const useShoppingCart = () => {
             if (!response.ok && response.status === 404) {
                 console.log('⚠️ Ruta principal falló, intentando ruta alternativa...');
 
-                response = await fetch(`https://test-9gs3.onrender.com/api/shoppingCart/client/${user.id}/items`, {
+                response = await fetch(`https://marquesa.onrender.com/api/shoppingCart/client/${user.id}/items`, {
                     method: 'DELETE',
                     credentials: 'include',
                     headers: getAuthHeaders(),
@@ -337,7 +337,7 @@ const useShoppingCart = () => {
             setUpdating(true);
             setError(null);
 
-            const operationPromise = fetch(`https://test-9gs3.onrender.com/api/shoppingCart/add-item`, {
+            const operationPromise = fetch(`https://marquesa.onrender.com/api/shoppingCart/add-item`, {
                 method: 'POST',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
@@ -492,7 +492,7 @@ const useShoppingCart = () => {
                 orderId: realOrderId
             });
 
-            const operationPromise = fetch(`https://test-9gs3.onrender.com/api/clients/${user.id}/use-code`, {
+            const operationPromise = fetch(`https://marquesa.onrender.com/api/clients/${user.id}/use-code`, {
                 method: 'PUT',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
@@ -543,8 +543,8 @@ const useShoppingCart = () => {
 
         try {
             const url = status
-                ? `https://test-9gs3.onrender.com/api/clients/${user.id}/promotional-codes?status=${status}`
-                : `https://test-9gs3.onrender.com/api/clients/${user.id}/promotional-codes`;
+                ? `https://marquesa.onrender.com/api/clients/${user.id}/promotional-codes?status=${status}`
+                : `https://marquesa.onrender.com/api/clients/${user.id}/promotional-codes`;
 
             const operationPromise = fetch(url, {
                 method: 'GET',
@@ -613,7 +613,7 @@ const useShoppingCart = () => {
                 userId: user.id
             });
 
-            const operationPromise = fetch(`https://test-9gs3.onrender.com/api/shoppingCart/${shoppingCartId}/clear-after-purchase`, {
+            const operationPromise = fetch(`https://marquesa.onrender.com/api/shoppingCart/${shoppingCartId}/clear-after-purchase`, {
                 method: 'POST',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
@@ -696,7 +696,7 @@ const useShoppingCart = () => {
         try {
             console.log('Ejecutando limpieza de carritos duplicados...');
 
-            const operationPromise = fetch(`https://test-9gs3.onrender.com/api/shoppingCart/cleanup-duplicates`, {
+            const operationPromise = fetch(`https://marquesa.onrender.com/api/shoppingCart/cleanup-duplicates`, {
                 method: 'POST',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders() // ✅ NUEVO: Headers híbridos

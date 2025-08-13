@@ -23,7 +23,7 @@ const CategoryProducts = () => {
     const params = useParams();
 
     // ✅ MANTENER CONFIGURACIÓN ORIGINAL
-    const API_BASE_URL = 'https://test-9gs3.onrender.com/api';
+    const API_BASE_URL = 'https://marquesa.onrender.com/api';
 
     const categories = useMemo(() => [
         { _id: 'todos', name: 'Todos' },

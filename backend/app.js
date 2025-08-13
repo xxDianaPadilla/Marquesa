@@ -32,10 +32,7 @@ app.use(
     cors({
         origin: ["https://marquesa.vercel.app"], // Como array
         credentials: true, // CRÍTICO: Permitir cookies
-        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'], // NUEVO: Incluir Cookie
-        exposedHeaders: ['Set-Cookie'], // Exponer Set-Cookie
-        optionsSuccessStatus: 200 // Para navegadores legacy
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
     })
 );
 

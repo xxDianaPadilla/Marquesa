@@ -1,10 +1,11 @@
 /**
  * Componente ShoppingCart - Página del carrito de compras
- * ACTUALIZADO: Integra funcionalidad completa de códigos promocionales y nueva lógica del carrito
+ * ACTUALIZADO: Agregado Toaster para notificaciones de eliminación
  */
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast, Toaster } from 'react-hot-toast';
 import Header from '../components/Header/Header';
 import Footer from '../components/Footer';
 import CartItem from "../components/CartItem";
@@ -85,7 +86,7 @@ const ShoppingCart = () => {
     }, [hookError]);
 
     /**
-     * ✅ FUNCIÓN CORREGIDA: Proceder al pago (usando la nueva lógica del carrito activo)
+     * ✅ FUNCIÓN CORREGIDA: Proceder al pago
      */
     const handlePaymentProcessClick = useCallback(async (e) => {
         e.preventDefault();
@@ -93,12 +94,20 @@ const ShoppingCart = () => {
         // Validar autenticación
         if (!isAuthenticated) {
             setCartError('Debes iniciar sesión para continuar con la compra.');
+            toast.error('Debes iniciar sesión para continuar', {
+                duration: 3000,
+                position: 'bottom-center'
+            });
             return;
         }
 
         // Validar que hay items en el carrito
         if (isEmpty) {
             setCartError('Tu carrito está vacío. Agrega algunos productos antes de continuar.');
+            toast.error('Tu carrito está vacío', {
+                duration: 3000,
+                position: 'bottom-center'
+            });
             return;
         }
 
@@ -106,14 +115,22 @@ const ShoppingCart = () => {
         const invalidItems = cartItems.filter(item => !validateCartItem(item));
         if (invalidItems.length > 0) {
             setCartError('Hay productos inválidos en tu carrito. Por favor revísalos.');
+            toast.error('Hay productos inválidos en tu carrito', {
+                duration: 3000,
+                position: 'bottom-center'
+            });
             return;
         }
 
         setCartError(null);
 
-        // ✅ CAMBIO PRINCIPAL: Usar el endpoint /active para obtener el carrito activo
+        // Mostrar toast de procesamiento
+        const processingToast = toast.loading('Procesando carrito...', {
+            position: 'bottom-center'
+        });
+
         try {
-            const response = await fetch(`https://marquesa.onrender.com/api/shoppingCart/active/${user.id}`, {
+            const response = await fetch(`https://test-9gs3.onrender.com/api/shoppingCart/active/${user.id}`, {
                 method: 'GET',
                 credentials: 'include',
                 headers: {
@@ -124,7 +141,6 @@ const ShoppingCart = () => {
             if (response.ok) {
                 const cartData = await response.json();
 
-                // ✅ ESTRUCTURA ACTUALIZADA: data.cart en lugar de data.shoppingCart
                 if (cartData.cart) {
                     const cart = cartData.cart;
 
@@ -146,36 +162,43 @@ const ShoppingCart = () => {
                         _originalItem: item
                     }));
 
-                    // Navegar a la página de pago con información completa del carrito y descuentos
                     const paymentState = {
-                        // Información financiera
                         cartTotal: finalTotal,
                         originalSubtotal: calculatedSubtotal,
                         discountApplied: hasDiscount,
                         discountAmount: discountAmount,
-                        discountInfo: appliedDiscount, // Pasar info del descuento para usarlo después
-
-                        // Items del carrito
+                        discountInfo: appliedDiscount,
                         cartItems: transformedItems,
-
-                        // ✅ CAMBIO: Usar cart._id en lugar de shoppingCart._id
                         shoppingCartId: cart._id,
                         itemCount: transformedItems.length,
-
-                        // Timestamp para referencia
                         timestamp: Date.now()
                     };
+
+                    // Cerrar toast de procesamiento
+                    toast.dismiss(processingToast);
+                    
+                    // Toast de éxito
+                    toast.success('Redirigiendo al pago...', {
+                        duration: 2000,
+                        position: 'bottom-center'
+                    });
 
                     console.log('Navegando a PaymentProcess con estado:', paymentState);
                     navigate('/paymentProcess', { state: paymentState });
                 } else {
+                    toast.dismiss(processingToast);
+                    toast.error('Error al obtener información del carrito');
                     setCartError('Error al obtener información del carrito.');
                 }
             } else {
+                toast.dismiss(processingToast);
+                toast.error('Error al comunicarse con el servidor');
                 setCartError('Error al comunicarse con el servidor.');
             }
         } catch (error) {
             console.error('Error obteniendo carrito para pago:', error);
+            toast.dismiss(processingToast);
+            toast.error('Error al procesar el carrito');
             setCartError('Error al procesar el carrito para el pago.');
         }
     }, [
@@ -192,23 +215,26 @@ const ShoppingCart = () => {
     ]);
 
     /**
-     * Función para actualizar cantidad con validación mejorada
+     * Función para actualizar cantidad con validación mejorada y toast
      */
     const handleUpdateQuantity = useCallback(async (itemId, newQuantity) => {
         try {
             if (!itemId || typeof newQuantity !== 'number') {
                 setCartError('Error al actualizar cantidad del producto.');
-                return;
+                toast.error('Error al actualizar cantidad');
+                return false;
             }
 
             if (newQuantity < 1) {
                 setCartError('La cantidad debe ser al menos 1.');
-                return;
+                toast.error('La cantidad debe ser al menos 1');
+                return false;
             }
 
             if (newQuantity > 99) {
                 setCartError('La cantidad máxima es 99 unidades.');
-                return;
+                toast.error('La cantidad máxima es 99 unidades');
+                return false;
             }
 
             setCartError(null);
@@ -217,21 +243,27 @@ const ShoppingCart = () => {
 
             if (!success) {
                 setCartError('Error al actualizar la cantidad. Inténtalo de nuevo.');
+                return false;
             }
+
+            return true;
         } catch (error) {
             console.error('Error al actualizar cantidad:', error);
             setCartError('Error inesperado al actualizar la cantidad.');
+            toast.error('Error inesperado al actualizar la cantidad');
+            return false;
         }
     }, [updateQuantity]);
 
     /**
-     * Función para eliminar producto con validación mejorada
+     * Función para eliminar producto con validación mejorada y toast
      */
     const handleRemoveItem = useCallback(async (itemId) => {
         try {
             if (!itemId) {
                 setCartError('Error al identificar el producto a eliminar.');
-                return;
+                toast.error('Error al identificar el producto');
+                return false;
             }
 
             setCartError(null);
@@ -240,15 +272,19 @@ const ShoppingCart = () => {
 
             if (!success) {
                 setCartError('Error al eliminar el producto. Inténtalo de nuevo.');
+                return false;
             }
+
+            return true;
         } catch (error) {
             console.error('Error al eliminar item:', error);
             setCartError('Error inesperado al eliminar el producto.');
+            return false;
         }
     }, [removeItem]);
 
     /**
-     * NUEVA FUNCIÓN: Aplicar descuento con validación completa
+     * NUEVA FUNCIÓN: Aplicar descuento con validación completa y toast
      */
     const handleApplyDiscount = useCallback(async (code, amount, discountData) => {
         try {
@@ -258,17 +294,49 @@ const ShoppingCart = () => {
             const sanitizedCode = sanitizeInput(code);
 
             if (!validateDiscountCode(sanitizedCode)) {
-                setDiscountError('Código de descuento inválido. Debe tener entre 3 y 20 caracteres.');
+                const errorMsg = 'Código de descuento inválido. Debe tener entre 3 y 20 caracteres.';
+                setDiscountError(errorMsg);
+                toast.error(errorMsg);
                 return;
             }
 
             if (typeof amount !== 'number' || amount < 0) {
-                setDiscountError('Monto de descuento inválido.');
+                const errorMsg = 'Monto de descuento inválido.';
+                setDiscountError(errorMsg);
+                toast.error(errorMsg);
                 return;
             }
 
             // Aplicar el descuento usando el hook
             applyDiscount(discountData, amount);
+
+            // Toast de éxito para descuento aplicado
+            toast.success(
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '18px' }}>🎉</span>
+                    <div>
+                        <div style={{ fontWeight: '600', fontSize: '14px' }}>
+                            ¡Descuento aplicado!
+                        </div>
+                        <div style={{ fontSize: '12px', opacity: 0.8 }}>
+                            Ahorras ${amount.toFixed(2)}
+                        </div>
+                    </div>
+                </div>,
+                {
+                    duration: 4000,
+                    position: 'bottom-center',
+                    style: {
+                        background: '#f0fdf4',
+                        color: '#15803d',
+                        border: '1px solid #bbf7d0',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                        padding: '12px 16px',
+                        minWidth: '280px'
+                    }
+                }
+            );
 
             console.log(`Descuento aplicado exitosamente:`, {
                 code: sanitizedCode,
@@ -278,7 +346,9 @@ const ShoppingCart = () => {
 
         } catch (error) {
             console.error('Error al aplicar descuento:', error);
-            setDiscountError('Error al aplicar el descuento. Inténtalo nuevamente.');
+            const errorMsg = 'Error al aplicar el descuento. Inténtalo nuevamente.';
+            setDiscountError(errorMsg);
+            toast.error(errorMsg);
         } finally {
             setIsLoadingDiscount(false);
         }
@@ -293,6 +363,7 @@ const ShoppingCart = () => {
         } catch (error) {
             console.error('Error al navegar:', error);
             setCartError('Error al navegar. Inténtalo nuevamente.');
+            toast.error('Error al navegar');
         }
     }, [navigate]);
 
@@ -321,27 +392,6 @@ const ShoppingCart = () => {
             removeDiscount();
         }
     }, [isEmpty, hasDiscount, removeDiscount]);
-
-    /**
-     * ✅ NUEVA FUNCIÓN: Acceso rápido a la limpieza de carritos duplicados (desarrollo)
-     */
-    const handleCleanupDuplicatesIfNeeded = useCallback(async () => {
-        // Solo mostrar en desarrollo o cuando hay problemas
-        if (process.env.NODE_ENV === 'development') {
-            const { cleanupDuplicateCarts } = useShoppingCart();
-            try {
-                const result = await cleanupDuplicateCarts();
-                console.log('Limpieza ejecutada:', result);
-                if (result.success) {
-                    setCartError(null);
-                    // Refrescar automáticamente
-                    await refreshCart();
-                }
-            } catch (error) {
-                console.error('Error en limpieza:', error);
-            }
-        }
-    }, [refreshCart]);
 
     /**
      * Componente para carrito vacío
@@ -437,6 +487,17 @@ const ShoppingCart = () => {
                 <div className="shopping-cart-container">
                     <LoadingCart />
                 </div>
+                {/* ✅ TOASTER CONFIGURADO */}
+                <Toaster
+                    position="bottom-center"
+                    toastOptions={{
+                        duration: 3000,
+                        style: {
+                            fontFamily: 'Poppins, sans-serif',
+                            fontSize: '14px'
+                        }
+                    }}
+                />
                 <Footer />
             </div>
         );
@@ -460,6 +521,17 @@ const ShoppingCart = () => {
                 <div className="shopping-cart-container">
                     <UnauthenticatedCart />
                 </div>
+                {/* ✅ TOASTER CONFIGURADO */}
+                <Toaster
+                    position="bottom-center"
+                    toastOptions={{
+                        duration: 3000,
+                        style: {
+                            fontFamily: 'Poppins, sans-serif',
+                            fontSize: '14px'
+                        }
+                    }}
+                />
                 <Footer />
             </div>
         );
@@ -514,17 +586,6 @@ const ShoppingCart = () => {
                         >
                             {loading ? 'Cargando...' : 'Reintentar'}
                         </button>
-                        
-                        {/* ✅ BOTÓN DE DESARROLLO: Para limpiar carritos duplicados si es necesario */}
-                        {process.env.NODE_ENV === 'development' && (
-                            <button
-                                onClick={handleCleanupDuplicatesIfNeeded}
-                                className="ml-2 inline-flex items-center px-4 py-2 border border-yellow-300 rounded-md shadow-sm text-sm font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100"
-                                disabled={loading}
-                            >
-                                Limpiar duplicados
-                            </button>
-                        )}
                     </div>
                 </div>
             )}
@@ -548,7 +609,13 @@ const ShoppingCart = () => {
                                 </div>
                             </div>
                             <button
-                                onClick={() => removeDiscount()}
+                                onClick={() => {
+                                    removeDiscount();
+                                    toast.success('Descuento removido', {
+                                        duration: 2000,
+                                        position: 'bottom-center'
+                                    });
+                                }}
                                 className="text-green-500 hover:text-green-700"
                                 style={{ cursor: 'pointer' }}
                                 title="Remover descuento"
@@ -594,6 +661,62 @@ const ShoppingCart = () => {
                     </>
                 )}
             </div>
+
+            {/* ✅ TOASTER CONFIGURADO - Configuración principal */}
+            <Toaster
+                position="bottom-center"
+                reverseOrder={false}
+                gutter={8}
+                containerClassName=""
+                containerStyle={{}}
+                toastOptions={{
+                    // Configuración global para todos los toasts
+                    duration: 3000,
+                    style: {
+                        fontFamily: 'Poppins, sans-serif',
+                        fontSize: '14px',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                        maxWidth: '400px'
+                    },
+                    
+                    // Configuraciones específicas por tipo
+                    success: {
+                        duration: 3000,
+                        style: {
+                            background: '#f0fdf4',
+                            color: '#15803d',
+                            border: '1px solid #bbf7d0'
+                        },
+                        iconTheme: {
+                            primary: '#15803d',
+                            secondary: '#f0fdf4'
+                        }
+                    },
+                    
+                    error: {
+                        duration: 4000,
+                        style: {
+                            background: '#fef2f2',
+                            color: '#dc2626',
+                            border: '1px solid #fecaca'
+                        },
+                        iconTheme: {
+                            primary: '#dc2626',
+                            secondary: '#fef2f2'
+                        }
+                    },
+                    
+                    loading: {
+                        duration: Infinity,
+                        style: {
+                            background: '#f8fafc',
+                            color: '#475569',
+                            border: '1px solid #e2e8f0'
+                        }
+                    }
+                }}
+            />
 
             <Footer />
         </div>

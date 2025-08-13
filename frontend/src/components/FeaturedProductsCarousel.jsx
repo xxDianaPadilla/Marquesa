@@ -23,6 +23,7 @@ const FeaturedProductsCarousel = ({
     const [currentSlide, setCurrentSlide] = useState(0);
     const [cart, setCart] = useState([]);
     const [isAutoSliding, setIsAutoSliding] = useState(true);
+    const [favoriteToggling, setFavoriteToggling] = useState(new Set());
 
     const loadFeaturedProducts = useCallback(async () => {
         try {
@@ -88,36 +89,146 @@ const FeaturedProductsCarousel = ({
         setTimeout(() => setIsAutoSliding(true), 3000);
     };
 
-    const handleToggleFavorite = (product) => {
-        try {
-            const wasAdded = toggleFavorite(product);
+    // ✅ CORRECCIÓN PRINCIPAL: Normalizar producto para favoritos
+    const normalizeProductForFavorites = useCallback((product) => {
+        if (!product) return null;
 
-            if (wasAdded) {
-                toast.success(`¡${product.name} agregado a favoritos!`, {
-                    duration: 2000,
-                    position: 'top-center',
-                    icon: '❤️',
-                    style: {
-                        background: '#EC4899',
-                        color: '#FFFFFF',
-                    },
-                });
-            } else {
-                toast.success(`${product.name} eliminado de favoritos`, {
-                    duration: 2000,
+        const productId = product._id || product.id;
+        if (!productId) return null;
+
+        // Extraer la mejor imagen disponible
+        let productImage = '/placeholder-image.jpg';
+        
+        if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+            if (product.images[0]?.image) {
+                productImage = product.images[0].image;
+            } else if (typeof product.images[0] === 'string') {
+                productImage = product.images[0];
+            }
+        } else if (product.image) {
+            productImage = product.image;
+        }
+
+        // Normalizar categoría
+        let categoryName = 'Sin categoría';
+        let categoryId = null;
+
+        if (typeof product.categoryId === 'object' && product.categoryId) {
+            categoryId = product.categoryId._id || product.categoryId.id;
+            categoryName = product.categoryId.name || 'Sin categoría';
+        } else if (product.categoryId) {
+            categoryId = product.categoryId;
+        }
+
+        return {
+            // IDs normalizados
+            _id: productId,
+            id: productId,
+            
+            // Información básica
+            name: product.name || 'Producto sin nombre',
+            description: product.description || '',
+            price: product.price || 0,
+            category: categoryName,
+            categoryId: categoryId,
+            
+            // Imágenes normalizadas
+            image: productImage,
+            images: product.images || [],
+            
+            // Stock si está disponible
+            stock: product.stock,
+            
+            // Personalizable
+            isPersonalizable: product.isPersonalizable || false,
+            
+            // Preservar otros campos que puedan ser importantes
+            ...Object.keys(product).reduce((acc, key) => {
+                if (!['_id', 'id', 'name', 'description', 'price', 'category', 'image', 'images', 'stock', 'isPersonalizable', 'categoryId'].includes(key)) {
+                    acc[key] = product[key];
+                }
+                return acc;
+            }, {})
+        };
+    }, []);
+
+    // ✅ CORRECCIÓN PRINCIPAL: handleToggleFavorite usando las mismas alertas que ProductInfo
+    const handleToggleFavorite = useCallback(async (product) => {
+        const productId = product._id || product.id;
+
+        if (!product || !productId || favoriteToggling.has(productId)) {
+            return;
+        }
+
+        try {
+            setFavoriteToggling(prev => new Set([...prev, productId]));
+
+            const normalizedProduct = normalizeProductForFavorites(product);
+            if (!normalizedProduct) {
+                throw new Error('No se pudo normalizar el producto');
+            }
+
+            // ✅ CORRECCIÓN: Verificar el estado ANTES del toggle
+            const wasCurrentlyFavorite = isFavorite(productId);
+
+            console.log('❤️ FeaturedCarousel - Toggle favorite for product:', {
+                id: normalizedProduct._id,
+                name: normalizedProduct.name,
+                wasCurrentlyFavorite: wasCurrentlyFavorite
+            });
+
+            const wasAdded = await toggleFavorite(normalizedProduct);
+
+            // ✅ USAR LA LÓGICA CORRECTA: Mostrar alerta basada en el estado ANTERIOR
+            if (wasCurrentlyFavorite) {
+                // Estaba en favoritos y se removió
+                toast.success(`${normalizedProduct.name} eliminado de favoritos`, {
+                    duration: 3000,
                     position: 'top-center',
                     icon: '💔',
                     style: {
                         background: '#6B7280',
-                        color: '#FFFFFF',
+                        color: '#fff',
                     },
                 });
+                console.log('❌ FeaturedCarousel - Producto removido de favoritos');
+            } else {
+                // No estaba en favoritos y se agregó
+                toast.success(`¡${normalizedProduct.name} agregado a favoritos!`, {
+                    duration: 3000,
+                    position: 'top-center',
+                    icon: '❤️',
+                    style: {
+                        background: '#EC4899',
+                        color: '#fff',
+                    },
+                });
+                console.log('✅ FeaturedCarousel - Producto agregado a favoritos');
             }
+
         } catch (error) {
-            console.log('Error al manejar favoritos: ', error);
-            toast.error('Error al actualizar favoritos');
+            console.error('❌ FeaturedCarousel - Error al manejar favoritos:', error);
+            
+            let errorMessage = 'Error al actualizar favoritos';
+            if (error.message?.includes('storage')) {
+                errorMessage = 'Error de almacenamiento. Verifica el espacio disponible';
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+
+            toast.error(errorMessage, {
+                duration: 3000,
+                position: 'top-center',
+                icon: '❌'
+            });
+        } finally {
+            setFavoriteToggling(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(productId);
+                return newSet;
+            });
         }
-    };
+    }, [normalizeProductForFavorites, toggleFavorite, favoriteToggling, isFavorite]);
 
     const handleAddToCart = (product) => {
         const existingItem = cart.find(item => item._id === product._id);
@@ -237,12 +348,16 @@ const FeaturedProductsCarousel = ({
                     {/* Productos del slide actual */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
                         {currentProducts.map((product) => {
-                            const isProductFavorite = isFavorite(product._id);
+                            const productId = product._id || product.id;
+                            const isProductFavorite = isFavorite(productId);
+                            const isToggling = favoriteToggling.has(productId);
 
                             return (
                                 <div
-                                    key={product._id}
-                                    className="bg-white rounded-lg shadow-md hover:shadow-lg transition-transform transform hover:scale-105 cursor-pointer"
+                                    key={productId}
+                                    className={`bg-white rounded-lg shadow-md hover:shadow-lg transition-transform transform hover:scale-105 cursor-pointer ${
+                                        isToggling ? 'pointer-events-none opacity-75' : ''
+                                    }`}
                                     onClick={() => handleProductClick(product)}
                                 >
                                     <div className="relative">
@@ -266,8 +381,10 @@ const FeaturedProductsCarousel = ({
                                                 e.stopPropagation();
                                                 handleToggleFavorite(product);
                                             }}
+                                            disabled={isToggling}
                                             className={`absolute top-3 left-3 p-2 rounded-full transition-all duration-200 transform hover:scale-110 shadow-md
-                        ${isProductFavorite
+                                                disabled:cursor-not-allowed disabled:transform-none disabled:opacity-75
+                                                ${isProductFavorite
                                                     ? 'bg-pink-500 bg-opacity-90 hover:bg-opacity-100'
                                                     : 'bg-white bg-opacity-80 hover:bg-opacity-100'
                                                 }`}

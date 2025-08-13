@@ -16,7 +16,7 @@ const CategoryProductsPage = () => {
     const navigate = useNavigate();
     const location = useLocation();
     
-    const API_BASE_URL = 'https://marquesa.onrender.com/api';
+    const API_BASE_URL = 'https://test-9gs3.onrender.com/api';
 
     const categories = useMemo(() => [
         { _id: 'todos', name: 'Todos' },
@@ -259,6 +259,7 @@ const CategoryProductsPage = () => {
         };
     }, [getProductId, categoryMap]);
 
+    // ✅ CORRECCIÓN PRINCIPAL: handleToggleFavorite usando las mismas alertas que ProductInfo
     const handleToggleFavorite = useCallback(async (product) => {
         const productId = getProductId(product);
 
@@ -274,29 +275,55 @@ const CategoryProductsPage = () => {
                 throw new Error('No se pudo normalizar el producto');
             }
 
-            const wasAdded = toggleFavorite(normalizedProduct);
+            console.log('❤️ Toggle favorite for product:', {
+                id: normalizedProduct._id,
+                name: normalizedProduct.name,
+                wasCurrentlyFavorite: isFavorite(productId)
+            });
 
-            if (wasAdded) {
-                toast.success(`¡${normalizedProduct.name} agregado a favoritos!`, {
-                    duration: 2000,
-                    position: 'top-center',
-                    icon: '❤️',
-                    style: { background: '#EC4899', color: '#fff' },
-                });
-            } else {
+            const wasAdded = await toggleFavorite(normalizedProduct);
+
+            // ✅ USAR EXACTAMENTE LAS MISMAS ALERTAS QUE EN ProductInfo.jsx
+            if (isFavorite(productId)) {
+                // Se removió de favoritos
                 toast.success(`${normalizedProduct.name} eliminado de favoritos`, {
-                    duration: 2000,
+                    duration: 3000,
                     position: 'top-center',
                     icon: '💔',
-                    style: { background: '#6B7280', color: '#fff' },
+                    style: {
+                        background: '#6B7280',
+                        color: '#fff',
+                    },
                 });
+                console.log('❌ Producto removido de favoritos');
+            } else {
+                // Se agregó a favoritos
+                toast.success(`¡${normalizedProduct.name} agregado a favoritos!`, {
+                    duration: 3000,
+                    position: 'top-center',
+                    icon: '❤️',
+                    style: {
+                        background: '#EC4899',
+                        color: '#fff',
+                    },
+                });
+                console.log('✅ Producto agregado a favoritos');
             }
 
         } catch (error) {
             console.error('❌ CategoryProductsPage - Error al manejar favoritos:', error);
-            toast.error('Error al actualizar favoritos', {
+            
+            let errorMessage = 'Error al actualizar favoritos';
+            if (error.message?.includes('storage')) {
+                errorMessage = 'Error de almacenamiento. Verifica el espacio disponible';
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+
+            toast.error(errorMessage, {
                 duration: 3000,
                 position: 'top-center',
+                icon: '❌'
             });
         } finally {
             setFavoriteToggling(prev => {
@@ -305,7 +332,7 @@ const CategoryProductsPage = () => {
                 return newSet;
             });
         }
-    }, [getProductId, normalizeProductForFavorites, toggleFavorite, favoriteToggling]);
+    }, [getProductId, normalizeProductForFavorites, toggleFavorite, favoriteToggling, isFavorite]);
 
     const productsByCategory = useMemo(() => {
         if (!Array.isArray(products) || products.length === 0) {

@@ -1,17 +1,3 @@
-/**
- * Componente HomePage - Página principal de la tienda La Marquesa
- * ACTUALIZADA: Usa productos reales de la base de datos con carrusel dinámico
- * 
- * Funcionalidades principales:
- * - Landing page con diseño atractivo y responsivo
- * - Navegación de categorías con filtros
- * - Productos destacados DINÁMICOS con carrusel y sistema de favoritos
- * - Gestión de carrito de compras
- * - Sección de testimonios de clientes
- * - Chat button integrado para soporte
- * - Notificaciones toast para feedback del usuario
- */
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -23,7 +9,6 @@ import ChatButton from "../components/Chat/ChatButton";
 
 // Componentes nuevos reutilizables
 import FeatureCard from "../components/FeatureCard";
-import NotificationToast from "../components/NotificationToast";
 import Container from "../components/Container";
 import ActionButton from "../components/ActionButton";
 
@@ -41,10 +26,6 @@ import heroImage from "../assets/postfebruaryhome.png";
 
 const HomePage = () => {
   const navigate = useNavigate();
-
-  // Estados para notificaciones
-  const [showCartMessage, setShowCartMessage] = useState(false);
-  const [showFavoriteMessage, setShowFavoriteMessage] = useState(false);
 
   /**
    * Datos de características de la empresa
@@ -105,20 +86,6 @@ const HomePage = () => {
     <div className="bg-pink-50">
       {/* Componentes de soporte */}
       <ChatButton />
-
-      {/* Sistema de notificaciones usando el nuevo componente */}
-      <NotificationToast
-        show={showCartMessage}
-        message="¡Producto añadido al carrito!"
-        type="success"
-        onClose={() => setShowCartMessage(false)}
-      />
-      <NotificationToast
-        show={showFavoriteMessage}
-        message="¡Añadido a favoritos!"
-        type="favorite"
-        onClose={() => setShowFavoriteMessage(false)}
-      />
 
       {/* Header principal */}
       <div className="bg-white">

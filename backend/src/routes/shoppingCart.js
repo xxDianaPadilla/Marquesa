@@ -6,59 +6,53 @@ import shoppingCartController from "../controllers/shoppingCartController.js";
 // Crear una instancia del enrutador de Express
 const router = express.Router();
 
+// IMPORTANTE: Las rutas específicas ANTES que las rutas con parámetros
+
 // Rutas para operaciones generales del carrito de compras
 router.route("/")
-    .get(shoppingCartController.getShoppingCarts) // Obtener todos los carritos de compras
-    .post(shoppingCartController.createShoppingCart); // Crear un nuevo carrito de compras
+    .get(shoppingCartController.getShoppingCarts)
+    .post(shoppingCartController.createShoppingCart);
 
-// NUEVAS RUTAS para operaciones específicas de items (antes de las rutas con parámetros)
-// Ruta para actualizar cantidad de un item específico
-router.route("/update-quantity")
-    .put(shoppingCartController.updateItemQuantity); // Actualizar cantidad de un item
-
-// Ruta para eliminar un item específico del carrito
+// VERIFICAR QUE ESTA RUTA ESTÉ PRESENTE Y ANTES DE LAS RUTAS CON PARÁMETROS
 router.route("/remove-item")
-    .delete(shoppingCartController.removeSpecificItem); // Eliminar item específico
+    .delete(shoppingCartController.removeSpecificItem);
 
-// Ruta para agregar item al carrito (formato del hook)
+// VERIFICAR QUE ESTAS RUTAS ESTÉN PRESENTES
+router.route("/update-quantity")
+    .put(shoppingCartController.updateItemQuantity);
+
 router.route("/add-item")
-    .post(shoppingCartController.addItemToCartNew); // Agregar item al carrito
+    .post(shoppingCartController.addItemToCartNew);
 
-// NUEVA RUTA: Para limpiar carritos duplicados (usar solo una vez para mantenimiento)
+// NUEVA RUTA: Para limpiar carritos duplicados
 router.route("/cleanup-duplicates")
-    .post(shoppingCartController.cleanupDuplicateCarts); // Limpiar carritos duplicados
+    .post(shoppingCartController.cleanupDuplicateCarts);
 
 // NUEVA RUTA: Obtener carrito activo de un usuario específico
 router.route("/active/:userId")
-    .get(shoppingCartController.getActiveCart); // Obtener carrito activo del usuario
+    .get(shoppingCartController.getActiveCart);
 
-// Rutas para operaciones específicas de un carrito por ID
+// ESTAS RUTAS CON PARÁMETROS DEBEN IR AL FINAL
 router.route("/:id")
-    .get(shoppingCartController.getShoppingCartById) // Obtener un carrito específico por ID
-    .put(shoppingCartController.updateShoppingCart) // Actualizar un carrito específico
-    .delete(shoppingCartController.deleteShoppingCart); // Eliminar un carrito específico
+    .get(shoppingCartController.getShoppingCartById)
+    .put(shoppingCartController.updateShoppingCart)
+    .delete(shoppingCartController.deleteShoppingCart);
 
-// Ruta para obtener el carrito de un cliente específico
 router.route("/client/:clientId")
-    .get(shoppingCartController.getShoppingCartByClient); // Obtener carrito por ID del cliente
+    .get(shoppingCartController.getShoppingCartByClient);
 
-// RUTA ACTUALIZADA: Agregar item al carrito (formato alternativo)
-// POST /api/shoppingCart/:clientId/add-item
 router.route("/:clientId/add-item")
-    .post(shoppingCartController.addItemToCart); // Agregar un item al carrito (formato original)
+    .post(shoppingCartController.addItemToCart);
 
-// Rutas para gestión de items/productos dentro del carrito de un cliente
 router.route("/client/:clientId/items")
-    .put(shoppingCartController.updateCartItem) // Actualizar un item del carrito
-    .delete(shoppingCartController.removeItemFromCart); // Eliminar un item del carrito
+    .put(shoppingCartController.updateCartItem)
+    .delete(shoppingCartController.removeItemFromCart);
 
-// Ruta para aplicar código promocional a un carrito específico
 router.route("/:cartId/promotionalCode")
-    .put(shoppingCartController.applyPromotionalCode); // Aplicar código promocional
+    .put(shoppingCartController.applyPromotionalCode);
 
-// RUTA ACTUALIZADA: Limpiar carrito después de compra
 router.route("/:cartId/clear-after-purchase")
-    .post(shoppingCartController.clearCartAfterPurchase); // Limpiar carrito después de compra
+    .post(shoppingCartController.clearCartAfterPurchase);
 
-// Exportar el enrutador para ser usado en la aplicación principal
+// Exportar el enrutador
 export default router;

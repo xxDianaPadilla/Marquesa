@@ -22,7 +22,7 @@ const useShoppingCart = () => {
         });
     }, [appliedDiscount, discountAmount]);
 
-    const { user, isAuthenticated, userInfo, getBestAvailableToken,setAuthToken } = useAuth();
+    const { user, isAuthenticated, userInfo, getBestAvailableToken, setAuthToken } = useAuth();
 
     /**
      * ✅ NUEVA FUNCIÓN: Crear headers de autenticación híbridos
@@ -51,7 +51,7 @@ const useShoppingCart = () => {
             setError(null);
 
             // ✅ CAMBIO PRINCIPAL: Usar la nueva ruta /active/:userId con sistema híbrido
-            const operationPromise = fetch(`https://marquesa.onrender.com/api/shoppingCart/active/${user.id}`, {
+            const operationPromise = fetch(`https://test-9gs3.onrender.com/api/shoppingCart/active/${user.id}`, {
                 method: 'GET',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
@@ -147,10 +147,10 @@ const useShoppingCart = () => {
             }
         } catch (error) {
             console.error('Error al obtener el carrito activo: ', error);
-            
+
             // ✅ NUEVO: Manejo específico de errores de red vs servidor
             let errorMessage = 'Error al cargar el carrito de compras';
-            
+
             if (error.message === 'TIMEOUT') {
                 errorMessage = 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
             } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
@@ -160,7 +160,7 @@ const useShoppingCart = () => {
             } else if (error.message?.includes('network')) {
                 errorMessage = 'Error de red. Verifica tu conexión a internet.';
             }
-            
+
             setError(errorMessage);
             setCartItems([]);
             setCartTotal(0);
@@ -185,7 +185,7 @@ const useShoppingCart = () => {
             setUpdating(true);
             setError(null);
 
-            const operationPromise = fetch(`https://marquesa.onrender.com/api/shoppingCart/update-quantity`, {
+            const operationPromise = fetch(`https://test-9gs3.onrender.com/api/shoppingCart/update-quantity`, {
                 method: 'PUT',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
@@ -235,16 +235,16 @@ const useShoppingCart = () => {
             }
         } catch (error) {
             console.error('Error al actualizar cantidad: ', error);
-            
+
             // ✅ NUEVO: Manejo específico de errores
             let errorMessage = 'Error al actualizar la cantidad';
-            
+
             if (error.message === 'TIMEOUT') {
                 errorMessage = 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
             } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
                 errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
             }
-            
+
             setError(errorMessage);
             return false;
         } finally {
@@ -263,27 +263,36 @@ const useShoppingCart = () => {
             setUpdating(true);
             setError(null);
 
-            const operationPromise = fetch(`https://marquesa.onrender.com/api/shoppingCart/remove-item`, {
+            // ✅ OPCIÓN 1: Usar la ruta específica (preferida)
+            let response = await fetch(`https://test-9gs3.onrender.com/api/shoppingCart/remove-item`, {
                 method: 'DELETE',
-                credentials: 'include', // ✅ NUEVO: Incluir cookies
-                headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
+                credentials: 'include',
+                headers: getAuthHeaders(),
                 body: JSON.stringify({
                     clientId: user.id,
                     itemId: itemId
                 })
             });
 
-            // ✅ NUEVO: Timeout para conexiones lentas
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
-            });
+            // ✅ OPCIÓN 2: Si la anterior falla, usar ruta alternativa
+            if (!response.ok && response.status === 404) {
+                console.log('⚠️ Ruta principal falló, intentando ruta alternativa...');
 
-            const response = await Promise.race([operationPromise, timeoutPromise]);
+                response = await fetch(`https://test-9gs3.onrender.com/api/shoppingCart/client/${user.id}/items`, {
+                    method: 'DELETE',
+                    credentials: 'include',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        itemId: itemId
+                    })
+                });
+            }
 
             if (response.ok) {
                 const data = await response.json();
                 if (data.success) {
-                    // ✅ NUEVO: Manejo híbrido de tokens
+                    console.log('✅ Producto eliminado exitosamente');
+
                     if (data.token) {
                         setAuthToken(data.token);
                     }
@@ -300,21 +309,17 @@ const useShoppingCart = () => {
                     throw new Error(data.message || 'Error al eliminar producto');
                 }
             } else {
-                throw new Error('Error al eliminar item: ', error);
+                const errorText = await response.text();
+                console.error('❌ Error response:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    body: errorText
+                });
+                throw new Error(`Error del servidor: ${response.status}`);
             }
         } catch (error) {
-            console.error('Error al eliminar item: ', error);
-            
-            // ✅ NUEVO: Manejo específico de errores
-            let errorMessage = 'Error al eliminar el producto';
-            
-            if (error.message === 'TIMEOUT') {
-                errorMessage = 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
-            } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
-                errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
-            }
-            
-            setError(errorMessage);
+            console.error('❌ Error eliminando item:', error);
+            setError('Error al eliminar el producto');
             return false;
         } finally {
             setUpdating(false);
@@ -332,7 +337,7 @@ const useShoppingCart = () => {
             setUpdating(true);
             setError(null);
 
-            const operationPromise = fetch(`https://marquesa.onrender.com/api/shoppingCart/add-item`, {
+            const operationPromise = fetch(`https://test-9gs3.onrender.com/api/shoppingCart/add-item`, {
                 method: 'POST',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
@@ -369,16 +374,16 @@ const useShoppingCart = () => {
             }
         } catch (error) {
             console.error('Error al agregar al carrito: ', error);
-            
+
             // ✅ NUEVO: Manejo específico de errores
             let errorMessage = 'Error al agregar el producto al carrito';
-            
+
             if (error.message === 'TIMEOUT') {
                 errorMessage = 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
             } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
                 errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
             }
-            
+
             setError(errorMessage);
             return false;
         } finally {
@@ -487,7 +492,7 @@ const useShoppingCart = () => {
                 orderId: realOrderId
             });
 
-            const operationPromise = fetch(`https://marquesa.onrender.com/api/clients/${user.id}/use-code`, {
+            const operationPromise = fetch(`https://test-9gs3.onrender.com/api/clients/${user.id}/use-code`, {
                 method: 'PUT',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
@@ -538,8 +543,8 @@ const useShoppingCart = () => {
 
         try {
             const url = status
-                ? `https://marquesa.onrender.com/api/clients/${user.id}/promotional-codes?status=${status}`
-                : `https://marquesa.onrender.com/api/clients/${user.id}/promotional-codes`;
+                ? `https://test-9gs3.onrender.com/api/clients/${user.id}/promotional-codes?status=${status}`
+                : `https://test-9gs3.onrender.com/api/clients/${user.id}/promotional-codes`;
 
             const operationPromise = fetch(url, {
                 method: 'GET',
@@ -573,16 +578,16 @@ const useShoppingCart = () => {
             }
         } catch (error) {
             console.error('Error obteniendo códigos promocionales:', error);
-            
+
             // ✅ NUEVO: Manejo específico de errores
             let errorMessage = 'Error al obtener códigos';
-            
+
             if (error.message === 'TIMEOUT') {
                 errorMessage = 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
             } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
                 errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
             }
-            
+
             return { success: false, codes: [], message: errorMessage };
         }
     }, [isAuthenticated, user?.id, getAuthHeaders, setAuthToken]);
@@ -608,7 +613,7 @@ const useShoppingCart = () => {
                 userId: user.id
             });
 
-            const operationPromise = fetch(`https://marquesa.onrender.com/api/shoppingCart/${shoppingCartId}/clear-after-purchase`, {
+            const operationPromise = fetch(`https://test-9gs3.onrender.com/api/shoppingCart/${shoppingCartId}/clear-after-purchase`, {
                 method: 'POST',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
@@ -663,16 +668,16 @@ const useShoppingCart = () => {
             }
         } catch (error) {
             console.error('Error al limpiar carrito después de compra:', error);
-            
+
             // ✅ NUEVO: Manejo específico de errores
             let errorMessage = `Error al limpiar el carrito: ${error.message}`;
-            
+
             if (error.message === 'TIMEOUT') {
                 errorMessage = 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
             } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
                 errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
             }
-            
+
             setError(errorMessage);
             return {
                 success: false,
@@ -691,7 +696,7 @@ const useShoppingCart = () => {
         try {
             console.log('Ejecutando limpieza de carritos duplicados...');
 
-            const operationPromise = fetch(`https://marquesa.onrender.com/api/shoppingCart/cleanup-duplicates`, {
+            const operationPromise = fetch(`https://test-9gs3.onrender.com/api/shoppingCart/cleanup-duplicates`, {
                 method: 'POST',
                 credentials: 'include', // ✅ NUEVO: Incluir cookies
                 headers: getAuthHeaders() // ✅ NUEVO: Headers híbridos
@@ -727,16 +732,16 @@ const useShoppingCart = () => {
             }
         } catch (error) {
             console.error('Error en limpieza de carritos:', error);
-            
+
             // ✅ NUEVO: Manejo específico de errores
             let errorMessage = 'Error al limpiar carritos duplicados';
-            
+
             if (error.message === 'TIMEOUT') {
                 errorMessage = 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
             } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
                 errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
             }
-            
+
             return {
                 success: false,
                 message: errorMessage

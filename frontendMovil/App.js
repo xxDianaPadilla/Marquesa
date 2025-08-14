@@ -2,6 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View, Text } from 'react-native';
 import Navigation from './src/navigation/Navigation';
 import { AuthProvider } from './src/context/AuthContext'; // Importar el AuthProvider
+import { CartProvider } from './src/context/CartContext';
 import { useFonts, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -34,8 +35,13 @@ export default function App() {
     <View style={styles.container}>
       {/* Envolver Navigation con AuthProvider para que el contexto esté disponible en toda la app */}
       <AuthProvider>
+        <CartProvider>
+          
+        
         <Navigation />
+        </CartProvider>
       </AuthProvider>
+      
       <StatusBar style="auto" />
     </View>
   );

@@ -9,9 +9,12 @@ import {
     Dimensions,
     ScrollView,
     Alert,
-    RefreshControl
+    RefreshControl,
+    ToastAndroid,
+    Platform
 } from "react-native";
 import { useAuth } from "../context/AuthContext";
+import { useCart } from "../context/CartContext"; // ✅ IMPORTANTE: Importar el contexto del carrito
 import perfilIcon from "../images/perfilIcon.png";
 import favoritesIcon from "../images/favoritesIcon.png";
 import ProductCard from "../components/Products/ProductCard";
@@ -39,14 +42,35 @@ export default function HomeScreen({ navigation }) {
         refreshFavorites
     } = useAuth();
     
+    // ✅ USAR EL CONTEXTO DEL CARRITO
+    const {
+        addToCart,
+        cartLoading,
+        cartError,
+        cartItemsCount,
+        isInCart,
+        getItemQuantity,
+        clearCartError
+    } = useCart();
+    
     const { productos, loading, refetch } = useFetchProducts();
     const [selectedCategory, setSelectedCategory] = useState('Todo');
     const [refreshing, setRefreshing] = useState(false);
+    const [addingToCart, setAddingToCart] = useState(null); // Para mostrar loading por producto
     
     const [showPriceFilter, setShowPriceFilter] = useState(false);
     const [priceRange, setPriceRange] = useState({ min: 0, max: 100 });
 
     const categories = ['Todo', 'Naturales', 'Secas', 'Tarjetas', 'Cuadros', 'Giftboxes'];
+
+    // Función para mostrar toast/mensaje
+    const showToast = (message) => {
+        if (Platform.OS === 'android') {
+            ToastAndroid.show(message, ToastAndroid.SHORT);
+        } else {
+            Alert.alert('Información', message);
+        }
+    };
 
     // Cargar favoritos cuando el usuario esté autenticado
     useEffect(() => {
@@ -67,6 +91,13 @@ export default function HomeScreen({ navigation }) {
             hasError: !!favoritesError
         });
     }, [favorites, isAuthenticated, favoritesLoading, favoritesError]);
+
+    // Limpiar errores del carrito cuando se monte el componente
+    useEffect(() => {
+        return () => {
+            clearCartError();
+        };
+    }, []);
 
     // Función para refrescar toda la pantalla
     const onRefresh = async () => {
@@ -96,20 +127,75 @@ export default function HomeScreen({ navigation }) {
         navigation.navigate('ProductDetail', { productId: product._id });
     };
 
-    const handleAddToCart = (product) => {
-        if (!isAuthenticated) {
+    // ✅ FUNCIÓN MEJORADA PARA AGREGAR AL CARRITO
+    const handleAddToCart = async (product, quantity = 1, itemType = 'product') => {
+        try {
+            // Verificar autenticación
+            if (!isAuthenticated) {
+                Alert.alert(
+                    "Iniciar sesión",
+                    "Debes iniciar sesión para agregar productos al carrito",
+                    [
+                        { text: "Cancelar", style: "cancel" },
+                        { text: "Iniciar sesión", onPress: () => navigation.navigate('Login') }
+                    ]
+                );
+                return;
+            }
+
+            // Validar producto
+            if (!product || !product._id) {
+                Alert.alert('Error', 'Producto inválido');
+                return;
+            }
+
+            // Verificar stock
+            if (product.stock === 0) {
+                Alert.alert(
+                    "Sin stock",
+                    "Este producto no está disponible en este momento"
+                );
+                return;
+            }
+
+            // Marcar producto como añadiéndose
+            setAddingToCart(product._id);
+
+            console.log('🛒 Agregando producto al carrito:', {
+                productId: product._id,
+                productName: product.name,
+                price: product.price,
+                quantity,
+                itemType
+            });
+
+            // Llamar a la función del contexto
+            const result = await addToCart(product, quantity, itemType);
+
+            if (result.success) {
+                // Mostrar mensaje de éxito
+                showToast(`${product.name} agregado al carrito`);
+                
+                console.log('✅ Producto agregado exitosamente:', result);
+            } else {
+                // Mostrar error específico
+                Alert.alert(
+                    'Error al agregar al carrito', 
+                    result.message || 'No se pudo agregar el producto al carrito'
+                );
+                console.error('❌ Error al agregar producto:', result.message);
+            }
+
+        } catch (error) {
+            console.error('❌ Error inesperado al agregar al carrito:', error);
             Alert.alert(
-                "Iniciar sesión",
-                "Debes iniciar sesión para agregar productos al carrito",
-                [
-                    { text: "Cancelar", style: "cancel" },
-                    { text: "Iniciar sesión", onPress: () => navigation.navigate('Login') }
-                ]
+                'Error inesperado', 
+                'Ocurrió un error inesperado. Inténtalo nuevamente.'
             );
-            return;
+        } finally {
+            // Quitar marca de loading
+            setAddingToCart(null);
         }
-        console.log('Agregar al carrito:', product);
-        // Aquí iría la lógica del carrito
     };
 
     const handleApplyPriceFilter = (minPrice, maxPrice) => {
@@ -131,8 +217,11 @@ export default function HomeScreen({ navigation }) {
             <ProductCard
                 product={item}
                 onPress={handleProductPress}
-                onAddToCart={handleAddToCart}
+                onAddToCart={handleAddToCart} // ✅ Pasar la función del carrito
                 navigation={navigation}
+                // Props adicionales para mostrar estado del carrito
+                isAddingToCart={addingToCart === item._id}
+                cartQuantity={getItemQuantity(item._id)}
             />
         </View>
     );
@@ -234,6 +323,20 @@ export default function HomeScreen({ navigation }) {
                 </View>
             )}
 
+            {/* ✅ INDICADOR DE ERROR DEL CARRITO */}
+            {cartError && (
+                <View style={styles.errorContainer}>
+                    <Icon name="error-outline" size={16} color="#e74c3c" />
+                    <Text style={styles.errorText}>{cartError}</Text>
+                    <TouchableOpacity 
+                        onPress={clearCartError}
+                        style={styles.closeButton}
+                    >
+                        <Icon name="close" size={16} color="#e74c3c" />
+                    </TouchableOpacity>
+                </View>
+            )}
+
             {/* Indicador de estado de favoritos */}
             {isAuthenticated && favoritesError && (
                 <View style={styles.errorContainer}>
@@ -329,6 +432,14 @@ export default function HomeScreen({ navigation }) {
                     onPress={() => navigation.navigate('Cart')}
                 >
                     <Icon name="shopping-cart" size={isSmallDevice ? 20 : 24} color="#ccc" />
+                    {/* ✅ BADGE DEL CARRITO */}
+                    {isAuthenticated && cartItemsCount > 0 && (
+                        <View style={styles.cartBadge}>
+                            <Text style={styles.cartBadgeText}>
+                                {cartItemsCount > 99 ? '99+' : cartItemsCount}
+                            </Text>
+                        </View>
+                    )}
                 </TouchableOpacity>
             </View>
         </View>
@@ -550,6 +661,10 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontFamily: 'Poppins-Medium',
     },
+    closeButton: {
+        padding: 4,
+        marginLeft: 8,
+    },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
@@ -635,6 +750,26 @@ const styles = StyleSheet.create({
         borderColor: '#fff',
     },
     favoriteBadgeText: {
+        fontSize: 10,
+        color: '#fff',
+        fontFamily: 'Poppins-Bold',
+        textAlign: 'center',
+    },
+    // ✅ ESTILOS PARA EL BADGE DEL CARRITO
+    cartBadge: {
+        position: 'absolute',
+        top: -2,
+        right: -2,
+        backgroundColor: '#4A4170',
+        borderRadius: 10,
+        minWidth: 20,
+        height: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#fff',
+    },
+    cartBadgeText: {
         fontSize: 10,
         color: '#fff',
         fontFamily: 'Poppins-Bold',

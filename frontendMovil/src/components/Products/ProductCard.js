@@ -7,9 +7,11 @@ import {
   StyleSheet,
   Dimensions,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useAuth } from '../../context/AuthContext';
+import { useCart } from '../../context/CartContext';
 
 const { width: screenWidth } = Dimensions.get('window');
 const cardWidth = (screenWidth - 48) / 2;
@@ -18,7 +20,8 @@ const ProductCard = ({
   product,
   onPress,
   onAddToCart,
-  navigation, // Recibimos navigation como prop
+  navigation,
+  isAddingToCart = false, // ✅ Nueva prop para mostrar loading
 }) => {
   // Obtener funciones de favoritos del contexto
   const {
@@ -28,8 +31,19 @@ const ProductCard = ({
     isAuthenticated,
   } = useAuth();
 
+  // Obtener funciones del carrito
+  const {
+    isInCart,
+    getItemQuantity,
+    cartLoading,
+  } = useCart();
+
   // Verificar si el producto está en favoritos usando el ID del producto
   const isFavorite = checkIsFavorite(product._id);
+
+  // Verificar si el producto está en el carrito
+  const productInCart = isInCart(product._id);
+  const cartQuantity = getItemQuantity(product._id);
 
   // Formatear precio
   const formatPrice = (price) => {
@@ -93,18 +107,80 @@ const ProductCard = ({
         Alert.alert('Error', result.message || 'No se pudo actualizar favoritos');
       } else {
         console.log('Toggle favorito exitoso:', result);
-
-        // Mostrar mensaje de éxito opcional
-        const action = result.isAdded ? 'agregado a' : 'removido de';
-        console.log(`Producto ${action} favoritos`);
-
-        // Opcional: Mostrar toast o mensaje breve
-        // Toast.show(`Producto ${action} favoritos`, Toast.SHORT);
       }
     } catch (error) {
       console.error('Error al cambiar favorito:', error);
       Alert.alert('Error', 'Error de conexión. Intenta nuevamente.');
     }
+  };
+
+  // ✅ MANEJAR AGREGAR AL CARRITO CON VALIDACIONES MEJORADAS
+  const handleAddToCart = async () => {
+    try {
+      if (!isAuthenticated) {
+        Alert.alert(
+          "Iniciar sesión",
+          "Debes iniciar sesión para agregar productos al carrito",
+          [
+            { text: "Cancelar", style: "cancel" },
+            {
+              text: "Iniciar sesión", onPress: () => {
+                if (navigation) {
+                  navigation.navigate('Login');
+                }
+              }
+            }
+          ]
+        );
+        return;
+      }
+
+      // Verificar stock
+      if (product.stock === 0) {
+        Alert.alert(
+          "Sin stock",
+          "Este producto no está disponible en este momento",
+          [{ text: "OK", style: "cancel" }]
+        );
+        return;
+      }
+
+      // ✅ LLAMAR LA FUNCIÓN DESDE EL HOMESCREEN
+      if (onAddToCart) {
+        await onAddToCart(product, 1, 'product');
+      }
+    } catch (error) {
+      console.error('Error al agregar al carrito desde ProductCard:', error);
+      Alert.alert('Error', 'Error inesperado. Inténtalo nuevamente.');
+    }
+  };
+
+  // Determinar el ícono del botón de carrito
+  const getCartIcon = () => {
+    if (product.stock === 0) {
+      return "block";
+    }
+    if (isAddingToCart) {
+      return "hourglass-empty";
+    }
+    if (productInCart) {
+      return "shopping-cart";
+    }
+    return "add-shopping-cart";
+  };
+
+  // Determinar el color del botón de carrito
+  const getCartButtonStyle = () => {
+    if (product.stock === 0) {
+      return styles.cartButtonDisabled;
+    }
+    if (isAddingToCart) {
+      return styles.cartButtonLoading;
+    }
+    if (productInCart) {
+      return styles.cartButtonActive;
+    }
+    return styles.cartButton;
   };
 
   return (
@@ -138,6 +214,29 @@ const ProductCard = ({
             color={isFavorite ? '#fff' : '#666'}
           />
         </TouchableOpacity>
+
+        {/* Indicador de stock bajo */}
+        {product.stock !== undefined && product.stock <= 5 && product.stock > 0 && (
+          <View style={styles.stockBadge}>
+            <Text style={styles.stockBadgeText}>
+              ¡Últimas {product.stock}!
+            </Text>
+          </View>
+        )}
+
+        {/* Indicador de sin stock */}
+        {product.stock === 0 && (
+          <View style={styles.outOfStockBadge}>
+            <Text style={styles.outOfStockText}>Sin stock</Text>
+          </View>
+        )}
+
+        {/* ✅ OVERLAY DE LOADING CUANDO SE ESTÁ AGREGANDO AL CARRITO */}
+        {isAddingToCart && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="small" color="#4A4170" />
+          </View>
+        )}
       </View>
 
       {/* Contenido de información */}
@@ -152,29 +251,34 @@ const ProductCard = ({
           {formatPrice(product.price)}
         </Text>
 
-        {/* Stock info si está disponible */}
-        {product.stock !== undefined && product.stock <= 5 && product.stock > 0 && (
-          <Text style={styles.stockWarning}>
-            Solo {product.stock} disponibles
-          </Text>
-        )}
+        {/* Información adicional */}
+        <View style={styles.bottomRow}>
+          {/* Indicador si está en carrito */}
+          {productInCart && cartQuantity > 0 && (
+            <View style={styles.cartIndicator}>
+              <Icon name="shopping-cart" size={12} color="#4A4170" />
+              <Text style={styles.cartIndicatorText}>{cartQuantity}</Text>
+            </View>
+          )}
 
-        {/* Botón de carrito */}
-        <TouchableOpacity
-          style={[
-            styles.cartButton,
-            product.stock === 0 && styles.cartButtonDisabled
-          ]}
-          onPress={() => onAddToCart && onAddToCart(product)}
-          disabled={product.stock === 0}
-          activeOpacity={0.8}
-        >
-          <Icon
-            name={product.stock === 0 ? "block" : "shopping-cart"}
-            size={16}
-            color="#fff"
-          />
-        </TouchableOpacity>
+          {/* Botón de carrito */}
+          <TouchableOpacity
+            style={getCartButtonStyle()}
+            onPress={handleAddToCart}
+            disabled={product.stock === 0 || isAddingToCart}
+            activeOpacity={0.8}
+          >
+            {isAddingToCart ? (
+              <ActivityIndicator size={16} color="#fff" />
+            ) : (
+              <Icon
+                name={getCartIcon()}
+                size={16}
+                color="#fff"
+              />
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -237,16 +341,53 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
 
-  favoriteIndicator: {
+  stockBadge: {
     position: 'absolute',
     top: 8,
     left: 8,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: '#f39c12',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+
+  stockBadgeText: {
+    fontSize: 10,
+    color: '#fff',
+    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
+  },
+
+  outOfStockBadge: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+
+  outOfStockText: {
+    fontSize: 14,
+    color: '#fff',
+    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
+  },
+
+  // ✅ OVERLAY DE LOADING
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
   },
 
   content: {
@@ -273,17 +414,31 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins-Bold',
   },
 
-  stockWarning: {
+  bottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+
+  cartIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e8f4fd',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+
+  cartIndicatorText: {
     fontSize: 12,
-    color: '#e74c3c',
-    marginBottom: 8,
-    fontFamily: 'Poppins-Medium',
+    color: '#4A4170',
+    fontWeight: 'bold',
+    marginLeft: 4,
+    fontFamily: 'Poppins-Bold',
   },
 
   cartButton: {
-    position: 'absolute',
-    bottom: 12,
-    right: 12,
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -300,8 +455,48 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
 
+  cartButtonActive: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#2ecc71',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+
   cartButtonDisabled: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#ccc',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // ✅ ESTILO PARA EL BOTÓN CUANDO ESTÁ CARGANDO
+  cartButtonLoading: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#9b59b6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
 });
 

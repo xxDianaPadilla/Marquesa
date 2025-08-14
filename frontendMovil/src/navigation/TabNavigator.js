@@ -8,10 +8,10 @@ import chatIcon from "../images/chatIcon.png";
 import shoppingCartIcon from "../images/shoppingCartIcon.png";
 import HomeScreen from "../screens/HomeScreen";
 import FavoritesScreen from "../screens/FavoritesScreen"; // ← ESTE IMPORT SÍ LO DEJAS
+import ShoppingCart from "../screens/ShoppingCart";
 
 // ELIMINA ESTA LÍNEA: const FavoritesScreen = () => HomeScreen;
 const ChatScreen = () => HomeScreen; 
-const ShoppingCartScreen = () => HomeScreen;
 const Tab = createBottomTabNavigator();
 
 const TabIcon = ({ focused, iconSource, size, color }) => {
@@ -130,7 +130,7 @@ const TabNavigator = () => {
             />
             <Tab.Screen 
                 name="ShoppingCart" 
-                component={ShoppingCartScreen}
+                component={ShoppingCart}
                 options={{
                     tabBarLabel: 'Carrito'
                 }}

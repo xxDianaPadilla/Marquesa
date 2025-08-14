@@ -22,7 +22,7 @@ const getCookieConfig = () => {
             httpOnly: false,
             secure: true,
             sameSite: 'none',
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
+            maxAge: 7 * 24 * 60 * 60 * 1000, 
             path: '/',
         };
     } else {
@@ -333,43 +333,43 @@ loginController.login = async (req, res) => {
             // Limpiar los intentos fallidos
             RateLimitUtils.clearAttempts(cleanEmail);
 
-            // ✅ NUEVO: Generar token con expiración más larga para compensar falta de cookies
+            // Generamos token con expiración más larga para compensar falta de cookies
             const tokenPayload = {
                 id: userFound._id,
                 userType,
-                email: cleanEmail, // ✅ NUEVO: Incluir email para mejor identificación
-                iat: Math.floor(Date.now() / 1000), // ✅ NUEVO: Timestamp de creación
+                email: cleanEmail, 
+                iat: Math.floor(Date.now() / 1000), 
             };
 
             const token = await generateJWT(tokenPayload);
 
-            console.log('🍪 Intentando establecer cookie (puede fallar en cross-domain)');
+            console.log('Intentando establecer cookie (puede fallar en cross-domain)');
 
-            // ✅ ESTRATEGIA DUAL: Intentar cookie pero no depender de ella
+            // Intentamos cookie pero no depender de ella
             try {
                 const cookieConfig = getCookieConfig();
                 res.cookie("authToken", token, cookieConfig);
-                console.log('✅ Cookie establecida (si el navegador la acepta)');
+                console.log('Cookie establecida (si el navegador la acepta)');
             } catch (cookieError) {
-                console.log('⚠️ Error al establecer cookie (esperado en cross-domain):', cookieError.message);
+                console.log('Error al establecer cookie (esperado en cross-domain):', cookieError.message);
             }
 
-            // ✅ HEADERS MEJORADOS: Para cross-domain
+            // Para cross-domain
             if (process.env.NODE_ENV === 'production') {
                 res.header('Access-Control-Allow-Credentials', 'true');
                 res.header('Access-Control-Allow-Origin', 'https://marquesa.vercel.app');
                 res.header('Access-Control-Expose-Headers', 'Authorization, Set-Cookie');
             }
 
-            console.log('✅ Login exitoso - enviando respuesta con token');
+            console.log('Login exitoso - enviando respuesta con token');
 
-            // ✅ RESPUESTA OPTIMIZADA: Token como fuente principal de verdad
+            // Token como fuente principal de verdad
             res.status(200).json({
                 success: true,
                 message: "login successful",
                 userType: userType,
-                token: token, // ✅ CRÍTICO: Token siempre en el body
-                tokenExpiry: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60), // 7 días desde ahora
+                token: token,
+                tokenExpiry: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60), 
                 cookieAttempted: true,
                 user: {
                     id: userFound._id,
@@ -379,11 +379,11 @@ loginController.login = async (req, res) => {
                 sessionInfo: {
                     loginTime: new Date().toISOString(),
                     expiresIn: '7 days',
-                    persistent: true // ✅ NUEVO: Indicar que es sesión persistente
+                    persistent: true 
                 }
             });
         } catch (jwtError) {
-            console.error('❌ Error generando token:', jwtError);
+            console.error('Error generando token:', jwtError);
             return res.status(500).json({
                 success: false,
                 message: "Error generating authentication token"

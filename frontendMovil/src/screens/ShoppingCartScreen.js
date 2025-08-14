@@ -1,36 +1,42 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
-  Image, 
-  TextInput, 
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  TextInput,
   Alert,
   ActivityIndicator,
   RefreshControl,
   ToastAndroid,
   Platform
 } from 'react-native';
-import { AuthContext } from "../context/AuthContext";
-import { CartContext } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
+import { useCart } from "../context/CartContext";
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import iconBasura from '../images/iconBasura.png';
 import backIcon from '../images/backIcon.png';
 
 const ShoppingCart = ({ navigation }) => {
-  // Usar useContext para acceder a los contextos
-  const { isAuthenticated, user } = useContext(AuthContext);
+  const { isAuthenticated, user } = useAuth();
   const {
     cart,
+    cartItems,
     cartLoading,
     cartError,
+    subtotal,
+    cartTotal,
     updateItemQuantity,
     removeFromCart,
     getActiveCart,
-    clearCartError
-  } = useContext(CartContext);
+    clearCartError,
+    isCustomProduct,
+    getCustomizationDetails,
+    getCartStats,
+    getProductImage
+  } = useCart();
 
   const [refreshing, setRefreshing] = useState(false);
   const [discountCode, setDiscountCode] = useState('');
@@ -51,22 +57,40 @@ const ShoppingCart = ({ navigation }) => {
     if (isAuthenticated && user?.id) {
       getActiveCart();
     }
-  }, [isAuthenticated, user?.id]);
+  }, [isAuthenticated, user?.id, getActiveCart]);
 
   // Limpiar errores cuando cambie el componente
   useEffect(() => {
     return () => {
-      clearCartError();
+      if (clearCartError) {
+        clearCartError();
+      }
     };
-  }, []);
+  }, [clearCartError]);
+
+  // Log para debugging - Ver estadísticas del carrito
+  useEffect(() => {
+    if (cartItems.length > 0) {
+      const stats = getCartStats();
+      console.log('Estadísticas del carrito:', stats);
+      console.log('Items del carrito:', cartItems.map(item => ({
+        id: item.id,
+        name: item.name,
+        type: item.itemType,
+        isCustom: isCustomProduct(item),
+        price: item.price,
+        quantity: item.quantity
+      })));
+    }
+  }, [cartItems, getCartStats, isCustomProduct]);
 
   // Función para refrescar el carrito
   const onRefresh = async () => {
-    if (!isAuthenticated) return;
-    
+    if (!isAuthenticated || !getActiveCart) return;
+
     setRefreshing(true);
     try {
-      await getActiveCart();
+      await getActiveCart(true);
     } catch (error) {
       console.error('Error al refrescar carrito:', error);
     } finally {
@@ -74,46 +98,44 @@ const ShoppingCart = ({ navigation }) => {
     }
   };
 
-  // Actualizar cantidad con validación y feedback
+  // Actualizamos cantidad con mejor manejo de tipos
   const handleUpdateQuantity = async (itemId, delta) => {
     try {
-      if (!cart || !itemId) return;
+      if (!cartItems || !itemId || !updateItemQuantity) return;
 
-      const currentItem = cart.items.find(item => 
-        (item.itemId?._id || item.itemId) === itemId
-      );
-      
+      // Buscamos el item en cartItems transformados
+      const currentItem = cartItems.find(item => item.id === itemId);
+
       if (!currentItem) {
         Alert.alert('Error', 'Producto no encontrado en el carrito');
         return;
       }
 
       const newQuantity = Math.max(1, currentItem.quantity + delta);
-      
-      // Verificar límite máximo
+
       if (newQuantity > 99) {
         Alert.alert('Límite alcanzado', 'No puedes agregar más de 99 unidades');
         return;
       }
 
-      // Si es la misma cantidad, no hacer nada
       if (newQuantity === currentItem.quantity) return;
 
       // Marcar item como actualizándose
       setUpdatingItems(prev => new Set([...prev, itemId]));
 
+      console.log(`Actualizando cantidad de ${isCustomProduct(currentItem) ? 'producto personalizado' : 'producto'}: ${currentItem.name}`);
+
       const result = await updateItemQuantity(itemId, newQuantity);
 
-      if (result.success) {
+      if (result && result.success) {
         showToast(`Cantidad actualizada: ${newQuantity}`);
       } else {
-        Alert.alert('Error', result.message || 'No se pudo actualizar la cantidad');
+        Alert.alert('Error', result?.message || 'No se pudo actualizar la cantidad');
       }
     } catch (error) {
       console.error('Error al actualizar cantidad:', error);
       Alert.alert('Error', 'Error inesperado al actualizar cantidad');
     } finally {
-      // Quitar marca de actualización
       setUpdatingItems(prev => {
         const newSet = new Set(prev);
         newSet.delete(itemId);
@@ -122,12 +144,19 @@ const ShoppingCart = ({ navigation }) => {
     }
   };
 
-  // Remover item con confirmación
-  const handleRemoveItem = async (itemId, itemName) => {
+  // Removemos item con mejor manejo de tipos
+  const handleRemoveItem = async (itemId, itemName, itemType) => {
     try {
+      if (!removeFromCart) {
+        Alert.alert('Error', 'Función no disponible');
+        return;
+      }
+
+      const productTypeText = itemType === 'custom' ? 'producto personalizado' : 'producto';
+
       Alert.alert(
         'Confirmar eliminación',
-        `¿Estás seguro de que quieres eliminar "${itemName}" del carrito?`,
+        `¿Estás seguro de que quieres eliminar este ${productTypeText} "${itemName}" del carrito?`,
         [
           {
             text: 'Cancelar',
@@ -137,18 +166,18 @@ const ShoppingCart = ({ navigation }) => {
             text: 'Eliminar',
             style: 'destructive',
             onPress: async () => {
-              // Marcar item como actualizándose
               setUpdatingItems(prev => new Set([...prev, itemId]));
+
+              console.log(`Eliminando ${productTypeText}: ${itemName}`);
 
               const result = await removeFromCart(itemId);
 
-              if (result.success) {
+              if (result && result.success) {
                 showToast(`${itemName} eliminado del carrito`);
               } else {
-                Alert.alert('Error', result.message || 'No se pudo eliminar el producto');
+                Alert.alert('Error', result?.message || 'No se pudo eliminar el producto');
               }
 
-              // Quitar marca de actualización
               setUpdatingItems(prev => {
                 const newSet = new Set(prev);
                 newSet.delete(itemId);
@@ -172,13 +201,11 @@ const ShoppingCart = ({ navigation }) => {
     }
 
     setApplyingDiscount(true);
-    
+
     try {
       // Aquí implementarías la lógica para aplicar descuentos
-      // Por ahora es un placeholder
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      showToast('Código de descuento aplicado'); // O mostrar error si no es válido
+      showToast('Código de descuento aplicado');
       setDiscountCode('');
     } catch (error) {
       Alert.alert('Error', 'Código de descuento no válido');
@@ -189,40 +216,81 @@ const ShoppingCart = ({ navigation }) => {
 
   // Proceder al checkout
   const handleCheckout = () => {
-    if (!cart || !cart.items || cart.items.length === 0) {
+    if (!cartItems || cartItems.length === 0) {
       Alert.alert('Carrito vacío', 'Agrega algunos productos antes de continuar');
       return;
     }
 
-    // Navegar a la pantalla de checkout
-    navigation.navigate('Checkout', { 
+    // Mostramos estadísticas antes del checkout
+    const stats = getCartStats();
+    console.log('Procediendo al checkout con:', stats);
+
+    navigation.navigate('Checkout', {
       cart: cart,
-      total: cart.total 
+      cartItems: cartItems,
+      total: cartTotal || subtotal,
+      stats: stats
     });
   };
 
-  // Función para obtener imagen del producto
-  const getProductImage = (item) => {
-    if (!item.itemId) return 'https://via.placeholder.com/80x80/f0f0f0/666666?text=Sin+Imagen';
+  //COMPONENTE PARA MOSTRAR DETALLES DE PERSONALIZACIÓN
+  const CustomizationDetails = ({ item }) => {
+    const details = getCustomizationDetails(item);
 
-    const product = item.itemId;
-    
-    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
-      const firstImage = product.images[0];
-      if (typeof firstImage === 'object' && firstImage.image) {
-        return firstImage.image;
-      }
-      if (typeof firstImage === 'string') {
-        return firstImage;
-      }
-    }
+    if (!details) return null;
 
-    if (product.image) {
-      return product.image;
-    }
-
-    return 'https://via.placeholder.com/80x80/f0f0f0/666666?text=Sin+Imagen';
+    return (
+      <View style={styles.customizationContainer}>
+        <Text style={styles.customizationTitle}>🎨 Personalización:</Text>
+        {details.extraComments && (
+          <Text style={styles.customizationText}>• {details.extraComments}</Text>
+        )}
+        {details.designDetails && (
+          <Text style={styles.customizationText}>• Diseño: {details.designDetails}</Text>
+        )}
+        {details.materialPreferences && (
+          <Text style={styles.customizationText}>• Material: {details.materialPreferences}</Text>
+        )}
+        {details.colorPreferences && (
+          <Text style={styles.customizationText}>• Color: {details.colorPreferences}</Text>
+        )}
+        {details.sizePreferences && (
+          <Text style={styles.customizationText}>• Tamaño: {details.sizePreferences}</Text>
+        )}
+      </View>
+    );
   };
+
+  //Componente para mostrar imagen o emoji personalizado
+  const ProductImageOrEmoji = ({ item, isCustom }) => {
+    if (isCustom) {
+      return (
+        <View style={styles.customProductContainer}>
+          <Text style={styles.customProductEmoji}>🎨</Text>
+          <Text style={styles.customProductLabel}>Personalizado</Text>
+        </View>
+      );
+    }
+
+    return (
+      <Image
+        source={{ uri: getProductImage(item) }}
+        style={styles.itemImage}
+      />
+    );
+  };
+
+  // Verificar que los contextos estén disponibles
+  if (!isAuthenticated && isAuthenticated !== false) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#4A4170" />
+          <Text style={styles.loadingText}>Cargando...</Text>
+        </View>
+      </View>
+    );
+  }
 
   // Si no está autenticado
   if (!isAuthenticated) {
@@ -242,7 +310,7 @@ const ShoppingCart = ({ navigation }) => {
           <Text style={styles.emptyStateText}>
             Debes iniciar sesión para ver tu carrito de compras
           </Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.loginButton}
             onPress={() => navigation.navigate('Login')}
           >
@@ -254,7 +322,7 @@ const ShoppingCart = ({ navigation }) => {
   }
 
   // Si hay error y no hay datos del carrito
-  if (cartError && !cart) {
+  if (cartError && !cartItems.length) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
@@ -269,9 +337,9 @@ const ShoppingCart = ({ navigation }) => {
           <Icon name="error-outline" size={80} color="#e74c3c" />
           <Text style={styles.errorStateTitle}>Error al cargar carrito</Text>
           <Text style={styles.errorStateText}>{cartError}</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.retryButton}
-            onPress={() => getActiveCart()}
+            onPress={() => getActiveCart && getActiveCart(true)}
           >
             <Text style={styles.retryButtonText}>Reintentar</Text>
           </TouchableOpacity>
@@ -279,11 +347,6 @@ const ShoppingCart = ({ navigation }) => {
       </View>
     );
   }
-
-  // Calcular totales
-  const subtotal = cart?.items?.reduce((sum, item) => sum + (item.subtotal || 0), 0) || 0;
-  const envio = 10; // Costo fijo de envío
-  const total = subtotal + envio;
 
   return (
     <View style={styles.container}>
@@ -301,14 +364,18 @@ const ShoppingCart = ({ navigation }) => {
         <View style={styles.errorBanner}>
           <Icon name="warning" size={16} color="#e74c3c" />
           <Text style={styles.errorBannerText}>{cartError}</Text>
-          <TouchableOpacity onPress={clearCartError}>
+          <TouchableOpacity onPress={() => clearCartError && clearCartError()}>
             <Icon name="close" size={16} color="#e74c3c" />
           </TouchableOpacity>
         </View>
       )}
 
-      <ScrollView 
+      {/* SCROLL VIEW MEJORADO */}
+      <ScrollView
+        style={styles.scrollContainer}
         contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={true}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -319,7 +386,7 @@ const ShoppingCart = ({ navigation }) => {
         }
       >
         {/* Loading inicial */}
-        {cartLoading && !cart && (
+        {cartLoading && cartItems.length === 0 && (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#4A4170" />
             <Text style={styles.loadingText}>Cargando carrito...</Text>
@@ -327,14 +394,14 @@ const ShoppingCart = ({ navigation }) => {
         )}
 
         {/* Carrito vacío */}
-        {!cartLoading && (!cart || !cart.items || cart.items.length === 0) && (
+        {!cartLoading && cartItems.length === 0 && (
           <View style={styles.emptyStateContainer}>
             <Icon name="shopping-cart" size={80} color="#ccc" />
             <Text style={styles.emptyStateTitle}>Tu carrito está vacío</Text>
             <Text style={styles.emptyStateText}>
               Agrega algunos productos para comenzar tu compra
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.keepShoppingButton}
               onPress={() => navigation.navigate('Home')}
             >
@@ -343,16 +410,33 @@ const ShoppingCart = ({ navigation }) => {
           </View>
         )}
 
-        {/* Items del carrito */}
-        {cart && cart.items && cart.items.length > 0 && cart.items.map((item, index) => {
-          const itemId = item.itemId?._id || item.itemId;
+        {/* ESTADÍSTICAS DEL CARRITO */}
+        {cartItems.length > 0 && (
+          <View style={styles.statsContainer}>
+            <Text style={styles.statsText}>
+              {(() => {
+                const stats = getCartStats();
+                let text = `${stats.total} producto${stats.total !== 1 ? 's' : ''} en tu carrito`;
+                if (stats.custom > 0) {
+                  text += ` (${stats.custom} personalizado${stats.custom !== 1 ? 's' : ''})`;
+                }
+                return text;
+              })()}
+            </Text>
+          </View>
+        )}
+
+        {/* ITEMS DEL CARRITO */}
+        {cartItems.map((item, index) => {
+          const itemId = item.id;
           const isUpdating = updatingItems.has(itemId);
-          const product = item.itemId || {};
+          const isCustom = isCustomProduct(item);
 
           return (
             <View key={`${itemId}-${index}`} style={[
               styles.cartItem,
-              isUpdating && styles.cartItemUpdating
+              isUpdating && styles.cartItemUpdating,
+              isCustom && styles.cartItemCustom 
             ]}>
               {/* Overlay de loading */}
               {isUpdating && (
@@ -361,59 +445,55 @@ const ShoppingCart = ({ navigation }) => {
                 </View>
               )}
 
-              <Image 
-                source={{ uri: getProductImage(item) }} 
-                style={styles.itemImage} 
-              />
-              
+              {/* Mostramos emoji para productos personalizados o imagen normal */}
+              <ProductImageOrEmoji item={item} isCustom={isCustom} />
+
               <View style={styles.itemDetails}>
                 <Text style={styles.itemName}>
-                  {product.name || 'Producto sin nombre'}
+                  {item.name || 'Producto sin nombre'}
                 </Text>
-                <Text style={styles.itemPrice}>
-                  ${product.price || item.subtotal / (item.quantity || 1) || 0}
-                </Text>
+
+                {/* PRECIO CON INDICADOR DE TIPO */}
+                <View style={styles.priceContainer}>
+                  <Text style={styles.itemPrice}>
+                    ${item.price || 0}
+                  </Text>
+                </View>
+
+                {/* DESCRIPCIÓN PARA PRODUCTOS PERSONALIZADOS */}
+                {item.description && (
+                  <Text style={styles.itemDescription} numberOfLines={2}>
+                    {item.description}
+                  </Text>
+                )}
+
+                {/* DETALLES DE PERSONALIZACIÓN */}
+                {isCustom && <CustomizationDetails item={item} />}
               </View>
 
               <View style={styles.rightSection}>
                 {/* Botón de eliminar */}
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.trashButton, isUpdating && styles.buttonDisabled]}
-                  onPress={() => handleRemoveItem(itemId, product.name)}
+                  onPress={() => handleRemoveItem(itemId, item.name, item.itemType)}
                   disabled={isUpdating}
                 >
                   <Image source={iconBasura} style={styles.trashIcon} />
                 </TouchableOpacity>
 
-                {/* Controles de cantidad */}
-                <View style={styles.quantityContainer}>
-                  <TouchableOpacity
-                    style={[styles.quantityButton, isUpdating && styles.buttonDisabled]}
-                    onPress={() => handleUpdateQuantity(itemId, -1)}
-                    disabled={isUpdating || item.quantity <= 1}
-                  >
-                    <Text style={styles.quantityButtonText}>-</Text>
-                  </TouchableOpacity>
-                  
-                  <Text style={styles.quantityText}>{item.quantity || 0}</Text>
-                  
-                  <TouchableOpacity
-                    style={[styles.quantityButton, isUpdating && styles.buttonDisabled]}
-                    onPress={() => handleUpdateQuantity(itemId, 1)}
-                    disabled={isUpdating || item.quantity >= 99}
-                  >
-                    <Text style={styles.quantityButtonText}>+</Text>
-                  </TouchableOpacity>
-                </View>
+                {/* SUBTOTAL DEL ITEM */}
+                <Text style={styles.itemSubtotal}>
+                  ${((item.price || 0) * (item.quantity || 1)).toFixed(2)}
+                </Text>
               </View>
             </View>
           );
         })}
 
-        {/* Botón seguir comprando */}
-        {cart && cart.items && cart.items.length > 0 && (
+        {/* Botón seguir comprando y totales */}
+        {cartItems.length > 0 && (
           <>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.keepWorkingButton}
               onPress={() => navigation.navigate('Home')}
             >
@@ -424,32 +504,30 @@ const ShoppingCart = ({ navigation }) => {
             <View style={styles.totalContainer}>
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Sub Total</Text>
-                <Text style={styles.totalValue}>${subtotal.toFixed(2)}</Text>
-              </View>
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Envío</Text>
-                <Text style={styles.totalValue}>${envio.toFixed(2)}</Text>
+                <Text style={styles.totalValue}>${(subtotal || 0).toFixed(2)}</Text>
               </View>
 
               <View style={styles.totalSeparator} />
 
               <View style={styles.totalRow}>
                 <Text style={[styles.totalLabel, styles.totalBold]}>Total</Text>
-                <Text style={[styles.totalValue, styles.totalBold]}>${total.toFixed(2)}</Text>
+                <Text style={[styles.totalValue, styles.totalBold]}>
+                  ${(cartTotal || subtotal || 0).toFixed(2)}
+                </Text>
               </View>
             </View>
 
             {/* Código de descuento */}
             <Text style={styles.discountLabel}>Código de descuento</Text>
             <View style={styles.discountRow}>
-              <TextInput 
-                placeholder="Introducir código" 
+              <TextInput
+                placeholder="Introducir código"
                 style={styles.discountInput}
                 value={discountCode}
                 onChangeText={setDiscountCode}
                 editable={!applyingDiscount}
               />
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.applyButton, applyingDiscount && styles.buttonDisabled]}
                 onPress={handleApplyDiscount}
                 disabled={applyingDiscount}
@@ -463,7 +541,7 @@ const ShoppingCart = ({ navigation }) => {
             </View>
 
             {/* Botón de compra */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.checkoutButton, cartLoading && styles.buttonDisabled]}
               onPress={handleCheckout}
               disabled={cartLoading}
@@ -481,26 +559,36 @@ const ShoppingCart = ({ navigation }) => {
   );
 };
 
+// ESTILOS CON SCROLL Y EMOJI PERSONALIZADO
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#fff' 
+  container: {
+    flex: 1,
+    backgroundColor: '#ffffff'
   },
-  header: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    paddingHorizontal: 16, 
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
     paddingVertical: 25,
+    backgroundColor: '#fff',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    zIndex: 1,
   },
-  backButton: { 
-    padding: 4 
+  backButton: {
+    padding: 4,
+    marginTop: 15,
   },
-  headerTitle: { 
-    flex: 1, 
-    textAlign: 'center', 
-    fontSize: 18, 
-    fontWeight: '600', 
-    color: '#333' 
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 15,
   },
   errorBanner: {
     flexDirection: 'row',
@@ -520,14 +608,20 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontFamily: 'Poppins-Regular',
   },
-  scrollContent: { 
-    padding: 16 
+  scrollContainer: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 32, 
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 60,
+    minHeight: 200,
   },
   loadingText: {
     fontSize: 16,
@@ -540,6 +634,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 60,
+    minHeight: 300,
   },
   emptyStateTitle: {
     fontSize: 20,
@@ -574,6 +669,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 60,
+    minHeight: 300,
   },
   errorStateTitle: {
     fontSize: 20,
@@ -603,12 +699,31 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: 'Poppins-SemiBold',
   },
+  statsContainer: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4A4170',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  statsText: {
+    fontSize: 14,
+    color: '#4A4170',
+    fontWeight: '500',
+    fontFamily: 'Poppins-Medium',
+  },
   cartItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 12,
+    padding: 16,
     marginBottom: 12,
     elevation: 2,
     shadowColor: '#000',
@@ -619,6 +734,11 @@ const styles = StyleSheet.create({
   },
   cartItemUpdating: {
     opacity: 0.7,
+  },
+  cartItemCustom: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#E8ACD2',
+    backgroundColor: '#fefefe',
   },
   itemLoadingOverlay: {
     position: 'absolute',
@@ -632,32 +752,91 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     zIndex: 10,
   },
-  itemImage: { 
+  itemImage: {
     width: 80,
     height: 80,
-    borderRadius: 12, 
-    resizeMode: 'cover' 
+    borderRadius: 12,
+    resizeMode: 'cover'
   },
-  itemDetails: { 
-    flex: 1, 
-    marginLeft: 12, 
-    marginRight: 8 
+  customProductContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#E8ACD2',
+    borderStyle: 'dashed',
   },
-  itemName: { 
-    fontSize: 16, 
-    fontWeight: '500', 
-    color: '#333', 
+  customProductEmoji: {
+    fontSize: 32,
+    marginBottom: 4,
+  },
+  customProductLabel: {
+    fontSize: 8,
+    color: '#E8ACD2',
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
+    textAlign: 'center',
+  },
+  itemDetails: {
+    flex: 1,
+    marginLeft: 12,
+    marginRight: 8
+  },
+  itemName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
     marginBottom: 4,
     fontFamily: 'Poppins-Medium',
   },
-  itemPrice: { 
-    fontSize: 13, 
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  itemPrice: {
+    fontSize: 13,
     color: '#3C3550',
     fontWeight: '500',
     fontFamily: 'Poppins-Medium',
   },
-  rightSection: {
-    alignItems: 'flex-end',
+  customPriceLabel: {
+    fontSize: 10,
+    color: '#E8ACD2',
+    fontWeight: '500',
+    fontFamily: 'Poppins-Medium',
+    marginLeft: 6,
+    fontStyle: 'italic',
+  },
+  itemDescription: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 8,
+    fontFamily: 'Poppins-Regular',
+  },
+  customizationContainer: {
+    backgroundColor: '#f8f9fa',
+    padding: 8,
+    borderRadius: 6,
+    marginBottom: 8,
+    borderLeftWidth: 2,
+    borderLeftColor: '#E8ACD2',
+  },
+  customizationTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#E8ACD2',
+    marginBottom: 4,
+    fontFamily: 'Poppins-SemiBold',
+  },
+  customizationText: {
+    fontSize: 10,
+    color: '#666',
+    marginBottom: 2,
+    fontFamily: 'Poppins-Regular',
   },
   quantityContainer: {
     flexDirection: 'row',
@@ -668,30 +847,47 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     marginTop: 8,
+    alignSelf: 'flex-start',
   },
-  quantityButton: { 
-    paddingHorizontal: 6,
+  quantityButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     opacity: 1,
   },
-  quantityButtonText: { 
-    fontSize: 16, 
-    color: '#FDB4B7', 
-    fontWeight: 'bold' 
+  quantityButtonText: {
+    fontSize: 16,
+    color: '#FDB4B7',
+    fontWeight: 'bold'
   },
-  quantityText: { 
-    fontSize: 14, 
-    marginHorizontal: 4,
+  quantityText: {
+    fontSize: 14,
+    marginHorizontal: 12,
     fontFamily: 'Poppins-Medium',
+    minWidth: 20,
+    textAlign: 'center',
   },
-  trashButton: { 
-    padding: 2,
+  rightSection: {
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    minHeight: 80,
+  },
+  trashButton: {
+    padding: 4,
     justifyContent: 'center',
-    alignItems: 'center' 
+    alignItems: 'center'
   },
-  trashIcon: { 
+  trashIcon: {
     width: 18,
     height: 18,
     tintColor: '#000'
+  },
+  itemSubtotal: {
+    fontSize: 14,
+    color: '#4A4170',
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
+    marginTop: 8,
+    textAlign: 'right',
   },
   buttonDisabled: {
     opacity: 0.5,
@@ -700,13 +896,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FDB4B7',
     borderRadius: 15,
-    paddingVertical: 10,
-    marginTop: 10,
+    paddingVertical: 12,
+    marginTop: 20,
     alignItems: 'center',
+    backgroundColor: '#fff',
   },
-  keepWorkingText: { 
-    color: '#000000', 
-    fontSize: 14, 
+  keepWorkingText: {
+    color: '#000000',
+    fontSize: 14,
     fontWeight: '500',
     fontFamily: 'Poppins-Medium',
   },
@@ -725,80 +922,95 @@ const styles = StyleSheet.create({
   },
   totalContainer: {
     backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 12,
+    padding: 16,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: 'rgba(153,153,153,0.5)',
+    borderColor: 'rgba(153,153,153,0.3)',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
   },
-  totalRow: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    marginVertical: 4 
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 4
   },
-  totalLabel: { 
-    fontSize: 14, 
+  totalLabel: {
+    fontSize: 14,
     color: '#333',
     fontFamily: 'Poppins-Regular',
   },
-  totalValue: { 
-    fontSize: 14, 
+  totalValue: {
+    fontSize: 14,
     color: '#333',
     fontFamily: 'Poppins-Regular',
   },
-  totalBold: { 
-    fontWeight: '700', 
+  totalBold: {
+    fontWeight: '700',
     fontSize: 16,
     fontFamily: 'Poppins-Bold',
+    color: '#4A4170',
   },
   totalSeparator: {
     borderTopWidth: 1,
-    borderTopColor: 'rgba(153,153,153,0.5)',
+    borderTopColor: 'rgba(153,153,153,0.3)',
     marginVertical: 8,
   },
-  discountLabel: { 
-    marginTop: 16, 
-    fontSize: 16, 
-    color: '#333', 
+  discountLabel: {
+    marginTop: 20,
+    fontSize: 16,
+    color: '#333',
     fontWeight: '700',
     fontFamily: 'Poppins-Bold',
   },
-  discountRow: { 
-    flexDirection: 'row', 
-    marginTop: 8 
+  discountRow: {
+    flexDirection: 'row',
+    marginTop: 8
   },
   discountInput: {
     flex: 1,
     borderWidth: 1,
     borderColor: 'rgba(153,153,153,0.5)',
     borderRadius: 8,
-    paddingHorizontal: 8,
-    height: 40,
+    paddingHorizontal: 12,
+    height: 44,
     fontFamily: 'Poppins-Regular',
+    backgroundColor: '#fff',
+    marginBottom: 20,
   },
   applyButton: {
     backgroundColor: '#E8ACD2',
     borderRadius: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     justifyContent: 'center',
     marginLeft: 8,
     minWidth: 80,
+    height: 44,
   },
-  applyButtonText: { 
-    color: '#fff', 
+  applyButtonText: {
+    color: '#fff',
     fontWeight: '500',
     fontFamily: 'Poppins-Medium',
+    textAlign: 'center',
   },
   checkoutButton: {
     backgroundColor: '#FDB4B7',
     borderRadius: 15,
-    paddingVertical: 12,
+    paddingVertical: 16,
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: 20,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
   },
-  checkoutButtonText: { 
-    color: '#fff', 
-    fontSize: 16, 
+  checkoutButtonText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: '600',
     fontFamily: 'Poppins-SemiBold',
   },

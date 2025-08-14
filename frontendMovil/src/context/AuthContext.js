@@ -71,10 +71,38 @@ export const AuthProvider = ({ children }) => {
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [isLoggingIn, setIsLoggingIn] = useState(false);
 
+    // Estado para coordinar con CartContext
+    const [authReady, setAuthReady] = useState(false);
+
+    // Función para guardar token automáticamente
+    const saveTokenToStorage = async (token) => {
+        try {
+            console.log('Guardando token en AsyncStorage...');
+            await AsyncStorage.setItem('authToken', token);
+            console.log('Token guardado exitosamente');
+            return true;
+        } catch (error) {
+            console.error('Error al guardar el token en storage:', error);
+            return false;
+        }
+    };
+
     // Obtenemos token con mejor manejo de errores
     const getBestAvailableToken = useCallback(async () => {
         try {
-            return await getTokenFromStorage();
+            const token = await AsyncStorage.getItem('authToken');
+            if (token) {
+                // Verificamos que el token no haya expirado
+                const decoded = decodeToken(token);
+                if (decoded && decoded.exp * 1000 > Date.now()) {
+                    return token;
+                } else {
+                    console.log('Token expirado, eliminando...');
+                    await AsyncStorage.removeItem('authToken');
+                    return null;
+                }
+            }
+            return null;
         } catch (error) {
             console.error('Error al obtener token:', error);
             return null;
@@ -88,16 +116,6 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
             console.error('Error al obtener el token del storage: ', error);
             return null;
-        }
-    };
-
-    const saveTokenToStorage = async (token) => {
-        try {
-            await AsyncStorage.setItem('authToken', token);
-            return true;
-        } catch (error) {
-            console.error('Error al guardar el token en storage: ', error);
-            return false;
         }
     };
 
@@ -161,11 +179,6 @@ export const AuthProvider = ({ children }) => {
             }, {})
         };
 
-        console.log('Product normalized:', {
-            original: product,
-            normalized: normalizedProduct
-        });
-
         return normalizedProduct;
     }, [user?.id, getProductId]);
 
@@ -228,6 +241,10 @@ export const AuthProvider = ({ children }) => {
                     console.log('Información del usuario obtenida: ', data.user);
                     setUserInfo(data.user);
                     setAuthError(null);
+
+                    // Marcamos auth como listo después de obtener userInfo
+                    setAuthReady(true);
+
                     return data.user;
                 } else {
                     console.warn('Respuesta sin éxito: ', data?.message);
@@ -448,9 +465,13 @@ export const AuthProvider = ({ children }) => {
         }
     }, [favorites, getProductId, isAuthenticated]);
 
+    // Función para limpiar datos de auth
     const clearAuthData = async (fromLogout = false) => {
         try {
-            console.log('Limpiando datos de autenticación...');
+            console.log('🧹 Limpiando datos de autenticación...');
+
+            // Marcamos auth como no listo
+            setAuthReady(false);
 
             // Limpiamos token del storage
             await removeTokenFromStorage();
@@ -465,7 +486,7 @@ export const AuthProvider = ({ children }) => {
             setFavorites([]);
             setFavoritesError(null);
 
-            // Solo cambiamos loading si no viene del logout
+            // Cambiamos loading si no viene del logout
             if (!fromLogout) {
                 setLoading(false);
             }
@@ -475,6 +496,7 @@ export const AuthProvider = ({ children }) => {
             console.error('Error al limpiar datos de autenticación:', error);
 
             // Aseguramos que al menos se limpien los estados principales
+            setAuthReady(false);
             setUser(null);
             setUserInfo(null);
             setIsAuthenticated(false);
@@ -543,6 +565,11 @@ export const AuthProvider = ({ children }) => {
             if (response.ok && data.success) {
                 console.log('Producto agregado a favoritos exitosamente');
 
+                // Guardamos token si viene en respuesta
+                if (data.token) {
+                    await saveTokenToStorage(data.token);
+                }
+
                 // Actualizamos la lista de favoritos
                 await getFavorites(token);
                 return { success: true, message: data.message || 'Producto agregado a favoritos' };
@@ -571,7 +598,7 @@ export const AuthProvider = ({ children }) => {
             setFavoritesError(errorMessage);
             return { success: false, message: errorMessage };
         }
-    }, [isAuthenticated, getBestAvailableToken, normalizeProduct, getProductId, getFavorites]);
+    }, [isAuthenticated, getBestAvailableToken, normalizeProduct, getProductId, getFavorites, saveTokenToStorage]);
 
     // Removemos producto de favoritos con lógica mejorada
     const removeFromFavorites = useCallback(async (productId) => {
@@ -618,6 +645,11 @@ export const AuthProvider = ({ children }) => {
             if (response.ok && data.success) {
                 console.log('Producto removido de favoritos exitosamente');
 
+                // Guardamos token si viene en respuesta
+                if (data.token) {
+                    await saveTokenToStorage(data.token);
+                }
+
                 // Actualizamos la lista de favoritos
                 await getFavorites(token);
                 return { success: true, message: data.message || 'Producto removido de favoritos' };
@@ -646,7 +678,7 @@ export const AuthProvider = ({ children }) => {
             setFavoritesError(errorMessage);
             return { success: false, message: errorMessage };
         }
-    }, [isAuthenticated, getBestAvailableToken, getFavorites]);
+    }, [isAuthenticated, getBestAvailableToken, getFavorites, saveTokenToStorage]);
 
     // Toggle favorito con lógica mejorada
     const toggleFavorite = useCallback(async (product) => {
@@ -704,6 +736,11 @@ export const AuthProvider = ({ children }) => {
             if (response.ok && data.success) {
                 console.log('Toggle favorito exitoso');
 
+                // Guardamos token si viene en respuesta
+                if (data.token) {
+                    await saveTokenToStorage(data.token);
+                }
+
                 // Actualizamos la lista de favoritos
                 await getFavorites(token);
                 return {
@@ -736,9 +773,9 @@ export const AuthProvider = ({ children }) => {
             setFavoritesError(errorMessage);
             return { success: false, message: errorMessage };
         }
-    }, [isAuthenticated, getBestAvailableToken, getProductId, isFavorite, getFavorites]);
+    }, [isAuthenticated, getBestAvailableToken, getProductId, isFavorite, getFavorites, saveTokenToStorage]);
 
-    // NUEVA FUNCIÓN: Limpiar todos los favoritos
+    // Limpiamos todos los favoritos
     const clearAllFavorites = useCallback(async () => {
         try {
             if (!isAuthenticated) {
@@ -750,7 +787,7 @@ export const AuthProvider = ({ children }) => {
                 return { success: false, message: 'No hay sesión activa' };
             }
 
-            // Recargar favoritos desde el servidor
+            // Recargamos favoritos desde el servidor
             await getFavorites(token);
             return { success: true, message: 'Favoritos actualizados' };
         } catch (error) {
@@ -775,6 +812,7 @@ export const AuthProvider = ({ children }) => {
         return [];
     }, [getFavorites, isAuthenticated]);
 
+    // Función mejorada para verificar estado de auth
     const checkAuthStatus = async () => {
         try {
             if (isLoggingOut || isLoggingIn) {
@@ -784,6 +822,7 @@ export const AuthProvider = ({ children }) => {
 
             setLoading(true);
             setAuthError(null);
+            setAuthReady(false); 
 
             console.log('Verificando estado de autenticación...');
 
@@ -805,11 +844,19 @@ export const AuthProvider = ({ children }) => {
                     setIsAuthenticated(true);
 
                     console.log('Obteniendo información completa del usuario...');
-                    await getUserInfo(token);
+                    const userInfoResult = await getUserInfo(token);
 
-                    // Obtener favoritos después de la autenticación
-                    console.log('Obteniendo favoritos del usuario...');
-                    await getFavorites(token);
+                    if (userInfoResult) {
+                        // Obtenemos favoritos después de la autenticación
+                        console.log('Obteniendo favoritos del usuario...');
+                        await getFavorites(token);
+
+                        setAuthReady(token);
+                        console.log('Auth completamente inicializado y listo');
+                    } else {
+                        console.error('No se pudo obtener información del usuario');
+                        await clearAuthData(false);
+                    }
                 } else {
                     console.info('Token expirado o inválido');
                     await clearAuthData(false);
@@ -819,7 +866,7 @@ export const AuthProvider = ({ children }) => {
                 await clearAuthData(false);
             }
         } catch (error) {
-            console.error('Error al verificar la autenticación: ', error);
+            console.error('Error al verificar la autenticación:', error);
             setAuthError('Error al verificar el estado de autenticación');
             await clearAuthData(false);
         } finally {
@@ -829,11 +876,13 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // Función de login mejorada
     const login = async (email, password) => {
         try {
             setIsLoggingIn(true);
             setLoading(true);
             setAuthError(null);
+            setAuthReady(false); 
             console.log('Iniciando proceso de login...');
 
             const emailVerification = validators.email(email);
@@ -863,7 +912,7 @@ export const AuthProvider = ({ children }) => {
             });
 
             const data = await response.json();
-            console.log('Login response: ', data);
+            console.log('Login response:', data);
 
             if (response.ok && (data.message === "login successful" || data.message === "Inicio de sesión exitoso")) {
                 console.log('Login exitoso detectado');
@@ -871,11 +920,12 @@ export const AuthProvider = ({ children }) => {
                 const token = data.token;
 
                 if (token) {
+                    // Guardamos token inmediatamente
                     const tokenSaved = await saveTokenToStorage(token);
 
                     if (tokenSaved) {
                         const decodedToken = decodeToken(token);
-                        console.log('Token decodificado exitosamente: ', !!decodedToken);
+                        console.log('Token decodificado exitosamente:', !!decodedToken);
 
                         if (decodedToken) {
                             const userData = {
@@ -883,7 +933,7 @@ export const AuthProvider = ({ children }) => {
                                 userType: decodedToken.userType || data.userType || 'user'
                             };
 
-                            console.log('Configurando datos del usuario: ', userData);
+                            console.log('👤 Configurando datos del usuario:', userData);
 
                             setUser(userData);
                             setIsAuthenticated(true);
@@ -891,32 +941,35 @@ export const AuthProvider = ({ children }) => {
 
                             console.log('Obteniendo información completa...');
                             const userInfoResult = await getUserInfo(token);
-                            console.log('Información del usuario obtenida: ', !!userInfoResult);
 
-                            // Obtener favoritos después del login exitoso
-                            console.log('Obteniendo favoritos después del login...');
-                            await getFavorites(token);
+                            if (userInfoResult) {
+                                // Obtenemos favoritos después del login exitoso
+                                console.log('Obteniendo favoritos después del login...');
+                                await getFavorites(token);
 
-                            setIsLoggingIn(false);
-                            setLoading(false);
+                                console.log('Login completado exitosamente para:', userData.userType);
+                                setAuthReady(true);
+                                console.log('Auth marcado como listo para CartContext');
 
-                            console.log('Login completado exitosamente para: ', userData.userType);
+                                setIsLoggingIn(false);
+                                setLoading(false);
 
-                            return {
-                                success: true,
-                                message: data.message,
-                                user: userData,
-                                userType: userData.userType
-                            };
+                                return {
+                                    success: true,
+                                    message: data.message,
+                                    user: userData,
+                                    userType: userData.userType
+                                };
+                            } else {
+                                throw new Error('No se pudo obtener información del usuario');
+                            }
                         }
+                    } else {
+                        throw new Error('No se pudo guardar el token');
                     }
+                } else {
+                    throw new Error('No se recibió token del servidor');
                 }
-
-                const errorMsg = 'Error al procesar el token de autenticación';
-                setAuthError(errorMsg);
-                setIsLoggingIn(false);
-                setLoading(false);
-                return { success: false, message: errorMsg };
             } else {
                 const errorMsg = data.message || 'Error en la autenticación';
                 setAuthError(errorMsg);
@@ -925,8 +978,8 @@ export const AuthProvider = ({ children }) => {
                 return { success: false, message: errorMsg };
             }
         } catch (error) {
-            console.error('Error en el proceso de login: ', error);
-            const errorMsg = 'Error de conexión con el servidor';
+            console.error('Error en el proceso de login:', error);
+            const errorMsg = error.message || 'Error de conexión con el servidor';
             setAuthError(errorMsg);
             setIsLoggingIn(false);
             setLoading(false);
@@ -934,6 +987,7 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // Función de logout mejorada
     const logout = async () => {
         try {
             setIsLoggingOut(true);
@@ -958,7 +1012,7 @@ export const AuthProvider = ({ children }) => {
                     console.log('Error al cerrar sesión en el servidor, pero continuando con logout local');
                 }
             } catch (serverError) {
-                console.warn('Error de red al cerrar sesión en el servidor, continuando localmente: ', serverError);
+                console.warn('Error de red al cerrar sesión en el servidor, continuando localmente:', serverError);
             }
 
             await clearAuthData(true);
@@ -966,7 +1020,7 @@ export const AuthProvider = ({ children }) => {
             console.log('Logout completado correctamente');
             return { success: true };
         } catch (error) {
-            console.error('Error durante logout: ', error);
+            console.error('Error durante logout:', error);
 
             await clearAuthData(true);
             return { success: true, warning: 'Sesión cerrada localmente' };
@@ -994,6 +1048,7 @@ export const AuthProvider = ({ children }) => {
         });
     }, [favorites]);
 
+    // Effect principal mejorado
     useEffect(() => {
         if (!isLoggingOut && !isLoggingIn) {
             console.log('Inicializando AuthProvider...');
@@ -1001,26 +1056,37 @@ export const AuthProvider = ({ children }) => {
         }
     }, [isLoggingOut, isLoggingIn]);
 
+    // Effect para debug de estados
     useEffect(() => {
-        console.log('Estado de autenticación actualizado: ', {
+        console.log('Estado de autenticación actualizado:', {
             isAuthenticated,
             hasUser: !!user,
             hasUserInfo: !!userInfo,
             userType: user?.userType,
             favoritesCount: favorites.length,
             isLoggingOut,
-            isLoggingIn
+            isLoggingIn,
+            authReady, 
+            loading
         });
-    }, [isAuthenticated, user, userInfo, favorites, isLoggingOut, isLoggingIn]);
+    }, [isAuthenticated, user, userInfo, favorites, isLoggingOut, isLoggingIn, authReady, loading]);
 
-    // Cargamos favoritos cuando cambie el usuario
+    // Effect separado para cargar favoritos - sin interferir con el carrito
     useEffect(() => {
-        if (isAuthenticated && user?.id) {
-            getFavorites();
-        } else {
-            setFavorites([]);
-        }
-    }, [isAuthenticated, user?.id, getFavorites]);
+        const loadFavoritesWhenReady = async () => {
+            if (isAuthenticated && user?.id && userInfo && !isLoggingIn && !isLoggingOut) {
+                console.log('Cargando favoritos (usuario completamente autenticado)...');
+                await getFavorites();
+            } else if (!isAuthenticated) {
+                console.log('Limpiando favoritos (usuario no autenticado)...');
+                setFavorites([]);
+            }
+        };
+
+        // Pequeño delay para evitar race conditions
+        const timeoutId = setTimeout(loadFavoritesWhenReady, 150);
+        return () => clearTimeout(timeoutId);
+    }, [isAuthenticated, user?.id, userInfo, isLoggingIn, isLoggingOut, getFavorites]);
 
     // Aseguramos que favorites siempre sea un array
     const safeFavorites = Array.isArray(favorites) ? favorites : [];
@@ -1033,6 +1099,7 @@ export const AuthProvider = ({ children }) => {
         authError,
         isLoggingOut,
         isLoggingIn,
+        authReady, 
 
         // Estados de favoritos
         favorites: safeFavorites,
@@ -1063,7 +1130,10 @@ export const AuthProvider = ({ children }) => {
         normalizeProduct,
 
         // Función de limpieza 
-        clearAuthData
+        clearAuthData,
+
+        // Función para guardar tokens
+        saveTokenToStorage
     };
 
     return (

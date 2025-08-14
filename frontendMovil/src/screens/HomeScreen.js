@@ -14,7 +14,7 @@ import {
     Platform
 } from "react-native";
 import { useAuth } from "../context/AuthContext";
-import { useCart } from "../context/CartContext"; // ✅ IMPORTANTE: Importar el contexto del carrito
+import { useCart } from "../context/CartContext"; 
 import perfilIcon from "../images/perfilIcon.png";
 import favoritesIcon from "../images/favoritesIcon.png";
 import ProductCard from "../components/Products/ProductCard";
@@ -42,7 +42,7 @@ export default function HomeScreen({ navigation }) {
         refreshFavorites
     } = useAuth();
     
-    // ✅ USAR EL CONTEXTO DEL CARRITO
+    // USAMOS EL CONTEXTO DEL CARRITO
     const {
         addToCart,
         cartLoading,
@@ -56,7 +56,7 @@ export default function HomeScreen({ navigation }) {
     const { productos, loading, refetch } = useFetchProducts();
     const [selectedCategory, setSelectedCategory] = useState('Todo');
     const [refreshing, setRefreshing] = useState(false);
-    const [addingToCart, setAddingToCart] = useState(null); // Para mostrar loading por producto
+    const [addingToCart, setAddingToCart] = useState(null); 
     
     const [showPriceFilter, setShowPriceFilter] = useState(false);
     const [priceRange, setPriceRange] = useState({ min: 0, max: 100 });
@@ -127,7 +127,7 @@ export default function HomeScreen({ navigation }) {
         navigation.navigate('ProductDetail', { productId: product._id });
     };
 
-    // ✅ FUNCIÓN MEJORADA PARA AGREGAR AL CARRITO
+    // FUNCIÓN PARA AGREGAR AL CARRITO
     const handleAddToCart = async (product, quantity = 1, itemType = 'product') => {
         try {
             // Verificar autenticación
@@ -176,18 +176,18 @@ export default function HomeScreen({ navigation }) {
                 // Mostrar mensaje de éxito
                 showToast(`${product.name} agregado al carrito`);
                 
-                console.log('✅ Producto agregado exitosamente:', result);
+                console.log('Producto agregado exitosamente:', result);
             } else {
                 // Mostrar error específico
                 Alert.alert(
                     'Error al agregar al carrito', 
                     result.message || 'No se pudo agregar el producto al carrito'
                 );
-                console.error('❌ Error al agregar producto:', result.message);
+                console.error('Error al agregar producto:', result.message);
             }
 
         } catch (error) {
-            console.error('❌ Error inesperado al agregar al carrito:', error);
+            console.error('Error inesperado al agregar al carrito:', error);
             Alert.alert(
                 'Error inesperado', 
                 'Ocurrió un error inesperado. Inténtalo nuevamente.'
@@ -217,7 +217,7 @@ export default function HomeScreen({ navigation }) {
             <ProductCard
                 product={item}
                 onPress={handleProductPress}
-                onAddToCart={handleAddToCart} // ✅ Pasar la función del carrito
+                onAddToCart={handleAddToCart} 
                 navigation={navigation}
                 // Props adicionales para mostrar estado del carrito
                 isAddingToCart={addingToCart === item._id}
@@ -323,7 +323,7 @@ export default function HomeScreen({ navigation }) {
                 </View>
             )}
 
-            {/* ✅ INDICADOR DE ERROR DEL CARRITO */}
+            {/* INDICADOR DE ERROR DEL CARRITO */}
             {cartError && (
                 <View style={styles.errorContainer}>
                     <Icon name="error-outline" size={16} color="#e74c3c" />
@@ -432,7 +432,7 @@ export default function HomeScreen({ navigation }) {
                     onPress={() => navigation.navigate('Cart')}
                 >
                     <Icon name="shopping-cart" size={isSmallDevice ? 20 : 24} color="#ccc" />
-                    {/* ✅ BADGE DEL CARRITO */}
+                    {/* BADGE DEL CARRITO */}
                     {isAuthenticated && cartItemsCount > 0 && (
                         <View style={styles.cartBadge}>
                             <Text style={styles.cartBadgeText}>
@@ -755,7 +755,6 @@ const styles = StyleSheet.create({
         fontFamily: 'Poppins-Bold',
         textAlign: 'center',
     },
-    // ✅ ESTILOS PARA EL BADGE DEL CARRITO
     cartBadge: {
         position: 'absolute',
         top: -2,

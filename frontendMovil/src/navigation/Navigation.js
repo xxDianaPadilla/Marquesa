@@ -6,6 +6,8 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 // Importamos nuestro provider de contexto de autenticación
 import { AuthProvider } from "../context/AuthContext";
+// IMPORTAMOS CART PROVIDER
+import { CartProvider } from "../context/CartContext";
 // Importamos el navegador de pestañas (tabs) principal de la app
 import TabNavigator from "./TabNavigator";
 // Importamos todas las pantallas que formarán parte de la navegación:
@@ -17,6 +19,7 @@ import SearchScreen from "../screens/SearchScreen";       // Pantalla de búsque
 import RegisterScreen from "../screens/RegisterScreen";
 import RecoveryPasswordScreen from "../screens/RecoveryPasswordScreen";
 import ShoppingCartScreen from "../screens/ShoppingCartScreen";
+import RecoveryCodeScreen from "../screens/RecoveryCodeScreen";
 
 // Componente principal de navegación de toda la aplicación
 export default function Navigation() {
@@ -25,91 +28,92 @@ export default function Navigation() {
     const Stack = createNativeStackNavigator();
 
     return (
-        // AuthProvider envuelve toda la app para proporcionar contexto de autenticación
-        // Cualquier componente hijo puede acceder al estado de autenticación
+        // AuthProvider debe envolver CartProvider
         <AuthProvider>
-            {/* NavigationContainer es el contenedor raíz requerido por React Navigation */}
-            {/* Maneja el estado de navegación y la vinculación con el sistema nativo */}
-            <NavigationContainer>
-                {/* Stack.Navigator define la estructura de navegación tipo pila */}
-                <Stack.Navigator
-                    initialRouteName="Splash"    // Pantalla inicial que se muestra al abrir la app
-                    screenOptions={{             // Opciones que se aplican a TODAS las pantallas
-                        headerShown: false,      // Oculta el header por defecto en todas las pantallas
-                    }}
-                >
-                    {/* 
-                        Cada Stack.Screen define una pantalla en la pila de navegación
-                        - name: identificador único para navegar a esta pantalla
-                        - component: componente React que se renderiza
-                    */}
-
-                    {/* Pantalla de splash/carga inicial */}
-                    <Stack.Screen
-                        name="Splash"              // Nombre de la ruta
-                        component={SplashScreen}   // Componente a renderizar
-                    />
-
-                    {/* Pantalla de bienvenida (onboarding) */}
-                    <Stack.Screen
-                        name="Welcome"             // Nombre de la ruta
-                        component={WelcomeScreen}  // Componente a renderizar
-                    />
-
-                    {/* Pantalla de inicio de sesión */}
-                    <Stack.Screen
-                        name="Login"               // Nombre de la ruta
-                        component={LoginScreen}    // Componente a renderizar
-                    />
-
-                    {/* Navegador de pestañas (contiene Home, Categories, Cart, etc.) */}
-                    <Stack.Screen
-                        name="TabNavigator"        // Nombre de la ruta
-                        component={TabNavigator}   // Componente del tab navigator
-                    />
-
-                    {/* Pantalla de perfil de usuario */}
-                    <Stack.Screen
-                        name="Profile"             // Nombre de la ruta
-                        component={ProfileScreen}  // Componente a renderizar
-                    />
-
-                    {/* Pantalla de registro */}
-                    <Stack.Screen
-                        name="Register"             // Nombre de la ruta
-                        component={RegisterScreen}  // Componente a renderizar
-                    />
-
-                    {/* Pantalla de recuperación de contraseña */}
-                    <Stack.Screen
-                        name="RecoveryPassword"             // Nombre de la ruta
-                        component={RecoveryPasswordScreen}  // Componente a renderizar
-                    />
-
-                    {/* Pantalla de carrito de compras */}
-                    <Stack.Screen
-                        name="ShoppingCart"             // Nombre de la ruta
-                        component={ShoppingCartScreen}  // Componente a renderizar
-                    />
-
-                    {/* Pantalla código de recuperación de contraseña */}
-                    <Stack.Screen
-                        name="RecoveryCode"             // Nombre de la ruta
-                        component={RecoveryCodeScreen}  // Componente a renderizar
-                    />
-
-                    {/* Pantalla de búsqueda */}
-                    <Stack.Screen
-                        name="Search"              // Nombre de la ruta
-                        component={SearchScreen}   // Componente a renderizar
-                        options={{                 // Opciones específicas para esta pantalla
-                            headerShown: false,    // Sin header porque ya tiene el suyo propio
-                            animation: 'slide_from_right', // Animación de entrada desde la derecha
+            <CartProvider>
+                {/* NavigationContainer es el contenedor raíz requerido por React Navigation */}
+                {/* Maneja el estado de navegación y la vinculación con el sistema nativo */}
+                <NavigationContainer>
+                    {/* Stack.Navigator define la estructura de navegación tipo pila */}
+                    <Stack.Navigator
+                        initialRouteName="Splash"    // Pantalla inicial que se muestra al abrir la app
+                        screenOptions={{             // Opciones que se aplican a TODAS las pantallas
+                            headerShown: false,      // Oculta el header por defecto en todas las pantallas
                         }}
-                    />
+                    >
+                        {/* 
+                            Cada Stack.Screen define una pantalla en la pila de navegación
+                            - name: identificador único para navegar a esta pantalla
+                            - component: componente React que se renderiza
+                        */}
 
-                </Stack.Navigator>
-            </NavigationContainer>
+                        {/* Pantalla de splash/carga inicial */}
+                        <Stack.Screen
+                            name="Splash"              // Nombre de la ruta
+                            component={SplashScreen}   // Componente a renderizar
+                        />
+
+                        {/* Pantalla de bienvenida (onboarding) */}
+                        <Stack.Screen
+                            name="Welcome"             // Nombre de la ruta
+                            component={WelcomeScreen}  // Componente a renderizar
+                        />
+
+                        {/* Pantalla de inicio de sesión */}
+                        <Stack.Screen
+                            name="Login"               // Nombre de la ruta
+                            component={LoginScreen}    // Componente a renderizar
+                        />
+
+                        {/* Navegador de pestañas (contiene Home, Categories, Cart, etc.) */}
+                        <Stack.Screen
+                            name="TabNavigator"        // Nombre de la ruta
+                            component={TabNavigator}   // Componente del tab navigator
+                        />
+
+                        {/* Pantalla de perfil de usuario */}
+                        <Stack.Screen
+                            name="Profile"             // Nombre de la ruta
+                            component={ProfileScreen}  // Componente a renderizar
+                        />
+
+                        {/* Pantalla de registro */}
+                        <Stack.Screen
+                            name="Register"             // Nombre de la ruta
+                            component={RegisterScreen}  // Componente a renderizar
+                        />
+
+                        {/* Pantalla de recuperación de contraseña */}
+                        <Stack.Screen
+                            name="RecoveryPassword"             // Nombre de la ruta
+                            component={RecoveryPasswordScreen}  // Componente a renderizar
+                        />
+
+                        {/* Pantalla de carrito de compras */}
+                        <Stack.Screen
+                            name="ShoppingCart"             // Nombre de la ruta
+                            component={ShoppingCartScreen}  // Componente a renderizar
+                        />
+
+                        {/* Pantalla código de recuperación de contraseña */}
+                        <Stack.Screen
+                            name="RecoveryCode"             // Nombre de la ruta
+                            component={RecoveryCodeScreen}  // Componente a renderizar
+                        />
+
+                        {/* Pantalla de búsqueda */}
+                        <Stack.Screen
+                            name="Search"              // Nombre de la ruta
+                            component={SearchScreen}   // Componente a renderizar
+                            options={{                 // Opciones específicas para esta pantalla
+                                headerShown: false,    // Sin header porque ya tiene el suyo propio
+                                animation: 'slide_from_right', // Animación de entrada desde la derecha
+                            }}
+                        />
+
+                    </Stack.Navigator>
+                </NavigationContainer>
+            </CartProvider>
         </AuthProvider>
     );
 }

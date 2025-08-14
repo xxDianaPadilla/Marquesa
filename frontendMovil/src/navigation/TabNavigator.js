@@ -7,11 +7,10 @@ import favoritesIcon from "../images/favoritesIcon.png";
 import chatIcon from "../images/chatIcon.png";
 import shoppingCartIcon from "../images/shoppingCartIcon.png";
 import HomeScreen from "../screens/HomeScreen";
-import FavoritesScreen from "../screens/FavoritesScreen"; // ← ESTE IMPORT SÍ LO DEJAS
+import FavoritesScreen from "../screens/FavoritesScreen"; 
 import ShoppingCart from "../screens/ShoppingCartScreen";
+import ChatScreen from "../screens/ChatScreen";
 
-// ELIMINA ESTA LÍNEA: const FavoritesScreen = () => HomeScreen;
-const ChatScreen = () => HomeScreen; 
 const Tab = createBottomTabNavigator();
 
 const TabIcon = ({ focused, iconSource, size, color }) => {

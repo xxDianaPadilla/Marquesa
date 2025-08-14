@@ -8,7 +8,7 @@ import chatIcon from "../images/chatIcon.png";
 import shoppingCartIcon from "../images/shoppingCartIcon.png";
 import HomeScreen from "../screens/HomeScreen";
 import FavoritesScreen from "../screens/FavoritesScreen"; // ← ESTE IMPORT SÍ LO DEJAS
-import ShoppingCart from "../screens/ShoppingCart";
+import ShoppingCart from "../screens/ShoppingCartScreen";
 
 // ELIMINA ESTA LÍNEA: const FavoritesScreen = () => HomeScreen;
 const ChatScreen = () => HomeScreen; 

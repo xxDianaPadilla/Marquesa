@@ -11,6 +11,7 @@ const RecoveryPasswordScreen = ({ navigation }) => {
 
     const handleContinue = () => {
         console.log("Email para recuperación: ", email);
+        navigation.navigate('RecoveryCode');
     };
 
     const handleGoBack = () => {

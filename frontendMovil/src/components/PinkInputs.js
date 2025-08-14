@@ -1,5 +1,6 @@
-import React from "react";
-import { View, TextInput, StyleSheet, Image, TouchableOpacity } from "react-native";
+import React, { useState } from "react";
+import { View, TextInput, StyleSheet, Image, TouchableOpacity, Platform, Modal, Text } from "react-native";
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function PinkInputs({
     placeholder = "",
@@ -16,27 +17,86 @@ export default function PinkInputs({
     style = {},
     inputStyle = {},
     iconStyle = {},
+    isDateInput = false,
+    dateFormat = "DD/MM/YYYY",
 }) {
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [selectedDate, setSelectedDate] = useState(new Date());
+
+    const formatDate = (date) => {
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const year = date.getFullYear();
+
+        switch (dateFormat) {
+            case "MM/DD/YYYY":
+                return `${month}/${day}/${year}`;
+            case "YYYY-MM-DD":
+                return `${year}-${month}-${day}`;
+            default:
+                return `${day}/${month}/${year}`;
+        }
+    };
+
+    const handleDateChange = (event, date) => {
+        if (Platform.OS === 'android') {
+            setShowDatePicker(false);
+        }
+
+        if (date) {
+            setSelectedDate(date);
+            const formattedDate = formatDate(date);
+            onChangeText(formattedDate);
+        }
+    };
+
+    const handleDateInputPress = () => {
+        if (isDateInput) {
+            setShowDatePicker(true);
+        }
+    };
+
+    const renderDateInput = () => (
+        <TouchableOpacity
+            style={styles.dateInputContainer}
+            onPress={handleDateInputPress}
+            activeOpacity={0.7}
+        >
+            <TextInput
+                style={[styles.textInput, inputStyle]}
+                placeholder={placeholder}
+                placeholderTextColor="#999999"
+                value={value}
+                editable={false}
+                pointerEvents="none"
+            />
+        </TouchableOpacity>
+    );
+
+    const renderRegularInput = () => (
+        <TextInput
+            style={[styles.textInput, inputStyle]}
+            placeholder={placeholder}
+            placeholderTextColor="#999999"
+            value={value}
+            onChangeText={onChangeText}
+            secureTextEntry={secureTextEntry}
+            keyboardType={keyboardType}
+            autoCapitalize={autoCapitalize}
+            autoCorrect={false}
+        />
+    );
+
     return (
         <View style={[styles.inputContainer, style]}>
             {/* Icono izquierdo */}
             {icon && (
                 <Image source={icon} style={[styles.inputIcon, iconStyle]} />
             )}
-            
-            {/* Campo de texto */}
-            <TextInput
-                style={[styles.textInput, inputStyle]}
-                placeholder={placeholder}
-                placeholderTextColor="#999999"
-                value={value}
-                onChangeText={onChangeText}
-                secureTextEntry={secureTextEntry}
-                keyboardType={keyboardType}
-                autoCapitalize={autoCapitalize}
-                autoCorrect={false}
-            />
-            
+
+            {/* Campo de texto o selector de fecha */}
+            {isDateInput ? renderDateInput() : renderRegularInput()}
+
             {/* Botón toggle para contraseña */}
             {showPasswordToggle && (
                 <TouchableOpacity
@@ -44,11 +104,63 @@ export default function PinkInputs({
                     style={styles.eyeButton}
                     activeOpacity={0.7}
                 >
-                    <Image 
+                    <Image
                         source={secureTextEntry ? eyeIcon : eyeOffIcon}
                         style={styles.eyeIconImage}
                     />
                 </TouchableOpacity>
+            )}
+
+            {/* Date Picker Modal para iOS */}
+            {Platform.OS === 'ios' && showDatePicker && (
+                <Modal
+                    transparent={true}
+                    animationType="slide"
+                    visible={showDatePicker}
+                    onRequestClose={() => setShowDatePicker(false)}
+                >
+                    <View style={styles.modalContainer}>
+                        <View style={styles.pickerContainer}>
+                            <View style={styles.pickerHeader}>
+                                <TouchableOpacity
+                                    onPress={() => setShowDatePicker(false)}
+                                    style={styles.cancelButton}
+                                >
+                                    <Text style={styles.cancelButtonText}>Cancelar</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        const formattedDate = formatDate(selectedDate);
+                                        onChangeText(formattedDate);
+                                        setShowDatePicker(false);
+                                    }}
+                                    style={styles.doneButton}
+                                >
+                                    <Text style={styles.doneButtonText}>Listo</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <DateTimePicker
+                                value={selectedDate}
+                                mode="date"
+                                display="spinner"
+                                onChange={handleDateChange}
+                                maximumDate={new Date()}
+                                textColor="#3C3550"
+                            />
+                        </View>
+                    </View>
+                </Modal>
+            )}
+
+            {/* Date Picker para Android */}
+            {Platform.OS === 'android' && showDatePicker && (
+                <DateTimePicker
+                    value={selectedDate}
+                    mode="date"
+                    display="default"
+                    onChange={handleDateChange}
+                    maximumDate={new Date()}
+                />
             )}
         </View>
     );
@@ -89,6 +201,9 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         paddingHorizontal: 0,
     },
+    dateInputContainer: {
+        flex: 1,
+    },
     eyeButton: {
         padding: 8,
         marginLeft: 8,
@@ -96,7 +211,47 @@ const styles = StyleSheet.create({
     eyeIconImage: {
         width: 20,
         height: 20,
-        tintColor: '#CCCCCC',
+        tintColor: '#999999',
         resizeMode: 'contain',
+    },
+    modalContainer: {
+        flex: 1,
+        justifyContent: 'flex-end',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    pickerContainer: {
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        paddingBottom: 20,
+    },
+    pickerHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E0E0E0',
+    },
+    cancelButton: {
+        paddingHorizontal: 15,
+        paddingVertical: 8,
+    },
+    cancelButtonText: {
+        fontSize: 16,
+        color: '#999999',
+        fontFamily: 'Poppins-Regular',
+    },
+    doneButton: {
+        backgroundColor: '#FBB4B7',
+        paddingHorizontal: 20,
+        paddingVertical: 8,
+        borderRadius: 15,
+    },
+    doneButtonText: {
+        fontSize: 16,
+        color: '#FFFFFF',
+        fontFamily: 'Poppins-Medium',
     },
 });

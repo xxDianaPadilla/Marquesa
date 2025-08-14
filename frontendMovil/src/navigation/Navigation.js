@@ -14,6 +14,9 @@ import WelcomeScreen from "../screens/WelcomeScreen";     // Pantalla de bienven
 import LoginScreen from "../screens/LoginScreen";         // Pantalla de login
 import ProfileScreen from "../screens/ProfileScreen";     // Pantalla de perfil de usuario
 import SearchScreen from "../screens/SearchScreen";       // Pantalla de búsqueda
+import RegisterScreen from "../screens/RegisterScreen";
+import RecoveryPasswordScreen from "../screens/RecoveryPasswordScreen";
+import ShoppingCartScreen from "../screens/ShoppingCartScreen";
 
 // Componente principal de navegación de toda la aplicación
 export default function Navigation() {
@@ -40,37 +43,55 @@ export default function Navigation() {
                         - name: identificador único para navegar a esta pantalla
                         - component: componente React que se renderiza
                     */}
-                    
+
                     {/* Pantalla de splash/carga inicial */}
                     <Stack.Screen
                         name="Splash"              // Nombre de la ruta
                         component={SplashScreen}   // Componente a renderizar
                     />
-                    
+
                     {/* Pantalla de bienvenida (onboarding) */}
                     <Stack.Screen
                         name="Welcome"             // Nombre de la ruta
                         component={WelcomeScreen}  // Componente a renderizar
                     />
-                    
+
                     {/* Pantalla de inicio de sesión */}
                     <Stack.Screen
                         name="Login"               // Nombre de la ruta
                         component={LoginScreen}    // Componente a renderizar
                     />
-                    
+
                     {/* Navegador de pestañas (contiene Home, Categories, Cart, etc.) */}
                     <Stack.Screen
                         name="TabNavigator"        // Nombre de la ruta
                         component={TabNavigator}   // Componente del tab navigator
                     />
-                    
+
                     {/* Pantalla de perfil de usuario */}
                     <Stack.Screen
                         name="Profile"             // Nombre de la ruta
                         component={ProfileScreen}  // Componente a renderizar
                     />
-                    
+
+                    {/* Pantalla de registro */}
+                    <Stack.Screen
+                        name="Register"             // Nombre de la ruta
+                        component={RegisterScreen}  // Componente a renderizar
+                    />
+
+                    {/* Pantalla de recuperación de contraseña */}
+                    <Stack.Screen
+                        name="RecoveryPassword"             // Nombre de la ruta
+                        component={RecoveryPasswordScreen}  // Componente a renderizar
+                    />
+
+                    {/* Pantalla de carrito de compras */}
+                    <Stack.Screen
+                        name="ShoppingCart"             // Nombre de la ruta
+                        component={ShoppingCartScreen}  // Componente a renderizar
+                    />
+
                     {/* Pantalla de búsqueda */}
                     <Stack.Screen
                         name="Search"              // Nombre de la ruta

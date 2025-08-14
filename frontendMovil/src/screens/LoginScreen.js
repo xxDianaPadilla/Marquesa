@@ -113,12 +113,14 @@ export default function LoginScreen({ navigation }) {
     const handleRegister = () => {
         if (!hasNavigated.current) {
             console.log('Ir a registro');
+            navigation.navigate('Register');
         }
     };
 
     const handleForgotPassword = () => {
         if (!hasNavigated.current) {
             console.log('Olvidé mi contraseña');
+            navigation.navigate('RecoveryPassword');
         }
     };
 

@@ -10,13 +10,13 @@ const { width, height } = Dimensions.get('window');
 
 export default function WelcomeScreen({ navigation }) {
     const handleContinue = () => {
-        console.log('Navegando a la pantalla de login...');
+        console.log('Navegando a la pantalla de registro...');
         navigation.navigate('Login');
     };
 
-    const handleLoginPress = () => {
-        console.log('Ir a login');
-        navigation.navigate('Login');
+    const handleRegisterPress = () => {
+        console.log('Ir a Registro');
+        navigation.navigate('Register');
     };
 
     return (
@@ -48,9 +48,9 @@ export default function WelcomeScreen({ navigation }) {
 
                 {/* Texto de inicio de sesión - usando el componente */}
                 <QuestionText
-                    questionText="¿Ya tienes una cuenta?"
-                    linkText="Inicia Sesión"
-                    onPress={handleLoginPress}
+                    questionText="¿No tienes una cuenta aún?"
+                    linkText="Regístrate"
+                    onPress={handleRegisterPress}
                     style={styles.loginTextSpacing}
                 />
             </View>

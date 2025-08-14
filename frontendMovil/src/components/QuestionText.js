@@ -49,7 +49,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontFamily: 'Poppins-SemiBold',
         color: '#3C3550',
-        textDecorationLine: 'underline',
         top: 7,
     },
 });

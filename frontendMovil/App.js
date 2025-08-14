@@ -36,12 +36,9 @@ export default function App() {
       {/* Envolver Navigation con AuthProvider para que el contexto esté disponible en toda la app */}
       <AuthProvider>
         <CartProvider>
-          
-        
         <Navigation />
         </CartProvider>
       </AuthProvider>
-      
       <StatusBar style="auto" />
     </View>
   );

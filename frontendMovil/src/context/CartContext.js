@@ -48,6 +48,36 @@ export const CartProvider = ({ children }) => {
         return 'Error de conexión con el servidor';
     };
 
+    // ✅ FUNCIÓN MEJORADA PARA DEBUGGING DE RESPUESTAS
+    const parseResponse = async (response, operationName) => {
+        try {
+            console.log(`🔍 ${operationName} - Status:`, response.status);
+            console.log(`🔍 ${operationName} - Headers:`, response.headers);
+            console.log(`🔍 ${operationName} - URL:`, response.url);
+
+            // Obtener el texto crudo de la respuesta
+            const responseText = await response.text();
+            console.log(`🔍 ${operationName} - Response text (first 200 chars):`, responseText.substring(0, 200));
+
+            // Verificar si parece ser HTML
+            if (responseText.trim().startsWith('<')) {
+                console.error(`❌ ${operationName} - Servidor devolvió HTML en lugar de JSON`);
+                console.error(`❌ Response completo:`, responseText);
+                throw new Error(`Servidor devolvió página HTML. Verifica que el endpoint ${response.url} sea correcto`);
+            }
+
+            // Intentar parsear como JSON
+            const data = JSON.parse(responseText);
+            console.log(`✅ ${operationName} - JSON parseado exitosamente:`, data);
+            return data;
+
+        } catch (parseError) {
+            console.error(`❌ ${operationName} - Error al parsear respuesta:`, parseError);
+            console.error(`❌ Response text:`, responseText);
+            throw new Error(`Respuesta inválida del servidor: ${parseError.message}`);
+        }
+    };
+
     // Función para realizar peticiones con timeout
     const fetchWithTimeout = async (url, options, timeoutMs = 30000) => {
         const operationPromise = fetch(url, options);
@@ -72,20 +102,20 @@ export const CartProvider = ({ children }) => {
             setCartError(null);
 
             const headers = await getAuthHeaders();
-            console.log('Obteniendo carrito activo para usuario:', user.id);
+            console.log('🛒 Obteniendo carrito activo para usuario:', user.id);
+            console.log('🛒 Headers:', headers);
 
-            const response = await fetchWithTimeout(
-                `${API_BASE_URL}/shopping-cart/active/${user.id}`,
-                {
-                    method: 'GET',
-                    headers
-                }
-            );
+            const url = `${API_BASE_URL}/shopping-cart/active/${user.id}`;
+            console.log('🛒 URL completa:', url);
+
+            const response = await fetchWithTimeout(url, {
+                method: 'GET',
+                headers
+            });
+
+            const data = await parseResponse(response, 'getActiveCart');
 
             if (response.ok) {
-                const data = await response.json();
-                console.log('Respuesta getActiveCart:', data);
-
                 if (data.success && data.cart) {
                     setCart(data.cart);
                     setCartItemsCount(data.cart.items ? data.cart.items.length : 0);
@@ -103,10 +133,10 @@ export const CartProvider = ({ children }) => {
                 setCartItemsCount(0);
                 return null;
             } else {
-                throw new Error(`Error del servidor: ${response.status}`);
+                throw new Error(`Error del servidor: ${response.status} - ${data.message || 'Sin mensaje'}`);
             }
         } catch (error) {
-            console.error('Error al obtener carrito activo:', error);
+            console.error('❌ Error al obtener carrito activo:', error);
             const errorMessage = handleNetworkError(error);
             setCartError(errorMessage);
             setCart(null);
@@ -117,7 +147,7 @@ export const CartProvider = ({ children }) => {
         }
     }, [isAuthenticated, user?.id, getAuthHeaders]);
 
-    // Agregar producto al carrito
+    // ✅ AGREGAR PRODUCTO AL CARRITO CON DEBUGGING MEJORADO
     const addToCart = useCallback(async (product, quantity = 1, itemType = 'product') => {
         try {
             if (!isAuthenticated || !user?.id) {
@@ -139,35 +169,43 @@ export const CartProvider = ({ children }) => {
 
             const headers = await getAuthHeaders();
             
-            console.log('Agregando al carrito:', {
+            const requestBody = {
+                clientId: user.id,
+                itemId: product._id,
+                quantity: parseInt(quantity),
+                itemType
+            };
+
+            console.log('🛒 Agregando al carrito:', {
                 productId: product._id,
                 productName: product.name,
                 quantity,
-                itemType
+                itemType,
+                userId: user.id,
+                requestBody
             });
 
-            const response = await fetchWithTimeout(
-                `${API_BASE_URL}/shopping-cart/add-item`,
-                {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify({
-                        clientId: user.id,
-                        itemId: product._id,
-                        quantity: parseInt(quantity),
-                        itemType
-                    })
-                }
-            );
+            console.log('🛒 Headers a enviar:', headers);
 
-            const data = await response.json();
-            console.log('Respuesta addToCart:', data);
+            const url = `${API_BASE_URL}/shopping-cart/add-item`;
+            console.log('🛒 URL completa:', url);
+            console.log('🛒 Body a enviar:', JSON.stringify(requestBody, null, 2));
+
+            const response = await fetchWithTimeout(url, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(requestBody)
+            });
+
+            // ✅ USAR LA FUNCIÓN DE PARSING MEJORADA
+            const data = await parseResponse(response, 'addToCart');
 
             if (response.ok && data.success) {
                 // Actualizar el carrito local
                 setCart(data.shoppingCart);
                 setCartItemsCount(data.shoppingCart.items ? data.shoppingCart.items.length : 0);
                 
+                console.log('✅ Producto agregado exitosamente al carrito');
                 return { 
                     success: true, 
                     message: data.message || 'Producto agregado al carrito',
@@ -175,11 +213,12 @@ export const CartProvider = ({ children }) => {
                 };
             } else {
                 const errorMsg = data.message || 'Error al agregar al carrito';
+                console.error('❌ Error en respuesta del servidor:', errorMsg);
                 setCartError(errorMsg);
                 return { success: false, message: errorMsg };
             }
         } catch (error) {
-            console.error('Error al agregar al carrito:', error);
+            console.error('❌ Error al agregar al carrito:', error);
             const errorMessage = handleNetworkError(error);
             setCartError(errorMessage);
             return { success: false, message: errorMessage };
@@ -204,23 +243,20 @@ export const CartProvider = ({ children }) => {
 
             const headers = await getAuthHeaders();
             
-            console.log('Actualizando cantidad:', { itemId, newQuantity });
+            console.log('🛒 Actualizando cantidad:', { itemId, newQuantity });
 
-            const response = await fetchWithTimeout(
-                `${API_BASE_URL}/shopping-cart/update-quantity`,
-                {
-                    method: 'PUT',
-                    headers,
-                    body: JSON.stringify({
-                        clientId: user.id,
-                        itemId,
-                        quantity: parseInt(newQuantity)
-                    })
-                }
-            );
+            const url = `${API_BASE_URL}/shopping-cart/update-quantity`;
+            const response = await fetchWithTimeout(url, {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify({
+                    clientId: user.id,
+                    itemId,
+                    quantity: parseInt(newQuantity)
+                })
+            });
 
-            const data = await response.json();
-            console.log('Respuesta updateItemQuantity:', data);
+            const data = await parseResponse(response, 'updateItemQuantity');
 
             if (response.ok && data.success) {
                 // Actualizar el carrito local
@@ -238,7 +274,7 @@ export const CartProvider = ({ children }) => {
                 return { success: false, message: errorMsg };
             }
         } catch (error) {
-            console.error('Error al actualizar cantidad:', error);
+            console.error('❌ Error al actualizar cantidad:', error);
             const errorMessage = handleNetworkError(error);
             setCartError(errorMessage);
             return { success: false, message: errorMessage };
@@ -263,22 +299,19 @@ export const CartProvider = ({ children }) => {
 
             const headers = await getAuthHeaders();
             
-            console.log('Removiendo del carrito:', itemId);
+            console.log('🛒 Removiendo del carrito:', itemId);
 
-            const response = await fetchWithTimeout(
-                `${API_BASE_URL}/shopping-cart/remove-item`,
-                {
-                    method: 'DELETE',
-                    headers,
-                    body: JSON.stringify({
-                        clientId: user.id,
-                        itemId
-                    })
-                }
-            );
+            const url = `${API_BASE_URL}/shopping-cart/remove-item`;
+            const response = await fetchWithTimeout(url, {
+                method: 'DELETE',
+                headers,
+                body: JSON.stringify({
+                    clientId: user.id,
+                    itemId
+                })
+            });
 
-            const data = await response.json();
-            console.log('Respuesta removeFromCart:', data);
+            const data = await parseResponse(response, 'removeFromCart');
 
             if (response.ok && data.success) {
                 // Actualizar el carrito local
@@ -296,7 +329,7 @@ export const CartProvider = ({ children }) => {
                 return { success: false, message: errorMsg };
             }
         } catch (error) {
-            console.error('Error al remover del carrito:', error);
+            console.error('❌ Error al remover del carrito:', error);
             const errorMessage = handleNetworkError(error);
             setCartError(errorMessage);
             return { success: false, message: errorMessage };
@@ -317,21 +350,18 @@ export const CartProvider = ({ children }) => {
 
             const headers = await getAuthHeaders();
             
-            console.log('Limpiando carrito después de compra:', cart._id);
+            console.log('🛒 Limpiando carrito después de compra:', cart._id);
 
-            const response = await fetchWithTimeout(
-                `${API_BASE_URL}/shopping-cart/${cart._id}/clear-after-purchase`,
-                {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify({
-                        userId: user.id
-                    })
-                }
-            );
+            const url = `${API_BASE_URL}/shopping-cart/${cart._id}/clear-after-purchase`;
+            const response = await fetchWithTimeout(url, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    userId: user.id
+                })
+            });
 
-            const data = await response.json();
-            console.log('Respuesta clearCartAfterPurchase:', data);
+            const data = await parseResponse(response, 'clearCartAfterPurchase');
 
             if (response.ok && data.success) {
                 // Actualizar con el nuevo carrito activo
@@ -349,7 +379,7 @@ export const CartProvider = ({ children }) => {
                 return { success: false, message: errorMsg };
             }
         } catch (error) {
-            console.error('Error al limpiar carrito:', error);
+            console.error('❌ Error al limpiar carrito:', error);
             const errorMessage = handleNetworkError(error);
             setCartError(errorMessage);
             return { success: false, message: errorMessage };
@@ -379,13 +409,41 @@ export const CartProvider = ({ children }) => {
         setCartError(null);
     }, []);
 
+    // ✅ FUNCIÓN DE DEBUGGING PARA PROBAR CONECTIVIDAD
+    const testServerConnection = useCallback(async () => {
+        try {
+            console.log('🔍 Probando conexión al servidor...');
+            const response = await fetchWithTimeout(`${API_BASE_URL}/health`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            }, 10000);
+
+            console.log('🔍 Test connection status:', response.status);
+            const text = await response.text();
+            console.log('🔍 Test connection response:', text);
+            
+            return response.ok;
+        } catch (error) {
+            console.error('❌ Error en test de conexión:', error);
+            return false;
+        }
+    }, []);
+
     // Efectos
     useEffect(() => {
         if (isAuthenticated && user?.id) {
-            console.log('Usuario autenticado, cargando carrito...');
-            getActiveCart();
+            console.log('🛒 Usuario autenticado, cargando carrito...');
+            // ✅ AGREGAR TEST DE CONEXIÓN
+            testServerConnection().then(connected => {
+                console.log('🔍 Servidor conectado:', connected);
+                if (connected) {
+                    getActiveCart();
+                } else {
+                    console.error('❌ No se pudo conectar al servidor');
+                }
+            });
         } else {
-            console.log('Usuario no autenticado, limpiando carrito');
+            console.log('🛒 Usuario no autenticado, limpiando carrito');
             clearCartData();
         }
     }, [isAuthenticated, user?.id]);
@@ -433,6 +491,9 @@ export const CartProvider = ({ children }) => {
         // Utilidades
         isInCart,
         getItemQuantity,
+
+        // ✅ FUNCIÓN DE DEBUG
+        testServerConnection,
     };
 
     return (

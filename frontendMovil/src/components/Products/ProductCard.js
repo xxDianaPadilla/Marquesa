@@ -253,15 +253,18 @@ const ProductCard = ({
 
         {/* Información adicional */}
         <View style={styles.bottomRow}>
-          {/* Indicador si está en carrito */}
-          {productInCart && cartQuantity > 0 && (
-            <View style={styles.cartIndicator}>
-              <Icon name="shopping-cart" size={12} color="#4A4170" />
-              <Text style={styles.cartIndicatorText}>{cartQuantity}</Text>
-            </View>
-          )}
+          {/* ✅ CONTENEDOR IZQUIERDO PARA EL INDICADOR DE CARRITO */}
+          <View style={styles.leftSection}>
+            {/* Indicador si está en carrito */}
+            {productInCart && cartQuantity > 0 && (
+              <View style={styles.cartIndicator}>
+                <Icon name="shopping-cart" size={12} color="#4A4170" />
+                <Text style={styles.cartIndicatorText}>{cartQuantity}</Text>
+              </View>
+            )}
+          </View>
 
-          {/* Botón de carrito */}
+          {/* ✅ BOTÓN DE CARRITO SIEMPRE A LA DERECHA */}
           <TouchableOpacity
             style={getCartButtonStyle()}
             onPress={handleAddToCart}
@@ -391,7 +394,7 @@ const styles = StyleSheet.create({
   },
 
   content: {
-    padding: 12,
+    padding: 8,
     flex: 1,
     position: 'relative',
   },
@@ -414,11 +417,19 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins-Bold',
   },
 
+  // ✅ CAMBIO PRINCIPAL: bottomRow ahora usa justifyContent: 'space-between' pero con secciones definidas
   bottomRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 4,
+  },
+
+  // ✅ NUEVA SECCIÓN IZQUIERDA PARA EL INDICADOR
+  leftSection: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
   },
 
   cartIndicator: {

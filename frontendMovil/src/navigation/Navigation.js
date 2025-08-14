@@ -17,7 +17,6 @@ import SearchScreen from "../screens/SearchScreen";       // Pantalla de búsque
 import RegisterScreen from "../screens/RegisterScreen";
 import RecoveryPasswordScreen from "../screens/RecoveryPasswordScreen";
 import ShoppingCartScreen from "../screens/ShoppingCartScreen";
-import RecoveryCodeScreen from "../screens/RecoveryCodeScreen";
 
 // Componente principal de navegación de toda la aplicación
 export default function Navigation() {

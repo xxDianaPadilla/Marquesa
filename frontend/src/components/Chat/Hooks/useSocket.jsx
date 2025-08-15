@@ -1,79 +1,110 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from '../../../context/AuthContext';
-
+ 
 /**
- * Hook useSocket - ACTUALIZADO SEGÚN INFORME
- * 
+ * Hook useSocket - CORREGIDO PARA CONEXIÓN ESTABLE
+ *
  * CAMBIOS IMPLEMENTADOS:
- * - Eventos Socket.IO unificados (conversation_updated con actions)
- * - Mejor manejo de reconexión automática
- * - Eventos específicos mantenidos (5 eventos)
- * - Evento unificado conversation_updated (3→1)
- * - Solo imágenes en eventos de archivos
- * 
+ * - Mejor manejo de autenticación con tokens
+ * - Configuración de reconexión mejorada
+ * - URL corregida para coincidir con el backend
+ * - Manejo robusto de errores de conexión
+ * - Logging detallado para debugging
+ *
  * Ubicación: frontend/src/components/Chat/Hooks/useSocket.jsx
  */
 export const useSocket = () => {
     // ============ CONTEXTO Y REFERENCIAS ============
-    
-    const { user, isAuthenticated } = useAuth();
+   
+    const { user, isAuthenticated, getBestAvailableToken } = useAuth();
     const socketRef = useRef(null);
-    
+   
     // ============ ESTADOS DE CONEXIÓN ============
-    
+   
     const [isConnected, setIsConnected] = useState(false);
     const [connectionError, setConnectionError] = useState(null);
-
-    // ============ FUNCIONES DE AUTENTICACIÓN ============
-    
+    const [isConnecting, setIsConnecting] = useState(false);
+ 
+    // ============ FUNCIONES DE AUTENTICACIÓN CORREGIDAS ============
+   
     /**
-     * ✅ Obtiene el token de autenticación de las cookies
+     * ✅ CORRECCIÓN: Obtiene el token de autenticación de múltiples fuentes
      */
     const getAuthToken = useCallback(() => {
-        const cookies = document.cookie.split(';');
-        for (let cookie of cookies) {
-            const [name, value] = cookie.trim().split('=');
-            if (name === 'authToken') {
-                return value;
+        try {
+            // 1. Intentar usar función del contexto de auth (preferido)
+            if (getBestAvailableToken) {
+                const contextToken = getBestAvailableToken();
+                if (contextToken) {
+                    console.log('✅ Token obtenido del contexto de auth');
+                    return contextToken;
+                }
             }
+           
+            // 2. Fallback: intentar cookies directamente
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                const [name, value] = cookie.trim().split('=');
+                if (name === 'authToken' && value && value !== 'undefined' && value !== 'null') {
+                    console.log('✅ Token obtenido de cookies como fallback');
+                    return value;
+                }
+            }
+           
+            console.log('❌ No se encontró token de autenticación');
+            return null;
+        } catch (error) {
+            console.error('❌ Error obteniendo token:', error);
+            return null;
         }
-        return null;
-    }, []);
-
-    // ============ FUNCIONES DE CONEXIÓN ============
-    
+    }, [getBestAvailableToken]);
+ 
+    // ============ FUNCIONES DE CONEXIÓN CORREGIDAS ============
+   
     /**
-     * ✅ Establece la conexión con el servidor Socket.IO
+     * ✅ CORRECCIÓN CRÍTICA: Establece la conexión con el servidor Socket.IO
      */
     const connectSocket = useCallback(() => {
-        console.log('🔄 Intentando conectar Socket.IO...');
-        
+        console.log('🔄 === INICIO connectSocket ===');
+       
+        if (isConnecting) {
+            console.log('⚠️ Ya hay una conexión en proceso, saltando...');
+            return;
+        }
+       
         if (!isAuthenticated || !user) {
             console.log('❌ Usuario no autenticado, cancelando conexión');
             setConnectionError('Usuario no autenticado');
             return;
         }
-
+ 
         if (socketRef.current?.connected) {
             console.log('✅ Socket ya conectado, saltando conexión');
             setIsConnected(true);
             return;
         }
-
+ 
         const token = getAuthToken();
         if (!token) {
             console.log('❌ No hay token de autenticación disponible');
             setConnectionError('No hay token de autenticación');
             return;
         }
-
+ 
         try {
-            console.log('🚀 Creando nueva conexión Socket.IO...');
-            
-            // ✅ CORRECCIÓN: Limpiar errores previos al intentar conectar
+            setIsConnecting(true);
             setConnectionError(null);
-            
+           
+            console.log('🚀 Creando nueva conexión Socket.IO...');
+            console.log('🔍 Datos de conexión:', {
+                serverUrl: 'https://marquesa.onrender.com',
+                userId: user.id,
+                userType: user.userType,
+                hasToken: !!token
+            });
+           
+            // ✅ CORRECCIÓN CRÍTICA: URL y configuración corregidas
             socketRef.current = io('https://marquesa.onrender.com', {
                 auth: {
                     token: token,
@@ -81,140 +112,173 @@ export const useSocket = () => {
                     userType: user.userType
                 },
                 withCredentials: true,
+                // ✅ CONFIGURACIÓN DE RECONEXIÓN MEJORADA
                 reconnection: true,
                 reconnectionAttempts: 5,
                 reconnectionDelay: 1000,
                 reconnectionDelayMax: 5000,
                 timeout: 20000,
                 transports: ['websocket', 'polling'],
-                // ✅ CORRECCIÓN: Configuraciones adicionales para mejor estabilidad
+                // ✅ NUEVAS CONFIGURACIONES PARA ESTABILIDAD
                 forceNew: false,
-                autoConnect: true
+                autoConnect: true,
+                upgrade: true,
+                // ✅ CONFIGURACIONES ADICIONALES PARA CROSS-DOMAIN
+                query: {
+                    userType: user.userType,
+                    userId: user.id
+                }
             });
-
+ 
             setupConnectionEvents();
-
+ 
         } catch (error) {
             console.error('❌ Error creando socket:', error);
             setConnectionError(`Error creando socket: ${error.message}`);
             setIsConnected(false);
+            setIsConnecting(false);
         }
-    }, [isAuthenticated, user, getAuthToken]);
-
+    }, [isAuthenticated, user, getAuthToken, isConnecting]);
+ 
     /**
-     * ✅ Configura todos los eventos de conexión Socket.IO
+     * ✅ CORRECCIÓN: Configura todos los eventos de conexión Socket.IO
      */
     const setupConnectionEvents = useCallback(() => {
-        if (!socketRef.current) return;
-
+        if (!socketRef.current) {
+            console.log('❌ No hay socket para configurar eventos');
+            return;
+        }
+ 
         console.log('⚙️ Configurando eventos de conexión Socket.IO...');
-
-        // ✅ CORRECCIÓN: Limpiar listeners previos para evitar duplicados
+ 
+        // ✅ LIMPIAR LISTENERS PREVIOS
         socketRef.current.removeAllListeners();
-
+ 
         // ---- EVENTO: Conexión exitosa ----
         socketRef.current.on('connect', () => {
-            console.log('✅ Socket.IO conectado exitosamente');
+            console.log('✅ Socket.IO conectado exitosamente:', socketRef.current.id);
             setIsConnected(true);
             setConnectionError(null);
+            setIsConnecting(false);
         });
-
+ 
         // ---- EVENTO: Confirmación del servidor ----
         socketRef.current.on('connected', (data) => {
             console.log('🎯 Confirmación recibida del servidor:', data);
             setIsConnected(true);
             setConnectionError(null);
+            setIsConnecting(false);
         });
-
+ 
         // ---- EVENTO: Desconexión ----
         socketRef.current.on('disconnect', (reason) => {
             console.log('❌ Socket.IO desconectado:', reason);
             setIsConnected(false);
-            
+            setIsConnecting(false);
+           
             // ✅ CORRECCIÓN: Solo mostrar error si no es desconexión intencional
             if (reason !== 'io client disconnect' && reason !== 'transport close') {
                 setConnectionError(`Desconectado: ${reason}`);
                 console.log('🔄 Intentando reconectar automáticamente...');
             }
         });
-
+ 
         // ---- EVENTO: Error de conexión ----
         socketRef.current.on('connect_error', (error) => {
             console.error('❌ Error de conexión Socket.IO:', error);
             setConnectionError(`Error de conexión: ${error.message || 'Error desconocido'}`);
             setIsConnected(false);
+            setIsConnecting(false);
         });
-
+ 
         // ---- EVENTO: Error de autenticación ----
         socketRef.current.on('unauthorized', (error) => {
             console.error('❌ Error de autenticación Socket.IO:', error);
             setConnectionError('Error de autenticación: Token inválido o expirado');
             setIsConnected(false);
+            setIsConnecting(false);
         });
-
+ 
         // ---- EVENTO: Error general del socket ----
         socketRef.current.on('error', (error) => {
             console.error('❌ Error en socket:', error);
             setConnectionError(`Error en socket: ${error.message || error}`);
             setIsConnected(false);
+            setIsConnecting(false);
         });
-
+ 
         // ✅ CORRECCIÓN: Evento de reconexión exitosa
         socketRef.current.on('reconnect', (attemptNumber) => {
             console.log(`✅ Reconectado exitosamente después de ${attemptNumber} intentos`);
             setIsConnected(true);
             setConnectionError(null);
+            setIsConnecting(false);
         });
-
+ 
         // ✅ CORRECCIÓN: Evento de intento de reconexión
         socketRef.current.on('reconnect_attempt', (attemptNumber) => {
             console.log(`🔄 Intento de reconexión #${attemptNumber}`);
             setConnectionError(`Reconectando... Intento ${attemptNumber}/5`);
+            setIsConnecting(true);
         });
-
+ 
         // ✅ CORRECCIÓN: Evento de fallo de reconexión
         socketRef.current.on('reconnect_failed', () => {
             console.error('❌ Falló la reconexión después de todos los intentos');
             setConnectionError('No se pudo reconectar. Verifica tu conexión a internet.');
             setIsConnected(false);
+            setIsConnecting(false);
         });
-
+ 
+        console.log('✅ Eventos de conexión configurados correctamente');
+ 
     }, []);
-
+ 
     /**
-     * ✅ Desconecta el socket y limpia referencias
+     * ✅ CORRECCIÓN: Desconecta el socket y limpia referencias
      */
     const disconnectSocket = useCallback(() => {
         console.log('🔌 Desconectando Socket.IO...');
-        
+       
         if (socketRef.current) {
             socketRef.current.disconnect();
             socketRef.current = null;
             setIsConnected(false);
             setConnectionError(null);
+            setIsConnecting(false);
             console.log('✅ Socket desconectado correctamente');
         }
     }, []);
-
-    // ============ EFECTOS DE CICLO DE VIDA ============
-    
+ 
+    // ============ EFECTOS DE CICLO DE VIDA CORREGIDOS ============
+   
     useEffect(() => {
-        if (isAuthenticated && user) {
-            console.log('👤 Usuario autenticado, conectando Socket.IO...');
-            connectSocket();
+        console.log('🔄 Efecto useSocket - Estado de autenticación cambió:', {
+            isAuthenticated,
+            hasUser: !!user,
+            userId: user?.id,
+            userType: user?.userType
+        });
+ 
+        if (isAuthenticated && user && user.id && user.userType) {
+            console.log('👤 Usuario autenticado completo, conectando Socket.IO...');
+            // ✅ PEQUEÑO DELAY para asegurar que el token esté disponible
+            setTimeout(() => {
+                connectSocket();
+            }, 1000);
         } else {
-            console.log('👤 Usuario no autenticado, desconectando Socket.IO...');
+            console.log('👤 Usuario no autenticado o incompleto, desconectando Socket.IO...');
             disconnectSocket();
         }
-
+ 
         return () => {
-            console.log('🧹 Limpiando conexión Socket.IO...');
-            disconnectSocket();
+            console.log('🧹 Cleanup del efecto useSocket...');
+            // No desconectar automáticamente en cleanup para evitar reconexiones innecesarias
         };
-    }, [isAuthenticated, user?.id, connectSocket, disconnectSocket]);
-
+    }, [isAuthenticated, user?.id, user?.userType, connectSocket, disconnectSocket]);
+ 
     // ============ FUNCIONES PARA EVENTOS DEL CHAT ============
-    
+   
     /**
      * ✅ Une al usuario a una conversación específica
      */
@@ -226,7 +290,7 @@ export const useSocket = () => {
             console.log('❌ No se puede unir a conversación: socket no conectado o ID inválido');
         }
     }, []);
-
+ 
     /**
      * ✅ Saca al usuario de una conversación específica
      */
@@ -236,7 +300,7 @@ export const useSocket = () => {
             socketRef.current.emit('leave_conversation', conversationId);
         }
     }, []);
-
+ 
     /**
      * ✅ Indica que el usuario está escribiendo
      */
@@ -245,7 +309,7 @@ export const useSocket = () => {
             socketRef.current.emit('typing_start', conversationId);
         }
     }, []);
-
+ 
     /**
      * ✅ Indica que el usuario dejó de escribir
      */
@@ -254,9 +318,9 @@ export const useSocket = () => {
             socketRef.current.emit('typing_stop', conversationId);
         }
     }, []);
-
+ 
     // ============ EVENTOS ESPECÍFICOS MANTENIDOS (5 eventos) ============
-    
+   
     /**
      * ✅ EVENTO 1/6: Suscribe a eventos de nuevos mensajes
      */
@@ -266,12 +330,12 @@ export const useSocket = () => {
             socketRef.current.on('new_message', (data) => {
                 console.log('📨 Nuevo mensaje recibido via Socket.IO:', {
                     conversationId: data.conversationId,
-                    hasImage: data.message?.media?.type === 'image', // ✅ Solo imágenes
+                    hasImage: data.message?.media?.type === 'image',
                     timestamp: data.timestamp
                 });
                 callback(data);
             });
-            
+           
             return () => {
                 if (socketRef.current) {
                     console.log('🧹 Removiendo listener de nuevos mensajes');
@@ -281,7 +345,7 @@ export const useSocket = () => {
         }
         return () => {};
     }, []);
-
+ 
     /**
      * ✅ EVENTO 2/6: Suscribe a eventos de mensajes eliminados (físicamente)
      */
@@ -292,12 +356,12 @@ export const useSocket = () => {
                 console.log('🗑️ Mensaje eliminado via Socket.IO:', {
                     messageId: data.messageId,
                     conversationId: data.conversationId,
-                    deletionType: data.deletionType, // ✅ Siempre será 'physical'
+                    deletionType: data.deletionType,
                     timestamp: data.timestamp
                 });
                 callback(data);
             });
-            
+           
             return () => {
                 if (socketRef.current) {
                     console.log('🧹 Removiendo listener de mensajes eliminados');
@@ -307,7 +371,7 @@ export const useSocket = () => {
         }
         return () => {};
     }, []);
-
+ 
     /**
      * ✅ EVENTO 3/6: Suscribe a eventos de mensajes leídos
      */
@@ -315,7 +379,7 @@ export const useSocket = () => {
         if (socketRef.current) {
             console.log('👁️ Suscribiéndose a eventos de mensajes leídos');
             socketRef.current.on('messages_read', callback);
-            
+           
             return () => {
                 if (socketRef.current) {
                     console.log('🧹 Removiendo listener de mensajes leídos');
@@ -325,7 +389,7 @@ export const useSocket = () => {
         }
         return () => {};
     }, []);
-
+ 
     /**
      * ✅ EVENTO 4/6: Suscribe a eventos de estadísticas del chat
      */
@@ -333,7 +397,7 @@ export const useSocket = () => {
         if (socketRef.current) {
             console.log('📊 Suscribiéndose a eventos de estadísticas del chat');
             socketRef.current.on('chat_stats_updated', callback);
-            
+           
             return () => {
                 if (socketRef.current) {
                     console.log('🧹 Removiendo listener de estadísticas del chat');
@@ -343,7 +407,7 @@ export const useSocket = () => {
         }
         return () => {};
     }, []);
-
+ 
     /**
      * ✅ EVENTO 5/6: Suscribe a eventos de límite aplicado
      */
@@ -355,12 +419,12 @@ export const useSocket = () => {
                     conversationId: data.conversationId,
                     deletedCount: data.deletedCount,
                     deletedFiles: data.deletedFiles,
-                    deletionType: data.deletionType, // ✅ Siempre será 'physical'
+                    deletionType: data.deletionType,
                     timestamp: data.timestamp
                 });
                 callback(data);
             });
-            
+           
             return () => {
                 if (socketRef.current) {
                     console.log('🧹 Removiendo listener de límite aplicado');
@@ -370,18 +434,11 @@ export const useSocket = () => {
         }
         return () => {};
     }, []);
-
+ 
     // ============ EVENTO UNIFICADO (3→1) ============
-
+ 
     /**
      * ✅ EVENTO 6/6: conversation_updated - UNIFICA 3 EVENTOS ANTERIORES
-     * 
-     * ANTES (3 eventos separados):
-     * - conversation_updated
-     * - conversation_list_updated  
-     * - new_conversation_created
-     * 
-     * DESPUÉS (1 evento unificado con actions):
      */
     const onConversationUpdated = useCallback((callback) => {
         if (socketRef.current) {
@@ -389,10 +446,10 @@ export const useSocket = () => {
             socketRef.current.on('conversation_updated', (data) => {
                 console.log('💬 Conversación actualizada via Socket.IO:', {
                     conversationId: data.conversationId,
-                    action: data.action, // ✅ 'created' | 'updated' | 'list_updated'
+                    action: data.action,
                     timestamp: data.timestamp
                 });
-                
+               
                 // Procesar según el tipo de acción
                 switch (data.action) {
                     case 'created':
@@ -407,10 +464,10 @@ export const useSocket = () => {
                     default:
                         console.log('🔄 Conversación actualizada (acción genérica):', data.conversationId);
                 }
-                
+               
                 callback(data);
             });
-            
+           
             return () => {
                 if (socketRef.current) {
                     console.log('🧹 Removiendo listener de conversaciones actualizadas');
@@ -420,11 +477,7 @@ export const useSocket = () => {
         }
         return () => {};
     }, []);
-
-    // ============ EVENTOS ELIMINADOS SEGÚN INFORME ============
-    // ❌ onConversationListUpdated - Eliminado (unificado en conversation_updated)
-    // ❌ onNewConversationCreated - Eliminado (unificado en conversation_updated)
-
+ 
     /**
      * ✅ Suscribe a eventos de conversaciones cerradas
      */
@@ -432,7 +485,7 @@ export const useSocket = () => {
         if (socketRef.current) {
             console.log('🔒 Suscribiéndose a eventos de conversaciones cerradas');
             socketRef.current.on('conversation_closed', callback);
-            
+           
             return () => {
                 if (socketRef.current) {
                     console.log('🧹 Removiendo listener de conversaciones cerradas');
@@ -442,7 +495,7 @@ export const useSocket = () => {
         }
         return () => {};
     }, []);
-
+ 
     /**
      * ✅ Suscribe a eventos de indicadores de escritura
      */
@@ -450,7 +503,7 @@ export const useSocket = () => {
         if (socketRef.current) {
             console.log('⌨️ Suscribiéndose a eventos de escritura');
             socketRef.current.on('user_typing', callback);
-            
+           
             return () => {
                 if (socketRef.current) {
                     console.log('🧹 Removiendo listener de escritura');
@@ -460,7 +513,7 @@ export const useSocket = () => {
         }
         return () => {};
     }, []);
-
+ 
     /**
      * ✅ Suscribe a eventos de usuarios uniéndose a conversaciones
      */
@@ -468,7 +521,7 @@ export const useSocket = () => {
         if (socketRef.current) {
             console.log('👥 Suscribiéndose a eventos de usuarios uniéndose');
             socketRef.current.on('user_joined_conversation', callback);
-            
+           
             return () => {
                 if (socketRef.current) {
                     console.log('🧹 Removiendo listener de usuarios uniéndose');
@@ -478,7 +531,7 @@ export const useSocket = () => {
         }
         return () => {};
     }, []);
-
+ 
     /**
      * ✅ Suscribe a eventos de usuarios saliendo de conversaciones
      */
@@ -486,7 +539,7 @@ export const useSocket = () => {
         if (socketRef.current) {
             console.log('👥 Suscribiéndose a eventos de usuarios saliendo');
             socketRef.current.on('user_left_conversation', callback);
-            
+           
             return () => {
                 if (socketRef.current) {
                     console.log('🧹 Removiendo listener de usuarios saliendo');
@@ -496,16 +549,16 @@ export const useSocket = () => {
         }
         return () => {};
     }, []);
-
+ 
     // ============ FUNCIONES DE UTILIDAD ============
-    
+   
     /**
      * ✅ Limpia el error de conexión actual
      */
     const clearConnectionError = useCallback(() => {
         setConnectionError(null);
     }, []);
-
+ 
     /**
      * ✅ Fuerza una reconexión
      */
@@ -516,41 +569,42 @@ export const useSocket = () => {
             connectSocket();
         }, 1000);
     }, [disconnectSocket, connectSocket]);
-
-    // ============ RETORNO DEL HOOK ACTUALIZADO ============
-    
+ 
+    // ============ RETORNO DEL HOOK CORREGIDO ============
+   
     return {
         // ---- Estado de la conexión ----
         socket: socketRef.current,
         isConnected,
         connectionError,
-        
+        isConnecting,
+       
         // ---- Acciones de conexión ----
         connectSocket,
         disconnectSocket,
         reconnect,
         clearConnectionError,
-        
+       
         // ---- Acciones del chat ----
         joinConversation,
         leaveConversation,
         startTyping,
         stopTyping,
-        
+       
         // ---- Eventos específicos mantenidos (5 eventos) ----
-        onNewMessage,                  // ✅ Nuevo mensaje recibido
-        onMessageDeleted,              // ✅ Mensaje eliminado (físicamente)
-        onMessagesRead,                // ✅ Mensajes marcados como leídos
-        onChatStatsUpdated,            // ✅ Estadísticas actualizadas
-        onLimitApplied,                // ✅ Límite de 75 mensajes aplicado
-        
+        onNewMessage,
+        onMessageDeleted,
+        onMessagesRead,
+        onChatStatsUpdated,
+        onLimitApplied,
+       
         // ---- Evento unificado (3→1) ----
-        onConversationUpdated,         // ✅ UNIFICA: conversation_updated + conversation_list_updated + new_conversation_created
-        
+        onConversationUpdated,
+       
         // ---- Otros eventos útiles ----
-        onConversationClosed,          // Conversación cerrada
-        onUserTyping,                  // Indicadores de escritura
-        onUserJoinedConversation,      // Usuario se unió a conversación
-        onUserLeftConversation         // Usuario salió de conversación
+        onConversationClosed,
+        onUserTyping,
+        onUserJoinedConversation,
+        onUserLeftConversation
     };
 };

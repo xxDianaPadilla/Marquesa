@@ -50,14 +50,12 @@ const useShoppingCart = () => {
         try {
             setError(null);
 
-            // ✅ CAMBIO PRINCIPAL: Usar la nueva ruta /active/:userId con sistema híbrido
             const operationPromise = fetch(`https://marquesa.onrender.com/api/shoppingCart/active/${user.id}`, {
                 method: 'GET',
-                credentials: 'include', // ✅ NUEVO: Incluir cookies
-                headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
+                credentials: 'include',
+                headers: getAuthHeaders(),
             });
 
-            // ✅ NUEVO: Timeout para conexiones lentas
             const timeoutPromise = new Promise((_, reject) => {
                 setTimeout(() => reject(new Error('TIMEOUT')), 30000);
             });
@@ -68,16 +66,13 @@ const useShoppingCart = () => {
                 const data = await response.json();
                 console.log('Datos recibidos del backend (carrito activo):', data);
 
-                // ✅ NUEVO: Manejo híbrido de tokens
                 let token = null;
 
-                // Primera prioridad: response body
                 if (data.token) {
                     token = data.token;
-                    setAuthToken(token); // Guardar en estado local
+                    setAuthToken(token);
                 }
 
-                // Segunda prioridad: cookie (con retraso)
                 if (!token) {
                     await new Promise(resolve => setTimeout(resolve, 1000));
                     token = getBestAvailableToken();
@@ -86,12 +81,13 @@ const useShoppingCart = () => {
                     }
                 }
 
-                // ✅ ESTRUCTURA ACTUALIZADA: La nueva ruta devuelve { cart } en lugar de { shoppingCart }
                 if (data.cart) {
                     const cart = data.cart;
 
                     if (cart.items && Array.isArray(cart.items) && cart.items.length > 0) {
                         const transformedItems = cart.items.map(item => {
+                            console.log('🔍 Transformando item:', item);
+
                             let transformedItem = {
                                 id: item.itemId?._id || item.itemId,
                                 quantity: item.quantity || 1,
@@ -100,13 +96,59 @@ const useShoppingCart = () => {
                                 _originalItem: item
                             };
 
+                            // ✅ MEJORADO: Manejo de imágenes más robusto
                             if (item.itemType === 'product') {
                                 transformedItem = {
                                     ...transformedItem,
                                     name: item.itemId?.name || 'Producto sin nombre',
                                     description: item.itemId?.description || '',
                                     price: item.itemId?.price || 0,
-                                    image: item.itemId?.images?.[0]?.image || item.itemId?.image || ''
+
+                                    // ✅ MEJORA CRÍTICA: Obtener imagen con fallbacks múltiples
+                                    image: (() => {
+                                        // Prioridad 1: imagen directa del itemId
+                                        if (item.itemId?.image && typeof item.itemId.image === 'string' && item.itemId.image.trim() !== '') {
+                                            console.log('📸 Imagen encontrada en itemId.image:', item.itemId.image);
+                                            return item.itemId.image.trim();
+                                        }
+
+                                        // Prioridad 2: primer elemento del array de imágenes
+                                        if (item.itemId?.images && Array.isArray(item.itemId.images) && item.itemId.images.length > 0) {
+                                            const firstImage = item.itemId.images[0];
+
+                                            // Si el primer elemento es un objeto con propiedad image
+                                            if (firstImage && typeof firstImage === 'object' && firstImage.image) {
+                                                console.log('📸 Imagen encontrada en images[0].image:', firstImage.image);
+                                                return firstImage.image.trim();
+                                            }
+
+                                            // Si el primer elemento es directamente una string
+                                            if (typeof firstImage === 'string' && firstImage.trim() !== '') {
+                                                console.log('📸 Imagen encontrada en images[0]:', firstImage);
+                                                return firstImage.trim();
+                                            }
+                                        }
+
+                                        // Prioridad 3: buscar en todo el array de imágenes
+                                        if (item.itemId?.images && Array.isArray(item.itemId.images)) {
+                                            for (const img of item.itemId.images) {
+                                                if (typeof img === 'string' && img.trim() !== '') {
+                                                    console.log('📸 Imagen encontrada en images array:', img);
+                                                    return img.trim();
+                                                }
+                                                if (img && typeof img === 'object' && img.image && typeof img.image === 'string' && img.image.trim() !== '') {
+                                                    console.log('📸 Imagen encontrada en images array object:', img.image);
+                                                    return img.image.trim();
+                                                }
+                                            }
+                                        }
+
+                                        console.log('❌ No se encontró imagen válida para producto:', item.itemId?.name);
+                                        return '';
+                                    })(),
+
+                                    // ✅ NUEVO: Mantener array completo de imágenes para debugging
+                                    images: item.itemId?.images || []
                                 };
                             } else if (item.itemType === 'custom') {
                                 transformedItem = {
@@ -114,17 +156,47 @@ const useShoppingCart = () => {
                                     name: item.itemId?.productToPersonalize || 'Producto personalizado',
                                     description: item.itemId?.extraComments || 'Producto personalizado',
                                     price: item.itemId?.totalPrice || 0,
-                                    image: item.itemId?.referenceImage || '🎨'
+
+                                    // ✅ MEJORA: Mejor manejo de imágenes para productos personalizados
+                                    image: (() => {
+                                        // Prioridad 1: referenceImage
+                                        if (item.itemId?.referenceImage && typeof item.itemId.referenceImage === 'string' && item.itemId.referenceImage.trim() !== '') {
+                                            console.log('📸 Imagen personalizada encontrada en referenceImage:', item.itemId.referenceImage);
+                                            return item.itemId.referenceImage.trim();
+                                        }
+
+                                        // Prioridad 2: image (si existe)
+                                        if (item.itemId?.image && typeof item.itemId.image === 'string' && item.itemId.image.trim() !== '') {
+                                            console.log('📸 Imagen personalizada encontrada en image:', item.itemId.image);
+                                            return item.itemId.image.trim();
+                                        }
+
+                                        console.log('❌ No se encontró imagen para producto personalizado:', item.itemId?.productToPersonalize);
+                                        return '';
+                                    })(),
+
+                                    // ✅ NUEVO: Mantener referenceImage original
+                                    referenceImage: item.itemId?.referenceImage || ''
                                 };
                             } else {
+                                // Fallback para tipos desconocidos
                                 transformedItem = {
                                     ...transformedItem,
                                     name: item.itemId?.name || item.itemId?.productToPersonalize || 'Producto',
                                     description: item.itemId?.description || item.itemId?.extraComments || '',
                                     price: item.itemId?.price || item.itemId?.totalPrice || 0,
-                                    image: item.itemId?.images?.[0]?.image || item.itemId?.referenceImage || '📦'
+                                    image: item.itemId?.image || item.itemId?.referenceImage || item.itemId?.images?.[0]?.image || ''
                                 };
                             }
+
+                            console.log('✅ Item transformado:', {
+                                id: transformedItem.id,
+                                name: transformedItem.name,
+                                type: transformedItem.itemType,
+                                hasImage: !!transformedItem.image,
+                                imageUrl: transformedItem.image,
+                                originalImages: transformedItem.images || 'N/A'
+                            });
 
                             return transformedItem;
                         });
@@ -148,7 +220,6 @@ const useShoppingCart = () => {
         } catch (error) {
             console.error('Error al obtener el carrito activo: ', error);
 
-            // ✅ NUEVO: Manejo específico de errores de red vs servidor
             let errorMessage = 'Error al cargar el carrito de compras';
 
             if (error.message === 'TIMEOUT') {

@@ -54,10 +54,10 @@ const ChatAdmin = () => {
 
     const handleSendMessage = async (messageText, file = null) => {
         if (!activeConversation || (!messageText?.trim() && !file && !selectedFile)) return;
-        
+
         const fileToSend = file || selectedFile;
         const success = await sendMessage(activeConversation.conversationId, messageText, fileToSend);
-        
+
         if (success) {
             setNewMessage('');
             setSelectedFile(null);
@@ -88,7 +88,7 @@ const ChatAdmin = () => {
         const file = e.target.files[0];
         if (file) {
             setSelectedFile(file);
-            
+
             if (file.type.startsWith('image/')) {
                 const reader = new FileReader();
                 reader.onload = (e) => setPreviewUrl(e.target.result);
@@ -101,11 +101,11 @@ const ChatAdmin = () => {
 
     const handleMessageAction = (action, message) => {
         if (action === 'delete') {
-            const canDelete = message.senderType === 'admin' || 
-                            (message.senderType === 'Customer' && 
-                             (activeConversation?.clientId?._id === message.senderId?._id || 
-                              activeConversation?.clientId?.id === message.senderId?.id));
-            
+            const canDelete = message.senderType === 'admin' ||
+                (message.senderType === 'Customer' &&
+                    (activeConversation?.clientId?._id === message.senderId?._id ||
+                        activeConversation?.clientId?.id === message.senderId?.id));
+
             if (canDelete) {
                 openDeleteModal(message);
             }
@@ -125,7 +125,7 @@ const ChatAdmin = () => {
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
 
-        // ✅ CORRECCIÓN: Comparar solo fechas, no horas
+        // ✅ CORRECCIÓN CRÍTICA: Comparar solo fechas, no horas
         const messageDateOnly = messageDate.toDateString();
         const todayOnly = today.toDateString();
         const yesterdayOnly = yesterday.toDateString();
@@ -200,19 +200,18 @@ const ChatAdmin = () => {
                             <div
                                 key={conversation.conversationId}
                                 onClick={() => selectConversation(conversation)}
-                                className={`p-3 md:p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                                    activeConversation?.conversationId === conversation.conversationId
-                                        ? 'bg-[#E8ACD2] bg-opacity-20 border-l-4 border-l-[#E8ACD2]'
-                                        : ''
-                                }`}
+                                className={`p-3 md:p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${activeConversation?.conversationId === conversation.conversationId
+                                    ? 'bg-[#E8ACD2] bg-opacity-20 border-l-4 border-l-[#E8ACD2]'
+                                    : ''
+                                    }`}
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center space-x-3 flex-1 min-w-0">
                                         {/* ✅ CORRECCIÓN: Avatar siempre del cliente original */}
                                         <div className="w-8 md:w-10 h-8 md:h-10 bg-[#E8ACD2] rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0">
                                             {conversation.clientId?.profilePicture ? (
-                                                <img 
-                                                    src={conversation.clientId.profilePicture} 
+                                                <img
+                                                    src={conversation.clientId.profilePicture}
                                                     alt={conversation.clientId.fullName || 'Cliente'}
                                                     className="w-full h-full rounded-full object-cover"
                                                 />
@@ -220,7 +219,7 @@ const ChatAdmin = () => {
                                                 (conversation.clientId?.fullName?.charAt(0)?.toUpperCase() || 'C')
                                             )}
                                         </div>
-                                        
+
                                         {/* ✅ CORRECCIÓN: Info siempre del cliente original */}
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm font-medium text-gray-900 truncate" style={{ fontFamily: 'Poppins, sans-serif' }}>
@@ -232,26 +231,26 @@ const ChatAdmin = () => {
                                             </p>
                                         </div>
                                     </div>
-                                    
+
                                     {/* Indicadores actualizados en tiempo real */}
                                     <div className="flex flex-col items-end space-y-1 flex-shrink-0 ml-2">
                                         {/* ✅ Hora del último mensaje */}
                                         <span className="text-xs text-gray-500">
                                             {conversation.lastMessageAt && formatTime(conversation.lastMessageAt)}
                                         </span>
-                                        
+
                                         {/* ✅ Contador no leídos */}
                                         {conversation.unreadCountAdmin > 0 && (
                                             <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full min-w-[20px] text-center animate-pulse">
                                                 {conversation.unreadCountAdmin}
                                             </span>
                                         )}
-                                        
+
                                         {/* ✅ Indicador de actividad reciente */}
-                                        {conversation.lastMessageAt && 
-                                         new Date() - new Date(conversation.lastMessageAt) < 5 * 60 * 1000 && (
-                                            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" title="Actividad reciente"></span>
-                                        )}
+                                        {conversation.lastMessageAt &&
+                                            new Date() - new Date(conversation.lastMessageAt) < 5 * 60 * 1000 && (
+                                                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" title="Actividad reciente"></span>
+                                            )}
                                     </div>
                                 </div>
                             </div>
@@ -271,8 +270,8 @@ const ChatAdmin = () => {
                                     {/* ✅ CORRECCIÓN: Avatar siempre del cliente de la conversación */}
                                     <div className="w-6 md:w-8 h-6 md:h-8 bg-[#E8ACD2] rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
                                         {activeConversation.clientId?.profilePicture ? (
-                                            <img 
-                                                src={activeConversation.clientId.profilePicture} 
+                                            <img
+                                                src={activeConversation.clientId.profilePicture}
                                                 alt={activeConversation.clientId.fullName || 'Cliente'}
                                                 className="w-full h-full rounded-full object-cover"
                                             />
@@ -290,7 +289,7 @@ const ChatAdmin = () => {
                                         </p>
                                     </div>
                                 </div>
-                                
+
                                 {/* ✅ INDICADOR DE LÍMITE MEJORADO */}
                                 <div className="flex flex-col items-end text-xs text-gray-500">
                                     <span className={`${isNearLimit ? 'text-orange-500' : isAtLimit ? 'text-red-500' : 'text-gray-500'} transition-colors duration-300`}>
@@ -314,7 +313,7 @@ const ChatAdmin = () => {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                                     </svg>
                                     <span>
-                                        {isAtLimit 
+                                        {isAtLimit
                                             ? 'Límite de 75 mensajes alcanzado. Los mensajes más antiguos se eliminan automáticamente.'
                                             : 'La conversación está cerca del límite de 75 mensajes.'
                                         }
@@ -340,45 +339,52 @@ const ChatAdmin = () => {
                                     </div>
                                 </div>
                             ) : (
-                                messages.filter(message => !message.isDeleted).map((message, index) => {
-                                const showDate = index === 0 || 
-                                    formatDate(message.createdAt) !== formatDate(messages[index - 1].createdAt);
-                                
-                                return (
-                                    <div key={message._id}>
-                                        {showDate && (
-                                            <div className="text-center mb-4">
-                                                <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                                                    {formatDate(message.createdAt)}
-                                                </span>
+                                // ✅ CORRECCIÓN CRÍTICA: Filtrar mensajes y calcular fechas correctamente
+                                (() => {
+                                    // Filtrar mensajes válidos una sola vez
+                                    const validMessages = messages.filter(message => !message.isDeleted);
+
+                                    return validMessages.map((message, index) => {
+                                        // ✅ FIX: Comparar con el mensaje anterior en la lista filtrada
+                                        const showDate = index === 0 ||
+                                            formatDate(message.createdAt) !== formatDate(validMessages[index - 1].createdAt);
+
+                                        return (
+                                            <div key={message._id}>
+                                                {showDate && (
+                                                    <div className="text-center mb-4">
+                                                        <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                                                            {formatDate(message.createdAt)}
+                                                        </span>
+                                                    </div>
+                                                )}
+
+                                                <MessageItem
+                                                    message={message}
+                                                    isOwnMessage={message.senderType === 'admin'}
+                                                    isAdmin={true}
+                                                    onAction={handleMessageAction}
+                                                    MediaRenderer={MediaRenderer}
+                                                    formatTime={formatTime}
+                                                    activeConversation={activeConversation}
+                                                />
                                             </div>
-                                        )}
-                                        
-                                        <MessageItem
-                                            message={message}
-                                            isOwnMessage={message.senderType === 'admin'}
-                                            isAdmin={true}
-                                            onAction={handleMessageAction}
-                                            MediaRenderer={MediaRenderer}
-                                            formatTime={formatTime}
-                                            activeConversation={activeConversation} // ✅ CORRECCIÓN CRÍTICA: Pasar activeConversation
-                                        />
-                                    </div>
-                                );
-                            })
+                                        );
+                                    });
+                                })()
                             )}
-                            
+
                             {/* Indicador de escritura */}
                             {typingUsers && typingUsers.size > 0 && (
                                 <TypingIndicator users={Array.from(typingUsers)} />
                             )}
-                            
+
                             <div ref={messagesEndRef} />
                         </div>
 
                         {/* Preview de archivo seleccionado */}
                         {selectedFile && (
-                            <FilePreview 
+                            <FilePreview
                                 file={selectedFile}
                                 previewUrl={previewUrl}
                                 onClear={() => {
@@ -406,7 +412,7 @@ const ChatAdmin = () => {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                                     </svg>
                                 </button>
-                                
+
                                 <input
                                     type="file"
                                     ref={fileInputRef}
@@ -414,7 +420,7 @@ const ChatAdmin = () => {
                                     accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
                                     className="hidden"
                                 />
-                                
+
                                 <textarea
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
@@ -425,7 +431,7 @@ const ChatAdmin = () => {
                                     rows="1"
                                     disabled={!activeConversation}
                                 />
-                                
+
                                 <button
                                     type="submit"
                                     disabled={(!newMessage.trim() && !selectedFile) || !activeConversation}
@@ -450,7 +456,7 @@ const ChatAdmin = () => {
                                 Selecciona una conversación para comenzar
                             </p>
                             <p className="text-sm text-gray-400" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                {conversations.length === 0 
+                                {conversations.length === 0
                                     ? 'Las conversaciones aparecerán cuando los clientes envíen mensajes'
                                     : 'Elige una conversación de la lista para ver los mensajes'
                                 }
@@ -482,8 +488,8 @@ const ChatAdmin = () => {
                             </div>
                             <div className="flex-1">
                                 <h3 className="text-lg font-semibold text-red-600 mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                    {error.includes('cuenta ha sido eliminada') ? 'Cuenta Eliminada' : 
-                                     error.includes('sesión ha expirado') ? 'Sesión Expirada' : 'Error de Conexión'}
+                                    {error.includes('cuenta ha sido eliminada') ? 'Cuenta Eliminada' :
+                                        error.includes('sesión ha expirado') ? 'Sesión Expirada' : 'Error de Conexión'}
                                 </h3>
                                 <p className="text-gray-700 mb-4" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                     {error}
@@ -493,8 +499,8 @@ const ChatAdmin = () => {
                                     className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                                     style={{ fontFamily: 'Poppins, sans-serif' }}
                                 >
-                                    {error.includes('cuenta ha sido eliminada') ? 'Entendido' : 
-                                     error.includes('sesión ha expirado') ? 'Recargar Página' : 'Cerrar'}
+                                    {error.includes('cuenta ha sido eliminada') ? 'Entendido' :
+                                        error.includes('sesión ha expirado') ? 'Recargar Página' : 'Cerrar'}
                                 </button>
                             </div>
                         </div>

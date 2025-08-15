@@ -1,24 +1,3 @@
-/**
- * Página de gestión de ventas para administradores
- * 
- * Funcionalidades principales:
- * - Listado de órdenes con filtros y búsqueda
- * - Estadísticas de ventas en tiempo real
- * - Actualización de estados de pedidos
- * - Información detallada de cada orden
- * 
- * Componentes utilizados:
- * - AdminLayout (existente)
- * - SalesCard (existente)
- * - useSalesAdmin (hook existente)
- * - SearchBar (nuevo)
- * - StatsCard (nuevo)
- * - LoadingSpinner (nuevo)
- * - EmptyState (nuevo)
- * - Badge (nuevo)
- * - Container (nuevo)
- */
-
 import React, { useState, useEffect } from "react";
 import AdminLayout from "../components/AdminLayout";
 import SalesCard from "../components/SalesCard";
@@ -155,24 +134,6 @@ const SalesManager = () => {
             text="Cargando órdenes..."
             size="lg"
           />
-        </Container>
-      </AdminLayout>
-    );
-  }
-
-  // Mostrar error si hay algún problema
-  if (error) {
-    return (
-      <AdminLayout>
-        <Container className="p-6">
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-            <div className="flex items-center">
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Error: {error}
-            </div>
-          </div>
         </Container>
       </AdminLayout>
     );

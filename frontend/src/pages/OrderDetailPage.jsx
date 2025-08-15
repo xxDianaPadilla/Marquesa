@@ -319,7 +319,7 @@ const OrderDetail = () => {
   const getStatusLabel = (trackingStatus) => {
     const statusMap = {
       'Agendado': 'Preparando',
-      'En proceso': 'En camino',
+      'En proceso': 'En proceso',
       'Entregado': 'Entregado',
       'Cancelado': 'Cancelado'
     };
@@ -688,7 +688,7 @@ const OrderDetail = () => {
                 <div className="absolute bottom-4 left-4 right-4 bg-gray-800 text-white p-3 rounded-lg bg-opacity-90 backdrop-blur-sm">
                   <p className="text-sm font-medium">
                     {orderData.trackingStatus === 'Entregado' ? 'Tu pedido ha sido entregado' :
-                      orderData.trackingStatus === 'En proceso' ? 'Tu pedido está en camino' :
+                      orderData.trackingStatus === 'En proceso' ? 'Tu pedido está en proceso' :
                         orderData.trackingStatus === 'Cancelado' ? 'Tu pedido fue cancelado' :
                           'Tu pedido está siendo preparado'}
                   </p>

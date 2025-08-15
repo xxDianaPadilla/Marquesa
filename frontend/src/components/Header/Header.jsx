@@ -206,7 +206,7 @@ const Header = () => {
 
       {/* Modal de Autenticación */}
       {showAuthModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
+        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
           <div className="bg-white rounded-lg shadow-xl p-6 mx-4 max-w-sm w-full">
             {/* Header del modal */}
             <div className="flex items-center justify-between mb-4">

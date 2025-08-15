@@ -6,8 +6,10 @@ import PriceDisplay from "./PriceDisplay";
 import iconFavorites from '../assets/favoritesIcon.png';
 import { useNavigate } from "react-router-dom";
 import { useFavorites } from "../context/FavoritesContext";
+// ✅ AGREGAR: Importar contexto de autenticación
+import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
-
+ 
 const FeaturedProductsCarousel = ({
     autoSlideInterval = 5000,
     showArrows = true,
@@ -16,7 +18,9 @@ const FeaturedProductsCarousel = ({
 }) => {
     const navigate = useNavigate();
     const { toggleFavorite, isFavorite } = useFavorites();
-
+    // ✅ AGREGAR: Obtener estado de autenticación
+    const { isAuthenticated } = useAuth();
+ 
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -24,14 +28,14 @@ const FeaturedProductsCarousel = ({
     const [cart, setCart] = useState([]);
     const [isAutoSliding, setIsAutoSliding] = useState(true);
     const [favoriteToggling, setFavoriteToggling] = useState(new Set());
-
+ 
     const loadFeaturedProducts = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
-
+ 
             const fetchedProducts = await useFeaturedProductsService.getFeaturedProducts();
-
+ 
             if (fetchedProducts && fetchedProducts.length > 0) {
                 setProducts(fetchedProducts);
                 setCurrentSlide(0);
@@ -47,58 +51,56 @@ const FeaturedProductsCarousel = ({
             setLoading(false);
         }
     }, []);
-
+ 
     useEffect(() => {
         loadFeaturedProducts();
     }, [loadFeaturedProducts]);
-
+ 
     useEffect(() => {
         if (!isAutoSliding || products.length <= 1) return;
-
+ 
         const interval = setInterval(() => {
             setCurrentSlide((prev) => (prev + 1) % Math.ceil(products.length / getProductsPerSlide()));
         }, autoSlideInterval);
-
+ 
         return () => clearInterval(interval);
     }, [isAutoSliding, products.length, autoSlideInterval]);
-
+ 
     const getProductsPerSlide = () => {
         if (typeof window === 'undefined') return 3;
         if (window.innerWidth >= 1024) return 3;
         if (window.innerWidth >= 640) return 2;
         return 1;
     };
-
+ 
     const goToSlide = (slideIndex) => {
         setCurrentSlide(slideIndex);
         setIsAutoSliding(false);
         setTimeout(() => setIsAutoSliding(true), 3000);
     };
-
+ 
     const nextSlide = () => {
         const maxSlides = Math.ceil(products.length / getProductsPerSlide());
         setCurrentSlide((prev) => (prev + 1) % maxSlides);
         setIsAutoSliding(false);
         setTimeout(() => setIsAutoSliding(true), 3000);
     };
-
+ 
     const prevSlide = () => {
         const maxSlides = Math.ceil(products.length / getProductsPerSlide());
         setCurrentSlide((prev) => (prev - 1 + maxSlides) % maxSlides);
         setIsAutoSliding(false);
         setTimeout(() => setIsAutoSliding(true), 3000);
     };
-
-    // ✅ CORRECCIÓN PRINCIPAL: Normalizar producto para favoritos
+ 
     const normalizeProductForFavorites = useCallback((product) => {
         if (!product) return null;
-
+ 
         const productId = product._id || product.id;
         if (!productId) return null;
-
-        // Extraer la mejor imagen disponible
+ 
         let productImage = '/placeholder-image.jpg';
-        
+       
         if (product.images && Array.isArray(product.images) && product.images.length > 0) {
             if (product.images[0]?.image) {
                 productImage = product.images[0].image;
@@ -108,41 +110,29 @@ const FeaturedProductsCarousel = ({
         } else if (product.image) {
             productImage = product.image;
         }
-
-        // Normalizar categoría
+ 
         let categoryName = 'Sin categoría';
         let categoryId = null;
-
+ 
         if (typeof product.categoryId === 'object' && product.categoryId) {
             categoryId = product.categoryId._id || product.categoryId.id;
             categoryName = product.categoryId.name || 'Sin categoría';
         } else if (product.categoryId) {
             categoryId = product.categoryId;
         }
-
+ 
         return {
-            // IDs normalizados
             _id: productId,
             id: productId,
-            
-            // Información básica
             name: product.name || 'Producto sin nombre',
             description: product.description || '',
             price: product.price || 0,
             category: categoryName,
             categoryId: categoryId,
-            
-            // Imágenes normalizadas
             image: productImage,
             images: product.images || [],
-            
-            // Stock si está disponible
             stock: product.stock,
-            
-            // Personalizable
             isPersonalizable: product.isPersonalizable || false,
-            
-            // Preservar otros campos que puedan ser importantes
             ...Object.keys(product).reduce((acc, key) => {
                 if (!['_id', 'id', 'name', 'description', 'price', 'category', 'image', 'images', 'stock', 'isPersonalizable', 'categoryId'].includes(key)) {
                     acc[key] = product[key];
@@ -151,37 +141,48 @@ const FeaturedProductsCarousel = ({
             }, {})
         };
     }, []);
-
-    // ✅ CORRECCIÓN PRINCIPAL: handleToggleFavorite usando las mismas alertas que ProductInfo
+ 
+    // ✅ MODIFICAR: handleToggleFavorite con validación de autenticación
     const handleToggleFavorite = useCallback(async (product) => {
         const productId = product._id || product.id;
-
+ 
         if (!product || !productId || favoriteToggling.has(productId)) {
             return;
         }
-
+ 
+        // ✅ NUEVA VALIDACIÓN: Verificar autenticación
+        if (!isAuthenticated) {
+            toast.error('Debes iniciar sesión para agregar productos a favoritos', {
+                duration: 4000,
+                position: 'top-center',
+                icon: '🔒',
+                style: {
+                    background: '#F59E0B',
+                    color: '#fff',
+                },
+            });
+            return;
+        }
+ 
         try {
             setFavoriteToggling(prev => new Set([...prev, productId]));
-
+ 
             const normalizedProduct = normalizeProductForFavorites(product);
             if (!normalizedProduct) {
                 throw new Error('No se pudo normalizar el producto');
             }
-
-            // ✅ CORRECCIÓN: Verificar el estado ANTES del toggle
+ 
             const wasCurrentlyFavorite = isFavorite(productId);
-
+ 
             console.log('❤️ FeaturedCarousel - Toggle favorite for product:', {
                 id: normalizedProduct._id,
                 name: normalizedProduct.name,
                 wasCurrentlyFavorite: wasCurrentlyFavorite
             });
-
+ 
             const wasAdded = await toggleFavorite(normalizedProduct);
-
-            // ✅ USAR LA LÓGICA CORRECTA: Mostrar alerta basada en el estado ANTERIOR
+ 
             if (wasCurrentlyFavorite) {
-                // Estaba en favoritos y se removió
                 toast.success(`${normalizedProduct.name} eliminado de favoritos`, {
                     duration: 3000,
                     position: 'top-center',
@@ -193,7 +194,6 @@ const FeaturedProductsCarousel = ({
                 });
                 console.log('❌ FeaturedCarousel - Producto removido de favoritos');
             } else {
-                // No estaba en favoritos y se agregó
                 toast.success(`¡${normalizedProduct.name} agregado a favoritos!`, {
                     duration: 3000,
                     position: 'top-center',
@@ -205,17 +205,17 @@ const FeaturedProductsCarousel = ({
                 });
                 console.log('✅ FeaturedCarousel - Producto agregado a favoritos');
             }
-
+ 
         } catch (error) {
             console.error('❌ FeaturedCarousel - Error al manejar favoritos:', error);
-            
+           
             let errorMessage = 'Error al actualizar favoritos';
             if (error.message?.includes('storage')) {
                 errorMessage = 'Error de almacenamiento. Verifica el espacio disponible';
             } else if (error.message) {
                 errorMessage = error.message;
             }
-
+ 
             toast.error(errorMessage, {
                 duration: 3000,
                 position: 'top-center',
@@ -228,8 +228,8 @@ const FeaturedProductsCarousel = ({
                 return newSet;
             });
         }
-    }, [normalizeProductForFavorites, toggleFavorite, favoriteToggling, isFavorite]);
-
+    }, [normalizeProductForFavorites, toggleFavorite, favoriteToggling, isFavorite, isAuthenticated]);
+ 
     const handleAddToCart = (product) => {
         const existingItem = cart.find(item => item._id === product._id);
         if (existingItem) {
@@ -241,7 +241,7 @@ const FeaturedProductsCarousel = ({
         } else {
             setCart([...cart, { ...product, quantity: 1 }]);
         }
-
+ 
         toast.success(`¡${product.name} agregado al carrito!`, {
             duration: 2000,
             position: 'top-center',
@@ -252,23 +252,23 @@ const FeaturedProductsCarousel = ({
             },
         });
     };
-
+ 
     const handleProductClick = (product) => {
         if (product.categoryId) {
             navigate(`/categoria/${product.categoryId}`);
         }
     };
-
+ 
     const handleRefreshProducts = () => {
         loadFeaturedProducts();
     };
-
+ 
     const getCurrentSlideProducts = () => {
         const productsPerSlide = getProductsPerSlide();
         const startIndex = currentSlide * productsPerSlide;
         return products.slice(startIndex, startIndex + productsPerSlide);
     };
-
+ 
     if (loading) {
         return (
             <section className={`bg-pink-50 py-8 sm:py-14 ${className}`}>
@@ -294,7 +294,7 @@ const FeaturedProductsCarousel = ({
             </section>
         );
     }
-
+ 
     if (error || products.length === 0) {
         return (
             <section className={`bg-pink-50 py-8 sm:py-14 ${className}`}>
@@ -312,14 +312,13 @@ const FeaturedProductsCarousel = ({
             </section>
         );
     }
-
+ 
     const maxSlides = Math.ceil(products.length / getProductsPerSlide());
     const currentProducts = getCurrentSlideProducts();
-
+ 
     return (
         <section className={`bg-pink-50 py-8 sm:py-14 ${className}`}>
             <Container>
-                {/* Header con botón de refrescar */}
                 <div className="text-center mb-8 sm:mb-10 relative">
                     <h2
                         className="text-2xl sm:text-3xl lg:text-4xl font-medium text-gray-900 mb-2"
@@ -330,8 +329,7 @@ const FeaturedProductsCarousel = ({
                     <p className="text-center text-gray-600 mb-4 text-base sm:text-lg max-w-2xl mx-auto" style={{ fontFamily: "Poppins" }}>
                         Descubre nuestros productos más populares, actualizados aleatoriamente.
                     </p>
-
-                    {/* Botón para refrescar productos */}
+ 
                     <button
                         onClick={handleRefreshProducts}
                         className="absolute top-0 right-0 p-2 text-gray-400 hover:text-gray-600 transition-colors"
@@ -342,16 +340,14 @@ const FeaturedProductsCarousel = ({
                         </svg>
                     </button>
                 </div>
-
-                {/* Carrusel container */}
+ 
                 <div className="relative">
-                    {/* Productos del slide actual */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
                         {currentProducts.map((product) => {
                             const productId = product._id || product.id;
                             const isProductFavorite = isFavorite(productId);
                             const isToggling = favoriteToggling.has(productId);
-
+ 
                             return (
                                 <div
                                     key={productId}
@@ -369,13 +365,12 @@ const FeaturedProductsCarousel = ({
                                                 e.target.src = '/placeholder-product.jpg';
                                             }}
                                         />
-
-                                        {/* Badge de precio */}
+ 
                                         <div className="absolute top-3 right-3 bg-white bg-opacity-90 rounded-full px-3 py-1 shadow-md">
                                             <PriceDisplay price={product.price} size="sm" />
                                         </div>
-
-                                        {/* Botón de favorito */}
+ 
+                                        {/* ✅ MODIFICAR: Botón de favorito con estado de bloqueo */}
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -386,8 +381,11 @@ const FeaturedProductsCarousel = ({
                                                 disabled:cursor-not-allowed disabled:transform-none disabled:opacity-75
                                                 ${isProductFavorite
                                                     ? 'bg-pink-500 bg-opacity-90 hover:bg-opacity-100'
-                                                    : 'bg-white bg-opacity-80 hover:bg-opacity-100'
+                                                    : isAuthenticated
+                                                        ? 'bg-white bg-opacity-80 hover:bg-opacity-100'
+                                                        : 'bg-gray-300 bg-opacity-80 cursor-not-allowed'
                                                 }`}
+                                            title={!isAuthenticated ? 'Inicia sesión para agregar a favoritos' : (isProductFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos')}
                                         >
                                             {isProductFavorite ? (
                                                 <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
@@ -397,12 +395,12 @@ const FeaturedProductsCarousel = ({
                                                 <img
                                                     src={iconFavorites}
                                                     alt="Agregar a favoritos"
-                                                    className="w-5 h-6 transition-all duration-200"
+                                                    className={`w-5 h-6 transition-all duration-200 ${!isAuthenticated ? 'opacity-50' : ''}`}
                                                 />
                                             )}
                                         </button>
                                     </div>
-
+ 
                                     <div className="p-4">
                                         <h3 className="text-lg font-semibold mb-1" style={{ fontFamily: "Poppins" }}>
                                             {product.name}
@@ -410,19 +408,20 @@ const FeaturedProductsCarousel = ({
                                         <p className="text-sm text-gray-600 mb-2" style={{ fontFamily: "Poppins" }}>
                                             {product.description}
                                         </p>
-
+ 
                                         <div className="flex items-center justify-between mb-3">
                                             <PriceDisplay price={product.price} />
-                                            <div className={`flex items-center gap-2 ${isProductFavorite ? 'text-pink-500' : 'text-gray-400'}`}>
+                                            {/* ✅ MODIFICAR: Indicador de favorito con estado de autenticación */}
+                                            <div className={`flex items-center gap-2 ${isProductFavorite ? 'text-pink-500' : !isAuthenticated ? 'text-gray-300' : 'text-gray-400'}`}>
                                                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                                                     <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                                                 </svg>
                                                 <span className="text-xs font-medium">
-                                                    {isProductFavorite ? 'En favoritos' : 'Guardar'}
+                                                    {!isAuthenticated ? 'Inicia sesión' : (isProductFavorite ? 'En favoritos' : 'Guardar')}
                                                 </span>
                                             </div>
                                         </div>
-
+ 
                                         <ActionButton
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -439,8 +438,7 @@ const FeaturedProductsCarousel = ({
                             );
                         })}
                     </div>
-
-                    {/* Flechas de navegación */}
+ 
                     {showArrows && maxSlides > 1 && (
                         <>
                             <button
@@ -451,7 +449,7 @@ const FeaturedProductsCarousel = ({
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                                 </svg>
                             </button>
-
+ 
                             <button
                                 onClick={nextSlide}
                                 className="absolute right-0 top-1/2 transform -translate-y-1/2 translate-x-4 bg-white shadow-lg rounded-full p-2 hover:bg-gray-50 transition-colors z-10"
@@ -463,8 +461,7 @@ const FeaturedProductsCarousel = ({
                         </>
                     )}
                 </div>
-
-                {/* Indicadores de slides (dots) */}
+ 
                 {showDots && maxSlides > 1 && (
                     <div className="flex justify-center mt-6 space-x-2">
                         {Array.from({ length: maxSlides }).map((_, index) => (
@@ -477,8 +474,7 @@ const FeaturedProductsCarousel = ({
                         ))}
                     </div>
                 )}
-
-                {/* Botón para ver todos los productos */}
+ 
                 <div className="flex justify-center mt-8 sm:mt-10">
                     <ActionButton
                         onClick={() => navigate('/categoryProducts')}
@@ -493,5 +489,5 @@ const FeaturedProductsCarousel = ({
         </section>
     );
 };
-
+ 
 export default FeaturedProductsCarousel;

@@ -131,7 +131,7 @@ const ProductCard = ({
 
                 {/* Overlay con botones en hover */}
                 {isHovered && product.inStock && (
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();

@@ -12,22 +12,26 @@ const RATE_LIMIT_CONFIG = {
     warningThreshold: 3 // Número de intentos después del cual se muestra advertencia
 };
 
-// Función para determinar la configuración de cookies según el entorno
+// ✅ CORRECCIÓN CRÍTICA: Función para determinar la configuración de cookies según el entorno
 const getCookieConfig = () => {
     const isProduction = process.env.NODE_ENV === 'production';
 
-    // Seguir intentando cookies pero no depender de ellas
+    console.log('🍪 Configurando cookies para entorno:', isProduction ? 'PRODUCTION' : 'DEVELOPMENT');
+
     if (isProduction) {
+        // ✅ CONFIGURACIÓN CROSS-DOMAIN OPTIMIZADA PARA PRODUCCIÓN
         return {
-            httpOnly: false,
-            secure: true,
-            sameSite: 'none',
-            maxAge: 7 * 24 * 60 * 60 * 1000, 
+            httpOnly: true, // ✅ CAMBIO: httpOnly true para seguridad
+            secure: true,   // ✅ HTTPS obligatorio en producción
+            sameSite: 'none', // ✅ Permitir cookies cross-domain
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
             path: '/',
+            // ✅ NO especificar domain para permitir cross-domain
         };
     } else {
+        // Configuración para desarrollo local
         return {
-            httpOnly: false,
+            httpOnly: true, // ✅ CAMBIO: httpOnly true también en desarrollo
             secure: false,
             sameSite: 'lax',
             maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -205,6 +209,12 @@ loginController.login = async (req, res) => {
     const { email, password } = req.body;
 
     try {
+        console.log('🔐 === INICIO LOGIN ===');
+        console.log('📧 Email recibido:', email);
+        console.log('🌍 Entorno:', process.env.NODE_ENV);
+        console.log('🔗 Origin:', req.headers.origin);
+        console.log('🍪 Cookies recibidas:', req.headers.cookie);
+
         // Validar el formato del email
         const emailValidation = validateEmail(email);
         if (!emailValidation.isValid) {
@@ -246,7 +256,47 @@ loginController.login = async (req, res) => {
         // Verificar si es el administrador
         if (cleanEmail === config.admin.email && password === config.admin.password) {
             userType = "admin";
-            userFound = { _id: "admin" };
+            
+            console.log('👑 Admin detectado, buscando en base de datos...');
+            
+            try {
+                // Buscar admin por email en la colección de clients
+                userFound = await clientsModel.findOne({ 
+                    email: cleanEmail,
+                });
+                
+                console.log('🔍 Admin encontrado en DB:', !!userFound);
+                console.log('🔍 Admin ID:', userFound?._id);
+                
+                // Si no se encuentra en clients, crear un ObjectId temporal válido
+                if (!userFound) {
+                    console.log('⚠️ Admin no encontrado en DB, usando ID temporal válido');
+                    const mongoose = (await import('mongoose')).default;
+                    const tempAdminId = new mongoose.Types.ObjectId();
+                    
+                    userFound = { 
+                        _id: tempAdminId,
+                        email: cleanEmail,
+                        fullName: 'Administrador',
+                        userType: 'admin'
+                    };
+                    
+                    console.log('🆔 ID temporal generado para admin:', tempAdminId);
+                }
+            } catch (dbError) {
+                console.error('❌ Error buscando admin en DB:', dbError);
+                const mongoose = (await import('mongoose')).default;
+                const tempAdminId = new mongoose.Types.ObjectId();
+                
+                userFound = { 
+                    _id: tempAdminId,
+                    email: cleanEmail,
+                    fullName: 'Administrador',
+                    userType: 'admin'
+                };
+                
+                console.log('🆔 ID temporal generado (fallback):', tempAdminId);
+            }
         } else {
             // Buscar el usuario en la base de datos de clientes
             try {
@@ -333,44 +383,54 @@ loginController.login = async (req, res) => {
             // Limpiar los intentos fallidos
             RateLimitUtils.clearAttempts(cleanEmail);
 
-            // Generamos token con expiración más larga para compensar falta de cookies
+            // Generar token con ObjectId real
             const tokenPayload = {
                 id: userFound._id,
                 userType,
-                email: cleanEmail, 
-                iat: Math.floor(Date.now() / 1000), 
+                email: cleanEmail,
+                iat: Math.floor(Date.now() / 1000),
             };
+
+            console.log('🎫 Generando token con payload:', {
+                id: tokenPayload.id,
+                userType: tokenPayload.userType,
+                email: tokenPayload.email,
+                idType: typeof tokenPayload.id,
+                idLength: tokenPayload.id.toString().length
+            });
 
             const token = await generateJWT(tokenPayload);
 
-            console.log('Intentando establecer cookie (puede fallar en cross-domain)');
+            // ✅ CORRECCIÓN CRÍTICA: Configurar cookie con nueva configuración
+            const cookieConfig = getCookieConfig();
+            console.log('🍪 Configurando cookie con:', cookieConfig);
 
-            // Intentamos cookie pero no depender de ella
             try {
-                const cookieConfig = getCookieConfig();
                 res.cookie("authToken", token, cookieConfig);
-                console.log('Cookie establecida (si el navegador la acepta)');
+                console.log('✅ Cookie authToken establecida correctamente');
             } catch (cookieError) {
-                console.log('Error al establecer cookie (esperado en cross-domain):', cookieError.message);
+                console.error('❌ Error estableciendo cookie:', cookieError);
+                // Continuar sin cookie si falla
             }
 
-            // Para cross-domain
+            // ✅ CORRECCIÓN: Headers específicos para cross-domain
             if (process.env.NODE_ENV === 'production') {
                 res.header('Access-Control-Allow-Credentials', 'true');
                 res.header('Access-Control-Allow-Origin', 'https://marquesa.vercel.app');
-                res.header('Access-Control-Expose-Headers', 'Authorization, Set-Cookie');
+                res.header('Access-Control-Expose-Headers', 'Set-Cookie');
+                console.log('🌐 Headers cross-domain configurados');
             }
 
-            console.log('Login exitoso - enviando respuesta con token');
+            console.log('✅ Login exitoso - enviando respuesta');
 
-            // Token como fuente principal de verdad
+            // Respuesta optimizada con token válido
             res.status(200).json({
                 success: true,
                 message: "login successful",
                 userType: userType,
-                token: token,
-                tokenExpiry: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60), 
-                cookieAttempted: true,
+                token: token, // ✅ CRÍTICO: Token en respuesta para fallback
+                tokenExpiry: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
+                cookieSet: true, // ✅ NUEVO: Indicar que se intentó establecer cookie
                 user: {
                     id: userFound._id,
                     userType: userType,
@@ -379,17 +439,21 @@ loginController.login = async (req, res) => {
                 sessionInfo: {
                     loginTime: new Date().toISOString(),
                     expiresIn: '7 days',
-                    persistent: true 
+                    persistent: true,
+                    cookieConfig: cookieConfig // ✅ DEBUG: Información de configuración
                 }
             });
+
+            console.log('🎉 === LOGIN COMPLETADO ===');
         } catch (jwtError) {
-            console.error('Error generando token:', jwtError);
+            console.error('❌ Error generando token:', jwtError);
             return res.status(500).json({
                 success: false,
                 message: "Error generating authentication token"
             });
         }
     } catch (error) {
+        console.error('❌ Error general en login:', error);
         res.status(500).json({
             success: false,
             message: "Internal server error"
@@ -400,6 +464,10 @@ loginController.login = async (req, res) => {
 // Función para verificar la validez de un token JWT
 loginController.verifyToken = (req, res) => {
     try {
+        console.log('🔍 === VERIFICANDO TOKEN ===');
+        console.log('🍪 Cookies recibidas:', req.headers.cookie);
+        console.log('🔑 Authorization header:', req.headers.authorization);
+
         // Intentar obtener el token de las cookies
         let token = req.cookies.authToken;
 
@@ -408,11 +476,15 @@ loginController.verifyToken = (req, res) => {
             const authHeader = req.headers.authorization;
             if (authHeader && authHeader.startsWith('Bearer ')) {
                 token = authHeader.substring(7);
+                console.log('📱 Token encontrado en Authorization header');
             }
+        } else {
+            console.log('🍪 Token encontrado en cookies');
         }
 
         // Si no se encuentra token en ningún lugar
         if (!token) {
+            console.log('❌ No se encontró token');
             return res.status(200).json({
                 success: false,
                 message: 'No token provided',
@@ -432,6 +504,7 @@ loginController.verifyToken = (req, res) => {
         try {
             // Verificar y decodificar el token
             const decoded = jsonwebtoken.verify(token, config.JWT.secret);
+            console.log('✅ Token verificado exitosamente:', { id: decoded.id, userType: decoded.userType });
 
             // Validar que el token contenga los datos necesarios
             if (!decoded.id || !decoded.userType) {
@@ -450,6 +523,8 @@ loginController.verifyToken = (req, res) => {
                 isAuthenticated: true
             });
         } catch (jwtError) {
+            console.log('❌ Error verificando token:', jwtError.message);
+            
             // Limpiar la cookie si el token es inválido
             res.clearCookie("authToken");
 
@@ -467,6 +542,8 @@ loginController.verifyToken = (req, res) => {
             });
         }
     } catch (error) {
+        console.error('❌ Error general en verifyToken:', error);
+        
         // Limpiar cookie en caso de error general
         res.clearCookie("authToken");
 
@@ -481,6 +558,10 @@ loginController.verifyToken = (req, res) => {
 // Función para obtener la información completa del usuario autenticado
 loginController.getUserInfo = async (req, res) => {
     try {
+        console.log('📋 === OBTENIENDO INFO DE USUARIO ===');
+        console.log('🍪 Cookies recibidas:', req.headers.cookie);
+        console.log('🔑 Authorization header:', req.headers.authorization);
+
         // Intentar obtener el token de las cookies
         let token = req.cookies.authToken;
 
@@ -489,10 +570,14 @@ loginController.getUserInfo = async (req, res) => {
             const authHeader = req.headers.authorization;
             if (authHeader && authHeader.startsWith('Bearer ')) {
                 token = authHeader.substring(7);
+                console.log('📱 Token encontrado en Authorization header');
             }
+        } else {
+            console.log('🍪 Token encontrado en cookies');
         }
 
         if (!token) {
+            console.log('❌ No se encontró token para getUserInfo');
             return res.status(401).json({
                 success: false,
                 message: 'Token de autenticación requerido'
@@ -510,7 +595,15 @@ loginController.getUserInfo = async (req, res) => {
         try {
             // Verificar y decodificar el token
             decoded = jsonwebtoken.verify(token, config.JWT.secret);
+            
+            console.log('🔍 getUserInfo - Token decodificado:', {
+                id: decoded.id,
+                userType: decoded.userType,
+                email: decoded.email
+            });
         } catch (jwtError) {
+            console.log('❌ Token inválido en getUserInfo:', jwtError.message);
+            
             // Limpiar cookie si el token es inválido
             res.clearCookie("authToken");
 
@@ -527,7 +620,7 @@ loginController.getUserInfo = async (req, res) => {
             });
         }
 
-        const { id, userType } = decoded;
+        const { id, userType, email } = decoded;
 
         // Validar que el token contenga los datos necesarios
         if (!id || !userType) {
@@ -537,8 +630,52 @@ loginController.getUserInfo = async (req, res) => {
             });
         }
 
-        // Si es administrador, devolver información del admin
+        // Si es administrador
         if (userType === 'admin') {
+            console.log('👑 Procesando admin - ID:', id, 'Email:', email);
+            
+            // Verificar si el admin tiene un ObjectId válido (nuevo sistema)
+            const mongoose = (await import('mongoose')).default;
+            const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
+            
+            console.log('🔍 Admin tiene ObjectId válido:', isValidObjectId);
+            
+            if (isValidObjectId) {
+                // Admin con ObjectId válido - buscar en base de datos
+                try {
+                    const adminUser = await clientsModel.findById(id).select('-password');
+                    
+                    if (adminUser) {
+                        console.log('✅ Admin encontrado en DB:', adminUser.email);
+                        
+                        const adminInfo = {
+                            id: adminUser._id,
+                            name: adminUser.fullName || 'Administrador',
+                            email: adminUser.email,
+                            phone: adminUser.phone || '',
+                            address: adminUser.address || '',
+                            birthDate: adminUser.birthDate || null,
+                            profilePicture: adminUser.profilePicture || '',
+                            userType: 'admin',
+                            createdAt: adminUser.createdAt
+                        };
+
+                        return res.status(200).json({
+                            success: true,
+                            user: adminInfo,
+                            token: token // Incluir token en respuesta
+                        });
+                    } else {
+                        console.log('⚠️ Admin con ObjectId válido pero no encontrado en DB');
+                        // Fallback a info básica
+                    }
+                } catch (dbError) {
+                    console.log('⚠️ Error buscando admin en DB:', dbError.message);
+                    // Fallback a info básica
+                }
+            }
+            
+            // FALLBACK: Admin legacy o no encontrado en DB
             if (!config.admin.email) {
                 return res.status(500).json({
                     success: false,
@@ -546,29 +683,41 @@ loginController.getUserInfo = async (req, res) => {
                 });
             }
 
+            console.log('📋 Usando información básica de admin');
+            
             const adminInfo = {
-                id: 'admin',
+                id: id,
                 name: 'Administrador',
-                email: config.admin.email,
-                userType: 'admin'
+                email: email || config.admin.email,
+                phone: '',
+                address: '',
+                birthDate: null,
+                profilePicture: '',
+                userType: 'admin',
+                isLegacyAdmin: !isValidObjectId
             };
 
             return res.status(200).json({
                 success: true,
-                user: adminInfo
+                user: adminInfo,
+                token: token // Incluir token en respuesta
             });
+            
         } else {
-            // Si es cliente, buscar información en la base de datos
+            // CLIENTE NORMAL: Buscar información en la base de datos
             try {
                 const client = await clientsModel.findById(id).select('-password');
 
                 if (!client) {
+                    console.log('❌ Cliente no encontrado:', id);
                     res.clearCookie("authToken");
                     return res.status(404).json({
                         success: false,
                         message: 'Usuario no encontrado'
                     });
                 }
+
+                console.log('✅ Cliente encontrado:', client.email);
 
                 // Preparar información del cliente para enviar
                 const clientInfo = {
@@ -587,9 +736,11 @@ loginController.getUserInfo = async (req, res) => {
 
                 return res.status(200).json({
                     success: true,
-                    user: clientInfo
+                    user: clientInfo,
+                    token: token // Incluir token en respuesta
                 });
             } catch (dbError) {
+                console.error('❌ Error buscando cliente:', dbError);
                 return res.status(503).json({
                     success: false,
                     message: 'Servicio de base de datos no disponible'
@@ -597,6 +748,7 @@ loginController.getUserInfo = async (req, res) => {
             }
         }
     } catch (error) {
+        console.error('❌ Error en getUserInfo:', error);
         res.status(500).json({
             success: false,
             message: 'Error interno del servidor'
@@ -607,6 +759,8 @@ loginController.getUserInfo = async (req, res) => {
 // Función para renovar un token JWT existente
 loginController.refreshToken = async (req, res) => {
     try {
+        console.log('🔄 === RENOVANDO TOKEN ===');
+
         // Intentar obtener el token de las cookies
         let token = req.cookies.authToken;
 
@@ -665,20 +819,24 @@ loginController.refreshToken = async (req, res) => {
             // Generar un nuevo token con los mismos datos
             const newToken = await generateJWT({
                 id: decoded.id,
-                userType: decoded.userType
+                userType: decoded.userType,
+                email: decoded.email
             });
 
-            // Establecer el nuevo token en la cookie
+            // ✅ CORRECCIÓN: Establecer el nuevo token en la cookie con configuración actualizada
             const cookieConfig = getCookieConfig();
             res.cookie("authToken", newToken, cookieConfig);
+            console.log('✅ Token renovado y cookie actualizada');
 
             // Responder con éxito incluyendo el nuevo token
             res.status(200).json({
                 success: true,
                 message: "Token refreshed successfully",
-                token: newToken
+                token: newToken,
+                tokenExpiry: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60)
             });
         } catch (jwtError) {
+            console.error('❌ Error generando nuevo token:', jwtError);
             return res.status(500).json({
                 success: false,
                 message: 'Error generando nuevo token'
@@ -686,6 +844,7 @@ loginController.refreshToken = async (req, res) => {
         }
 
     } catch (error) {
+        console.error('❌ Error en refreshToken:', error);
         res.clearCookie("authToken");
         res.status(500).json({
             success: false,

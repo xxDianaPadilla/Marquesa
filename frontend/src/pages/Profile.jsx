@@ -199,7 +199,7 @@ const Perfil = () => {
   const getTrackingStatusLabel = (trackingStatus) => {
     const statusMap = {
       'Agendado': 'Preparando',
-      'En proceso': 'En camino',
+      'En proceso': 'En proceso',
       'Entregado': 'Entregado'
     };
     return statusMap[trackingStatus] || trackingStatus;

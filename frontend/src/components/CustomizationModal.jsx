@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import useCustomization from './CustomProducts/Hooks/useCustomization';
- 
+
 // Componente Modal de Finalización de Personalización
 const CustomizationModal = ({
     isOpen,
@@ -15,22 +15,22 @@ const CustomizationModal = ({
     const [referenceImage, setReferenceImage] = useState(null);
     const [comments, setComments] = useState('');
     const [imagePreview, setImagePreview] = useState(null);
- 
+
     // Obtener datos de autenticación
     const { user, userInfo } = useAuth();
     const navigate = useNavigate(); // ← Agregar esta línea
- 
+
     // Usar el hook personalizado para manejar las operaciones de customización
     const { isLoading, processCustomization } = useCustomization();
- 
+
     // Calcular precio total
     const totalPrice = selectedProducts.reduce((total, product) => total + product.price, 0);
- 
+
     const handleImageUpload = (event) => {
         const file = event.target.files[0];
         if (file) {
             setReferenceImage(file);
- 
+
             // Crear preview de la imagen
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -39,7 +39,7 @@ const CustomizationModal = ({
             reader.readAsDataURL(file);
         }
     };
- 
+
     const handleRemoveImage = () => {
         setReferenceImage(null);
         setImagePreview(null);
@@ -49,7 +49,7 @@ const CustomizationModal = ({
             fileInput.value = '';
         }
     };
- 
+
     const handleConfirm = async () => {
         try {
             // Preparar parámetros para el hook
@@ -61,29 +61,29 @@ const CustomizationModal = ({
                 comments,
                 totalPrice
             };
- 
+
             // Procesar la personalización usando el hook
             const customizationData = await processCustomization(customizationParams);
- 
+
             // Paso 6: Llamar callback de confirmación si existe
             if (onConfirmCustomization) {
                 onConfirmCustomization(customizationData);
             }
- 
+
             // Limpiar formulario y cerrar modal inmediatamente
             setReferenceImage(null);
             setImagePreview(null);
             setComments('');
             onClose();
- 
+
             // ✅ REDIRECCIÓN AUTOMÁTICA después de 3.5 segundos
             setTimeout(() => {
                 navigate('/categoryProducts');
             }, 3500);
- 
+
         } catch (error) {
             console.error('Error en el proceso de confirmación:', error);
- 
+
             // ✅ ALERTA DE ERROR BONITA también
             toast.error(`Error: ${error.message}`, {
                 duration: 4000,
@@ -103,7 +103,7 @@ const CustomizationModal = ({
             });
         }
     };
- 
+
     const handleCancel = () => {
         // Limpiar formulario
         setReferenceImage(null);
@@ -111,11 +111,11 @@ const CustomizationModal = ({
         setComments('');
         onClose();
     };
- 
+
     if (!isOpen) return null;
- 
+
     return (
-        <div className="fixed inset-0 flex items-center justify-center z-[9999] p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
+        <div className="fixed inset-0 flex items-center justify-center z-[9999] p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
             <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                 {/* Header */}
                 <div className="p-6 border-b border-gray-200">
@@ -135,7 +135,7 @@ const CustomizationModal = ({
                         </button>
                     </div>
                 </div>
- 
+
                 {/* Content */}
                 <div className="p-6">
                     {/* Resumen de productos seleccionados */}
@@ -158,14 +158,14 @@ const CustomizationModal = ({
                             </div>
                         </div>
                     </div>
- 
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Imagen de referencia */}
                         <div>
                             <h3 className="text-sm font-medium text-gray-700 mb-3">
                                 ¿Ya tenías un diseño en mente?
                             </h3>
- 
+
                             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-pink-400 transition-colors">
                                 {imagePreview ? (
                                     <div className="relative">
@@ -200,7 +200,7 @@ const CustomizationModal = ({
                                         </p>
                                     </div>
                                 )}
- 
+
                                 <input
                                     id="reference-image-input"
                                     type="file"
@@ -209,7 +209,7 @@ const CustomizationModal = ({
                                     disabled={isLoading}
                                     className="hidden"
                                 />
- 
+
                                 {!imagePreview && (
                                     <button
                                         onClick={() => document.getElementById('reference-image-input').click()}
@@ -222,7 +222,7 @@ const CustomizationModal = ({
                                 )}
                             </div>
                         </div>
- 
+
                         {/* Comentarios */}
                         <div>
                             <h3 className="text-sm font-medium text-gray-700 mb-3">
@@ -243,14 +243,14 @@ const CustomizationModal = ({
                                     </svg>
                                 </button>
                             </div>
- 
+
                             <p className="text-xs text-gray-500 mt-2">
                                 Describe cualquier detalle específico que quieras para tu personalización
                             </p>
                         </div>
                     </div>
                 </div>
- 
+
                 {/* Footer */}
                 <div className="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row gap-3 sm:justify-end">
                     <button
@@ -261,7 +261,7 @@ const CustomizationModal = ({
                     >
                         Cancelar
                     </button>
- 
+
                     <button
                         onClick={handleConfirm}
                         disabled={isLoading || !user}
@@ -290,5 +290,5 @@ const CustomizationModal = ({
         </div>
     );
 };
- 
+
 export default CustomizationModal;

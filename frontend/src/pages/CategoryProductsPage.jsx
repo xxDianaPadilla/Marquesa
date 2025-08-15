@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useFavorites } from "../context/FavoritesContext";
+import { useAuth } from "../context/AuthContext";
 import Header from "../components/Header/Header";
 import Footer from "../components/Footer";
 import CategoryNavigation from "../components/CategoryNavigation";
@@ -17,6 +18,9 @@ const CategoryProductsPage = () => {
     const location = useLocation();
     
     const API_BASE_URL = 'https://marquesa.onrender.com/api';
+    
+    // ✅ AGREGAR: Obtener estado de autenticación
+    const { isAuthenticated } = useAuth();
 
     const categories = useMemo(() => [
         { _id: 'todos', name: 'Todos' },
@@ -58,10 +62,6 @@ const CategoryProductsPage = () => {
 
     const { isFavorite, toggleFavorite } = useFavorites();
 
-    /**
-     * ✅ SOLO CAMBIAR ESTA FUNCIÓN - fetchProducts
-     * Mantener todo el resto igual
-     */
     const fetchProducts = useCallback(async (categoryId) => {
         console.log(`🎯 CategoryProductsPage - Cargando productos desde servidor para: ${categoryId}`);
 
@@ -85,7 +85,6 @@ const CategoryProductsPage = () => {
 
             console.log(`📡 CategoryProductsPage - Fetching desde: ${endpoint}`);
 
-            // ✅ CONFIGURACIÓN DE FETCH CORREGIDA
             const response = await fetch(endpoint, {
                 method: 'GET',
                 signal: controller.signal,
@@ -106,7 +105,6 @@ const CategoryProductsPage = () => {
             const data = await response.json();
             let productsData = [];
 
-            // ✅ MANEJO ROBUSTO DE RESPUESTA
             if (Array.isArray(data)) {
                 productsData = data;
             } else if (data.success && Array.isArray(data.data)) {
@@ -158,8 +156,6 @@ const CategoryProductsPage = () => {
             }
         }
     }, [API_BASE_URL, categoryMap, getCurrentCategory]);
-
-    // ✅ MANTENER RESTO DEL COMPONENTE EXACTAMENTE IGUAL
 
     useEffect(() => {
         const urlCategory = getCurrentCategory();
@@ -259,11 +255,25 @@ const CategoryProductsPage = () => {
         };
     }, [getProductId, categoryMap]);
 
-    // ✅ CORRECCIÓN PRINCIPAL: handleToggleFavorite usando las mismas alertas que ProductInfo
+    // ✅ MODIFICAR: handleToggleFavorite con validación de autenticación
     const handleToggleFavorite = useCallback(async (product) => {
         const productId = getProductId(product);
 
         if (!product || !productId || favoriteToggling.has(productId)) {
+            return;
+        }
+
+        // ✅ NUEVA VALIDACIÓN: Verificar autenticación
+        if (!isAuthenticated) {
+            toast.error('Debes iniciar sesión para agregar productos a favoritos', {
+                duration: 4000,
+                position: 'top-center',
+                icon: '🔒',
+                style: {
+                    background: '#F59E0B',
+                    color: '#fff',
+                },
+            });
             return;
         }
 
@@ -275,17 +285,17 @@ const CategoryProductsPage = () => {
                 throw new Error('No se pudo normalizar el producto');
             }
 
+            const wasCurrentlyFavorite = isFavorite(productId);
+
             console.log('❤️ Toggle favorite for product:', {
                 id: normalizedProduct._id,
                 name: normalizedProduct.name,
-                wasCurrentlyFavorite: isFavorite(productId)
+                wasCurrentlyFavorite: wasCurrentlyFavorite
             });
 
             const wasAdded = await toggleFavorite(normalizedProduct);
 
-            // ✅ USAR EXACTAMENTE LAS MISMAS ALERTAS QUE EN ProductInfo.jsx
-            if (isFavorite(productId)) {
-                // Se removió de favoritos
+            if (wasCurrentlyFavorite) {
                 toast.success(`${normalizedProduct.name} eliminado de favoritos`, {
                     duration: 3000,
                     position: 'top-center',
@@ -297,7 +307,6 @@ const CategoryProductsPage = () => {
                 });
                 console.log('❌ Producto removido de favoritos');
             } else {
-                // Se agregó a favoritos
                 toast.success(`¡${normalizedProduct.name} agregado a favoritos!`, {
                     duration: 3000,
                     position: 'top-center',
@@ -332,7 +341,7 @@ const CategoryProductsPage = () => {
                 return newSet;
             });
         }
-    }, [getProductId, normalizeProductForFavorites, toggleFavorite, favoriteToggling, isFavorite]);
+    }, [getProductId, normalizeProductForFavorites, toggleFavorite, favoriteToggling, isFavorite, isAuthenticated]);
 
     const productsByCategory = useMemo(() => {
         if (!Array.isArray(products) || products.length === 0) {
@@ -469,7 +478,6 @@ const CategoryProductsPage = () => {
         fetchProducts(activeCategory);
     }, [activeCategory, fetchProducts]);
 
-    // ✅ MANTENER RENDERIZADO ORIGINAL EXACTO
     if (isLoading && (!hasLoadedOnce || products.length === 0)) {
         return (
             <div className="min-h-screen bg-white-50">

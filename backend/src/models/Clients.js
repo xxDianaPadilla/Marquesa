@@ -1,5 +1,5 @@
 import { Schema, model } from "mongoose";
-
+ 
 const clientsSchema = new Schema({
     fullName: {
         type: String,
@@ -45,6 +45,17 @@ const clientsSchema = new Schema({
     profilePicture: {
         type: String,
         required: false
+    },
+    // ✅ NUEVOS CAMPOS para Google Auth
+    googleId: {
+        type: String,
+        required: false,
+        sparse: true // Permite null pero único si existe
+    },
+    provider: {
+        type: String,
+        enum: ['local', 'google'],
+        default: 'local'
     },
     ruletaCodes: [
         {
@@ -102,9 +113,12 @@ const clientsSchema = new Schema({
     timestamps: true,
     strict: false
 });
-
+ 
 // Índices compuestos para mejor performance
 clientsSchema.index({ "ruletaCodes.codeId": 1, "ruletaCodes.status": 1 });
 clientsSchema.index({ "ruletaCodes.code": 1, "ruletaCodes.status": 1 });
-
+ 
+// ✅ NUEVO ÍNDICE para Google ID
+clientsSchema.index({ googleId: 1 }, { sparse: true });
+ 
 export default model("Clients", clientsSchema);

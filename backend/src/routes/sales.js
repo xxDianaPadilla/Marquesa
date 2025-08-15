@@ -11,6 +11,8 @@ import fs from "fs";
 // Importar fileURLToPath para obtener la ruta del archivo actual en ES modules
 import { fileURLToPath } from 'url';
 
+import verifyToken, { verifyAdmin } from "../middlewares/validateAuthToken.js";
+
 // Crear una instancia del enrutador de Express
 const router = express.Router();
 
@@ -66,7 +68,7 @@ router.get("/total", salesController.getTotalSales);
 router.get("/dashboardStats", salesController.getDashboardStats);
 
 // Ruta para obtener ventas con información detallada
-router.get("/detailed", salesController.getSalesDetailed);
+router.get("/detailed", verifyAdmin, salesController.getSalesDetailed);
 
 // Rutas de usuarios específicos
 router.get("/user/:userId/stats", salesController.getUserOrderStats);

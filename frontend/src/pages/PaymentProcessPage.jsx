@@ -353,7 +353,7 @@ const PaymentProcessPage = () => {
         if (!showSuccessModal || !orderSuccessData) return null;
 
         return (
-            <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.15)' }}>
+            <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
                 <div className="bg-white rounded-lg shadow-lg max-w-md w-full mx-4">
                     <div className="p-6 text-center">
                         {/* Icono de éxito */}

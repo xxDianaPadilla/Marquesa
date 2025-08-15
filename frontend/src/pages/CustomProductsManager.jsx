@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import toast, { Toaster } from 'react-hot-toast';
 import AdminLayout from "../components/AdminLayout";
 import MaterialForm from "../components/MaterialForm";
+import DeleteConfirmModal from "../components/DeleteConfirmModal";
 import useCustomProductsMaterials from "../components/CustomProductsMaterials/hooks/useCustomProductsMaterials";
 
 const CustomProductsManager = () => {
@@ -22,6 +23,10 @@ const CustomProductsManager = () => {
         updating: false,
         deleting: null, // ID del material que se está eliminando
     });
+
+    // Estados para el modal de eliminación
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [materialToDelete, setMaterialToDelete] = useState(null);
 
     // Filtrar materiales por término de búsqueda
     const filteredMaterials = materials.filter(material =>
@@ -91,72 +96,57 @@ const CustomProductsManager = () => {
         }
     };
 
+    // Nueva función para manejar eliminación con modal
     const handleDeleteMaterial = async (id) => {
-        const materialToDelete = materials.find(m => m._id === id);
-        const materialName = materialToDelete?.name || 'este material';
+        const material = materials.find(m => m._id === id);
+        if (!material) return;
 
-        // Toast de confirmación personalizado
-        toast((t) => (
-            <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                    <span className="text-lg">⚠️</span>
-                    <span className="font-medium">¿Eliminar material?</span>
-                </div>
-                <p className="text-sm text-gray-600">
-                    Se eliminará permanentemente "{materialName}"
-                </p>
-                <div className="flex gap-2 justify-end">
-                    <button
-                        onClick={() => toast.dismiss(t.id)}
-                        className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
-                    >
-                        Cancelar
-                    </button>
-                    <button
-                        onClick={async () => {
-                            toast.dismiss(t.id);
-                            setOperationLoading(prev => ({ ...prev, deleting: id }));
-                            try {
-                                await deleteMaterial(id);
-                                toast.success('¡Material eliminado exitosamente!', {
-                                    duration: 3000,
-                                    position: 'top-right',
-                                    style: {
-                                        background: '#EF4444',
-                                        color: 'white',
-                                    },
-                                    icon: '🗑️',
-                                });
-                            } catch (error) {
-                                console.error('Error completo:', error);
-                                toast.error(`Error al eliminar el material: ${error.message}`, {
-                                    duration: 5000,
-                                    position: 'top-right',
-                                    style: {
-                                        background: '#EF4444',
-                                        color: 'white',
-                                    },
-                                    icon: '❌',
-                                });
-                            } finally {
-                                setOperationLoading(prev => ({ ...prev, deleting: null }));
-                            }
-                        }}
-                        className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-                    >
-                        Eliminar
-                    </button>
-                </div>
-            </div>
-        ), {
-            duration: Infinity,
-            position: 'top-center',
-            style: {
-                background: 'white',
-                border: '1px solid #e5e7eb',
-                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-            },
-        });
+        console.log('🗑️ Preparando eliminación de material:', material.name);
+        setMaterialToDelete(material);
+        setShowDeleteModal(true);
+    };
+
+    // Función para confirmar eliminación
+    const confirmDeleteMaterial = async () => {
+        if (!materialToDelete) return;
+
+        console.log('✅ Confirmando eliminación de material:', materialToDelete._id);
+        setOperationLoading(prev => ({ ...prev, deleting: materialToDelete._id }));
+
+        try {
+            await deleteMaterial(materialToDelete._id);
+            toast.success('¡Material eliminado exitosamente!', {
+                duration: 3000,
+                position: 'top-right',
+                style: {
+                    background: '#EF4444',
+                    color: 'white',
+                },
+                icon: '🗑️',
+            });
+        } catch (error) {
+            console.error('Error completo:', error);
+            toast.error(`Error al eliminar el material: ${error.message}`, {
+                duration: 5000,
+                position: 'top-right',
+                style: {
+                    background: '#EF4444',
+                    color: 'white',
+                },
+                icon: '❌',
+            });
+        } finally {
+            setOperationLoading(prev => ({ ...prev, deleting: null }));
+            setShowDeleteModal(false);
+            setMaterialToDelete(null);
+        }
+    };
+
+    // Función para cancelar eliminación
+    const cancelDeleteMaterial = () => {
+        console.log('❌ Cancelando eliminación de material');
+        setShowDeleteModal(false);
+        setMaterialToDelete(null);
     };
 
     const handleEditClick = (material) => {
@@ -591,6 +581,22 @@ const CustomProductsManager = () => {
                         }
                     />
                 )}
+
+                {/* Modal de confirmación de eliminación */}
+                <DeleteConfirmModal
+                    isOpen={showDeleteModal}
+                    onClose={cancelDeleteMaterial}
+                    onConfirm={confirmDeleteMaterial}
+                    title={materialToDelete?.name || ''}
+                    type="material"
+                    itemInfo={{
+                        price: materialToDelete?.price?.toFixed(2),
+                        stock: materialToDelete?.stock,
+                        product: materialToDelete?.productToPersonalize,
+                        category: materialToDelete?.categoryToParticipate
+                    }}
+                    isDeleting={!!operationLoading.deleting}
+                />
             </div>
         </AdminLayout>
     );

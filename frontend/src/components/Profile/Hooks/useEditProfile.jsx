@@ -5,6 +5,7 @@ import { useAuth } from '../../../context/AuthContext';
  * Hook personalizado para manejar la edición del perfil de usuario
  * ACTUALIZADO: Sistema de autenticación cross-domain híbrido
  * Maneja la lógica de validación, envío de datos y manejo de archivos
+ * ✅ CORREGIDO: credentials 'include' agregado para cookies cross-domain
  */
 const useEditProfile = () => {
     const { userInfo, getUserInfo, getBestAvailableToken, setAuthToken } = useAuth();
@@ -243,7 +244,8 @@ const useEditProfile = () => {
     }, [formData, validateFullName, validatePhone, validateAddress, validateImage]);
 
     /**
-     * ✅ ACTUALIZADA: Envía el formulario al backend con sistema híbrido
+     * ✅ CORRECCIÓN CRÍTICA: Envía el formulario al backend con sistema híbrido
+     * CORREGIDO: credentials 'include' agregado para cookies cross-domain
      */
     const submitForm = useCallback(async () => {
         if (!validateForm()) {
@@ -253,6 +255,9 @@ const useEditProfile = () => {
         setIsLoading(true);
 
         try {
+            console.log('📝 === ENVIANDO FORMULARIO PERFIL ===');
+            console.log('🌍 Modo:', process.env.NODE_ENV);
+
             // Crear FormData para enviar archivo
             const formDataToSend = new FormData();
             formDataToSend.append('fullName', formData.fullName.trim());
@@ -263,30 +268,40 @@ const useEditProfile = () => {
                 formDataToSend.append('profilePicture', formData.profilePicture);
             }
 
-            console.log('Enviando datos del perfil...');
+            console.log('📦 Datos del formulario preparados');
 
-            // ✅ NUEVA LÓGICA: Petición con sistema híbrido
-            // Nota: Para FormData, no incluimos Content-Type en headers
+            // ✅ CORRECCIÓN CRÍTICA: Petición con sistema híbrido + credentials
             const token = getBestAvailableToken();
             const headers = {};
             if (token) {
                 headers['Authorization'] = `Bearer ${token}`;
             }
 
+            console.log('🔑 Token disponible:', !!token);
+
             const operationPromise = fetch('https://marquesa.onrender.com/api/clients/profile', {
                 method: 'PUT',
-                credentials: 'include', // ✅ NUEVO: Incluir cookies
-                headers: headers, // ✅ NUEVO: Headers híbridos (sin Content-Type para FormData)
+                credentials: 'include', // ✅ CRÍTICO: Incluir credentials para cookies cross-domain
+                headers: headers, // Headers híbridos (sin Content-Type para FormData)
                 body: formDataToSend
             });
 
-            // ✅ NUEVO: Timeout para conexiones lentas
+            // Timeout para conexiones lentas
             const timeoutPromise = new Promise((_, reject) => {
                 setTimeout(() => reject(new Error('TIMEOUT')), 30000);
             });
 
             const response = await Promise.race([operationPromise, timeoutPromise]);
+            
+            console.log('📡 Status de respuesta:', response.status);
+            console.log('🍪 Response headers Set-Cookie:', response.headers.get('Set-Cookie'));
+            
             const data = await response.json();
+            console.log('📦 Respuesta del servidor:', {
+                success: data.success,
+                hasToken: !!data.token,
+                message: data.message
+            });
 
             if (data.success) {
                 // ✅ NUEVO: Manejo híbrido de tokens
@@ -296,6 +311,7 @@ const useEditProfile = () => {
                 if (data.token) {
                     token = data.token;
                     setAuthToken(token); // Guardar en estado local
+                    console.log('💾 Token guardado desde respuesta');
                 }
 
                 // Segunda prioridad: cookie (con retraso)
@@ -304,24 +320,28 @@ const useEditProfile = () => {
                     token = getBestAvailableToken();
                     if (token) {
                         setAuthToken(token);
+                        console.log('💾 Token obtenido de cookies');
                     }
                 }
 
                 await getUserInfo();
+                console.log('✅ Perfil actualizado exitosamente');
+                
                 return {
                     success: true,
                     message: 'Perfil actualizado exitosamente'
                 };
             } else {
+                console.log('❌ Error del servidor:', data.message);
                 return {
                     success: false,
                     message: data.message || 'Error al actualizar el perfil'
                 };
             }
         } catch (error) {
-            console.error('Error actualizando perfil:', error);
+            console.error('❌ Error actualizando perfil:', error);
             
-            // ✅ NUEVO: Manejo específico de errores de red vs servidor
+            // Manejo específico de errores de red vs servidor
             let errorMessage = 'Error de conexión. Verifica tu internet e inténtalo nuevamente.';
             
             if (error.message === 'TIMEOUT') {

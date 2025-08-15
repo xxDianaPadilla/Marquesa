@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useFavorites } from "../context/FavoritesContext";
+import { useAuth } from "../context/AuthContext";
 import Header from "../components/Header/Header";
 import Footer from "../components/Footer";
 import CategoryNavigation from "../components/CategoryNavigation";
@@ -9,22 +10,19 @@ import PersonalizableSection from "../components/PersonalizableSection";
 import LoadingSpinner from "../components/LoadingSpinner";
 import Container from "../components/Container";
 import ProductCard from "../components/ProductCard";
-
-/**
- * CategoryProducts.jsx - MANTENER DISEÑO ORIGINAL
- * Solo cambiar la función loadProducts
- */
-
+ 
 let currentFetch = null;
-
+ 
 const CategoryProducts = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const params = useParams();
-
-    // ✅ MANTENER CONFIGURACIÓN ORIGINAL
+ 
     const API_BASE_URL = 'https://marquesa.onrender.com/api';
-
+   
+    // ✅ AGREGAR: Obtener estado de autenticación
+    const { isAuthenticated } = useAuth();
+ 
     const categories = useMemo(() => [
         { _id: 'todos', name: 'Todos' },
         { _id: '688175a69579a7cde1657aaa', name: 'Arreglos con flores naturales' },
@@ -33,7 +31,7 @@ const CategoryProducts = () => {
         { _id: '688176179579a7cde1657ace', name: 'Giftboxes' },
         { _id: '688175e79579a7cde1657ac6', name: 'Tarjetas' }
     ], []);
-
+ 
     const categoryMap = useMemo(() => ({
         '688175a69579a7cde1657aaa': 'Arreglos con flores naturales',
         '688175d89579a7cde1657ac2': 'Arreglos con flores secas',
@@ -41,68 +39,61 @@ const CategoryProducts = () => {
         '688176179579a7cde1657ace': 'Giftboxes',
         '688175e79579a7cde1657ac6': 'Tarjetas'
     }), []);
-
+ 
     const getCurrentCategory = useCallback(() => {
         const pathParts = location.pathname.split('/');
-        
+       
         if (location.pathname === '/categoryProducts') {
             return 'todos';
         }
-        
+       
         if (pathParts[1] === 'categoria' && pathParts[2]) {
             return pathParts[2];
         }
-        
+       
         if (params.categoryId) {
             return params.categoryId;
         }
-        
+       
         return 'todos';
     }, [location.pathname, params.categoryId]);
-
-    // ✅ MANTENER ESTADOS ORIGINALES
+ 
     const [activeCategory, setActiveCategory] = useState(getCurrentCategory());
     const [products, setProducts] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
     const [favoriteToggling, setFavoriteToggling] = useState(new Set());
-
+ 
     const { isFavorite, toggleFavorite } = useFavorites();
-
-    /**
-     * ✅ SOLO CAMBIAR ESTA FUNCIÓN - loadProducts
-     * Mantener todo el resto igual
-     */
+ 
     const loadProducts = useCallback(async (categoryId) => {
         console.log(`🎯 Cargando productos desde servidor para: ${categoryId}`);
-
+ 
         if (currentFetch) {
             console.log(`🚫 Cancelando fetch anterior: ${currentFetch.categoryId}`);
             currentFetch.controller.abort();
             currentFetch = null;
         }
-
+ 
         try {
             console.log(`🚀 Iniciando carga fresca para: ${categoryId}`);
             setIsLoading(true);
             setError(null);
-
+ 
             const controller = new AbortController();
             currentFetch = { categoryId, controller };
-
-            // ✅ CORREGIR ENDPOINT
-            const endpoint = categoryId === 'todos' 
+ 
+            const endpoint = categoryId === 'todos'
                 ? `${API_BASE_URL}/products`
                 : `${API_BASE_URL}/products/by-category/${categoryId}`;
-
+ 
             console.log(`📡 Fetching desde: ${endpoint}`);
-
-            // ✅ CONFIGURACIÓN DE FETCH CORREGIDA
+ 
             const response = await fetch(endpoint, {
                 method: 'GET',
                 signal: controller.signal,
                 credentials: 'include',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -110,15 +101,14 @@ const CategoryProducts = () => {
                     'Expires': '0'
                 }
             });
-
+ 
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
-
+ 
             const data = await response.json();
             let productsData = [];
-
-            // ✅ MANEJO ROBUSTO DE RESPUESTA
+ 
             if (Array.isArray(data)) {
                 productsData = data;
             } else if (data.success && Array.isArray(data.data)) {
@@ -128,9 +118,9 @@ const CategoryProducts = () => {
             } else if (data.data && Array.isArray(data.data)) {
                 productsData = data.data;
             }
-
+ 
             console.log(`✅ ${productsData.length} productos cargados desde servidor para: ${categoryId}`);
-
+ 
             const currentCat = getCurrentCategory();
             if (categoryId === currentCat) {
                 console.log(`🔄 Actualizando UI para: ${categoryId}`);
@@ -139,51 +129,49 @@ const CategoryProducts = () => {
             } else {
                 console.log(`⚠️ Categoría cambió durante fetch: ${categoryId} → ${currentCat}`);
             }
-
+ 
         } catch (error) {
             if (error.name === 'AbortError') {
                 console.log(`🚫 Fetch cancelado para: ${categoryId}`);
                 return;
             }
-
+ 
             console.error(`❌ Error al cargar ${categoryId}:`, error);
-            
+           
             const errorMsg = `Error al cargar ${categoryMap[categoryId] || 'productos'}`;
-            
+           
             const currentCat = getCurrentCategory();
             if (categoryId === currentCat) {
                 setError(errorMsg);
                 setProducts([]);
                 toast.error(errorMsg, { duration: 3000, position: 'top-center' });
             }
-
+ 
         } finally {
             const currentCat = getCurrentCategory();
             if (categoryId === currentCat) {
                 setIsLoading(false);
             }
-
+ 
             if (currentFetch && currentFetch.categoryId === categoryId) {
                 currentFetch = null;
             }
         }
     }, [API_BASE_URL, categoryMap, getCurrentCategory]);
-
-    // ✅ MANTENER RESTO DEL COMPONENTE EXACTAMENTE IGUAL
-
+ 
     useEffect(() => {
         const urlCategory = getCurrentCategory();
-        
+       
         console.log(`🔄 Effect principal - URL: ${location.pathname}, Categoría: ${urlCategory}`);
-
+ 
         if (urlCategory !== activeCategory) {
             console.log(`📝 Actualizando categoría activa: ${activeCategory} → ${urlCategory}`);
             setActiveCategory(urlCategory);
         }
-
+ 
         console.log(`📦 Cargando productos desde servidor para: ${urlCategory}`);
         loadProducts(urlCategory);
-
+ 
         return () => {
             if (currentFetch) {
                 console.log(`🧹 Cleanup: cancelando fetch para ${currentFetch.categoryId}`);
@@ -192,48 +180,48 @@ const CategoryProducts = () => {
             }
         };
     }, [location.pathname, getCurrentCategory, loadProducts, activeCategory]);
-
+ 
     const handleCategoryChange = useCallback((categoryId) => {
         console.log(`👆 Cambio de categoría solicitado: ${activeCategory} → ${categoryId}`);
-
+ 
         if (categoryId === activeCategory) {
             console.log(`⚠️ Ya estamos en la categoría: ${categoryId}`);
             return;
         }
-
+ 
         setIsLoading(true);
         setError(null);
         setProducts([]);
-
+ 
         if (categoryId === 'todos') {
             navigate('/categoryProducts', { replace: true });
         } else {
             navigate(`/categoria/${categoryId}`, { replace: true });
         }
-
+ 
         setTimeout(() => {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }, 100);
     }, [activeCategory, navigate]);
-
+ 
     const handlePersonalizeClick = useCallback((categoryId) => {
         console.log('🎨 Navegando a personalización:', categoryId);
         navigate(`/personalizar/${categoryId}`);
     }, [navigate]);
-
+ 
     const getProductId = useCallback((product) => {
         return product?._id || product?.id || null;
     }, []);
-
+ 
     const normalizeProductForFavorites = useCallback((product) => {
         if (!product) return null;
-
+ 
         const productId = getProductId(product);
         if (!productId) return null;
-
+ 
         let categoryName = 'Sin categoría';
         let categoryId = null;
-
+ 
         if (typeof product.categoryId === 'object' && product.categoryId) {
             categoryId = product.categoryId._id || product.categoryId.id;
             categoryName = product.categoryId.name || categoryMap[categoryId] || 'Sin categoría';
@@ -241,7 +229,7 @@ const CategoryProducts = () => {
             categoryId = product.categoryId;
             categoryName = categoryMap[product.categoryId];
         }
-
+ 
         let image = '/placeholder-image.jpg';
         if (product.image) {
             image = product.image;
@@ -252,7 +240,7 @@ const CategoryProducts = () => {
                 image = product.images[0];
             }
         }
-
+ 
         return {
             id: productId,
             _id: productId,
@@ -269,37 +257,48 @@ const CategoryProducts = () => {
             updatedAt: product.updatedAt,
         };
     }, [getProductId, categoryMap]);
-
-    // ✅ CORRECCIÓN PRINCIPAL: handleToggleFavorite usando las mismas alertas que ProductInfo
+ 
+    // ✅ MODIFICAR: handleToggleFavorite con validación de autenticación
     const handleToggleFavorite = useCallback(async (product) => {
         const productId = getProductId(product);
-
+ 
         if (!product || !productId || favoriteToggling.has(productId)) {
             return;
         }
-
+ 
+        // ✅ NUEVA VALIDACIÓN: Verificar autenticación
+        if (!isAuthenticated) {
+            toast.error('Debes iniciar sesión para agregar productos a favoritos', {
+                duration: 4000,
+                position: 'top-center',
+                icon: '🔒',
+                style: {
+                    background: '#F59E0B',
+                    color: '#fff',
+                },
+            });
+            return;
+        }
+ 
         try {
             setFavoriteToggling(prev => new Set([...prev, productId]));
-
+ 
             const normalizedProduct = normalizeProductForFavorites(product);
             if (!normalizedProduct) {
                 throw new Error('No se pudo normalizar el producto');
             }
-
-            // ✅ CORRECCIÓN: Verificar el estado ANTES del toggle
+ 
             const wasCurrentlyFavorite = isFavorite(productId);
-
+ 
             console.log('❤️ Toggle favorite for product:', {
                 id: normalizedProduct._id,
                 name: normalizedProduct.name,
                 wasCurrentlyFavorite: wasCurrentlyFavorite
             });
-
+ 
             const wasAdded = await toggleFavorite(normalizedProduct);
-
-            // ✅ USAR LA LÓGICA CORRECTA: Mostrar alerta basada en el estado ANTERIOR
+ 
             if (wasCurrentlyFavorite) {
-                // Estaba en favoritos y se removió
                 toast.success(`${normalizedProduct.name} eliminado de favoritos`, {
                     duration: 3000,
                     position: 'top-center',
@@ -311,7 +310,6 @@ const CategoryProducts = () => {
                 });
                 console.log('❌ Producto removido de favoritos');
             } else {
-                // No estaba en favoritos y se agregó
                 toast.success(`¡${normalizedProduct.name} agregado a favoritos!`, {
                     duration: 3000,
                     position: 'top-center',
@@ -323,17 +321,17 @@ const CategoryProducts = () => {
                 });
                 console.log('✅ Producto agregado a favoritos');
             }
-
+ 
         } catch (error) {
             console.error('❌ Error al manejar favoritos:', error);
-            
+           
             let errorMessage = 'Error al actualizar favoritos';
             if (error.message?.includes('storage')) {
                 errorMessage = 'Error de almacenamiento. Verifica el espacio disponible';
             } else if (error.message) {
                 errorMessage = error.message;
             }
-
+ 
             toast.error(errorMessage, {
                 duration: 3000,
                 position: 'top-center',
@@ -346,19 +344,19 @@ const CategoryProducts = () => {
                 return newSet;
             });
         }
-    }, [getProductId, normalizeProductForFavorites, toggleFavorite, favoriteToggling, isFavorite]);
-
+    }, [getProductId, normalizeProductForFavorites, toggleFavorite, favoriteToggling, isFavorite, isAuthenticated]);
+ 
     const productsByCategory = useMemo(() => {
         if (!Array.isArray(products) || products.length === 0) {
             return {};
         }
-
+ 
         if (activeCategory === 'todos') {
             const grouped = {};
-
+ 
             products.forEach(product => {
                 let catId, catName;
-
+ 
                 if (typeof product.categoryId === 'object' && product.categoryId._id) {
                     catId = product.categoryId._id;
                     catName = product.categoryId.name;
@@ -366,21 +364,21 @@ const CategoryProducts = () => {
                     catId = product.categoryId;
                     catName = categoryMap[catId] || 'Sin categoría';
                 }
-
+ 
                 if (!grouped[catId]) {
                     grouped[catId] = {
                         name: catName,
                         products: []
                     };
                 }
-
+ 
                 grouped[catId].products.push(product);
             });
-
+ 
             return grouped;
         } else {
-            const categoryName = categoryMap[activeCategory] || 
-                               categories.find(cat => cat._id === activeCategory)?.name || 
+            const categoryName = categoryMap[activeCategory] ||
+                               categories.find(cat => cat._id === activeCategory)?.name ||
                                'Categoría';
             return {
                 [activeCategory]: {
@@ -390,13 +388,13 @@ const CategoryProducts = () => {
             };
         }
     }, [products, activeCategory, categoryMap, categories]);
-
+ 
     const formatProductForCard = useCallback((product) => {
         if (!product) return null;
-
+ 
         const productId = getProductId(product);
         if (!productId) return null;
-
+ 
         let image = '/placeholder-image.jpg';
         if (product.image) {
             image = product.image;
@@ -407,14 +405,14 @@ const CategoryProducts = () => {
                 image = product.images[0];
             }
         }
-
+ 
         let categoryName = 'Sin categoría';
         if (typeof product.categoryId === 'object' && product.categoryId.name) {
             categoryName = product.categoryId.name;
         } else if (product.categoryId && categoryMap[product.categoryId]) {
             categoryName = categoryMap[product.categoryId];
         }
-
+ 
         return {
             ...product,
             id: productId,
@@ -429,7 +427,7 @@ const CategoryProducts = () => {
             isPersonalizable: Boolean(product.isPersonalizable)
         };
     }, [getProductId, categoryMap]);
-
+ 
     const renderProductGrid = useCallback((productsToRender) => {
         if (!productsToRender || productsToRender.length === 0) {
             return (
@@ -439,18 +437,18 @@ const CategoryProducts = () => {
                 </div>
             );
         }
-
+ 
         return (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                 {productsToRender.map((product) => {
                     const formattedProduct = formatProductForCard(product);
-                    
+                   
                     if (!formattedProduct) return null;
-
+ 
                     const productId = formattedProduct._id || formattedProduct.id;
                     const isProductFavorite = isFavorite(productId);
                     const isToggling = favoriteToggling.has(productId);
-
+ 
                     return (
                         <div
                             key={`product-${productId}-${activeCategory}`}
@@ -469,20 +467,19 @@ const CategoryProducts = () => {
             </div>
         );
     }, [formatProductForCard, isFavorite, favoriteToggling, handleToggleFavorite, activeCategory]);
-
+ 
     const handleRetry = useCallback(() => {
         console.log('🔄 Retry solicitado - Recargando desde servidor');
         setError(null);
-        
+       
         if (currentFetch) {
             currentFetch.controller.abort();
             currentFetch = null;
         }
-        
+       
         loadProducts(activeCategory);
     }, [activeCategory, loadProducts]);
-
-    // ✅ MANTENER RENDERIZADO ORIGINAL EXACTO
+ 
     if (isLoading) {
         return (
             <div className="min-h-screen bg-white-50">
@@ -497,7 +494,7 @@ const CategoryProducts = () => {
             </div>
         );
     }
-
+ 
     if (error && products.length === 0) {
         return (
             <div className="min-h-screen bg-white-50">
@@ -523,11 +520,11 @@ const CategoryProducts = () => {
             </div>
         );
     }
-
+ 
     return (
         <div className="min-h-screen bg-white-50">
             <Header />
-
+ 
             <section className="bg-white pt-2 sm:pt-4 pb-4 sm:pb-6 shadow-sm">
                 <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
                     <CategoryNavigation
@@ -537,25 +534,25 @@ const CategoryProducts = () => {
                     />
                 </div>
             </section>
-
+ 
             <main className="py-4 sm:py-8">
                 <Container>
                     <div className="space-y-8 sm:space-y-12">
-
+ 
                         {activeCategory === 'todos' && (
                             <PersonalizableSection
                                 onPersonalizeClick={handlePersonalizeClick}
                             />
                         )}
-
+ 
                         {Object.entries(productsByCategory).map(([categoryId, categoryData]) => (
-                            <section 
+                            <section
                                 key={`section-${categoryId}-${activeCategory}`}
                                 className="space-y-4 sm:space-y-6"
                             >
                                 <div className="flex items-center justify-between">
-                                    <h2 
-                                        className="text-2xl sm:text-3xl font-bold text-gray-900" 
+                                    <h2
+                                        className="text-2xl sm:text-3xl font-bold text-gray-900"
                                         style={{ fontFamily: 'Poppins, sans-serif' }}
                                     >
                                         {categoryData.name}
@@ -563,7 +560,7 @@ const CategoryProducts = () => {
                                             ({categoryData.products.length} producto{categoryData.products.length === 1 ? '' : 's'})
                                         </span>
                                     </h2>
-                                    
+                                   
                                     {activeCategory === 'todos' && categoryData.products.length > 4 && (
                                         <button
                                             onClick={() => handleCategoryChange(categoryId)}
@@ -575,7 +572,7 @@ const CategoryProducts = () => {
                                         </button>
                                     )}
                                 </div>
-
+ 
                                 {renderProductGrid(
                                     activeCategory === 'todos'
                                         ? categoryData.products.slice(0, 4)
@@ -583,7 +580,7 @@ const CategoryProducts = () => {
                                 )}
                             </section>
                         ))}
-
+ 
                         {Object.keys(productsByCategory).length === 0 && !isLoading && (
                             <div className="text-center py-16">
                                 <div className="text-6xl mb-4">🔍</div>
@@ -591,7 +588,7 @@ const CategoryProducts = () => {
                                     No encontramos productos
                                 </h3>
                                 <p className="text-gray-600 mb-6">
-                                    {activeCategory !== 'todos' 
+                                    {activeCategory !== 'todos'
                                         ? 'No hay productos en esta categoría'
                                         : 'No hay productos disponibles'
                                     }
@@ -609,10 +606,10 @@ const CategoryProducts = () => {
                     </div>
                 </Container>
             </main>
-
+ 
             <Footer />
         </div>
     );
 };
-
+ 
 export default CategoryProducts;

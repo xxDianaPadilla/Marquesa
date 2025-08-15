@@ -10,11 +10,16 @@ import {
   Package,
   CreditCard,
   Clock,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react";
-// Importación de estilos
+import OverlayBackdrop from "./OverlayBackdrop";
+
 const SalesCard = ({ sale, onUpdateStatus }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [showPaymentProof, setShowPaymentProof] = useState(false);
+  const [updateError, setUpdateError] = useState(null); // ✅ NUEVO: Estado para errores específicos
+  const [showSuccess, setShowSuccess] = useState(false); // ✅ NUEVO: Estado para mostrar éxito
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -28,7 +33,7 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
         return "bg-gradient-to-br from-gray-50 to-slate-50 border-gray-200 shadow-gray-100";
     }
   };
-// Función para obtener el color del badge según el estado
+
   const getStatusBadgeColor = (status) => {
     switch (status) {
       case "Agendado":
@@ -41,7 +46,7 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
         return "bg-gray-100 text-gray-700 border-gray-300 shadow-sm";
     }
   };
-// Función para obtener el ícono según el estado
+
   const getStatusIcon = (status) => {
     switch (status) {
       case "Agendado":
@@ -54,7 +59,7 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
         return <Clock className="w-3 h-3" />;
     }
   };
-// Función para obtener el ícono del tipo de pago
+
   const getPaymentTypeIcon = (paymentType) => {
     switch (paymentType) {
       case "Transferencia":
@@ -69,17 +74,58 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
         return <CreditCard className="w-4 h-4 text-gray-600" />;
     }
   };
-// Función para manejar el cambio de estado
-  const handleStatusChange = async (newStatus) => {
-    setIsUpdating(true);
-    const success = await onUpdateStatus(sale._id, newStatus);
-    setIsUpdating(false);
 
-    if (!success) {
-      alert("Error al actualizar el estado");
+  // ✅ FUNCIÓN MEJORADA: handleStatusChange
+  const handleStatusChange = async (newStatus) => {
+    // Prevenir múltiples actualizaciones simultáneas
+    if (isUpdating) {
+      console.log('⚠️ Actualización ya en progreso, ignorando...');
+      return;
+    }
+
+    // Validar que el nuevo estado sea diferente
+    if (newStatus === sale.trackingStatus) {
+      console.log('⚠️ El estado es el mismo, no hay cambios que hacer');
+      return;
+    }
+
+    console.log('🔄 Iniciando cambio de estado:', {
+      saleId: sale._id,
+      currentStatus: sale.trackingStatus,
+      newStatus: newStatus
+    });
+
+    setIsUpdating(true);
+    setUpdateError(null);
+    setShowSuccess(false);
+
+    try {
+      // Llamar a la función de actualización del hook
+      const success = await onUpdateStatus(sale._id, newStatus);
+
+      if (success) {
+        console.log('✅ Estado actualizado exitosamente');
+        
+        // Mostrar mensaje de éxito brevemente
+        setShowSuccess(true);
+        setTimeout(() => {
+          setShowSuccess(false);
+        }, 2000);
+
+        // Limpiar cualquier error previo
+        setUpdateError(null);
+      } else {
+        console.error('❌ La actualización falló');
+        setUpdateError('Error al actualizar el estado. Inténtalo nuevamente.');
+      }
+    } catch (error) {
+      console.error('❌ Error en handleStatusChange:', error);
+      setUpdateError(error.message || 'Error inesperado al actualizar el estado');
+    } finally {
+      setIsUpdating(false);
     }
   };
-// Función para formatear la fecha
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("es-ES", {
@@ -88,12 +134,57 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
       day: "2-digit",
     });
   };
-// Función para formatear la hora
+
   const formatTime = (dateString) => {
     return new Date(dateString).toLocaleTimeString("es-ES", {
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  // Función para obtener las iniciales del nombre del cliente
+  const getInitials = (name) => {
+    if (!name) return "U";
+    return name
+      .split(" ")
+      .map(word => word.charAt(0))
+      .join("")
+      .substring(0, 2)
+      .toUpperCase();
+  };
+
+  // Componente para el avatar del cliente
+  const ClientAvatar = () => {
+    if (sale.clientPicture && sale.clientPicture.trim() !== '') {
+      return (
+        <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-md">
+          <img
+            src={sale.clientPicture}
+            alt={sale.clientName || 'Cliente'}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              // Si la imagen falla al cargar, mostrar las iniciales
+              e.target.style.display = 'none';
+              e.target.nextElementSibling.style.display = 'flex';
+            }}
+          />
+          {/* Fallback con iniciales */}
+          <div 
+            className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm"
+            style={{ display: 'none' }}
+          >
+            {getInitials(sale.clientName)}
+          </div>
+        </div>
+      );
+    } else {
+      // Si no hay imagen, mostrar iniciales directamente
+      return (
+        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md">
+          {getInitials(sale.clientName)}
+        </div>
+      );
+    }
   };
 
   return (
@@ -108,9 +199,7 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
           {/* Parte izquierda: avatar + datos */}
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                {sale.clientName.charAt(0).toUpperCase()}
-              </div>
+              <ClientAvatar />
               <div>
                 <h3
                   className="text-lg font-bold text-gray-800 mb-1"
@@ -178,37 +267,38 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
             Productos
           </h4>
           <div className="space-y-3">
-            {sale.items.map((item, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
-              >
-                <div className="flex items-center gap-3">
-                  {item.image && (
-                    <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-200">
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
-                  <div>
-                    <span className="text-gray-800 font-medium text-sm">
-                      {item.name}
-                    </span>
-                    {item.quantity && (
-                      <span className="text-gray-500 text-xs ml-2">
-                        x{item.quantity}
-                      </span>
+            {Array.isArray(sale.items) &&
+              sale.items.map((item, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+                >
+                  <div className="flex items-center gap-3">
+                    {item.image && (
+                      <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-200">
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
                     )}
+                    <div>
+                      <span className="text-gray-800 font-medium text-sm">
+                        {item.name}
+                      </span>
+                      {item.quantity && (
+                        <span className="text-gray-500 text-xs ml-2">
+                          x{item.quantity}
+                        </span>
+                      )}
+                    </div>
                   </div>
+                  <span className="text-green-600 font-semibold">
+                    ${item.subtotal}
+                  </span>
                 </div>
-                <span className="text-green-600 font-semibold">
-                  ${item.subtotal}
-                </span>
-              </div>
-            ))}
+              ))}
           </div>
         </div>
 
@@ -319,71 +409,73 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
         </div>
       </div>
 
-      {/* Modal para mostrar comprobante de pago */}
+      {/* Modal para mostrar comprobante de pago usando OverlayBackdrop */}
       {showPaymentProof && (
-        <div
-          className="fixed inset-0 bg-grey flex items-center justify-center z-50 p-4"
-          style={{ opacity: "-10px" }}
-        >
-          <div className="bg-white rounded-xl max-w-2xl max-h-[90vh] overflow-auto shadow-2xl">
-            <div className="sticky top-0 bg-white p-4 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-lg font-bold text-gray-800">
-                Comprobante de Pago
-              </h3>
-              <button
-                onClick={() => setShowPaymentProof(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-              >
-                <X className="w-5 h-5 text-gray-600" />
-              </button>
-            </div>
-            <div className="p-4">
-              <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-2">
-                  <span className="font-medium">Cliente:</span>{" "}
-                  {sale.clientName}
-                </p>
-                <p className="text-sm text-gray-600 mb-2">
-                  <span className="font-medium">Método de pago:</span>{" "}
-                  {sale.paymentType}
-                </p>
-                <p className="text-sm text-gray-600 mb-4">
-                  <span className="font-medium">Total:</span> ${sale.total}
-                </p>
+        <OverlayBackdrop isVisible={showPaymentProof} onClose={() => setShowPaymentProof(false)}>
+          <div className="flex items-center justify-center min-h-screen p-4">
+            <div 
+              className="bg-white rounded-xl max-w-2xl max-h-[90vh] overflow-auto shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="sticky top-0 bg-white p-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 className="text-lg font-bold text-gray-800">
+                  Comprobante de Pago
+                </h3>
+                <button
+                  onClick={() => setShowPaymentProof(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-600" />
+                </button>
               </div>
-              {sale.paymentProofImage ? (
-                <div className="text-center">
-                  <img
-                    src={sale.paymentProofImage}
-                    alt="Comprobante de pago"
-                    className="max-w-full h-auto rounded-lg border border-gray-200 shadow-md"
-                    onError={(e) => {
-                      e.target.style.display = "none";
-                      e.target.nextSibling.style.display = "block";
-                    }}
-                  />
-                  <div className="hidden p-8 text-center">
+              <div className="p-4">
+                <div className="mb-4">
+                  <p className="text-sm text-gray-600 mb-2">
+                    <span className="font-medium">Cliente:</span>{" "}
+                    {sale.clientName}
+                  </p>
+                  <p className="text-sm text-gray-600 mb-2">
+                    <span className="font-medium">Método de pago:</span>{" "}
+                    {sale.paymentType}
+                  </p>
+                  <p className="text-sm text-gray-600 mb-4">
+                    <span className="font-medium">Total:</span> ${sale.total}
+                  </p>
+                </div>
+                {sale.paymentProofImage ? (
+                  <div className="text-center">
+                    <img
+                      src={sale.paymentProofImage}
+                      alt="Comprobante de pago"
+                      className="max-w-full h-auto rounded-lg border border-gray-200 shadow-md"
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                        e.target.nextSibling.style.display = "block";
+                      }}
+                    />
+                    <div className="hidden p-8 text-center">
+                      <div className="text-gray-400 mb-2">
+                        <Eye className="w-12 h-12 mx-auto mb-2" />
+                      </div>
+                      <p className="text-gray-600">
+                        No se pudo cargar la imagen del comprobante
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-8 text-center">
                     <div className="text-gray-400 mb-2">
                       <Eye className="w-12 h-12 mx-auto mb-2" />
                     </div>
                     <p className="text-gray-600">
-                      No se pudo cargar la imagen del comprobante
+                      No hay comprobante de pago disponible
                     </p>
                   </div>
-                </div>
-              ) : (
-                <div className="p-8 text-center">
-                  <div className="text-gray-400 mb-2">
-                    <Eye className="w-12 h-12 mx-auto mb-2" />
-                  </div>
-                  <p className="text-gray-600">
-                    No hay comprobante de pago disponible
-                  </p>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </OverlayBackdrop>
       )}
     </>
   );

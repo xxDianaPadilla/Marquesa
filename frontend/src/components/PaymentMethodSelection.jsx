@@ -10,7 +10,7 @@ const CardForm = ({
     isSubmitting,
     formatCardNumber
 }) => (
-    <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.15)' }}>
+    <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
         <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold" style={{ fontFamily: 'Poppins, sans-serif' }}>
@@ -113,7 +113,7 @@ const CardForm = ({
 const BankTransferModal = ({ setShowBankTransferModal, handleBankTransferConfirm }) => (
     <div
         className="fixed inset-0 flex items-center justify-center z-50"
-        style={{ backgroundColor: 'rgba(0, 0, 0, 0.15)' }}
+        style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
     >
         <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <h3

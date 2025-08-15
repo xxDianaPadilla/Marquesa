@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import Header from "../components/Header/Header";
 import Footer from "../components/Footer";
+import CategoryNavigation from "../components/CategoryNavigation";
 import CustomizationPanel from "../components/CustomizationPanel";
 import CustomCategorySection from "../components/CustomCategorySection";
 import { useCustomProductsByType } from "../components/CustomProductsMaterials/hooks/useCustomProductsMaterialsUsers";
@@ -15,7 +16,20 @@ const CustomProducts = () => {
     const productType = searchParams.get('product');
     const availableCategories = searchParams.get('categories') ? JSON.parse(searchParams.get('categories')) : [];
 
-    // Estados locales
+    // ✅ AGREGAR: Configuración de categorías para el menú de navegación (igual que en las otras páginas)
+    const categories = useMemo(() => [
+        { _id: 'todos', name: 'Todos' },
+        { _id: '688175a69579a7cde1657aaa', name: 'Arreglos con flores naturales' },
+        { _id: '688175d89579a7cde1657ac2', name: 'Arreglos con flores secas' },
+        { _id: '688175fd9579a7cde1657aca', name: 'Cuadros decorativos' },
+        { _id: '688176179579a7cde1657ace', name: 'Giftboxes' },
+        { _id: '688175e79579a7cde1657ac6', name: 'Tarjetas' }
+    ], []);
+
+    // ✅ AGREGAR: Estado para la categoría activa del menú de navegación
+    const [activeNavCategory, setActiveNavCategory] = useState('todos');
+
+    // Estados locales existentes
     const [activeCategory, setActiveCategory] = useState('todos');
     const [selectedProducts, setSelectedProducts] = useState([]);
     const [cart, setCart] = useState([]);
@@ -29,6 +43,28 @@ const CustomProducts = () => {
             navigate('/');
         }
     }, [productType, navigate]);
+
+    // ✅ AGREGAR: Función para manejar el cambio de categoría en el menú de navegación
+    const handleCategoryChange = useCallback((categoryId) => {
+        console.log(`👆 CustomProducts - Cambio de categoría solicitado: ${activeNavCategory} → ${categoryId}`);
+
+        if (categoryId === activeNavCategory) {
+            console.log(`⚠️ CustomProducts - Ya estamos en la categoría: ${categoryId}`);
+            return;
+        }
+
+        setActiveNavCategory(categoryId);
+
+        if (categoryId === 'todos') {
+            navigate('/categoryProducts', { replace: true });
+        } else {
+            navigate(`/categoria/${categoryId}`, { replace: true });
+        }
+
+        setTimeout(() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 100);
+    }, [activeNavCategory, navigate]);
 
     // Configuración de categorías dinámicas basadas en el producto seleccionado
     const getCategoriesForProduct = () => {
@@ -47,12 +83,12 @@ const CustomProducts = () => {
         return baseCategories;
     };
 
-    const categories = getCategoriesForProduct();
+    const productCategories = getCategoriesForProduct();
 
     /**
-     * Maneja el cambio de categoría en la navegación
+     * Maneja el cambio de categoría en la navegación de productos (mantener función original)
      */
-    const handleCategoryChange = (categoryId) => {
+    const handleProductCategoryChange = (categoryId) => {
         setActiveCategory(categoryId);
 
         if (categoryId !== 'todos') {
@@ -194,89 +230,103 @@ const CustomProducts = () => {
     }
 
     return (
-        <>
+        <div className="min-h-screen bg-white-50">
             <Header />
 
-            <div className="max-w-7xl mx-auto px-4 py-8">
-                {/* Encabezado de la página */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                        Personalizar {productType}
-                    </h1>
-                    <p className="text-gray-600">
-                        Selecciona los materiales para crear tu producto personalizado único
-                    </p>
-                    <div className="mt-4 flex items-center space-x-4">
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                            {productData.totalMaterials} materiales disponibles
-                        </span>
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                            {Object.keys(productData.categories).length} categorías
-                        </span>
-                    </div>
+            {/* ✅ AGREGAR: Sección del menú de navegación de categorías (igual que en las otras páginas) */}
+            <section className="bg-white pt-2 sm:pt-4 pb-4 sm:pb-6 shadow-sm">
+                <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+                    <CategoryNavigation
+                        categories={categories}
+                        activeCategory={activeNavCategory}
+                        onCategoryChange={handleCategoryChange}
+                    />
                 </div>
+            </section>
 
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                    {/* Área de productos */}
-                    <div className="lg:col-span-3">
-                        {Object.entries(productData.categories).map(([categoryName, materials]) => {
-                            const categoryId = categoryName.toLowerCase().replace(/\s+/g, '-');
-                            const transformedProducts = transformMaterialsToProducts(materials);
-
-                            return (
-                                <div key={categoryName} id={`category-${categoryId}`}>
-                                    <CustomCategorySection
-                                        title={`Escoge ${categoryName.toLowerCase()}`}
-                                        products={transformedProducts}
-                                        onAddToCart={handleAddToCart}
-                                        onCustomize={handleCustomize}
-                                        selectedProducts={selectedProducts}
-                                    />
-                                </div>
-                            );
-                        })}
+            {/* Contenido principal existente */}
+            <main className="py-4 sm:py-8">
+                <div className="max-w-7xl mx-auto px-4">
+                    {/* Encabezado de la página */}
+                    <div className="mb-8">
+                        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                            Personalizar {productType}
+                        </h1>
+                        <p className="text-gray-600">
+                            Selecciona los materiales para crear tu producto personalizado único
+                        </p>
+                        <div className="mt-4 flex items-center space-x-4">
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                                {productData.totalMaterials} materiales disponibles
+                            </span>
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                {Object.keys(productData.categories).length} categorías
+                            </span>
+                        </div>
                     </div>
 
-                    {/* Panel de personalización */}
-                    <div className="lg:col-span-1">
-                        <div className="sticky top-4">
-                            <CustomizationPanel
-                                selectedProducts={selectedProducts}
-                                onRemoveProduct={handleRemoveProduct}
-                                onFinishCustomization={handleFinishCustomization}
-                                productType={productType}
-                            />
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                        {/* Área de productos */}
+                        <div className="lg:col-span-3">
+                            {Object.entries(productData.categories).map(([categoryName, materials]) => {
+                                const categoryId = categoryName.toLowerCase().replace(/\s+/g, '-');
+                                const transformedProducts = transformMaterialsToProducts(materials);
 
-                            {/* Información del carrito */}
-                            {cart.length > 0 && (
-                                <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                                    <div className="flex items-center space-x-2">
-                                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                                        <p className="text-sm text-green-700 font-medium">
-                                            Productos en carrito: {cart.length}
-                                        </p>
+                                return (
+                                    <div key={categoryName} id={`category-${categoryId}`}>
+                                        <CustomCategorySection
+                                            title={`Escoge ${categoryName.toLowerCase()}`}
+                                            products={transformedProducts}
+                                            onAddToCart={handleAddToCart}
+                                            onCustomize={handleCustomize}
+                                            selectedProducts={selectedProducts}
+                                        />
                                     </div>
-                                </div>
-                            )}
+                                );
+                            })}
+                        </div>
 
-                            {/* Información adicional */}
-                            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                                <h3 className="text-sm font-semibold text-gray-700 mb-2">
-                                    💡 Consejos de personalización
-                                </h3>
-                                <ul className="text-xs text-gray-600 space-y-1">
-                                    <li>• Selecciona al menos un elemento de cada categoría</li>
-                                    <li>• Puedes cambiar tu selección en cualquier momento</li>
-                                    <li>• El precio final se calculará automáticamente</li>
-                                </ul>
+                        {/* Panel de personalización */}
+                        <div className="lg:col-span-1">
+                            <div className="sticky top-4">
+                                <CustomizationPanel
+                                    selectedProducts={selectedProducts}
+                                    onRemoveProduct={handleRemoveProduct}
+                                    onFinishCustomization={handleFinishCustomization}
+                                    productType={productType}
+                                />
+
+                                {/* Información del carrito */}
+                                {cart.length > 0 && (
+                                    <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                                        <div className="flex items-center space-x-2">
+                                            <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                                            <p className="text-sm text-green-700 font-medium">
+                                                Productos en carrito: {cart.length}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Información adicional */}
+                                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                                    <h3 className="text-sm font-semibold text-gray-700 mb-2">
+                                        💡 Consejos de personalización
+                                    </h3>
+                                    <ul className="text-xs text-gray-600 space-y-1">
+                                        <li>• Selecciona al menos un elemento de cada categoría</li>
+                                        <li>• Puedes cambiar tu selección en cualquier momento</li>
+                                        <li>• El precio final se calculará automáticamente</li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </main>
 
             <Footer />
-        </>
+        </div>
     );
 };
 

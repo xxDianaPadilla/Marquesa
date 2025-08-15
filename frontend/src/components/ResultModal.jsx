@@ -20,7 +20,7 @@ const ResultModal = ({ isOpen, selectedCode, onClose, onCopyCode }) => {
     if (!isOpen || !selectedCode) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
             <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-sm sm:max-w-md md:max-w-lg mx-2 sm:mx-4 transform animate-bounce-in max-h-[90vh] sm:max-h-[85vh] md:max-h-[80vh] overflow-y-auto">
                 {/* Header del modal */}
                 <div className="relative p-4 sm:p-5 md:p-6 text-center border-b border-gray-100 flex-shrink-0">

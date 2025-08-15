@@ -177,14 +177,14 @@ const ChatClient = ({ isOpen, onClose }) => {
     const handleSendMessage = async (messageText, file = null) => {
         // ✅ CAMBIO: Permitir envío sin conversación activa (primer mensaje)
         if (!messageText?.trim() && !file && !selectedFile) return;
-        
+
         const fileToSend = file || selectedFile;
-        
+
         // ✅ NUEVO: Para primer mensaje, pasar null como conversationId
         const conversationId = activeConversation?.conversationId || null;
-        
+
         const success = await sendMessage(conversationId, messageText, fileToSend);
-        
+
         if (success) {
             setNewMessage('');
             setSelectedFile(null);
@@ -192,7 +192,7 @@ const ChatClient = ({ isOpen, onClose }) => {
             if (fileInputRef.current) {
                 fileInputRef.current.value = '';
             }
-            
+
             // ✅ NUEVO: Si era el primer mensaje, actualizar estado
             if (isFirstMessage) {
                 setIsFirstMessage(false);
@@ -220,7 +220,7 @@ const ChatClient = ({ isOpen, onClose }) => {
         const file = e.target.files[0];
         if (file) {
             setSelectedFile(file);
-            
+
             if (file.type.startsWith('image/')) {
                 const reader = new FileReader();
                 reader.onload = (e) => setPreviewUrl(e.target.result);
@@ -284,8 +284,8 @@ const ChatClient = ({ isOpen, onClose }) => {
                     <div className="bg-[#E8ACD2] p-3 md:p-4 rounded-t-lg flex items-center justify-between flex-shrink-0">
                         <div className="flex items-center space-x-2 md:space-x-3 min-w-0 flex-1">
                             <div className="w-6 md:w-8 h-6 md:h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center flex-shrink-0">
-                                <img 
-                                    src="/assets/marquesaMiniLogo.png" 
+                                <img
+                                    src="/assets/marquesaMiniLogo.png"
                                     alt="Marquesa"
                                     className="w-full h-full rounded-full object-cover"
                                     onError={(e) => {
@@ -306,7 +306,7 @@ const ChatClient = ({ isOpen, onClose }) => {
                                 </p>
                             </div>
                         </div>
-                        
+
                         <button
                             onClick={onClose}
                             className="text-white hover:text-gray-200 transition-colors flex-shrink-0 ml-2"
@@ -330,7 +330,7 @@ const ChatClient = ({ isOpen, onClose }) => {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                                 </svg>
                                 <span>
-                                    {isAtLimit 
+                                    {isAtLimit
                                         ? 'Límite de mensajes alcanzado'
                                         : `${messageCount}/75 mensajes`
                                     }
@@ -347,8 +347,8 @@ const ChatClient = ({ isOpen, onClose }) => {
                                 <div className="flex items-center space-x-2 mb-1">
                                     <div className="w-4 h-4 rounded-full bg-[#E8ACD2] flex items-center justify-center">
                                         {/* ✅ CORRECCIÓN: Logo fijo del sistema para mensajes de bienvenida */}
-                                        <img 
-                                            src="/assets/marquesaMiniLogo.png" 
+                                        <img
+                                            src="/assets/marquesaMiniLogo.png"
                                             alt="Marquesa"
                                             className="w-full h-full rounded-full object-cover"
                                             onError={(e) => {
@@ -362,7 +362,7 @@ const ChatClient = ({ isOpen, onClose }) => {
                                     <span className="text-xs text-gray-600 font-medium">Atención al Cliente</span>
                                 </div>
                                 <p className="text-xs md:text-sm text-gray-800" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                    {isFirstMessage 
+                                    {isFirstMessage
                                         ? '¡Hola! Bienvenido a MARQUESA. ¿En qué podemos ayudarte hoy? Envía tu primer mensaje para comenzar.'
                                         : '¡Hola! Bienvenido a MARQUESA. ¿En qué podemos ayudarte hoy?'
                                     }
@@ -374,34 +374,39 @@ const ChatClient = ({ isOpen, onClose }) => {
                         </div>
 
                         {/* ✅ MENSAJES DEL CHAT: Solo mostrar si hay conversación activa */}
-                        {!isFirstMessage && safeMessages.filter(message => !message.isDeleted).map((message, index) => {
-                            const filteredMessages = safeMessages.filter(msg => !msg.isDeleted);
-                            const showDate = index === 0 || 
-                                formatDate(message.createdAt) !== formatDate(filteredMessages[index - 1]?.createdAt);
-                            
-                            return (
-                                <div key={message._id}>
-                                    {showDate && (
-                                        <div className="text-center mb-3">
-                                            <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full">
-                                                {formatDate(message.createdAt)}
-                                            </span>
-                                        </div>
-                                    )}
-                                    
-                                    <MessageItem
-                                        message={message}
-                                        isOwnMessage={message.senderType === 'Customer'}
-                                        isAdmin={false}
-                                        onAction={handleMessageAction}
-                                        MediaRenderer={MediaRenderer}
-                                        formatTime={formatTime}
-                                        compact={true}
-                                        activeConversation={activeConversation} // ✅ CORRECCIÓN CRÍTICA: Pasar activeConversation
-                                    />
-                                </div>
-                            );
-                        })}
+                        {!isFirstMessage && (() => {
+                            // ✅ FIX: Filtrar mensajes válidos una sola vez
+                            const validMessages = safeMessages.filter(message => !message.isDeleted);
+
+                            return validMessages.map((message, index) => {
+                                // ✅ FIX: Comparar con el mensaje anterior en la lista filtrada
+                                const showDate = index === 0 ||
+                                    formatDate(message.createdAt) !== formatDate(validMessages[index - 1].createdAt);
+
+                                return (
+                                    <div key={message._id}>
+                                        {showDate && (
+                                            <div className="text-center mb-3">
+                                                <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full">
+                                                    {formatDate(message.createdAt)}
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        <MessageItem
+                                            message={message}
+                                            isOwnMessage={message.senderType === 'Customer'}
+                                            isAdmin={false}
+                                            onAction={handleMessageAction}
+                                            MediaRenderer={MediaRenderer}
+                                            formatTime={formatTime}
+                                            compact={true}
+                                            activeConversation={activeConversation}
+                                        />
+                                    </div>
+                                );
+                            });
+                        })()}
 
                         {/* ✅ MENSAJE DE AYUDA: Solo para primer mensaje */}
                         {isFirstMessage && (
@@ -421,13 +426,13 @@ const ChatClient = ({ isOpen, onClose }) => {
                         {typingUsers && typingUsers.size > 0 && (
                             <TypingIndicator users={Array.from(typingUsers)} compact={true} />
                         )}
-                        
+
                         <div ref={messagesEndRef} />
                     </div>
 
                     {/* Preview de archivo seleccionado */}
                     {selectedFile && (
-                        <FilePreview 
+                        <FilePreview
                             file={selectedFile}
                             previewUrl={previewUrl}
                             onClear={() => {
@@ -450,13 +455,13 @@ const ChatClient = ({ isOpen, onClose }) => {
                                 onClick={() => fileInputRef.current?.click()}
                                 className="flex-shrink-0 p-1 text-gray-500 hover:text-[#E8ACD2] transition-colors"
                                 title="Adjuntar archivo"
-                                // ✅ CAMBIO: No deshabilitar para primer mensaje
+                            // ✅ CAMBIO: No deshabilitar para primer mensaje
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                                 </svg>
                             </button>
-                            
+
                             <input
                                 type="file"
                                 ref={fileInputRef}
@@ -464,7 +469,7 @@ const ChatClient = ({ isOpen, onClose }) => {
                                 accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
                                 className="hidden"
                             />
-                            
+
                             <input
                                 type="text"
                                 value={newMessage || ''}
@@ -473,9 +478,9 @@ const ChatClient = ({ isOpen, onClose }) => {
                                 placeholder={isFirstMessage ? "Escribe tu primer mensaje..." : "Escribe un mensaje..."}
                                 className="flex-1 border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[#E8ACD2] focus:border-transparent"
                                 style={{ fontFamily: 'Poppins, sans-serif' }}
-                                // ✅ CAMBIO: No deshabilitar para primer mensaje
+                            // ✅ CAMBIO: No deshabilitar para primer mensaje
                             />
-                            
+
                             <button
                                 type="submit"
                                 disabled={(!newMessage?.trim() && !selectedFile)}

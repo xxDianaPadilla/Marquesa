@@ -16,7 +16,7 @@ const useLoginForm = () => {
     // Estados para manejo de errores y validaciones
     const [errors, setErrors] = useState({}); // Errores por campo
     const [isLoading, setIsLoading] = useState(false); // Estado de carga durante envío
-    const [showPassword, setShowPassword] = useState(false); // Visibilidad de contraseña
+    const [showPassword, setShowPassword] = useState(false); // Visibilidad de contraseña.
     const [attemptWarning, setAttemptWarning] = useState(null); // Advertencias sobre intentos
 
     // Hooks de navegación y autenticación

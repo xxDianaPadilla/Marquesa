@@ -1,4 +1,7 @@
 import salesModel from "../models/Sales.js";
+import productsModel from "../models/products.js";
+import customProductModel from "../models/CustomProducts.js";
+import Clients from '../models/Clients.js';
 import ShoppingCart from '../models/ShoppingCart.js'
 import { v2 as cloudinary } from "cloudinary";
 import { config } from "../config.js";
@@ -9,7 +12,7 @@ const salesController = {};
 // Función helper para configuración dinámica de cookies basada en el entorno
 const getCookieConfig = () => {
     const isProduction = process.env.NODE_ENV === 'production';
-    
+
     // ✅ CORRECCIÓN CRÍTICA: Configuración específica para Render + Vercel
     if (isProduction) {
         return {
@@ -37,7 +40,7 @@ const getCookieConfig = () => {
 const getTokenFromRequest = (req) => {
     let token = req.cookies?.authToken;
     let source = 'cookie';
-    
+
     if (!token) {
         const authHeader = req.headers.authorization;
         if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -45,7 +48,7 @@ const getTokenFromRequest = (req) => {
             source = 'authorization_header';
         }
     }
-    
+
     return { token, source };
 };
 
@@ -288,13 +291,6 @@ salesController.getSales = async (req, res) => {
             salesModel.countDocuments(filters)
         ]);
 
-        // Configurar cookies con configuración dinámica cross-domain
-        const { token } = getTokenFromRequest(req);
-        if (token) {
-            const cookieConfig = getCookieConfig();
-            res.cookie("authToken", token, cookieConfig);
-        }
-
         res.status(200).json({
             success: true,
             data: sales,
@@ -305,8 +301,7 @@ salesController.getSales = async (req, res) => {
                 itemsPerPage: limitNum,
                 hasNextPage: skip + limitNum < totalCount,
                 hasPrevPage: pageNum > 1
-            },
-            token: token || 'session_maintained' // También en el body para mayor compatibilidad
+            }
         });
     } catch (error) {
         console.error('Error en getSales:', error);
@@ -1789,30 +1784,184 @@ salesController.deleteSale = async (req, res) => {
  */
 salesController.getSalesDetailed = async (req, res) => {
     try {
-        const sales = await salesModel.find()
-            .populate({
-                path: 'ShoppingCartId',
-                populate: {
-                    path: 'clientId',
-                    model: 'clients'
+        const { page = 1, limit = 10 } = req.query;
+
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+
+        if (isNaN(pageNum) || pageNum < 1 || isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
+            return res.status(400).json({
+                success: false,
+                message: "Parámetros de paginación inválidos"
+            });
+        }
+
+        const skip = (pageNum - 1) * limitNum;
+
+        // Obtener ventas con populate completo
+        const [sales, totalCount] = await Promise.all([
+            salesModel.find()
+                .populate({
+                    path: 'ShoppingCartId',
+                    populate: {
+                        path: 'clientId',
+                        model: 'Clients',
+                        select: 'fullName phone email address profilePicture'
+                    }
+                })
+                .sort({ deliveryDate: 1 })
+                .skip(skip)
+                .limit(limitNum),
+            salesModel.countDocuments()
+        ]);
+
+        if (!sales || sales.length === 0) {
+            return res.status(200).json({
+                success: true,
+                data: [],
+                pagination: {
+                    currentPage: pageNum,
+                    totalPages: 0,
+                    totalItems: 0
+                }
+            });
+        }
+
+        const salesWithDetails = await Promise.all(
+            sales.map(async (sale) => {
+                try {
+                    const saleObj = sale.toObject();
+
+                    // Verificar que existe el ShoppingCart
+                    if (!saleObj.ShoppingCartId) {
+                        console.warn(`Venta ${saleObj._id} sin ShoppingCart`);
+                        return {
+                            _id: saleObj._id,
+                            clientPicture: '',
+                            clientName: 'Cliente no encontrado',
+                            clientPhone: '',
+                            clientEmail: '',
+                            clientAddress: '',
+                            paymentType: saleObj.paymentType,
+                            paymentProofImage: saleObj.paymentProofImage,
+                            status: saleObj.status,
+                            trackingStatus: saleObj.trackingStatus,
+                            deliveryAddress: saleObj.deliveryAddress,
+                            receiverName: saleObj.receiverName,
+                            receiverPhone: saleObj.receiverPhone,
+                            deliveryPoint: saleObj.deliveryPoint,
+                            deliveryDate: saleObj.deliveryDate,
+                            total: 0,
+                            items: [],
+                            createdAt: saleObj.createdAt,
+                            updatedAt: saleObj.updatedAt
+                        };
+                    }
+
+                    // Obtener información del cliente
+                    const client = saleObj.ShoppingCartId.clientId;
+
+                    // Si no hay cliente poblado, intentar obtenerlo manualmente
+                    let clientInfo = null;
+                    if (!client && saleObj.ShoppingCartId.clientId) {
+                        clientInfo = await Clients.findById(saleObj.ShoppingCartId.clientId)
+                            .select('fullName phone email address profilePicture');
+                    } else {
+                        clientInfo = client;
+                    }
+
+                    // Obtener detalles de los productos
+                    const cartItems = saleObj.ShoppingCartId.items || [];
+                    const itemsDetails = [];
+
+                    for (const item of cartItems) {
+                        try {
+                            if (item.itemType === 'product') {
+                                const product = await productsModel.findById(item.itemId)
+                                    .select('name price images description');
+                                if (product) {
+                                    itemsDetails.push({
+                                        type: 'product',
+                                        name: product.name,
+                                        price: product.price,
+                                        quantity: item.quantity || 1,
+                                        subtotal: item.subtotal,
+                                        image: product.images && product.images.length > 0 ? product.images[0].image : null
+                                    });
+                                }
+                            } else if (item.itemType === 'custom') {
+                                const customProduct = await customProductModel.findById(item.itemId)
+                                    .populate('selectedItems.productId', 'name price images');
+                                if (customProduct) {
+                                    itemsDetails.push({
+                                        type: 'custom',
+                                        name: 'Producto Personalizado',
+                                        price: customProduct.totalPrice,
+                                        quantity: item.quantity || 1,
+                                        subtotal: item.subtotal,
+                                        image: customProduct.referenceImage || null,
+                                        selectedItems: customProduct.selectedItems
+                                    });
+                                }
+                            }
+                        } catch (itemError) {
+                            console.error(`Error procesando item ${item.itemId}:`, itemError);
+                        }
+                    }
+
+                    // Formatear la fecha correctamente
+                    let formattedDate = saleObj.deliveryDate;
+                    if (saleObj.deliveryDate) {
+                        const date = new Date(saleObj.deliveryDate);
+                        formattedDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
+                    }
+
+                    return {
+                        _id: saleObj._id,
+                        clientPicture: clientInfo?.profilePicture || '',
+                        clientName: clientInfo?.fullName || 'Cliente no encontrado',
+                        clientPhone: clientInfo?.phone || '',
+                        clientEmail: clientInfo?.email || '',
+                        clientAddress: clientInfo?.address || '',
+                        paymentType: saleObj.paymentType,
+                        paymentProofImage: saleObj.paymentProofImage,
+                        status: saleObj.status,
+                        trackingStatus: saleObj.trackingStatus,
+                        deliveryAddress: saleObj.deliveryAddress,
+                        receiverName: saleObj.receiverName,
+                        receiverPhone: saleObj.receiverPhone,
+                        deliveryPoint: saleObj.deliveryPoint,
+                        deliveryDate: formattedDate,
+                        total: saleObj.ShoppingCartId?.total || 0,
+                        items: itemsDetails,
+                        createdAt: saleObj.createdAt,
+                        updatedAt: saleObj.updatedAt
+                    };
+
+                } catch (saleError) {
+                    console.error(`Error procesando venta ${sale._id}:`, saleError);
+                    return null;
                 }
             })
-            .sort({ createdAt: -1 });
+        );
 
-        const { token } = getTokenFromRequest(req);
-        const currentToken = token || 'session_maintained';
-        const cookieConfig = getCookieConfig();
-        res.cookie("authToken", currentToken, cookieConfig);
+        // Filtrar ventas nulas
+        const validSales = salesWithDetails.filter(sale => sale !== null);
 
         res.status(200).json({
             success: true,
-            data: sales,
-            token: currentToken
+            data: validSales,
+            pagination: {
+                currentPage: pageNum,
+                totalPages: Math.ceil(totalCount / limitNum),
+                totalItems: totalCount
+            }
         });
     } catch (error) {
+        console.error('Error en getSalesDetailed:', error);
         res.status(500).json({
             success: false,
-            message: "Error al obtener ventas detalladas",
+            message: 'Error interno del servidor al obtener las ventas detalladas',
             error: error.message
         });
     }
@@ -1978,31 +2127,26 @@ salesController.updateTrackingStatus = async (req, res) => {
         const updatedSale = await salesModel.findByIdAndUpdate(
             id,
             { trackingStatus: trackingValidation.value },
-            { new: true }
+            { new: true, runValidators: true }
         ).populate('ShoppingCartId');
 
         if (!updatedSale) {
             return res.status(404).json({
                 success: false,
-                message: "Venta no encontrada"
+                message: 'Venta no encontrada'
             });
         }
 
-        const { token } = getTokenFromRequest(req);
-        const currentToken = token || 'session_maintained';
-        const cookieConfig = getCookieConfig();
-        res.cookie("authToken", currentToken, cookieConfig);
-
         res.status(200).json({
             success: true,
-            message: "Estado de seguimiento actualizado",
-            data: updatedSale,
-            token: currentToken
+            message: 'Estado de seguimiento actualizado exitosamente',
+            data: updatedSale
         });
     } catch (error) {
+        console.error('Error en updateTrackingStatus:', error);
         res.status(500).json({
             success: false,
-            message: "Error al actualizar estado de seguimiento",
+            message: 'Error interno del servidor al actualizar el estado de seguimiento',
             error: error.message
         });
     }

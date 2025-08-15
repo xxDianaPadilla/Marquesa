@@ -140,7 +140,7 @@ const EditProfileModal = ({ isOpen, onClose, onSuccess }) => {
                                         </div>
                                     )}
 
-                                    <div className="absolute inset-0 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
+                                    <div className="absolute inset-0 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
                                         <label htmlFor="profilePicture" className="cursor-pointer">
                                             <FaEdit className="w-6 h-6 text-white" />
                                         </label>

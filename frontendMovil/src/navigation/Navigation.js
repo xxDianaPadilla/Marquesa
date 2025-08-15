@@ -21,6 +21,7 @@ import RecoveryPasswordScreen from "../screens/RecoveryPasswordScreen";
 import ShoppingCartScreen from "../screens/ShoppingCartScreen";
 import RecoveryCodeScreen from "../screens/RecoveryCodeScreen";
 import ChatScreen from "../screens/ChatScreen";
+import ProductDetailScreen from "../screens/ProductDetailScreen";
 
 // Componente principal de navegación de toda la aplicación
 export default function Navigation() {
@@ -106,6 +107,12 @@ export default function Navigation() {
                         <Stack.Screen
                             name="Chat"             // Nombre de la ruta
                             component={ChatScreen}  // Componente a renderizar
+                        />
+
+                        {/* Pantalla de detalles producto */}
+                        <Stack.Screen
+                            name="ProductDetail"             // Nombre de la ruta
+                            component={ProductDetailScreen}  // Componente a renderizar
                         />
 
                         {/* Pantalla de búsqueda */}

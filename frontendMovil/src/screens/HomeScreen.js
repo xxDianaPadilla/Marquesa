@@ -14,7 +14,7 @@ import {
     Platform
 } from "react-native";
 import { useAuth } from "../context/AuthContext";
-import { useCart } from "../context/CartContext"; 
+import { useCart } from "../context/CartContext";
 import perfilIcon from "../images/perfilIcon.png";
 import favoritesIcon from "../images/favoritesIcon.png";
 import ProductCard from "../components/Products/ProductCard";
@@ -31,17 +31,17 @@ const horizontalPadding = isSmallDevice ? 16 : isMediumDevice ? 20 : 24;
 const elementGap = isSmallDevice ? 8 : isMediumDevice ? 10 : 12;
 
 export default function HomeScreen({ navigation }) {
-    const { 
-        user, 
-        userInfo, 
-        isAuthenticated, 
-        getFavorites, 
-        favorites, 
+    const {
+        user,
+        userInfo,
+        isAuthenticated,
+        getFavorites,
+        favorites,
         favoritesLoading,
         favoritesError,
         refreshFavorites
     } = useAuth();
-    
+
     // USAMOS EL CONTEXTO DEL CARRITO
     const {
         addToCart,
@@ -52,12 +52,12 @@ export default function HomeScreen({ navigation }) {
         getItemQuantity,
         clearCartError
     } = useCart();
-    
+
     const { productos, loading, refetch } = useFetchProducts();
     const [selectedCategory, setSelectedCategory] = useState('Todo');
     const [refreshing, setRefreshing] = useState(false);
-    const [addingToCart, setAddingToCart] = useState(null); 
-    
+    const [addingToCart, setAddingToCart] = useState(null);
+
     const [showPriceFilter, setShowPriceFilter] = useState(false);
     const [priceRange, setPriceRange] = useState({ min: 0, max: 100 });
 
@@ -107,7 +107,7 @@ export default function HomeScreen({ navigation }) {
             if (refetch) {
                 await refetch();
             }
-            
+
             // Refrescar favoritos si está autenticado
             if (isAuthenticated) {
                 await refreshFavorites();
@@ -124,7 +124,11 @@ export default function HomeScreen({ navigation }) {
     };
 
     const handleProductPress = (product) => {
-        navigation.navigate('ProductDetail', { productId: product._id });
+        console.log('Navegando a ProductDetail con producto:', product._id);
+        navigation.navigate('ProductDetail', {
+            productId: product._id,
+            product: product
+        });
     };
 
     // FUNCIÓN PARA AGREGAR AL CARRITO
@@ -175,12 +179,12 @@ export default function HomeScreen({ navigation }) {
             if (result.success) {
                 // Mostrar mensaje de éxito
                 showToast(`${product.name} agregado al carrito`);
-                
+
                 console.log('Producto agregado exitosamente:', result);
             } else {
                 // Mostrar error específico
                 Alert.alert(
-                    'Error al agregar al carrito', 
+                    'Error al agregar al carrito',
                     result.message || 'No se pudo agregar el producto al carrito'
                 );
                 console.error('Error al agregar producto:', result.message);
@@ -189,7 +193,7 @@ export default function HomeScreen({ navigation }) {
         } catch (error) {
             console.error('Error inesperado al agregar al carrito:', error);
             Alert.alert(
-                'Error inesperado', 
+                'Error inesperado',
                 'Ocurrió un error inesperado. Inténtalo nuevamente.'
             );
         } finally {
@@ -206,9 +210,9 @@ export default function HomeScreen({ navigation }) {
     const filteredProducts = productos.filter(product => {
         const matchesCategory = selectedCategory === 'Todo' ||
             product.category?.toLowerCase().includes(selectedCategory.toLowerCase());
-        
+
         const matchesPrice = product.price >= priceRange.min && product.price <= priceRange.max;
-        
+
         return matchesCategory && matchesPrice;
     });
 
@@ -216,8 +220,8 @@ export default function HomeScreen({ navigation }) {
         <View style={[styles.cardWrapper, { marginRight: index % 2 === 0 ? elementGap : 0 }]}>
             <ProductCard
                 product={item}
-                onPress={handleProductPress}
-                onAddToCart={handleAddToCart} 
+                onPress={handleProductPress} 
+                onAddToCart={handleAddToCart}
                 navigation={navigation}
                 // Props adicionales para mostrar estado del carrito
                 isAddingToCart={addingToCart === item._id}
@@ -231,7 +235,7 @@ export default function HomeScreen({ navigation }) {
             {/* Header solo con botón de perfil */}
             <View style={styles.header}>
                 <View style={styles.headerSpacer} />
-                
+
                 <TouchableOpacity
                     style={styles.profileButton}
                     onPress={handleProfilePress}
@@ -246,13 +250,13 @@ export default function HomeScreen({ navigation }) {
             </View>
 
             <View style={styles.searchWrapper}>
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={styles.filterIconButton}
                     onPress={() => setShowPriceFilter(true)}
                 >
                     <Icon name="tune" size={isSmallDevice ? 18 : 20} color="#999" />
                 </TouchableOpacity>
-                
+
                 <View style={styles.searchContainer}>
                     <TouchableOpacity
                         style={styles.searchTouchable}
@@ -313,7 +317,7 @@ export default function HomeScreen({ navigation }) {
                         <Text style={styles.filterChipText}>
                             Precio: ${priceRange.min} - ${priceRange.max}
                         </Text>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             onPress={() => setPriceRange({ min: 0, max: 100 })}
                             style={styles.filterChipClose}
                         >
@@ -328,7 +332,7 @@ export default function HomeScreen({ navigation }) {
                 <View style={styles.errorContainer}>
                     <Icon name="error-outline" size={16} color="#e74c3c" />
                     <Text style={styles.errorText}>{cartError}</Text>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={clearCartError}
                         style={styles.closeButton}
                     >
@@ -342,7 +346,7 @@ export default function HomeScreen({ navigation }) {
                 <View style={styles.errorContainer}>
                     <Icon name="error-outline" size={16} color="#e74c3c" />
                     <Text style={styles.errorText}>{favoritesError}</Text>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={() => getFavorites()}
                         style={styles.retryButton}
                     >

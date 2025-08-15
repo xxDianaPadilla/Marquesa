@@ -21,7 +21,7 @@ const ProductCard = ({
   onPress,
   onAddToCart,
   navigation,
-  isAddingToCart = false, // ✅ Nueva prop para mostrar loading
+  isAddingToCart = false,
 }) => {
   // Obtener funciones de favoritos del contexto
   const {
@@ -114,7 +114,7 @@ const ProductCard = ({
     }
   };
 
-  // ✅ MANEJAR AGREGAR AL CARRITO CON VALIDACIONES MEJORADAS
+  // MANEJAR AGREGAR AL CARRITO CON VALIDACIONES MEJORADAS
   const handleAddToCart = async () => {
     try {
       if (!isAuthenticated) {
@@ -145,7 +145,7 @@ const ProductCard = ({
         return;
       }
 
-      // ✅ LLAMAR LA FUNCIÓN DESDE EL HOMESCREEN
+      // LLAMAR LA FUNCIÓN DESDE EL HOMESCREEN
       if (onAddToCart) {
         await onAddToCart(product, 1, 'product');
       }
@@ -186,7 +186,10 @@ const ProductCard = ({
   return (
     <TouchableOpacity
       style={styles.card}
-      onPress={() => onPress && onPress(product)}
+      onPress={() => {
+        console.log('ProductCard clicked:', product._id); 
+        onPress && onPress(product); 
+      }}
       activeOpacity={0.8}
     >
       {/* Contenedor de imagen */}
@@ -231,7 +234,7 @@ const ProductCard = ({
           </View>
         )}
 
-        {/* ✅ OVERLAY DE LOADING CUANDO SE ESTÁ AGREGANDO AL CARRITO */}
+        {/* OVERLAY DE LOADING CUANDO SE ESTÁ AGREGANDO AL CARRITO */}
         {isAddingToCart && (
           <View style={styles.loadingOverlay}>
             <ActivityIndicator size="small" color="#4A4170" />
@@ -253,7 +256,7 @@ const ProductCard = ({
 
         {/* Información adicional */}
         <View style={styles.bottomRow}>
-          {/* ✅ CONTENEDOR IZQUIERDO PARA EL INDICADOR DE CARRITO */}
+          {/* CONTENEDOR IZQUIERDO PARA EL INDICADOR DE CARRITO */}
           <View style={styles.leftSection}>
             {/* Indicador si está en carrito */}
             {productInCart && cartQuantity > 0 && (
@@ -264,7 +267,7 @@ const ProductCard = ({
             )}
           </View>
 
-          {/* ✅ BOTÓN DE CARRITO SIEMPRE A LA DERECHA */}
+          {/* BOTÓN DE CARRITO SIEMPRE A LA DERECHA */}
           <TouchableOpacity
             style={getCartButtonStyle()}
             onPress={handleAddToCart}

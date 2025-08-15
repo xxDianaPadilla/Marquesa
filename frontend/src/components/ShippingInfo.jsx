@@ -242,7 +242,6 @@ const ShippingInfo = ({
                         Teléfono del receptor *
                     </label>
                     <input
-                        type="number"
                         name="receiverPhone"
                         value={formData.receiverPhone}
                         onChange={handleInputChange}

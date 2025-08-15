@@ -46,17 +46,6 @@ const clientsSchema = new Schema({
         type: String,
         required: false
     },
-    // ✅ NUEVOS CAMPOS para Google Auth
-    googleId: {
-        type: String,
-        required: false,
-        sparse: true // Permite null pero único si existe
-    },
-    provider: {
-        type: String,
-        enum: ['local', 'google'],
-        default: 'local'
-    },
     ruletaCodes: [
         {
             codeId: {

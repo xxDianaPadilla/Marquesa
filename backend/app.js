@@ -7,10 +7,6 @@ import cookieParser from 'cookie-parser';
 // Importa cors para habilitar Cross-Origin Resource Sharing
 import cors from "cors";
  
-// ✅ NUEVAS IMPORTACIONES para Google Auth
-import session from 'express-session';
-import passport from './src/config/passport.js';
- 
 // Importa todas las rutas de la aplicación
 import productsRoutes from './src/routes/products.js';
 import mediaRoutes from './src/routes/media.js';
@@ -28,9 +24,6 @@ import emailVerificationRoutes from './src/routes/emailVerification.js';
 import chatRoutes from './src/routes/chat.js';
 import customProductsMaterialsRoutes from './src/routes/customProductsMaterials.js';
  
-// ✅ NUEVA RUTA para Google Auth
-import googleAuthRoutes from './src/routes/googleAuth.js';
- 
 // Crea la instancia de la aplicación Express
 const app = express();
  
@@ -42,22 +35,6 @@ app.use(
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] // ✅ AGREGADO: 'PATCH'
     })
 );
- 
-// ✅ NUEVA CONFIGURACIÓN: Session para Passport
-app.use(session({
-    secret: process.env.JWT_SECRET || 'fallback_secret_key',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 24 * 60 * 60 * 1000 // 24 horas
-    }
-}));
- 
-// ✅ NUEVA CONFIGURACIÓN: Inicializar Passport
-app.use(passport.initialize());
-app.use(passport.session());
- 
  
 // Middleware para parsear diferentes tipos de datos en las peticiones
 app.use(express.json({ limit: '50mb' })); // Parsea JSON con límite de 50MB
@@ -84,9 +61,6 @@ app.use('/api/passwordReset', passwordResetRoutes); // Recuperación de contrase
 app.use('/api/emailVerification', emailVerificationRoutes); // Verificación de email
 app.use('/api/chat', chatRoutes); // Sistema de chat
 app.use('/api/customProductsMaterials', customProductsMaterialsRoutes); // Materiales para productos personalizados
- 
-// ✅ NUEVA RUTA para Google Auth
-app.use('/api/auth', googleAuthRoutes);
  
 // Exporta la aplicación para ser utilizada
 export default app;

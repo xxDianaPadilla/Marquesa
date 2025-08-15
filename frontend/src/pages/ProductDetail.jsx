@@ -16,8 +16,6 @@ import ProductInfo from '../components/ProductDetail/ProductInfo';
 import ProductTabs from '../components/ProductDetail/ProductTabs';
 // Importa el componente de reseñas del producto
 import ProductReviews from '../components/ProductDetail/ProductReviews';
-// Importa el componente de productos recomendados
-import RecommendedProducts from '../components/RecommendedProducts ';
 // Importa el hook personalizado que obtiene los detalles del producto
 import useDataBaseProductsDetail from '../components/ProductDetail/hooks/useDataProductDetail';
 
@@ -232,9 +230,6 @@ const ProductDetail = () => {
           isAuthenticated={isAuthenticated}
         />
       </div>
-
-      {/* Muestra productos recomendados al final */}
-      <RecommendedProducts />
 
       {/* Pie de página del sitio */}
       <Footer />

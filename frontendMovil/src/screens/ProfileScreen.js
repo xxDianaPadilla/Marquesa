@@ -80,13 +80,13 @@ export default function ProfileScreen({ navigation }) {
             id: 2,
             title: "Mis pedidos",
             icon: orderIcon,
-            onPress: () => console.log("Mis pedidos")
+            onPress: () => navigation.navigate('Orders')
         },
         {
             id: 3,
             title: "Notificaciones",
             icon: notificationIcon,
-            onPress: () => console.log("Notificaciones")
+            onPress: () => navigation.navigate('Notifications')
         },
         {
             id: 4,

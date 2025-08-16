@@ -208,7 +208,8 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '600',
         color: '#333333',
-        fontFamily: 'Poppins-Regular',
+        fontFamily: 'Poppins-SemiBold',
+        marginTop: 4,
     },
     headerRight: {
         width: 28,

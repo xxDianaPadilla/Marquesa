@@ -1,5 +1,5 @@
 import React from "react";
-import { Modal, View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
+import { Modal, View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput } from "react-native";
 
 export const CustomAlert = ({
     visible,
@@ -447,4 +447,4 @@ const styles = StyleSheet.create({
         color: '#333333',
         flex: 1,
     },
-})
+});

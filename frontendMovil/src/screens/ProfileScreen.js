@@ -3,7 +3,6 @@ import { View, TouchableOpacity, Image, StyleSheet, Text, ScrollView } from "rea
 import { useAuth } from "../context/AuthContext";
 import { useAlert } from "../hooks/useAlert";
 import { CustomAlert, LoadingDialog, ConfirmationDialog } from "../components/CustomAlerts";
-import editIcon from "../images/editIcon.png";
 import backIcon from "../images/backIcon.png";
 import userIcon from "../images/userIcon.png";
 import orderIcon from "../images/orderIcon.png";
@@ -75,7 +74,7 @@ export default function ProfileScreen({ navigation }) {
             id: 1,
             title: "Información personal",
             icon: userIcon,
-            onPress: () => console.log("Información personal")
+            onPress: () => navigation.navigate('EditProfile')
         },
         {
             id: 2,
@@ -143,9 +142,6 @@ export default function ProfileScreen({ navigation }) {
                                 </Text>
                             </View>
                         )}
-                        <TouchableOpacity style={styles.editButton}>
-                            <Image source={editIcon} style={styles.editIcon} />
-                        </TouchableOpacity>
                     </View>
 
                     <Text style={styles.userName}>
@@ -282,12 +278,6 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: '#FFFFFF',
     },
-    editIcon: {
-        width: 12,
-        height: 12,
-        resizeMode: "contain",
-        tintColor: '#FFFFFF',
-    },
     userName: {
         fontSize: 24,
         fontFamily: 'Poppins-SemiBold',
@@ -298,7 +288,7 @@ const styles = StyleSheet.create({
         marginBottom: 40,
     },
     menuItem: {
-        flexDirection: 'row',     
+        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         backgroundColor: '#FFFFFF',

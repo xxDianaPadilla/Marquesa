@@ -18,7 +18,6 @@ import emailIcon from "../images/emailIcon.png";
 import calendarIcon from "../images/calendarIcon.png";
 import locationIcon from "../images/locationIcon.png";
 import lockIcon from "../images/lockIcon.png";
-import googleIcon from "../images/googleIcon.png";
 import PinkButton from "../components/PinkButton";
 import PinkInputs from "../components/PinkInputs";
 import QuestionText from "../components/QuestionText";
@@ -174,14 +173,6 @@ const RegisterScreen = ({ navigation }) => {
                             <Text style={styles.separatorText}>o continuar con</Text>
                             <View style={styles.separatorLine} />
                         </View>
-
-                        {/* Botón de Google */}
-                        <TouchableOpacity
-                            style={styles.googleButton}
-                            onPress={handleGoogleSignIn}
-                        >
-                            <Image source={googleIcon} style={styles.googleIcon} />
-                        </TouchableOpacity>
 
                         {/* Link a login */}
                         <QuestionText

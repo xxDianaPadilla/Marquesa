@@ -22,6 +22,8 @@ import ShoppingCartScreen from "../screens/ShoppingCartScreen";
 import RecoveryCodeScreen from "../screens/RecoveryCodeScreen";
 import ChatScreen from "../screens/ChatScreen";
 import ProductDetailScreen from "../screens/ProductDetailScreen";
+import ChangePasswordScreen from "../screens/ChangePasswordScreen";
+import EditProfileScreen from "../screens/EditProfileScreen";
 
 // Componente principal de navegación de toda la aplicación
 export default function Navigation() {
@@ -113,6 +115,18 @@ export default function Navigation() {
                         <Stack.Screen
                             name="ProductDetail"             // Nombre de la ruta
                             component={ProductDetailScreen}  // Componente a renderizar
+                        />
+
+                        {/* Pantalla de cambio de contraseña */}
+                        <Stack.Screen
+                            name="ChangePassword"             // Nombre de la ruta
+                            component={ChangePasswordScreen}  // Componente a renderizar
+                        />
+
+                        {/* Pantalla de edición de perfil */}
+                        <Stack.Screen
+                            name="EditProfile"             // Nombre de la ruta
+                            component={EditProfileScreen}  // Componente a renderizar
                         />
 
                         {/* Pantalla de búsqueda */}

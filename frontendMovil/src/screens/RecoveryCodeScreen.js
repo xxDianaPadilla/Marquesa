@@ -16,6 +16,7 @@ const RecoveryCodeScreen = ({navigation}) => {
     const handleContinue = () => {
         const fullCode = code.join('');
         console.log('Código ingresado: ', fullCode);
+        navigation.navigate('ChangePassword');
     };
 
     const handleResendCode = () => {

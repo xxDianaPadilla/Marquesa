@@ -16,8 +16,10 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import iconBasura from '../images/iconBasura.png';
 import backIcon from '../images/backIcon.png';
+import ShoppingCartCards from '../components/ShoppingCartCards';
+import { ConfirmationDialog } from '../components/CustomAlerts'; 
+import { useAlert } from '../hooks/useAlert'; 
 
 const ShoppingCart = ({ navigation }) => {
   const { isAuthenticated, user } = useAuth();
@@ -43,6 +45,15 @@ const ShoppingCart = ({ navigation }) => {
   const [applyingDiscount, setApplyingDiscount] = useState(false);
   const [updatingItems, setUpdatingItems] = useState(new Set());
 
+  // Hook para alertas personalizadas
+  const {
+    alertState,
+    showConfirmation,
+    hideConfirmation,
+    showErrorToast,
+    showSuccessToast
+  } = useAlert();
+
   // Función para mostrar toast/mensaje
   const showToast = (message) => {
     if (Platform.OS === 'android') {
@@ -57,7 +68,7 @@ const ShoppingCart = ({ navigation }) => {
     if (isAuthenticated && user?.id) {
       getActiveCart();
     }
-  }, [isAuthenticated, user?.id, getActiveCart]);
+  });
 
   // Limpiar errores cuando cambie el componente
   useEffect(() => {
@@ -98,7 +109,7 @@ const ShoppingCart = ({ navigation }) => {
     }
   };
 
-  // Actualizamos cantidad con mejor manejo de tipos
+  // Manejador para actualizar cantidad - Se pasa al componente ShoppingCartCards
   const handleUpdateQuantity = async (itemId, delta) => {
     try {
       if (!cartItems || !itemId || !updateItemQuantity) return;
@@ -144,52 +155,52 @@ const ShoppingCart = ({ navigation }) => {
     }
   };
 
-  // Removemos item con mejor manejo de tipos
+  // Manejador para remover item - MODIFICADO PARA USAR ALERTA PERSONALIZADA
   const handleRemoveItem = async (itemId, itemName, itemType) => {
     try {
       if (!removeFromCart) {
-        Alert.alert('Error', 'Función no disponible');
+        showErrorToast('Función no disponible');
         return;
       }
 
       const productTypeText = itemType === 'custom' ? 'producto personalizado' : 'producto';
 
-      Alert.alert(
-        'Confirmar eliminación',
-        `¿Estás seguro de que quieres eliminar este ${productTypeText} "${itemName}" del carrito?`,
-        [
-          {
-            text: 'Cancelar',
-            style: 'cancel',
-          },
-          {
-            text: 'Eliminar',
-            style: 'destructive',
-            onPress: async () => {
-              setUpdatingItems(prev => new Set([...prev, itemId]));
+      // Usar ConfirmationDialog personalizado en lugar de Alert.alert
+      showConfirmation({
+        title: 'Confirmar eliminación',
+        message: `¿Estás seguro de que quieres eliminar este ${productTypeText} "${itemName}" del carrito?`,
+        confirmText: 'Eliminar',
+        cancelText: 'Cancelar',
+        isDangerous: true, // Marcar como peligroso para que use color rojo
+        onConfirm: async () => {
+          hideConfirmation();
+          
+          setUpdatingItems(prev => new Set([...prev, itemId]));
 
-              console.log(`Eliminando ${productTypeText}: ${itemName}`);
+          console.log(`Eliminando ${productTypeText}: ${itemName}`);
 
-              const result = await removeFromCart(itemId);
+          const result = await removeFromCart(itemId);
 
-              if (result && result.success) {
-                showToast(`${itemName} eliminado del carrito`);
-              } else {
-                Alert.alert('Error', result?.message || 'No se pudo eliminar el producto');
-              }
-
-              setUpdatingItems(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(itemId);
-                return newSet;
-              });
-            }
+          if (result && result.success) {
+            showSuccessToast(`${itemName} eliminado del carrito`);
+          } else {
+            showErrorToast(result?.message || 'No se pudo eliminar el producto');
           }
-        ]
-      );
+
+          setUpdatingItems(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(itemId);
+            return newSet;
+          });
+        },
+        onCancel: () => {
+          hideConfirmation();
+        }
+      });
+
     } catch (error) {
       console.error('Error al eliminar item:', error);
-      Alert.alert('Error', 'Error inesperado al eliminar producto');
+      showErrorToast('Error inesperado al eliminar producto');
     }
   };
 
@@ -231,53 +242,6 @@ const ShoppingCart = ({ navigation }) => {
       total: cartTotal || subtotal,
       stats: stats
     });
-  };
-
-  //COMPONENTE PARA MOSTRAR DETALLES DE PERSONALIZACIÓN
-  const CustomizationDetails = ({ item }) => {
-    const details = getCustomizationDetails(item);
-
-    if (!details) return null;
-
-    return (
-      <View style={styles.customizationContainer}>
-        <Text style={styles.customizationTitle}>🎨 Personalización:</Text>
-        {details.extraComments && (
-          <Text style={styles.customizationText}>• {details.extraComments}</Text>
-        )}
-        {details.designDetails && (
-          <Text style={styles.customizationText}>• Diseño: {details.designDetails}</Text>
-        )}
-        {details.materialPreferences && (
-          <Text style={styles.customizationText}>• Material: {details.materialPreferences}</Text>
-        )}
-        {details.colorPreferences && (
-          <Text style={styles.customizationText}>• Color: {details.colorPreferences}</Text>
-        )}
-        {details.sizePreferences && (
-          <Text style={styles.customizationText}>• Tamaño: {details.sizePreferences}</Text>
-        )}
-      </View>
-    );
-  };
-
-  //Componente para mostrar imagen o emoji personalizado
-  const ProductImageOrEmoji = ({ item, isCustom }) => {
-    if (isCustom) {
-      return (
-        <View style={styles.customProductContainer}>
-          <Text style={styles.customProductEmoji}>🎨</Text>
-          <Text style={styles.customProductLabel}>Personalizado</Text>
-        </View>
-      );
-    }
-
-    return (
-      <Image
-        source={{ uri: getProductImage(item) }}
-        style={styles.itemImage}
-      />
-    );
   };
 
   // Verificar que los contextos estén disponibles
@@ -426,69 +390,16 @@ const ShoppingCart = ({ navigation }) => {
           </View>
         )}
 
-        {/* ITEMS DEL CARRITO */}
-        {cartItems.map((item, index) => {
-          const itemId = item.id;
-          const isUpdating = updatingItems.has(itemId);
-          const isCustom = isCustomProduct(item);
-
-          return (
-            <View key={`${itemId}-${index}`} style={[
-              styles.cartItem,
-              isUpdating && styles.cartItemUpdating,
-              isCustom && styles.cartItemCustom 
-            ]}>
-              {/* Overlay de loading */}
-              {isUpdating && (
-                <View style={styles.itemLoadingOverlay}>
-                  <ActivityIndicator size="small" color="#4A4170" />
-                </View>
-              )}
-
-              {/* Mostramos emoji para productos personalizados o imagen normal */}
-              <ProductImageOrEmoji item={item} isCustom={isCustom} />
-
-              <View style={styles.itemDetails}>
-                <Text style={styles.itemName}>
-                  {item.name || 'Producto sin nombre'}
-                </Text>
-
-                {/* PRECIO CON INDICADOR DE TIPO */}
-                <View style={styles.priceContainer}>
-                  <Text style={styles.itemPrice}>
-                    ${item.price || 0}
-                  </Text>
-                </View>
-
-                {/* DESCRIPCIÓN PARA PRODUCTOS PERSONALIZADOS */}
-                {item.description && (
-                  <Text style={styles.itemDescription} numberOfLines={2}>
-                    {item.description}
-                  </Text>
-                )}
-
-                {/* DETALLES DE PERSONALIZACIÓN */}
-                {isCustom && <CustomizationDetails item={item} />}
-              </View>
-
-              <View style={styles.rightSection}>
-                {/* Botón de eliminar */}
-                <TouchableOpacity
-                  style={[styles.trashButton, isUpdating && styles.buttonDisabled]}
-                  onPress={() => handleRemoveItem(itemId, item.name, item.itemType)}
-                  disabled={isUpdating}
-                >
-                  <Image source={iconBasura} style={styles.trashIcon} />
-                </TouchableOpacity>
-
-                {/* SUBTOTAL DEL ITEM */}
-                <Text style={styles.itemSubtotal}>
-                  ${((item.price || 0) * (item.quantity || 1)).toFixed(2)}
-                </Text>
-              </View>
-            </View>
-          );
-        })}
+        {/* COMPONENTE REUTILIZABLE PARA ITEMS DEL CARRITO */}
+        <ShoppingCartCards
+          cartItems={cartItems}
+          updatingItems={updatingItems}
+          isCustomProduct={isCustomProduct}
+          getCustomizationDetails={getCustomizationDetails}
+          getProductImage={getProductImage}
+          onUpdateQuantity={handleUpdateQuantity}
+          onRemoveItem={handleRemoveItem}
+        />
 
         {/* Botón seguir comprando y totales */}
         {cartItems.length > 0 && (
@@ -555,11 +466,23 @@ const ShoppingCart = ({ navigation }) => {
           </>
         )}
       </ScrollView>
+
+      {/* COMPONENTE DE CONFIRMACIÓN PERSONALIZADO */}
+      <ConfirmationDialog
+        visible={alertState.confirmation.visible}
+        title={alertState.confirmation.title}
+        message={alertState.confirmation.message}
+        onConfirm={alertState.confirmation.onConfirm}
+        onCancel={alertState.confirmation.onCancel}
+        confirmText={alertState.confirmation.confirmText}
+        cancelText={alertState.confirmation.cancelText}
+        isDangerous={alertState.confirmation.isDangerous}
+      />
     </View>
   );
 };
 
-// ESTILOS CON SCROLL Y EMOJI PERSONALIZADO
+// ESTILOS (mantener los mismos)
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -614,7 +537,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 32, 
+    paddingBottom: 32,
   },
   loadingContainer: {
     flex: 1,
@@ -717,180 +640,6 @@ const styles = StyleSheet.create({
     color: '#4A4170',
     fontWeight: '500',
     fontFamily: 'Poppins-Medium',
-  },
-  cartItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    position: 'relative',
-  },
-  cartItemUpdating: {
-    opacity: 0.7,
-  },
-  cartItemCustom: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#E8ACD2',
-    backgroundColor: '#fefefe',
-  },
-  itemLoadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 16,
-    zIndex: 10,
-  },
-  itemImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
-    resizeMode: 'cover'
-  },
-  customProductContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#E8ACD2',
-    borderStyle: 'dashed',
-  },
-  customProductEmoji: {
-    fontSize: 32,
-    marginBottom: 4,
-  },
-  customProductLabel: {
-    fontSize: 8,
-    color: '#E8ACD2',
-    fontWeight: '600',
-    fontFamily: 'Poppins-SemiBold',
-    textAlign: 'center',
-  },
-  itemDetails: {
-    flex: 1,
-    marginLeft: 12,
-    marginRight: 8
-  },
-  itemName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
-    marginBottom: 4,
-    fontFamily: 'Poppins-Medium',
-  },
-  priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  itemPrice: {
-    fontSize: 13,
-    color: '#3C3550',
-    fontWeight: '500',
-    fontFamily: 'Poppins-Medium',
-  },
-  customPriceLabel: {
-    fontSize: 10,
-    color: '#E8ACD2',
-    fontWeight: '500',
-    fontFamily: 'Poppins-Medium',
-    marginLeft: 6,
-    fontStyle: 'italic',
-  },
-  itemDescription: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 8,
-    fontFamily: 'Poppins-Regular',
-  },
-  customizationContainer: {
-    backgroundColor: '#f8f9fa',
-    padding: 8,
-    borderRadius: 6,
-    marginBottom: 8,
-    borderLeftWidth: 2,
-    borderLeftColor: '#E8ACD2',
-  },
-  customizationTitle: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#E8ACD2',
-    marginBottom: 4,
-    fontFamily: 'Poppins-SemiBold',
-  },
-  customizationText: {
-    fontSize: 10,
-    color: '#666',
-    marginBottom: 2,
-    fontFamily: 'Poppins-Regular',
-  },
-  quantityContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#FDB4B7',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginTop: 8,
-    alignSelf: 'flex-start',
-  },
-  quantityButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    opacity: 1,
-  },
-  quantityButtonText: {
-    fontSize: 16,
-    color: '#FDB4B7',
-    fontWeight: 'bold'
-  },
-  quantityText: {
-    fontSize: 14,
-    marginHorizontal: 12,
-    fontFamily: 'Poppins-Medium',
-    minWidth: 20,
-    textAlign: 'center',
-  },
-  rightSection: {
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    minHeight: 80,
-  },
-  trashButton: {
-    padding: 4,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  trashIcon: {
-    width: 18,
-    height: 18,
-    tintColor: '#000'
-  },
-  itemSubtotal: {
-    fontSize: 14,
-    color: '#4A4170',
-    fontWeight: '600',
-    fontFamily: 'Poppins-SemiBold',
-    marginTop: 8,
-    textAlign: 'right',
-  },
-  buttonDisabled: {
-    opacity: 0.5,
   },
   keepWorkingButton: {
     borderWidth: 1,
@@ -1014,6 +763,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'Poppins-SemiBold',
+  },
+  buttonDisabled: {
+    opacity: 0.5,
   },
 });
 

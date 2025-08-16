@@ -19,6 +19,7 @@ export default function PinkInputs({
     iconStyle = {},
     isDateInput = false,
     dateFormat = "DD/MM/YYYY",
+    editable = true,
 }) {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [selectedDate, setSelectedDate] = useState(new Date());
@@ -38,6 +39,22 @@ export default function PinkInputs({
         }
     };
 
+    const parseDateFromString = (dateString) => {
+        if (!dateString) return new Date();
+        
+        try {
+            // Si es formato DD/MM/YYYY
+            if (dateString.includes('/')) {
+                const [day, month, year] = dateString.split('/');
+                return new Date(year, month - 1, day);
+            }
+            // Si es formato ISO o otro
+            return new Date(dateString);
+        } catch (error) {
+            return new Date();
+        }
+    };
+
     const handleDateChange = (event, date) => {
         if (Platform.OS === 'android') {
             setShowDatePicker(false);
@@ -51,7 +68,11 @@ export default function PinkInputs({
     };
 
     const handleDateInputPress = () => {
-        if (isDateInput) {
+        if (isDateInput && editable) {
+            // Parseamos la fecha actual del valor para mostrarla en el picker
+            if (value) {
+                setSelectedDate(parseDateFromString(value));
+            }
             setShowDatePicker(true);
         }
     };
@@ -60,10 +81,15 @@ export default function PinkInputs({
         <TouchableOpacity
             style={styles.dateInputContainer}
             onPress={handleDateInputPress}
-            activeOpacity={0.7}
+            activeOpacity={editable ? 0.7 : 1}
+            disabled={!editable}
         >
             <TextInput
-                style={[styles.textInput, inputStyle]}
+                style={[
+                    styles.textInput, 
+                    inputStyle,
+                    !editable && styles.disabledTextInput
+                ]}
                 placeholder={placeholder}
                 placeholderTextColor="#999999"
                 value={value}
@@ -75,7 +101,11 @@ export default function PinkInputs({
 
     const renderRegularInput = () => (
         <TextInput
-            style={[styles.textInput, inputStyle]}
+            style={[
+                styles.textInput, 
+                inputStyle,
+                !editable && styles.disabledTextInput
+            ]}
             placeholder={placeholder}
             placeholderTextColor="#999999"
             value={value}
@@ -84,21 +114,33 @@ export default function PinkInputs({
             keyboardType={keyboardType}
             autoCapitalize={autoCapitalize}
             autoCorrect={false}
+            editable={editable}
         />
     );
 
     return (
-        <View style={[styles.inputContainer, style]}>
+        <View style={[
+            styles.inputContainer, 
+            style,
+            !editable && styles.disabledContainer
+        ]}>
             {/* Icono izquierdo */}
             {icon && (
-                <Image source={icon} style={[styles.inputIcon, iconStyle]} />
+                <Image 
+                    source={icon} 
+                    style={[
+                        styles.inputIcon, 
+                        iconStyle,
+                        !editable && styles.disabledIcon
+                    ]} 
+                />
             )}
 
             {/* Campo de texto o selector de fecha */}
             {isDateInput ? renderDateInput() : renderRegularInput()}
 
             {/* Botón toggle para contraseña */}
-            {showPasswordToggle && (
+            {showPasswordToggle && editable && (
                 <TouchableOpacity
                     onPress={onTogglePassword}
                     style={styles.eyeButton}
@@ -186,12 +228,21 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 2,
     },
+    disabledContainer: {
+        backgroundColor: '#F8F8F8',
+        borderColor: '#E0E0E0',
+        shadowOpacity: 0,
+        elevation: 0,
+    },
     inputIcon: {
         width: 20,
         height: 20,
         marginRight: 12,
         tintColor: '#999999',
         resizeMode: 'contain',
+    },
+    disabledIcon: {
+        tintColor: '#CCCCCC',
     },
     textInput: {
         flex: 1,
@@ -200,6 +251,10 @@ const styles = StyleSheet.create({
         color: '#3C3550',
         paddingVertical: 12,
         paddingHorizontal: 0,
+    },
+    disabledTextInput: {
+        color: '#999999',
+        backgroundColor: 'transparent',
     },
     dateInputContainer: {
         flex: 1,

@@ -1,5 +1,17 @@
-import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, SafeAreaView, Image, Platform } from "react-native";
+import React, { useState, useEffect } from "react";
+import { 
+    View, 
+    Text, 
+    StyleSheet, 
+    TouchableOpacity, 
+    TextInput, 
+    ScrollView, 
+    SafeAreaView, 
+    Image, 
+    Platform, 
+    Keyboard,
+    TouchableWithoutFeedback
+} from "react-native";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import backIcon from '../images/backIcon.png';
 import marquesaMiniLogo from "../images/marquesaMiniLogo.png";
@@ -10,6 +22,31 @@ import ChatBubbles from "../components/ChatBubbles";
 
 const ChatScreen = ({ navigation }) => {
     const insets = useSafeAreaInsets();
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
+    const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+    
+    useEffect(() => {
+        const keyboardDidShowListener = Keyboard.addListener(
+            'keyboardDidShow',
+            (e) => {
+                setKeyboardHeight(e.endCoordinates.height);
+                setIsKeyboardVisible(true);
+            }
+        );
+        
+        const keyboardDidHideListener = Keyboard.addListener(
+            'keyboardDidHide',
+            () => {
+                setKeyboardHeight(0);
+                setIsKeyboardVisible(false);
+            }
+        );
+
+        return () => {
+            keyboardDidShowListener?.remove();
+            keyboardDidHideListener?.remove();
+        };
+    }, []);
     
     const getTabBarHeight = () => {
         const baseHeight = 60;
@@ -17,77 +54,99 @@ const ChatScreen = ({ navigation }) => {
         return baseHeight + paddingBottom;
     };
 
+    const dismissKeyboard = () => {
+        Keyboard.dismiss();
+    };
+
+    const getInputContainerBottom = () => {
+        if (isKeyboardVisible) {
+            const extraPadding = Platform.OS === 'ios' ? 10 : 50;
+            return keyboardHeight + extraPadding;
+        }
+        return getTabBarHeight();
+    };
+
     return (
         <SafeAreaView style={styles.container}>
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-                    <Image source={backIcon} style={styles.backIcon} />
-                </TouchableOpacity>
+            <TouchableWithoutFeedback onPress={dismissKeyboard}>
+                <View style={styles.container}>
+                    {/* Header */}
+                    <View style={styles.header}>
+                        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+                            <Image source={backIcon} style={styles.backIcon} />
+                        </TouchableOpacity>
 
-                <View style={styles.headerCenter}>
-                    <Image source={marquesaMiniLogo} style={styles.profileImage} />
-                    <Text style={styles.headerTitle}>Marquesa</Text>
+                        <View style={styles.headerCenter}>
+                            <Image source={marquesaMiniLogo} style={styles.profileImage} />
+                            <Text style={styles.headerTitle}>Marquesa</Text>
+                        </View>
+
+                        <View style={styles.headerRight} />
+                    </View>
+
+                    {/* Messages Container */}
+                    <ScrollView 
+                        style={[
+                            styles.messagesContainer, 
+                            { marginBottom: getInputContainerBottom() + 70 }
+                        ]} 
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={styles.messagesContent}
+                    >
+                        {/* Fecha */}
+                        <View style={styles.dateContainer}>
+                            <Text style={styles.dateText}>Hoy</Text>
+                        </View>
+
+                        {/* Mensaje propio */}
+                        <ChatBubbles
+                            message="Buenas tardes, será que le puedo cotizar un arreglo de flores"
+                            time=""
+                            isOwnMessage={true}
+                            hasImage={false}
+                        />
+
+                        {/* Mensaje del otro usuario */}
+                        <ChatBubbles
+                            message="Si, claro con gusto"
+                            time="9:00 am"
+                            isOwnMessage={false}
+                            hasImage={false}
+                        />
+
+                        {/* Mensaje con imagen */}
+                        <ChatBubbles
+                            message=""
+                            time=""
+                            isOwnMessage={false}
+                            hasImage={true}
+                            imageSource={mockMessageImage}
+                        />
+
+                        {/* Mensaje con precio */}
+                        <ChatBubbles
+                            message="Le costaría $50 😊"
+                            time="9:02 am"
+                            isOwnMessage={false}
+                            hasImage={false}
+                        />
+
+                        {/* Respuesta final */}
+                        <ChatBubbles
+                            message="Perfecto, me gustaría comprarlo"
+                            time=""
+                            isOwnMessage={true}
+                            hasImage={false}
+                        />
+                    </ScrollView>
                 </View>
+            </TouchableWithoutFeedback>
 
-                <View style={styles.headerRight} />
-            </View>
-
-            {/* Messages Container con flex para ocupar espacio disponible */}
-            <ScrollView 
-                style={[styles.messagesContainer, { marginBottom: getTabBarHeight() + 70 }]} 
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.messagesContent}
-            >
-                {/* Fecha */}
-                <View style={styles.dateContainer}>
-                    <Text style={styles.dateText}>Hoy</Text>
-                </View>
-
-                {/* Mensaje propio */}
-                <ChatBubbles
-                    message="Buenos tardes, sabes que le puedo colocar un arreglo de flores"
-                    time=""
-                    isOwnMessage={true}
-                    hasImage={false}
-                />
-
-                {/* Mensaje del otro usuario */}
-                <ChatBubbles
-                    message="Si, claro con gusto"
-                    time="9:00 am"
-                    isOwnMessage={false}
-                    hasImage={false}
-                />
-
-                {/* Mensaje con imagen */}
-                <ChatBubbles
-                    message=""
-                    time=""
-                    isOwnMessage={false}
-                    hasImage={true}
-                    imageSource={mockMessageImage}
-                />
-
-                {/* Mensaje con precio */}
-                <ChatBubbles
-                    message="Le costaría $50 😊"
-                    time="9:02 am"
-                    isOwnMessage={false}
-                    hasImage={false}
-                />
-
-                {/* Respuesta final */}
-                <ChatBubbles
-                    message="Perfecto, me gustaría comprarlo"
-                    time=""
-                    isOwnMessage={true}
-                    hasImage={false}
-                />
-            </ScrollView>
-
-            {/* Input Container posicionado absolutamente sobre el TabNavigator */}
-            <View style={[styles.inputContainer, { bottom: getTabBarHeight() }]}>
+            {/* Input Container posicionado absolutamente */}
+            <View style={[
+                styles.inputContainer, 
+                { bottom: getInputContainerBottom() }
+            ]}>
                 <TouchableOpacity style={styles.attachButton}>
                     <Image source={attachImage} style={styles.attachIcon} />
                 </TouchableOpacity>

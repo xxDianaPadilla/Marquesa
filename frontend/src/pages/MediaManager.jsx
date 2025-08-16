@@ -20,7 +20,7 @@ const MediaManager = () => {
     console.log('🚀 Inicializando MediaManager...');
 
     // ============ HOOKS PRINCIPALES ============
-    
+
     /**
      * Hook principal para gestión de medios
      * Proporciona CRUD operations y estado de la aplicación
@@ -69,7 +69,7 @@ const MediaManager = () => {
     } = useMediaUtils();
 
     // ============ ESTADO LOCAL ============
-    
+
     /**
      * Estado para controlar el indicador de carga de operaciones
      * Usado para mostrar spinners durante operaciones asíncronas
@@ -116,7 +116,7 @@ const MediaManager = () => {
      */
     const handleEdit = useCallback((item) => {
         console.log('✏️ Iniciando edición de elemento:', item.title);
-        
+
         if (!item || !item._id) {
             console.error('❌ Elemento inválido para edición:', item);
             showError('Error: No se puede editar un elemento inválido');
@@ -126,7 +126,7 @@ const MediaManager = () => {
         try {
             setLastOperation({ type: 'edit', itemId: item._id, timestamp: new Date() });
             openModal('edit', item);
-            
+
             // Mostrar información sobre el elemento a editar
             showInfo(`Editando: ${item.title || 'Sin título'}`);
         } catch (error) {
@@ -143,7 +143,7 @@ const MediaManager = () => {
      */
     const handleDelete = useCallback((item) => {
         console.log('🗑️ Iniciando eliminación de elemento:', item.title);
-        
+
         if (!item || !item._id) {
             console.error('❌ Elemento inválido para eliminación:', item);
             showError('Error: No se puede eliminar un elemento inválido');
@@ -153,7 +153,7 @@ const MediaManager = () => {
         try {
             setLastOperation({ type: 'delete', itemId: item._id, timestamp: new Date() });
             openModal('delete', item);
-            
+
             // Mostrar advertencia sobre la eliminación
             showWarning(`Preparando eliminación de: ${item.title || 'Sin título'}`);
         } catch (error) {
@@ -168,11 +168,11 @@ const MediaManager = () => {
      */
     const handleOpenUploadModal = useCallback(() => {
         console.log('📤 Abriendo modal de carga de multimedia');
-        
+
         try {
             setLastOperation({ type: 'upload', timestamp: new Date() });
             openModal('upload');
-            
+
             // Limpiar notificaciones para una mejor UX
             clearAllNotifications();
         } catch (error) {
@@ -189,7 +189,7 @@ const MediaManager = () => {
      */
     const handleCopyUrl = useCallback(async (url) => {
         console.log('📋 Copiando URL al portapapeles:', url?.substring(0, 50) + '...');
-        
+
         if (!url || typeof url !== 'string') {
             console.error('❌ URL inválida para copiar:', url);
             showError('Error: URL inválida');
@@ -198,9 +198,9 @@ const MediaManager = () => {
 
         try {
             setOperationLoading(true);
-            
+
             const result = await copyToClipboard(url);
-            
+
             if (result.success) {
                 console.log('✅ URL copiada exitosamente');
                 showSuccess('URL copiada al portapapeles');
@@ -226,7 +226,7 @@ const MediaManager = () => {
      */
     const handleConfirmUpload = useCallback(async (formData) => {
         console.log('📤 Procesando carga de nuevo elemento multimedia...');
-        
+
         if (!formData) {
             console.error('❌ No se recibieron datos para la carga');
             showError('Error: No se recibieron datos del formulario');
@@ -235,7 +235,7 @@ const MediaManager = () => {
 
         try {
             setOperationLoading(true);
-            
+
             // Debug: Mostrar contenido del FormData
             console.log('📋 Procesando FormData:');
             for (let [key, value] of formData.entries()) {
@@ -248,26 +248,26 @@ const MediaManager = () => {
 
             // Crear el elemento mediante el hook
             const result = await createMediaItem(formData);
-            
+
             if (result.success) {
                 console.log('✅ Elemento creado exitosamente:', result.data?.title);
-                
+
                 // Cerrar modal y mostrar éxito
                 closeModal('upload');
                 showSuccess(`Multimedia "${result.data?.title || 'Sin título'}" agregada exitosamente`);
-                
+
                 // Actualizar operación realizada
-                setLastOperation({ 
-                    type: 'upload_success', 
-                    itemId: result.data?._id, 
-                    timestamp: new Date() 
+                setLastOperation({
+                    type: 'upload_success',
+                    itemId: result.data?._id,
+                    timestamp: new Date()
                 });
-                
+
             } else {
                 console.error('❌ Error en la creación:', result.error);
                 showError(result.error || 'Error al crear el elemento multimedia');
             }
-            
+
         } catch (error) {
             console.error('❌ Error inesperado en la carga:', error);
             showError('Error inesperado al procesar la carga');
@@ -288,9 +288,9 @@ const MediaManager = () => {
             showError('Error: No se ha seleccionado ningún elemento para editar');
             return;
         }
-        
+
         console.log('✏️ Procesando edición del elemento:', selectedItem.title);
-        
+
         if (!formData) {
             console.error('❌ No se recibieron datos para la edición');
             showError('Error: No se recibieron datos del formulario');
@@ -299,7 +299,7 @@ const MediaManager = () => {
 
         try {
             setOperationLoading(true);
-            
+
             // Debug: Mostrar contenido del FormData para edición
             console.log('📋 Procesando edición con FormData:');
             for (let [key, value] of formData.entries()) {
@@ -312,26 +312,26 @@ const MediaManager = () => {
 
             // Actualizar el elemento mediante el hook
             const result = await updateMediaItem(selectedItem._id, formData);
-            
+
             if (result.success) {
                 console.log('✅ Elemento editado exitosamente:', result.data?.title);
-                
+
                 // Cerrar modal y mostrar éxito
                 closeModal('edit');
                 showSuccess(`Multimedia "${result.data?.title || selectedItem.title}" editada exitosamente`);
-                
+
                 // Actualizar operación realizada
-                setLastOperation({ 
-                    type: 'edit_success', 
-                    itemId: selectedItem._id, 
-                    timestamp: new Date() 
+                setLastOperation({
+                    type: 'edit_success',
+                    itemId: selectedItem._id,
+                    timestamp: new Date()
                 });
-                
+
             } else {
                 console.error('❌ Error en la edición:', result.error);
                 showError(result.error || 'Error al editar el elemento multimedia');
             }
-            
+
         } catch (error) {
             console.error('❌ Error inesperado en la edición:', error);
             showError('Error inesperado al procesar la edición');
@@ -350,38 +350,38 @@ const MediaManager = () => {
             showError('Error: No se ha seleccionado ningún elemento para eliminar');
             return;
         }
-        
+
         console.log('🗑️ Procesando eliminación del elemento:', selectedItem.title);
 
         try {
             setOperationLoading(true);
-            
+
             // Guardar información del elemento antes de eliminarlo
             const itemTitle = selectedItem.title || 'Sin título';
             const itemId = selectedItem._id;
 
             // Eliminar el elemento mediante el hook
             const result = await deleteMediaItem(itemId);
-            
+
             if (result.success) {
                 console.log('✅ Elemento eliminado exitosamente:', itemTitle);
-                
+
                 // Cerrar modal y mostrar éxito
                 closeModal('delete');
                 showSuccess(`Multimedia "${itemTitle}" eliminada exitosamente`);
-                
+
                 // Actualizar operación realizada
-                setLastOperation({ 
-                    type: 'delete_success', 
-                    itemId: itemId, 
-                    timestamp: new Date() 
+                setLastOperation({
+                    type: 'delete_success',
+                    itemId: itemId,
+                    timestamp: new Date()
                 });
-                
+
             } else {
                 console.error('❌ Error en la eliminación:', result.error);
                 showError(result.error || 'Error al eliminar el elemento multimedia');
             }
-            
+
         } catch (error) {
             console.error('❌ Error inesperado en la eliminación:', error);
             showError('Error inesperado al procesar la eliminación');
@@ -400,7 +400,7 @@ const MediaManager = () => {
      */
     const handleCloseModal = useCallback((modalType) => {
         console.log(`🔒 Cerrando modal: ${modalType}`);
-        
+
         // Verificar si hay operaciones en curso
         if (operationLoading) {
             const shouldClose = window.confirm(
@@ -414,12 +414,12 @@ const MediaManager = () => {
 
         try {
             closeModal(modalType);
-            
+
             // Limpiar estado de operación si es necesario
             if (operationLoading) {
                 setOperationLoading(false);
             }
-            
+
             // Mostrar información de cancelación si aplica
             if (modalType === 'upload') {
                 showInfo('Carga de multimedia cancelada');
@@ -428,7 +428,7 @@ const MediaManager = () => {
             } else if (modalType === 'delete') {
                 showInfo('Eliminación cancelada');
             }
-            
+
         } catch (error) {
             console.error(`❌ Error al cerrar modal ${modalType}:`, error);
             showError(`Error al cerrar ${modalType}`);
@@ -498,9 +498,17 @@ const MediaManager = () => {
             {/* Modal de confirmación de eliminación */}
             {modals.delete && selectedItem && (
                 <DeleteConfirmModal
-                    item={selectedItem}
+                    isOpen={modals.delete}
+                    title={selectedItem.title || 'Sin título'}
+                    type="elemento multimedia"
+                    itemInfo={{
+                        // Agregar información relevante del elemento multimedia
+                        tipo: selectedItem.type,
+                        descripcion: selectedItem.description ? selectedItem.description.substring(0, 50) + '...' : 'Sin descripción'
+                    }}
                     onClose={() => handleCloseModal('delete')}
                     onConfirm={handleConfirmDelete}
+                    isDeleting={operationLoading}
                 />
             )}
         </AdminLayout>

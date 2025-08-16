@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import Header from "../components/Header/Header";
 import Footer from "../components/Footer";
 import CategoryNavigation from "../components/CategoryNavigation";
@@ -43,6 +44,11 @@ const CustomProducts = () => {
             navigate('/');
         }
     }, [productType, navigate]);
+
+    // ✅ AGREGAR: Función para volver atrás
+    const handleGoBack = useCallback(() => {
+        navigate('/categoryProducts');
+    }, [navigate]);
 
     // ✅ AGREGAR: Función para manejar el cambio de categoría en el menú de navegación
     const handleCategoryChange = useCallback((categoryId) => {
@@ -233,14 +239,28 @@ const CustomProducts = () => {
         <div className="min-h-screen bg-white-50">
             <Header />
 
-            {/* ✅ AGREGAR: Sección del menú de navegación de categorías (igual que en las otras páginas) */}
+            {/* ✅ AGREGAR: Sección del menú de navegación de categorías con botón de volver atrás */}
             <section className="bg-white pt-2 sm:pt-4 pb-4 sm:pb-6 shadow-sm">
                 <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
-                    <CategoryNavigation
-                        categories={categories}
-                        activeCategory={activeNavCategory}
-                        onCategoryChange={handleCategoryChange}
-                    />
+                    <div className="flex items-center space-x-4">
+                        {/* Botón de volver atrás */}
+                        <button
+                            onClick={handleGoBack}
+                            className="flex items-center justify-center p-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 transition-colors duration-200 group"
+                            title="Volver a CategoryProducts"
+                        >
+                            <ArrowLeft className="h-5 w-5 text-gray-600 group-hover:text-gray-800" />
+                        </button>
+                        
+                        {/* Navegación de categorías */}
+                        <div className="flex-1">
+                            <CategoryNavigation
+                                categories={categories}
+                                activeCategory={activeNavCategory}
+                                onCategoryChange={handleCategoryChange}
+                            />
+                        </div>
+                    </div>
                 </div>
             </section>
 

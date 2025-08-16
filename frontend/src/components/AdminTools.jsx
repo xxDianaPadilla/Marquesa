@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import chatIcon from "../assets/chatIcon.png";
-import bellIcon from "../assets/bell.png";
 import marquesaMiniLogo from "../assets/marquesaMiniLogo.png";
 
 // Componente para las herramientas del administrador
@@ -65,16 +64,6 @@ const AdminTools = () => {
                         {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                 )}
-            </button>
-
-            {/* Bell/Notification Icon */}
-            <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                <img
-                    style={{ cursor: 'pointer' }}
-                    src={bellIcon}
-                    alt="Notifications"
-                    className="w-6 h-6"
-                />
             </button>
 
             {/* Profile Section */}

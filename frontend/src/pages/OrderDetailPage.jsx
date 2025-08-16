@@ -59,9 +59,9 @@ const OrderDetail = () => {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1&countrycodes=sv`
       );
-      
+
       const data = await response.json();
-      
+
       if (data && data.length > 0) {
         const lat = parseFloat(data[0].lat);
         const lon = parseFloat(data[0].lon);
@@ -330,7 +330,8 @@ const OrderDetail = () => {
     src,
     alt = 'Producto',
     className = "w-full h-full object-cover rounded-lg",
-    showError = true
+    showError = true,
+    isPersonalized = false
   }) => {
     const [imageSrc, setImageSrc] = useState(null);
     const [hasError, setHasError] = useState(false);
@@ -469,6 +470,20 @@ const OrderDetail = () => {
 
     // Si hay error o no hay imagen válida, mostrar placeholder
     if (hasError || !imageSrc) {
+      // Si es un producto personalizado, mostrar emoji de paleta
+      if (isPersonalized) {
+        return (
+          <div className={`${className} bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center border border-purple-200`}>
+            <div className="text-center">
+              <div className="text-4xl mb-1">🎨</div>
+              {showError && (
+                <span className="text-xs text-purple-600 font-medium">Personalizado</span>
+              )}
+            </div>
+          </div>
+        );
+      }
+
       return (
         <div className={`${className} bg-gray-100 flex items-center justify-center border-2 border-dashed border-gray-300`}>
           <div className="text-center">
@@ -710,33 +725,57 @@ const OrderDetail = () => {
 
               <div className="space-y-4">
                 {productsData && productsData.length > 0 ? (
-                  productsData.map((item, index) => (
-                    <div key={index} className="flex items-center space-x-4">
-                      <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <ProductImage
-                          src={item.image}
-                          alt={item.name || 'Producto'}
-                          className="w-full h-full object-cover rounded-lg"
-                        />
+                  productsData.map((item, index) => {
+                    // Detectar si es un producto personalizado
+                    const isPersonalized = !item.referenceImage ||
+                      item.isPersonalized ||
+                      item.type === 'personalizado' ||
+                      item.customized === true;
+
+                    return (
+                      <div key={index} className="flex items-center space-x-4">
+                        <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <ProductImage
+                            src={item.referenceImage || item.image}
+                            alt={item.name || 'Producto'}
+                            className="w-full h-full object-cover rounded-lg"
+                            isPersonalized={isPersonalized}
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2">
+                            <p className="text-sm font-medium text-gray-900">
+                              {item.name || 'Producto sin nombre'}
+                            </p>
+                            {isPersonalized && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                <span className="mr-1">🎨</span>
+                                Personalizado
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-500">
+                            {item.description || 'Sin descripción'}
+                          </p>
+                          {item.quantity && (
+                            <p className="text-xs text-gray-400">Cantidad: {item.quantity}</p>
+                          )}
+                          {/* Mostrar detalles de personalización si existen */}
+                          {isPersonalized && item.customization && (
+                            <div className="mt-2 text-xs text-purple-600">
+                              <p>✨ Detalles de personalización:</p>
+                              <p className="text-gray-600 ml-2">{item.customization}</p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-medium text-gray-900">
+                            ${item.subtotal?.toFixed(2) || item.price?.toFixed(2) || '0.00'}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900">
-                          {item.name || 'Producto sin nombre'}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {item.description || 'Sin descripción'}
-                        </p>
-                        {item.quantity && (
-                          <p className="text-xs text-gray-400">Cantidad: {item.quantity}</p>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-gray-900">
-                          ${item.subtotal?.toFixed(2) || item.price?.toFixed(2) || '0.00'}
-                        </p>
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="text-center py-4">
                     <Package className="h-12 w-12 text-gray-400 mx-auto mb-2" />

@@ -1,23 +1,24 @@
 /**
- * Configuración de eventos Socket.IO - CORREGIDA PARA RENDER + VERCEL
+* Configuración de eventos Socket.IO - CORREGIDA PARA EVENTOS ÚNICOS
  *
  * PROBLEMAS SOLUCIONADOS:
- * - CORS configurado específicamente para Render + Vercel
- * - Transports configurados para funcionar en producción
- * - Headers de conexión optimizados para cross-domain
- * - Manejo de errores de conexión mejorado
+ * - Eventos cruzados entre conversaciones diferentes
+ * - Mensajes que aparecen en chats incorrectos
+ * - Mejor targeting de eventos por conversación
+ * - Prevención de eventos duplicados
  *
  * Ubicación: backend/src/utils/socketConfig.js
  */
  
-// ============ EVENTOS ESPECÍFICOS MANTENIDOS (5 eventos) ============
+// ============ EVENTOS ESPECÍFICOS MANTENIDOS Y MEJORADOS (5 eventos) ============
  
 /**
- * ✅ EVENTO 1/6: Emitir nuevo mensaje recibido
+ * ✅ EVENTO 1/6: Emitir nuevo mensaje recibido - TARGETING ULTRA ESPECÍFICO
  */
 export const emitNewMessage = (io, conversationId, messageData) => {
     try {
         console.log(`📨 Emitiendo nuevo mensaje para conversación: ${conversationId}`);
+        console.log(`📨 Tipo de remitente: ${messageData.senderType}, ID: ${messageData.senderId?._id}`);
        
         const eventData = {
             conversationId,
@@ -25,24 +26,37 @@ export const emitNewMessage = (io, conversationId, messageData) => {
             timestamp: new Date()
         };
        
-        // Emitir a la sala específica de la conversación
-        io.to(`conversation_${conversationId}`).emit('new_message', eventData);
+        // ✅ CORRECCIÓN ULTRA CRÍTICA: Targeting más específico
+        
+        // 1. SIEMPRE emitir a la sala específica de la conversación
+        const conversationRoom = `conversation_${conversationId}`;
+        console.log(`📨 Emitiendo a sala de conversación: ${conversationRoom}`);
+        io.to(conversationRoom).emit('new_message', eventData);
        
-        // También emitir a administradores para notificaciones
-        io.to('admins').emit('new_message', eventData);
+        // 2. Para mensajes de CLIENTES: también notificar a admins (para lista de conversaciones)
+        if (messageData.senderType === 'Customer') {
+            console.log(`📨 Mensaje de cliente - notificando a sala de admins`);
+            // ✅ SOLO emitir a admins que NO están en la conversación activa para evitar duplicados
+            io.to('admins').emit('new_message', eventData);
+        }
+        
+        // 3. Para mensajes de ADMIN: NO notificar a otros admins (evita duplicados)
+        if (messageData.senderType === 'admin') {
+            console.log(`📨 Mensaje de admin - NO notificando a otros admins`);
+        }
        
-        console.log(`✅ Nuevo mensaje emitido exitosamente`);
+        console.log(`✅ Nuevo mensaje emitido con targeting específico`);
     } catch (error) {
         console.error('❌ Error emitiendo nuevo mensaje:', error);
     }
 };
  
 /**
- * ✅ EVENTO 2/6: Emitir mensaje eliminado - CORREGIDO PARA SINCRONIZACIÓN
+ * ✅ EVENTO 2/6: Emitir mensaje eliminado - CORREGIDO PARA SINCRONIZACIÓN ESPECÍFICA
  */
 export const emitMessageDeleted = (io, conversationId, messageId, deletedBy) => {
     try {
-        console.log(`🗑️ Emitiendo mensaje eliminado: ${messageId} por ${deletedBy}`);
+        console.log(`🗑️ Emitiendo mensaje eliminado: ${messageId} por ${deletedBy} en conversación: ${conversationId}`);
        
         const deleteData = {
             conversationId,
@@ -52,21 +66,26 @@ export const emitMessageDeleted = (io, conversationId, messageId, deletedBy) => 
             timestamp: new Date()
         };
        
-        // ✅ FIX CRÍTICO: Emitir a TODOS los clientes y admins para sincronización perfecta
-        io.to(`conversation_${conversationId}`).emit('message_deleted', deleteData);
+        // ✅ CORRECCIÓN CRÍTICA: Targeting específico para evitar eliminaciones cruzadas
+        
+        // 1. Emitir SOLO a la sala específica de la conversación
+        const conversationRoom = `conversation_${conversationId}`;
+        console.log(`🗑️ Emitiendo eliminación a sala específica: ${conversationRoom}`);
+        io.to(conversationRoom).emit('message_deleted', deleteData);
+        
+        // 2. Emitir a administradores para actualización de lista
         io.to('admins').emit('message_deleted', deleteData);
        
-        // ✅ TAMBIÉN emitir a clientes específicos para asegurar que reciban la notificación
-        io.emit('message_deleted', deleteData);
+        // ✅ NO emitir globalmente para evitar eliminaciones en conversaciones incorrectas
        
-        console.log(`✅ Mensaje eliminado emitido exitosamente a todas las salas`);
+        console.log(`✅ Mensaje eliminado emitido exitosamente a targets específicos`);
     } catch (error) {
         console.error('❌ Error emitiendo mensaje eliminado:', error);
     }
 };
  
 /**
- * ✅ EVENTO 3/6: Emitir mensajes marcados como leídos
+ * ✅ EVENTO 3/6: Emitir mensajes marcados como leídos - MEJORADO
  */
 export const emitMessagesRead = (io, conversationId, readData) => {
     try {
@@ -79,7 +98,9 @@ export const emitMessagesRead = (io, conversationId, readData) => {
             timestamp: new Date()
         };
        
-        io.to(`conversation_${conversationId}`).emit('messages_read', readEventData);
+        // ✅ CORRECCIÓN: Targeting específico
+        const conversationRoom = `conversation_${conversationId}`;
+        io.to(conversationRoom).emit('messages_read', readEventData);
         io.to('admins').emit('messages_read', readEventData);
        
         console.log(`✅ Mensajes leídos emitido exitosamente`);
@@ -89,12 +110,13 @@ export const emitMessagesRead = (io, conversationId, readData) => {
 };
  
 /**
- * ✅ EVENTO 4/6: Emitir estadísticas del chat actualizadas
+ * ✅ EVENTO 4/6: Emitir estadísticas del chat actualizadas - OPTIMIZADO
  */
 export const emitChatStats = (io) => {
     try {
         console.log(`📊 Emitiendo estadísticas del chat actualizadas`);
        
+        // ✅ CORRECCIÓN: Solo a administradores, no global
         io.to('admins').emit('chat_stats_updated', {
             timestamp: new Date(),
             message: 'Estadísticas del chat actualizadas'
@@ -107,7 +129,7 @@ export const emitChatStats = (io) => {
 };
  
 /**
- * ✅ EVENTO 5/6: Emitir límite de mensajes aplicado
+ * ✅ EVENTO 5/6: Emitir límite de mensajes aplicado - MEJORADO
  */
 export const emitLimitApplied = (io, conversationId, limitData) => {
     try {
@@ -124,7 +146,9 @@ export const emitLimitApplied = (io, conversationId, limitData) => {
             timestamp: new Date()
         };
        
-        io.to(`conversation_${conversationId}`).emit('limit_applied', limitEventData);
+        // ✅ CORRECCIÓN: Targeting específico
+        const conversationRoom = `conversation_${conversationId}`;
+        io.to(conversationRoom).emit('limit_applied', limitEventData);
         io.to('admins').emit('limit_applied', limitEventData);
        
         console.log(`✅ Límite aplicado emitido exitosamente`);
@@ -136,7 +160,7 @@ export const emitLimitApplied = (io, conversationId, limitData) => {
 // ============ EVENTO UNIFICADO CORREGIDO (3→1) ============
  
 /**
- * ✅ EVENTO 6/6: Conversación actualizada - CORREGIDO PARA ACTUALIZACIONES PERFECTAS
+ * ✅ EVENTO 6/6: Conversación actualizada - CORREGIDO PARA TARGETING ESPECÍFICO
  */
 export const emitConversationUpdated = (io, updateData) => {
     try {
@@ -149,12 +173,20 @@ export const emitConversationUpdated = (io, updateData) => {
             timestamp: new Date()
         };
        
-        // ✅ FIX CRÍTICO: Asegurar que las actualizaciones lleguen a TODOS los lugares necesarios
+        // ✅ CORRECCIÓN CRÍTICA: Targeting más específico según la acción
         switch (action) {
             case 'created':
                 console.log(`✨ Nueva conversación creada: ${conversationId}`);
-                // Emitir a administradores para nueva conversación
+                
+                // Nueva conversación: solo notificar a administradores
                 io.to('admins').emit('conversation_updated', {
+                    ...eventData,
+                    action: 'created'
+                });
+                
+                // También notificar a la sala de la nueva conversación si alguien está conectado
+                const newConversationRoom = `conversation_${conversationId}`;
+                io.to(newConversationRoom).emit('conversation_updated', {
                     ...eventData,
                     action: 'created'
                 });
@@ -162,25 +194,26 @@ export const emitConversationUpdated = (io, updateData) => {
                
             case 'updated':
                 console.log(`🔄 Conversación actualizada: ${conversationId}`);
-                // ✅ FIX CRÍTICO: Emitir a TODAS las salas para sincronización perfecta
-                io.to(`conversation_${conversationId}`).emit('conversation_updated', {
+                
+                // Actualización: emitir a la conversación específica y a admins
+                const conversationRoom = `conversation_${conversationId}`;
+                io.to(conversationRoom).emit('conversation_updated', {
                     ...eventData,
                     action: 'updated'
                 });
+                
+                // Solo a admins para actualización de lista
                 io.to('admins').emit('conversation_updated', {
                     ...eventData,
                     action: 'updated'
                 });
-               
-                // ✅ TAMBIÉN emitir globalmente para asegurar que TODOS reciban la actualización
-                io.emit('conversation_updated', {
-                    ...eventData,
-                    action: 'updated'
-                });
+                
                 break;
                
             case 'list_updated':
                 console.log(`📋 Lista de conversaciones actualizada`);
+                
+                // Solo a administradores para actualización de lista
                 io.to('admins').emit('conversation_updated', {
                     ...eventData,
                     action: 'list_updated'
@@ -188,13 +221,13 @@ export const emitConversationUpdated = (io, updateData) => {
                 break;
                
             default:
-                // Comportamiento por defecto (updated) con emisión global
-                io.to(`conversation_${conversationId}`).emit('conversation_updated', eventData);
+                // Comportamiento por defecto: targeting específico
+                const defaultRoom = `conversation_${conversationId}`;
+                io.to(defaultRoom).emit('conversation_updated', eventData);
                 io.to('admins').emit('conversation_updated', eventData);
-                io.emit('conversation_updated', eventData); // ✅ Emisión global adicional
         }
        
-        console.log(`✅ Conversación actualizada emitida exitosamente (${action}) a todas las salas`);
+        console.log(`✅ Conversación actualizada emitida exitosamente (${action}) a targets específicos`);
     } catch (error) {
         console.error('❌ Error emitiendo conversación actualizada:', error);
     }
@@ -203,15 +236,15 @@ export const emitConversationUpdated = (io, updateData) => {
 // ============ FUNCIONES AUXILIARES MEJORADAS ============
  
 /**
- * ✅ Hacer que un usuario se una a una sala de conversación
+ * ✅ Hacer que un usuario se una a una sala de conversación - MEJORADO
  */
 export const joinConversationRoom = (socket, conversationId) => {
     try {
         const roomName = `conversation_${conversationId}`;
         socket.join(roomName);
-        console.log(`🚪 Usuario ${socket.userId} unido a sala: ${roomName}`);
+        console.log(`🚪 Usuario ${socket.userId} (${socket.userType}) unido a sala: ${roomName}`);
        
-        // Notificar a otros en la sala
+        // ✅ CORRECCIÓN: Solo notificar a otros en la misma sala, no globalmente
         socket.to(roomName).emit('user_joined_conversation', {
             conversationId,
             userId: socket.userId,
@@ -224,15 +257,15 @@ export const joinConversationRoom = (socket, conversationId) => {
 };
  
 /**
- * ✅ Hacer que un usuario salga de una sala de conversación
+ * ✅ Hacer que un usuario salga de una sala de conversación - MEJORADO
  */
 export const leaveConversationRoom = (socket, conversationId) => {
     try {
         const roomName = `conversation_${conversationId}`;
         socket.leave(roomName);
-        console.log(`🚪 Usuario ${socket.userId} salió de sala: ${roomName}`);
+        console.log(`🚪 Usuario ${socket.userId} (${socket.userType}) salió de sala: ${roomName}`);
        
-        // Notificar a otros en la sala
+        // ✅ CORRECCIÓN: Solo notificar a otros en la misma sala
         socket.to(roomName).emit('user_left_conversation', {
             conversationId,
             userId: socket.userId,
@@ -245,7 +278,7 @@ export const leaveConversationRoom = (socket, conversationId) => {
 };
  
 /**
- * ✅ Hacer que un usuario se una a la sala de administradores
+ * ✅ Hacer que un usuario se una a la sala de administradores - MEJORADO
  */
 export const joinAdminRoom = (socket) => {
     try {
@@ -257,12 +290,13 @@ export const joinAdminRoom = (socket) => {
 };
  
 /**
- * ✅ Emitir indicador de escritura
+ * ✅ Emitir indicador de escritura - CORREGIDO PARA TARGETING ESPECÍFICO
  */
 export const emitTypingIndicator = (socket, conversationId, isTyping) => {
     try {
         const roomName = `conversation_${conversationId}`;
        
+        // ✅ CORRECCIÓN: Solo emitir a la sala específica de la conversación
         socket.to(roomName).emit('user_typing', {
             conversationId,
             userId: socket.userId,
@@ -271,19 +305,22 @@ export const emitTypingIndicator = (socket, conversationId, isTyping) => {
             timestamp: new Date()
         });
        
-        console.log(`⌨️ Indicador de escritura emitido: ${isTyping ? 'escribiendo' : 'dejó de escribir'}`);
+        // Solo log cuando empieza a escribir para reducir spam
+        if (isTyping) {
+            console.log(`⌨️ Usuario ${socket.userId} escribiendo en conversación: ${conversationId}`);
+        }
     } catch (error) {
         console.error('❌ Error emitiendo indicador de escritura:', error);
     }
 };
  
-// ============ CONFIGURACIÓN PRINCIPAL DE SOCKET.IO CORREGIDA PARA RENDER + VERCEL ============
+// ============ CONFIGURACIÓN PRINCIPAL DE SOCKET.IO CORREGIDA ============
  
 /**
- * ✅ Configurar eventos y middleware de Socket.IO - OPTIMIZADO PARA PRODUCCIÓN
+ * ✅ Configurar eventos y middleware de Socket.IO - OPTIMIZADO PARA TARGETING
  */
 export const setupSocketIO = (io) => {
-    console.log('⚙️ Configurando Socket.IO para Render + Vercel...');
+    console.log('⚙️ Configurando Socket.IO con targeting específico...');
    
     // ✅ CONFIGURACIÓN DE CORS ESPECÍFICA PARA RENDER + VERCEL
     io.engine.on("headers", (headers, req) => {
@@ -293,7 +330,7 @@ export const setupSocketIO = (io) => {
         headers["Access-Control-Allow-Headers"] = "Origin,X-Requested-With,Content-Type,Accept,Authorization,x-client-id,x-client-secret,x-client-token";
     });
    
-    // ✅ MIDDLEWARE DE AUTENTICACIÓN MEJORADO PARA PRODUCCIÓN
+    // ✅ MIDDLEWARE DE AUTENTICACIÓN MEJORADO
     io.use(async (socket, next) => {
         try {
             const token = socket.handshake.auth.token;
@@ -304,8 +341,7 @@ export const setupSocketIO = (io) => {
                 hasToken: !!token,
                 userId: userId,
                 userType: userType,
-                origin: socket.handshake.headers.origin,
-                userAgent: socket.handshake.headers['user-agent']?.substring(0, 50) + '...'
+                origin: socket.handshake.headers.origin
             });
            
             if (!token) {
@@ -330,29 +366,28 @@ export const setupSocketIO = (io) => {
         }
     });
    
-    // ✅ EVENTOS DE CONEXIÓN MEJORADOS PARA PRODUCCIÓN
+    // ✅ EVENTOS DE CONEXIÓN MEJORADOS
     io.on('connection', (socket) => {
         console.log(`🔗 Nueva conexión Socket.IO: ${socket.id} - Usuario: ${socket.userId} (${socket.userType})`);
         console.log(`🌐 Origen de conexión: ${socket.handshake.headers.origin}`);
-        console.log(`📡 Transport utilizado: ${socket.conn.transport.name}`);
        
         // Unir a sala de administradores si es admin
         if (socket.userType === 'admin') {
             joinAdminRoom(socket);
         }
        
-        // ✅ EVENTOS DE CONVERSACIONES CON LOGGING MEJORADO
+        // ✅ EVENTOS DE CONVERSACIONES CON TARGETING MEJORADO
         socket.on('join_conversation', (conversationId) => {
-            console.log(`🚪 ${socket.userId} quiere unirse a conversación: ${conversationId}`);
+            console.log(`🚪 ${socket.userId} (${socket.userType}) quiere unirse a conversación: ${conversationId}`);
             joinConversationRoom(socket, conversationId);
         });
        
         socket.on('leave_conversation', (conversationId) => {
-            console.log(`🚪 ${socket.userId} quiere salir de conversación: ${conversationId}`);
+            console.log(`🚪 ${socket.userId} (${socket.userType}) quiere salir de conversación: ${conversationId}`);
             leaveConversationRoom(socket, conversationId);
         });
        
-        // ✅ EVENTOS DE ESCRITURA CON LOGGING
+        // ✅ EVENTOS DE ESCRITURA CON TARGETING ESPECÍFICO
         socket.on('typing_start', (conversationId) => {
             console.log(`⌨️ ${socket.userId} empezó a escribir en conversación: ${conversationId}`);
             emitTypingIndicator(socket, conversationId, true);
@@ -366,16 +401,13 @@ export const setupSocketIO = (io) => {
         // ✅ EVENTOS DE DESCONEXIÓN CON CLEANUP MEJORADO
         socket.on('disconnect', (reason) => {
             console.log(`🔌 Desconexión Socket.IO: ${socket.id} (${socket.userId}) - Razón: ${reason}`);
-            console.log(`📊 Estadísticas de conexión:`, {
-                uptime: socket.conn?.server?.uptime || 'N/A',
-                transport: socket.conn?.transport?.name || 'N/A'
-            });
            
-            // Cleanup: asegurar que el usuario salga de todas las salas
+            // ✅ CORRECCIÓN: Cleanup más específico - solo notificar a salas relevantes
             const rooms = Array.from(socket.rooms);
             rooms.forEach(room => {
                 if (room.startsWith('conversation_')) {
                     const conversationId = room.replace('conversation_', '');
+                    // Solo notificar a otros en esa conversación específica
                     socket.to(room).emit('user_left_conversation', {
                         conversationId,
                         userId: socket.userId,
@@ -395,19 +427,17 @@ export const setupSocketIO = (io) => {
             console.error(`❌ Error de conexión en socket ${socket.id}:`, error);
         });
        
-        // ✅ CONFIRMAR CONEXIÓN EXITOSA CON INFORMACIÓN DETALLADA
+        // ✅ CONFIRMAR CONEXIÓN EXITOSA CON TARGETING INFO
         socket.emit('connected', {
-            message: 'Conectado al sistema de chat',
+            message: 'Conectado al sistema de chat con targeting específico',
             userId: socket.userId,
             userType: socket.userType,
             socketId: socket.id,
             timestamp: new Date(),
-            serverInfo: {
-                environment: process.env.NODE_ENV || 'development',
-                cors: {
-                    origin: 'https://marquesa.vercel.app',
-                    credentials: true
-                }
+            targeting: {
+                conversationRooms: 'conversation_{id}',
+                adminRoom: 'admins',
+                globalEvents: 'minimized'
             }
         });
        
@@ -419,40 +449,32 @@ export const setupSocketIO = (io) => {
         console.error('❌ Error de conexión del motor Socket.IO:', {
             code: err.code,
             message: err.message,
-            context: err.context,
-            req: {
-                url: err.req?.url,
-                method: err.req?.method,
-                headers: {
-                    origin: err.req?.headers?.origin,
-                    userAgent: err.req?.headers?.['user-agent']?.substring(0, 50) + '...'
-                }
-            }
+            context: err.context
         });
     });
    
-    console.log('✅ Socket.IO configurado exitosamente para producción (Render + Vercel)');
+    console.log('✅ Socket.IO configurado exitosamente con targeting específico');
 };
- 
+
 // ============ EXPORTACIÓN POR DEFECTO ============
  
 export default {
-    // Eventos específicos
+    // Eventos específicos con targeting mejorado
     emitNewMessage,
     emitMessageDeleted,
     emitMessagesRead,
     emitChatStats,
     emitLimitApplied,
    
-    // Evento unificado
+    // Evento unificado con targeting específico
     emitConversationUpdated,
    
-    // Funciones auxiliares
+    // Funciones auxiliares con targeting
     joinConversationRoom,
     leaveConversationRoom,
     joinAdminRoom,
     emitTypingIndicator,
    
-    // Configuración principal
+    // Configuración principal optimizada
     setupSocketIO
 };

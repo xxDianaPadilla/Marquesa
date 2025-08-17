@@ -167,13 +167,6 @@ const RegisterScreen = ({ navigation }) => {
                             style={styles.registerButton}
                         />
 
-                        {/* Separador */}
-                        <View style={styles.separatorContainer}>
-                            <View style={styles.separatorLine} />
-                            <Text style={styles.separatorText}>o continuar con</Text>
-                            <View style={styles.separatorLine} />
-                        </View>
-
                         {/* Link a login */}
                         <QuestionText
                             questionText="¿Ya tienes una cuenta?"

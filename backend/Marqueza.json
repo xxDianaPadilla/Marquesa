@@ -1,0 +1,6297 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Marqueza API",
+    "description": "API completa para gestionar categorías, media, productos, reviews, ventas y sistema de chat en tiempo real",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://virtserver.swaggerhub.com/marqueza/API.MARQUEZA/1.0.0",
+      "description": "SwaggerHub API Auto Mocking"
+    },
+    {
+      "url": "https://virtserver.swaggerhub.com/marqueza/Marqueza/1.0.0",
+      "description": "Mock server"
+    },
+    {
+      "url": "http://localhost:3000/api",
+      "description": "Development server"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    },
+    {
+      "cookieAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Categories",
+      "description": "Gestión de categorías de productos"
+    },
+    {
+      "name": "Media",
+      "description": "Gestión de contenido multimedia (blogs, tips, datos curiosos)"
+    },
+    {
+      "name": "Products",
+      "description": "Gestión de productos del catálogo"
+    },
+    {
+      "name": "Reviews",
+      "description": "Sistema de reseñas y valoraciones"
+    },
+    {
+      "name": "Sales",
+      "description": "Gestión de ventas y pedidos"
+    },
+    {
+      "name": "Login",
+      "description": "Autenticación de usuarios"
+    },
+    {
+      "name": "Logout",
+      "description": "Cierre de sesión"
+    },
+    {
+      "name": "recoverPassword",
+      "description": "Recuperación de contraseñas"
+    },
+    {
+      "name": "Chat",
+      "description": "Sistema de chat en tiempo real con soporte multimedia"
+    },
+    {
+      "name": "Chat Admin",
+      "description": "Funciones administrativas del sistema de chat"
+    },
+    {
+      "name": "Chat Storage",
+      "description": "Gestión de almacenamiento y archivos multimedia"
+    },
+    {
+      "name": "Clients",
+      "description": "Gestión de clientes, favoritos y códigos de ruleta"
+    },
+    {
+      "name": "Shopping Cart",
+      "description": "Operaciones relacionadas con el carrito de compras"
+    },
+    {
+      "name": "Custom Products",
+      "description": "Operaciones para productos personalizados"
+    },
+    {
+      "name": "Custom Products Materials",
+      "description": "Operaciones para materiales de productos personalizados"
+    }
+  ],
+  "paths": {
+    "/categories": {
+      "get": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Obtener todas las categorías",
+        "responses": {
+          "200": {
+            "description": "Lista de categorías",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No hay categorías disponibles"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Crear una nueva categoría",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/categories_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Categoría creada exitosamente"
+          },
+          "400": {
+            "description": "Datos inválidos"
+          },
+          "409": {
+            "description": "Categoría duplicada"
+          },
+          "502": {
+            "description": "Error al procesar la imagen"
+          }
+        }
+      }
+    },
+    "/categories/{id}": {
+      "get": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Obtener una categoría por ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Categoría encontrada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ID no válido"
+          },
+          "404": {
+            "description": "Categoría no encontrada"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Actualizar una categoría por ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/categories_id_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Categoría actualizada exitosamente"
+          },
+          "400": {
+            "description": "Datos inválidos"
+          },
+          "404": {
+            "description": "Categoría no encontrada"
+          },
+          "409": {
+            "description": "Ya existe otra categoría con ese nombre"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          },
+          "502": {
+            "description": "Error al procesar la imagen"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Eliminar una categoría por ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Categoría eliminada exitosamente"
+          },
+          "400": {
+            "description": "ID no válido"
+          },
+          "404": {
+            "description": "Categoría no encontrada"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/media": {
+      "get": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Obtener todos los elementos de media",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Filtrar por tipo",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Dato Curioso",
+                "Tip",
+                "Blog",
+                "todos"
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Buscar por título o descripción",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de elementos de media",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Media"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros inválidos"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Crear un nuevo elemento de media",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/media_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Elemento de media creado con éxito"
+          },
+          "400": {
+            "description": "Datos inválidos o faltantes"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          },
+          "502": {
+            "description": "Error al procesar imagen o video"
+          }
+        }
+      }
+    },
+    "/media/{id}": {
+      "get": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Obtener un elemento de media por ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Elemento encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ID no válido"
+          },
+          "404": {
+            "description": "Elemento no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Actualizar un elemento de media",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/media_id_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Elemento de media actualizado"
+          },
+          "400": {
+            "description": "Datos inválidos"
+          },
+          "404": {
+            "description": "Elemento no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          },
+          "502": {
+            "description": "Error al subir archivos"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Eliminar un elemento de media",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Elemento de media eliminado con éxito"
+          },
+          "400": {
+            "description": "ID no válido"
+          },
+          "404": {
+            "description": "Elemento no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/products": {
+      "get": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Obtener todos los productos",
+        "responses": {
+          "200": {
+            "description": "Lista de productos obtenida correctamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Product"
+                  }
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No hay productos disponibles"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Crear un nuevo producto",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/products_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Producto creado exitosamente"
+          },
+          "400": {
+            "description": "Datos inválidos"
+          },
+          "409": {
+            "description": "Producto duplicado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          },
+          "502": {
+            "description": "Error al procesar las imágenes"
+          }
+        }
+      }
+    },
+    "/products/{id}": {
+      "get": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Obtener un producto por ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Producto encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ID no válido"
+          },
+          "404": {
+            "description": "Producto no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Actualizar un producto",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/products_id_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Producto actualizado correctamente"
+          },
+          "400": {
+            "description": "Datos inválidos"
+          },
+          "404": {
+            "description": "Producto no encontrado"
+          },
+          "409": {
+            "description": "Ya existe otro producto con este nombre"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          },
+          "502": {
+            "description": "Error al procesar imágenes"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Eliminar un producto por ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Producto eliminado exitosamente"
+          },
+          "400": {
+            "description": "ID no válido"
+          },
+          "404": {
+            "description": "Producto no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/reviews": {
+      "get": {
+        "tags": [
+          "Reviews"
+        ],
+        "summary": "Obtener reseñas con paginación y filtros",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "replied"
+              ]
+            }
+          },
+          {
+            "name": "rating",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "maximum": 5,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de reseñas obtenida exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Review"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error de parámetros"
+          },
+          "500": {
+            "description": "Error del servidor"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Reviews"
+        ],
+        "summary": "Crear nueva reseña",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Reseña creada exitosamente"
+          },
+          "400": {
+            "description": "Error de validación"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/reviews/{id}": {
+      "get": {
+        "tags": [
+          "Reviews"
+        ],
+        "summary": "Obtener una reseña por ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reseña encontrada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Review"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ID inválido"
+          },
+          "404": {
+            "description": "Reseña no encontrada"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Reviews"
+        ],
+        "summary": "Actualizar una reseña",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reseña actualizada"
+          },
+          "400": {
+            "description": "Error de validación"
+          },
+          "404": {
+            "description": "No encontrada"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Reviews"
+        ],
+        "summary": "Eliminar una reseña",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reseña eliminada"
+          },
+          "404": {
+            "description": "No encontrada"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/reviews/client/{clientId}": {
+      "get": {
+        "tags": [
+          "Reviews"
+        ],
+        "summary": "Obtener reseñas por cliente",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de reseñas del cliente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Review"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error de parámetros"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/reviews/{id}/moderate": {
+      "patch": {
+        "tags": [
+          "Reviews"
+        ],
+        "summary": "Moderar una reseña",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/id_moderate_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Reseña moderada"
+          },
+          "400": {
+            "description": "Datos inválidos"
+          },
+          "404": {
+            "description": "Reseña no encontrada"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/reviews/{id}/reply": {
+      "patch": {
+        "tags": [
+          "Reviews"
+        ],
+        "summary": "Responder una reseña",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/id_reply_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Reseña respondida"
+          },
+          "400": {
+            "description": "Error de validación"
+          },
+          "404": {
+            "description": "No encontrada"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/reviews/stats": {
+      "get": {
+        "tags": [
+          "Reviews"
+        ],
+        "summary": "Obtener estadísticas de reseñas",
+        "responses": {
+          "200": {
+            "description": "Estadísticas retornadas exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200_1"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/reviews/best": {
+      "get": {
+        "tags": [
+          "Reviews"
+        ],
+        "summary": "Obtener productos mejor calificados",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Número máximo de productos",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de productos mejor valorados",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Product"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Límite inválido"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/sales": {
+      "get": {
+        "tags": [
+          "Sales"
+        ],
+        "summary": "Obtener todas las ventas",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Pendiente",
+                "Pagado"
+              ]
+            }
+          },
+          {
+            "name": "trackingStatus",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Agendado",
+                "En proceso",
+                "Entregado"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de ventas obtenida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200_2"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros inválidos"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Sales"
+        ],
+        "summary": "Crear una nueva venta",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/sales_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Venta creada exitosamente"
+          },
+          "400": {
+            "description": "Datos inválidos"
+          },
+          "404": {
+            "description": "Carrito no encontrado"
+          },
+          "500": {
+            "description": "Error interno"
+          },
+          "502": {
+            "description": "Error al subir el comprobante"
+          }
+        }
+      }
+    },
+    "/sales/{id}": {
+      "get": {
+        "tags": [
+          "Sales"
+        ],
+        "summary": "Obtener una venta por ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Venta encontrada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Sale"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ID no válido"
+          },
+          "404": {
+            "description": "Venta no encontrada"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Sales"
+        ],
+        "summary": "Actualizar una venta por ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/sales_id_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Venta actualizada exitosamente"
+          },
+          "400": {
+            "description": "Datos inválidos"
+          },
+          "404": {
+            "description": "Venta no encontrada"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Sales"
+        ],
+        "summary": "Eliminar una venta por ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Venta eliminada"
+          },
+          "400": {
+            "description": "ID no válido"
+          },
+          "404": {
+            "description": "Venta no encontrada"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/sales/{id}/payment-status": {
+      "patch": {
+        "tags": [
+          "Sales"
+        ],
+        "summary": "Actualizar solo el estado de pago",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/id_paymentstatus_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Estado de pago actualizado"
+          },
+          "400": {
+            "description": "Datos inválidos"
+          },
+          "404": {
+            "description": "Venta no encontrada"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/sales/{id}/tracking-status": {
+      "patch": {
+        "tags": [
+          "Sales"
+        ],
+        "summary": "Actualizar solo el estado de seguimiento",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/id_trackingstatus_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Estado de seguimiento actualizado"
+          },
+          "400": {
+            "description": "Datos inválidos"
+          },
+          "404": {
+            "description": "Venta no encontrada"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/sales/{id}/payment-proof": {
+      "patch": {
+        "tags": [
+          "Sales"
+        ],
+        "summary": "Actualizar el comprobante de pago",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/id_paymentproof_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Comprobante de pago actualizado"
+          },
+          "400": {
+            "description": "Datos inválidos"
+          },
+          "404": {
+            "description": "Venta no encontrada"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/sales/payment-status/{status}": {
+      "get": {
+        "tags": [
+          "Sales"
+        ],
+        "summary": "Obtener ventas por estado de pago",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Pendiente",
+                "Pagado"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ventas filtradas por estado de pago",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Sale"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros inválidos"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/sales/tracking-status/{trackingStatus}": {
+      "get": {
+        "tags": [
+          "Sales"
+        ],
+        "summary": "Obtener ventas por estado de seguimiento",
+        "parameters": [
+          {
+            "name": "trackingStatus",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Agendado",
+                "En proceso",
+                "Entregado"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ventas filtradas por estado de seguimiento",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Sale"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros inválidos"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/sales/stats/sold-products": {
+      "get": {
+        "tags": [
+          "Sales"
+        ],
+        "summary": "Obtener cantidad de productos vendidos por período",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "current",
+              "enum": [
+                "current",
+                "previous"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cantidad de ventas por período",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200_3"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros inválidos"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/sales/stats/total": {
+      "get": {
+        "tags": [
+          "Sales"
+        ],
+        "summary": "Obtener total de ventas",
+        "responses": {
+          "200": {
+            "description": "Total de ventas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200_4"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/sales/stats/dashboard": {
+      "get": {
+        "tags": [
+          "Sales"
+        ],
+        "summary": "Obtener métricas del dashboard",
+        "responses": {
+          "200": {
+            "description": "Métricas del dashboard retornadas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200_5"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/sales/detailed": {
+      "get": {
+        "tags": [
+          "Sales"
+        ],
+        "summary": "Obtener ventas con detalle de cliente y productos",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ventas detalladas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Sale"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros inválidos"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/login": {
+      "post": {
+        "tags": [
+          "Login"
+        ],
+        "summary": "Inicio de sesión",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/login_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Login exitoso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200_6"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token inválido"
+          },
+          "404": {
+            "description": "Usuario no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/logout": {
+      "post": {
+        "tags": [
+          "Logout"
+        ],
+        "summary": "Cerrar sesión",
+        "responses": {
+          "200": {
+            "description": "Sesión cerrada exitosamente"
+          },
+          "400": {
+            "description": "No hay sesión activa para cerrar"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/update-password": {
+      "put": {
+        "tags": [
+          "recoverPassword"
+        ],
+        "summary": "Actualizar Contraseña",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/updatepassword_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Contraseña actualizada correctamente"
+          },
+          "400": {
+            "description": "Código de verificación incorrecto o expirado"
+          },
+          "404": {
+            "description": "Usuario no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          },
+          "503": {
+            "description": "Error en la base de datos"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "recoverPassword"
+        ],
+        "summary": "request",
+        "description": "Ruta para solicitar código de recuperación de contraseña Envía un código de recuperación al email del usuario",
+        "operationId": "post-request",
+        "requestBody": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/updatepassword_body_1"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Correo enviado, tienes 5 minutos para usar el código"
+          },
+          "404": {
+            "description": "Usuario no existe\r\n"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          },
+          "502": {
+            "description": "Error enviando correo de recuperación. Inténtalo de nuevo."
+          },
+          "503": {
+            "description": "Servicio de base de datos no disponible temporalmente"
+          }
+        }
+      }
+    },
+    "/chat/message": {
+      "post": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Enviar un nuevo mensaje con archivo opcional",
+        "description": "Permite enviar mensajes de texto y/o imágenes en una conversación.\n- Crea automáticamente una conversación si no existe (solo clientes)\n- Aplica límite físico de 75 mensajes por conversación\n- Solo permite archivos de imagen (JPG, PNG, GIF, WebP)\n- Emite eventos Socket.IO para actualizaciones en tiempo real\n",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/chat_message_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Mensaje enviado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_201"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos inválidos o archivo no permitido"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Conversación o cliente no encontrado"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/chat/conversation/{clientId}": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Obtener o crear conversación para un cliente",
+        "description": "Obtiene la conversación activa de un cliente o indica si se necesita crear una nueva.\n- Los clientes solo pueden acceder a su propia conversación\n- Los admins pueden acceder a cualquier conversación\n- Incluye información poblada del cliente\n",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "description": "ID del cliente",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "64a7b8c9d1e2f3g4h5i6j7k8"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Conversación encontrada o información para crear nueva",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200_7"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Cliente no encontrado"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/chat/messages/{conversationId}": {
+      "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Obtener mensajes de una conversación",
+        "description": "Obtiene los mensajes de una conversación con paginación.\n- Incluye información poblada del remitente\n- Los mensajes se ordenan cronológicamente\n- Solo mensajes físicamente existentes\n",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "path",
+            "description": "ID de la conversación",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "client_67890_conv"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Número de página",
+            "required": false,
+            "schema": {
+              "minimum": 1,
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Mensajes por página",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de mensajes obtenida exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200_8"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Conversación no encontrada"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/chat/message/{messageId}": {
+      "delete": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Eliminar un mensaje específico (eliminación física)",
+        "description": "Elimina físicamente un mensaje y sus archivos asociados.\n- Actualiza automáticamente el último mensaje de la conversación\n- Elimina archivos multimedia de Cloudinary\n- Resetea contadores si no quedan mensajes\n- Emite eventos Socket.IO para sincronización\n",
+        "parameters": [
+          {
+            "name": "messageId",
+            "in": "path",
+            "description": "ID del mensaje a eliminar",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "64a7b8c9d1e2f3g4h5i6j7k8"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Mensaje eliminado exitosamente"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Mensaje no encontrado"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/chat/read/{conversationId}": {
+      "put": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Marcar mensajes como leídos",
+        "description": "Marca todos los mensajes no leídos de una conversación como leídos.\n- Actualiza contadores de mensajes no leídos\n- Emite eventos Socket.IO para actualización en tiempo real\n",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "path",
+            "description": "ID de la conversación",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "client_67890_conv"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Mensajes marcados como leídos exitosamente"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Conversación no encontrada"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/chat/admin/conversations": {
+      "get": {
+        "tags": [
+          "Chat Admin"
+        ],
+        "summary": "Obtener todas las conversaciones (solo admin)",
+        "description": "Obtiene todas las conversaciones activas con paginación.\n- Solo conversaciones con mensajes\n- Incluye información del cliente poblada\n- Limpia automáticamente conversaciones huérfanas\n",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Número de página",
+            "required": false,
+            "schema": {
+              "minimum": 1,
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Conversaciones por página",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de conversaciones obtenida exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200_9"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/chat/admin/stats": {
+      "get": {
+        "tags": [
+          "Chat Admin"
+        ],
+        "summary": "Obtener estadísticas generales del chat",
+        "description": "Obtiene métricas generales del sistema de chat",
+        "responses": {
+          "200": {
+            "description": "Estadísticas obtenidas exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200_10"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/chat/admin/cleanup": {
+      "post": {
+        "tags": [
+          "Chat Admin"
+        ],
+        "summary": "Ejecutar limpieza general del sistema",
+        "description": "Ejecuta limpieza física completa del sistema de chat:\n- Elimina conversaciones huérfanas\n- Aplica límites de mensajes a todas las conversaciones\n- Elimina archivos multimedia no referenciados\n- Actualiza últimos mensajes de conversaciones\n",
+        "responses": {
+          "200": {
+            "description": "Limpieza ejecutada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200_11"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/chat/admin/storageStats": {
+      "get": {
+        "tags": [
+          "Chat Storage"
+        ],
+        "summary": "Obtener estadísticas de almacenamiento multimedia",
+        "description": "Proporciona información detallada sobre el uso de almacenamiento:\n- Total de archivos multimedia\n- Espacio utilizado\n- Tipos de archivo\n- Archivos huérfanos detectados\n",
+        "responses": {
+          "200": {
+            "description": "Estadísticas de almacenamiento obtenidas exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200_12"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/chat/admin/cleanupFiles": {
+      "post": {
+        "tags": [
+          "Chat Storage"
+        ],
+        "summary": "Limpiar archivos multimedia huérfanos",
+        "description": "Elimina archivos en Cloudinary que ya no están referenciados en la base de datos.\nÚtil para liberar espacio de almacenamiento.\n",
+        "responses": {
+          "200": {
+            "description": "Limpieza de archivos completada exitosamente"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/chat/admin/systemIntegrity": {
+      "get": {
+        "tags": [
+          "Chat Storage"
+        ],
+        "summary": "Validar integridad del sistema de chat",
+        "description": "Verifica la integridad completa del sistema detectando:\n- Conversaciones sin mensajes\n- Enlaces de media rotos\n- Conversaciones huérfanas\n- Conversaciones que exceden límites\n",
+        "responses": {
+          "200": {
+            "description": "Sistema saludable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200_13"
+                }
+              }
+            }
+          },
+          "207": {
+            "description": "Problemas encontrados"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/clients/profile": {
+      "put": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Actualizar perfil del cliente autenticado",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/clients_profile_body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Perfil actualizado exitosamente"
+          },
+          "400": {
+            "description": "Datos inválidos"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Usuario no encontrado"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/clients/favorites": {
+      "get": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Obtener favoritos del usuario autenticado",
+        "responses": {
+          "200": {
+            "description": "Favoritos obtenidos exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200_14"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Usuario no encontrado"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/clients/favorites/add": {
+      "post": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Agregar producto a favoritos",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/favorites_add_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Producto agregado a favoritos exitosamente"
+          },
+          "400": {
+            "description": "El producto ya está en favoritos"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Usuario no encontrado"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/clients/favorites/{productId}": {
+      "delete": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Remover producto de favoritos",
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "description": "ID del producto a remover",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "64a7b8c9d1e2f3g4h5i6j7k8"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Producto removido de favoritos exitosamente"
+          },
+          "400": {
+            "description": "El producto no está en favoritos"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Usuario no encontrado"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/clients/favorites/toggle": {
+      "post": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Toggle estado de favorito (agregar/remover)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/favorites_toggle_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Estado de favorito modificado exitosamente"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Usuario no encontrado"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/clients/ruleta/generate": {
+      "post": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Generar nuevo código de descuento desde ruleta",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ruleta_generate_body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Código de ruleta generado exitosamente"
+          },
+          "400": {
+            "description": "Máximo de códigos activos alcanzado"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Usuario no encontrado"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/clients/ruleta/codes": {
+      "get": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Obtener todos los códigos de ruleta del usuario",
+        "responses": {
+          "200": {
+            "description": "Códigos de ruleta obtenidos exitosamente"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Usuario no encontrado"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/clients/ruleta/validate/{code}": {
+      "get": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Validar código de descuento específico",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "description": "Código de descuento a validar",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "ABC12345"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Código válido"
+          },
+          "400": {
+            "description": "Código inválido, usado o expirado"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Código no encontrado"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/clients/ruleta/use": {
+      "put": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Marcar código como utilizado",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ruleta_use_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Código usado exitosamente"
+          },
+          "400": {
+            "description": "Código no encontrado o ya utilizado"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Usuario no encontrado"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/clients/total": {
+      "get": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Obtener total de clientes registrados",
+        "responses": {
+          "200": {
+            "description": "Total de clientes obtenido exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200_15"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "description": "Servicio de base de datos no disponible"
+          }
+        }
+      }
+    },
+    "/clients/newClientsStats": {
+      "get": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Obtener estadísticas de clientes nuevos por trimestre",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "description": "Período a consultar",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "current",
+              "enum": [
+                "current",
+                "previous"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estadísticas obtenidas exitosamente"
+          },
+          "400": {
+            "description": "Período no válido"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/clients/detailedStats": {
+      "get": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Obtener estadísticas detalladas de clientes",
+        "responses": {
+          "200": {
+            "description": "Estadísticas detalladas obtenidas exitosamente"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/clients/{clientId}/validate-code": {
+      "post": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Validar código promocional por cliente",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "description": "ID del cliente",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/clientId_validatecode_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Código válido"
+          },
+          "400": {
+            "description": "Código inválido o expirado"
+          },
+          "404": {
+            "description": "Cliente no encontrado"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/clients/{clientId}/use-code": {
+      "put": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Marcar código promocional como usado",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "description": "ID del cliente",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/clientId_usecode_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Código marcado como usado exitosamente"
+          },
+          "400": {
+            "description": "Código no disponible"
+          },
+          "404": {
+            "description": "Cliente o código no encontrado"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/clients/{clientId}/promotional-codes": {
+      "get": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Obtener códigos promocionales del cliente",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "description": "ID del cliente",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filtrar por estado",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "used",
+                "expired"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Códigos obtenidos exitosamente"
+          },
+          "404": {
+            "description": "Cliente no encontrado"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/shopping-cart": {
+      "get": {
+        "tags": [
+          "Shopping Cart"
+        ],
+        "summary": "Obtener todos los carritos de compras",
+        "description": "Obtiene una lista completa de todos los carritos de compras con información del cliente y productos",
+        "responses": {
+          "200": {
+            "description": "Lista de carritos obtenida exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200_16"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Shopping Cart"
+        ],
+        "summary": "Crear nuevo carrito de compras",
+        "description": "Crea un nuevo carrito de compras con validación completa de datos",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/shoppingcart_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Carrito creado exitosamente"
+          },
+          "400": {
+            "description": "Error de validación"
+          },
+          "409": {
+            "description": "Conflicto - carrito ya existe"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/shopping-cart/client/{clientId}/item/{itemId}": {
+      "delete": {
+        "tags": [
+          "Shopping Cart"
+        ],
+        "summary": "Remover item específico del carrito",
+        "description": "Elimina un producto específico del carrito activo del cliente",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "description": "ID del cliente",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "objectid"
+            },
+            "example": "507f1f77bcf86cd799439011"
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "description": "ID del producto a eliminar",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "objectid"
+            },
+            "example": "507f1f77bcf86cd799439012"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Producto eliminado correctamente"
+          },
+          "400": {
+            "description": "Error de validación de IDs"
+          },
+          "404": {
+            "description": "Carrito o producto no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/shopping-cart/update-quantity": {
+      "put": {
+        "tags": [
+          "Shopping Cart"
+        ],
+        "summary": "Actualizar cantidad de item específico",
+        "description": "Actualiza la cantidad de un producto específico en el carrito",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/shoppingcart_updatequantity_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Cantidad actualizada correctamente"
+          },
+          "400": {
+            "description": "Error de validación"
+          },
+          "404": {
+            "description": "Carrito o producto no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/shopping-cart/add-item": {
+      "post": {
+        "tags": [
+          "Shopping Cart"
+        ],
+        "summary": "Agregar item al carrito",
+        "description": "Agrega un nuevo producto al carrito activo o crea un carrito nuevo si no existe",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/shoppingcart_additem_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Producto agregado al carrito correctamente"
+          },
+          "400": {
+            "description": "Error de validación"
+          },
+          "404": {
+            "description": "Producto no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/shopping-cart/cleanup-duplicates": {
+      "post": {
+        "tags": [
+          "Shopping Cart"
+        ],
+        "summary": "Limpiar carritos duplicados",
+        "description": "Elimina carritos duplicados manteniendo solo el más reciente por cliente",
+        "responses": {
+          "200": {
+            "description": "Limpieza completada exitosamente"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/shopping-cart/active/{userId}": {
+      "get": {
+        "tags": [
+          "Shopping Cart"
+        ],
+        "summary": "Obtener carrito activo del usuario",
+        "description": "Obtiene el carrito activo de un usuario específico o crea uno nuevo si no existe",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "description": "ID del usuario",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "objectid",
+              "example": "507f1f77bcf86cd799439011"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Carrito activo obtenido exitosamente"
+          },
+          "400": {
+            "description": "ID de usuario inválido"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/shopping-cart/{id}": {
+      "get": {
+        "tags": [
+          "Shopping Cart"
+        ],
+        "summary": "Obtener carrito por ID",
+        "description": "Obtiene un carrito específico por su ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del carrito",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "objectid",
+              "example": "507f1f77bcf86cd799439011"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Carrito obtenido exitosamente"
+          },
+          "404": {
+            "description": "Carrito no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Shopping Cart"
+        ],
+        "summary": "Actualizar carrito completo",
+        "description": "Actualiza todos los datos de un carrito específico",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del carrito",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "objectid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShoppingCartUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Carrito actualizado exitosamente"
+          },
+          "400": {
+            "description": "ID inválido o error de validación"
+          },
+          "404": {
+            "description": "Carrito no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Shopping Cart"
+        ],
+        "summary": "Eliminar carrito",
+        "description": "Elimina un carrito específico por su ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del carrito",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "objectid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Carrito eliminado exitosamente"
+          },
+          "400": {
+            "description": "ID inválido"
+          },
+          "404": {
+            "description": "Carrito no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/shopping-cart/client/{clientId}": {
+      "get": {
+        "tags": [
+          "Shopping Cart"
+        ],
+        "summary": "Obtener carrito por cliente",
+        "description": "Obtiene el carrito activo de un cliente específico",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "description": "ID del cliente",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "objectid",
+              "example": "507f1f77bcf86cd799439011"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Carrito del cliente obtenido exitosamente"
+          },
+          "400": {
+            "description": "ClientId requerido o inválido"
+          },
+          "404": {
+            "description": "No se encontró carrito activo para este cliente"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/shopping-cart/{cartId}/clear-after-purchase": {
+      "post": {
+        "tags": [
+          "Shopping Cart"
+        ],
+        "summary": "Limpiar carrito después de compra",
+        "description": "Marca el carrito como completado después de una compra exitosa y crea un nuevo carrito activo",
+        "parameters": [
+          {
+            "name": "cartId",
+            "in": "path",
+            "description": "ID del carrito",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "objectid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/cartId_clearafterpurchase_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Carrito limpiado exitosamente"
+          },
+          "400": {
+            "description": "Parámetros requeridos faltantes o inválidos"
+          },
+          "404": {
+            "description": "Carrito no encontrado o no pertenece al usuario"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/custom-products": {
+      "get": {
+        "tags": [
+          "Custom Products"
+        ],
+        "summary": "Obtener todos los productos personalizados",
+        "description": "Obtiene una lista completa de productos personalizados con información del cliente y materiales",
+        "responses": {
+          "200": {
+            "description": "Productos personalizados obtenidos exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200_17"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No hay productos personalizados disponibles"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          },
+          "503": {
+            "description": "Servicio de base de datos no disponible"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Custom Products"
+        ],
+        "summary": "Crear producto personalizado",
+        "description": "Crea un nuevo producto personalizado con imagen de referencia opcional",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/customproducts_body"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/customproducts_body_1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Producto personalizado creado exitosamente"
+          },
+          "400": {
+            "description": "Errores de validación"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          },
+          "502": {
+            "description": "Error al procesar imagen de referencia"
+          }
+        }
+      }
+    },
+    "/custom-products/client/{clientId}": {
+      "get": {
+        "tags": [
+          "Custom Products"
+        ],
+        "summary": "Obtener productos personalizados por cliente",
+        "description": "Obtiene todos los productos personalizados de un cliente específico",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "description": "ID del cliente",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "objectid",
+              "example": "507f1f77bcf86cd799439011"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Productos del cliente obtenidos exitosamente"
+          },
+          "204": {
+            "description": "No hay productos para este cliente"
+          },
+          "400": {
+            "description": "ID de cliente inválido"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/custom-products/{id}": {
+      "get": {
+        "tags": [
+          "Custom Products"
+        ],
+        "summary": "Obtener producto personalizado por ID",
+        "description": "Obtiene un producto personalizado específico por su ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del producto personalizado",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "objectid",
+              "example": "507f1f77bcf86cd799439011"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Producto personalizado obtenido exitosamente"
+          },
+          "400": {
+            "description": "ID inválido"
+          },
+          "404": {
+            "description": "Producto personalizado no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Custom Products"
+        ],
+        "summary": "Eliminar producto personalizado",
+        "description": "Elimina un producto personalizado específico",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del producto personalizado",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "objectid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Producto personalizado eliminado exitosamente"
+          },
+          "400": {
+            "description": "ID inválido"
+          },
+          "404": {
+            "description": "Producto personalizado no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/custom-products-materials": {
+      "get": {
+        "tags": [
+          "Custom Products Materials"
+        ],
+        "summary": "Obtener todos los materiales",
+        "description": "Obtiene una lista completa de todos los materiales disponibles para productos personalizados",
+        "responses": {
+          "200": {
+            "description": "Materiales obtenidos exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200_18"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Custom Products Materials"
+        ],
+        "summary": "Crear nuevo material",
+        "description": "Crea un nuevo material para productos personalizados con imagen",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/customproductsmaterials_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Material creado exitosamente"
+          },
+          "400": {
+            "description": "Se requiere una imagen o error de validación"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/custom-products-materials/product/{productType}/category/{category}": {
+      "get": {
+        "tags": [
+          "Custom Products Materials"
+        ],
+        "summary": "Obtener materiales por producto y categoría",
+        "description": "Obtiene materiales filtrados por tipo de producto y categoría específica",
+        "parameters": [
+          {
+            "name": "productType",
+            "in": "path",
+            "description": "Tipo de producto",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "Ramo de flores naturales",
+              "enum": [
+                "Ramo de flores naturales",
+                "Ramo de flores secas",
+                "Giftbox"
+              ]
+            }
+          },
+          {
+            "name": "category",
+            "in": "path",
+            "description": "Categoría del material",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "Flores principales"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Materiales obtenidos exitosamente"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/custom-products-materials/product/{productType}": {
+      "get": {
+        "tags": [
+          "Custom Products Materials"
+        ],
+        "summary": "Obtener materiales por tipo de producto",
+        "description": "Obtiene materiales organizados por categorías para un tipo de producto específico",
+        "parameters": [
+          {
+            "name": "productType",
+            "in": "path",
+            "description": "Tipo de producto",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "Ramo de flores naturales",
+              "enum": [
+                "Ramo de flores naturales",
+                "Ramo de flores secas",
+                "Giftbox"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Materiales obtenidos exitosamente"
+          },
+          "400": {
+            "description": "Tipo de producto no válido"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    },
+    "/custom-products-materials/{id}": {
+      "get": {
+        "tags": [
+          "Custom Products Materials"
+        ],
+        "summary": "Obtener material por ID",
+        "description": "Obtiene un material específico por su ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del material",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "objectid",
+              "example": "507f1f77bcf86cd799439011"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Material obtenido exitosamente"
+          },
+          "404": {
+            "description": "Material no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Custom Products Materials"
+        ],
+        "summary": "Actualizar material existente",
+        "description": "Actualiza un material existente, incluyendo opcionalmente una nueva imagen",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del material",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "objectid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/customproductsmaterials_id_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Material actualizado exitosamente"
+          },
+          "404": {
+            "description": "Material no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Custom Products Materials"
+        ],
+        "summary": "Eliminar material",
+        "description": "Elimina un material y su imagen asociada de Cloudinary",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del material",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "objectid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Material eliminado exitosamente"
+          },
+          "404": {
+            "description": "Material no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Category": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string"
+          }
+        }
+      },
+      "CategoryResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/Category"
+          }
+        }
+      },
+      "Media": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "imageURL": {
+            "type": "string"
+          },
+          "videoURL": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "MediaResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "$ref": "#/components/schemas/Media"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "Product": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "stock": {
+            "type": "integer"
+          },
+          "categoryId": {
+            "$ref": "#/components/schemas/Category"
+          },
+          "isPersonalizable": {
+            "type": "boolean"
+          },
+          "details": {
+            "type": "string"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Product_images"
+            }
+          }
+        }
+      },
+      "ProductResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/Product"
+          }
+        }
+      },
+      "Review": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "clientId": {
+            "type": "string"
+          },
+          "products": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Review_products"
+            }
+          },
+          "rating": {
+            "maximum": 5,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "replied"
+            ]
+          },
+          "response": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ReviewRequest": {
+        "required": [
+          "clientId",
+          "message",
+          "products",
+          "rating"
+        ],
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string"
+          },
+          "products": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReviewRequest_products"
+            }
+          },
+          "rating": {
+            "maximum": 5,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "Sale": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "paymentType": {
+            "type": "string",
+            "enum": [
+              "Transferencia",
+              "Efectivo",
+              "Débito",
+              "Crédito"
+            ]
+          },
+          "paymentProofImage": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Pendiente",
+              "Pagado"
+            ]
+          },
+          "trackingStatus": {
+            "type": "string",
+            "enum": [
+              "Agendado",
+              "En proceso",
+              "Entregado"
+            ]
+          },
+          "deliveryAddress": {
+            "type": "string"
+          },
+          "receiverName": {
+            "type": "string"
+          },
+          "receiverPhone": {
+            "type": "string"
+          },
+          "deliveryPoint": {
+            "type": "string"
+          },
+          "deliveryDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ShoppingCartId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ChatMessage": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "description": "ID único del mensaje",
+            "example": "64a7b8c9d1e2f3g4h5i6j7k8"
+          },
+          "conversationId": {
+            "type": "string",
+            "description": "ID de la conversación a la que pertenece el mensaje",
+            "example": "client_67890_conv"
+          },
+          "senderId": {
+            "oneOf": [
+              {
+                "type": "string",
+                "description": "ID del admin (siempre \"admin\")",
+                "example": "admin"
+              },
+              {
+                "$ref": "#/components/schemas/ClientInfo"
+              }
+            ]
+          },
+          "senderType": {
+            "type": "string",
+            "description": "Tipo de remitente del mensaje",
+            "example": "Customer",
+            "enum": [
+              "admin",
+              "Customer"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "description": "Contenido de texto del mensaje",
+            "example": "Hola, tengo una consulta sobre el producto"
+          },
+          "media": {
+            "$ref": "#/components/schemas/ChatMessage_media"
+          },
+          "status": {
+            "type": "string",
+            "description": "Estado del mensaje",
+            "example": "sent",
+            "enum": [
+              "sent",
+              "delivered",
+              "read"
+            ]
+          },
+          "isRead": {
+            "type": "boolean",
+            "description": "Indica si el mensaje ha sido leído",
+            "example": false
+          },
+          "readAt": {
+            "type": "string",
+            "description": "Fecha y hora de lectura (si aplica)",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Fecha y hora de creación",
+            "format": "date-time",
+            "example": "2024-08-15T10:30:00Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Fecha y hora de última actualización",
+            "format": "date-time",
+            "example": "2024-08-15T10:30:00Z"
+          }
+        },
+        "description": "Mensaje individual en el sistema de chat"
+      },
+      "ChatConversation": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "description": "ID único de la conversación en MongoDB",
+            "example": "64a7b8c9d1e2f3g4h5i6j7k8"
+          },
+          "conversationId": {
+            "type": "string",
+            "description": "ID de la conversación (formato personalizado)",
+            "example": "client_67890_conv"
+          },
+          "clientId": {
+            "$ref": "#/components/schemas/ClientInfo"
+          },
+          "status": {
+            "type": "string",
+            "description": "Estado de la conversación",
+            "example": "active",
+            "enum": [
+              "active",
+              "closed"
+            ]
+          },
+          "lastMessage": {
+            "type": "string",
+            "description": "Último mensaje enviado en la conversación",
+            "example": "¿Tienen este producto en stock?"
+          },
+          "lastMessageAt": {
+            "type": "string",
+            "description": "Fecha y hora del último mensaje",
+            "format": "date-time",
+            "example": "2024-08-15T10:30:00Z"
+          },
+          "unreadCountAdmin": {
+            "type": "integer",
+            "description": "Cantidad de mensajes no leídos por el admin",
+            "example": 2
+          },
+          "unreadCountClient": {
+            "type": "integer",
+            "description": "Cantidad de mensajes no leídos por el cliente",
+            "example": 0
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Fecha y hora de creación de la conversación",
+            "format": "date-time",
+            "example": "2024-08-15T10:00:00Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Fecha y hora de última actualización",
+            "format": "date-time",
+            "example": "2024-08-15T10:30:00Z"
+          }
+        },
+        "description": "Conversación entre cliente y administrador"
+      },
+      "ClientInfo": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "description": "ID único del cliente",
+            "example": "64a7b8c9d1e2f3g4h5i6j7k8"
+          },
+          "fullName": {
+            "type": "string",
+            "description": "Nombre completo del cliente",
+            "example": "Juan Pérez García"
+          },
+          "email": {
+            "type": "string",
+            "description": "Email del cliente",
+            "format": "email",
+            "example": "juan.perez@email.com"
+          },
+          "profilePicture": {
+            "type": "string",
+            "description": "URL de la foto de perfil del cliente",
+            "nullable": true,
+            "example": "https://example.com/profile/juan.jpg"
+          }
+        },
+        "description": "Información básica del cliente para el chat"
+      },
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "currentPage": {
+            "type": "integer",
+            "description": "Página actual",
+            "example": 1
+          },
+          "totalPages": {
+            "type": "integer",
+            "description": "Total de páginas disponibles",
+            "example": 5
+          },
+          "totalMessages": {
+            "type": "integer",
+            "description": "Total de elementos (mensajes, conversaciones, etc.)",
+            "example": 230
+          },
+          "hasNextPage": {
+            "type": "boolean",
+            "description": "Indica si hay una página siguiente",
+            "example": true
+          },
+          "hasPrevPage": {
+            "type": "boolean",
+            "description": "Indica si hay una página anterior",
+            "example": false
+          }
+        },
+        "description": "Información de paginación para listas"
+      },
+      "ChatStats": {
+        "type": "object",
+        "properties": {
+          "totalConversations": {
+            "type": "integer",
+            "description": "Total de conversaciones en el sistema",
+            "example": 150
+          },
+          "activeConversations": {
+            "type": "integer",
+            "description": "Conversaciones actualmente activas",
+            "example": 45
+          },
+          "closedConversations": {
+            "type": "integer",
+            "description": "Conversaciones cerradas o inactivas",
+            "example": 105
+          },
+          "totalMessages": {
+            "type": "integer",
+            "description": "Total de mensajes en el sistema",
+            "example": 3420
+          },
+          "unreadMessages": {
+            "type": "integer",
+            "description": "Total de mensajes no leídos por administradores",
+            "example": 12
+          }
+        },
+        "description": "Estadísticas generales del sistema de chat"
+      },
+      "StorageStats": {
+        "type": "object",
+        "properties": {
+          "totalFiles": {
+            "type": "integer",
+            "description": "Total de archivos multimedia almacenados",
+            "example": 250
+          },
+          "totalSizeBytes": {
+            "type": "integer",
+            "description": "Espacio total utilizado en bytes",
+            "example": 52428800
+          },
+          "totalSizeMB": {
+            "type": "number",
+            "description": "Espacio total utilizado en megabytes",
+            "example": 50
+          },
+          "fileTypes": {
+            "$ref": "#/components/schemas/StorageStats_fileTypes"
+          },
+          "orphanedFiles": {
+            "type": "integer",
+            "description": "Archivos huérfanos detectados (sin referencias en BD)",
+            "example": 5
+          }
+        },
+        "description": "Estadísticas de almacenamiento multimedia"
+      },
+      "SystemIntegrity": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Estado general del sistema",
+            "example": "healthy",
+            "enum": [
+              "healthy",
+              "issues_found"
+            ]
+          },
+          "totalChecks": {
+            "type": "integer",
+            "description": "Total de verificaciones realizadas",
+            "example": 4
+          },
+          "passedChecks": {
+            "type": "integer",
+            "description": "Verificaciones que pasaron exitosamente",
+            "example": 4
+          },
+          "issues": {
+            "type": "array",
+            "description": "Lista de problemas encontrados",
+            "items": {
+              "$ref": "#/components/schemas/SystemIntegrity_issues"
+            }
+          }
+        },
+        "description": "Estado de integridad del sistema de chat"
+      },
+      "CleanupResult": {
+        "type": "object",
+        "properties": {
+          "deletedConversations": {
+            "type": "integer",
+            "description": "Conversaciones eliminadas",
+            "example": 5
+          },
+          "processedConversations": {
+            "type": "integer",
+            "description": "Conversaciones procesadas",
+            "example": 45
+          },
+          "totalDeletedMessages": {
+            "type": "integer",
+            "description": "Total de mensajes eliminados",
+            "example": 120
+          },
+          "totalDeletedFiles": {
+            "type": "integer",
+            "description": "Total de archivos eliminados",
+            "example": 30
+          },
+          "cleanupType": {
+            "type": "string",
+            "description": "Tipo de limpieza realizada",
+            "example": "hard_delete"
+          },
+          "freedSpaceMB": {
+            "type": "number",
+            "description": "Espacio liberado en megabytes (si aplica)",
+            "example": 25.5
+          },
+          "errors": {
+            "type": "array",
+            "description": "Errores ocurridos durante la limpieza",
+            "example": [],
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "description": "Resultado de operaciones de limpieza"
+      },
+      "UserProfile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "64a7b8c9d1e2f3g4h5i6j7k8"
+          },
+          "name": {
+            "type": "string",
+            "example": "Juan Carlos Pérez"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "juan@email.com"
+          },
+          "phone": {
+            "type": "string",
+            "example": "1234-5678"
+          },
+          "address": {
+            "type": "string",
+            "example": "Calle Principal #123, San Salvador"
+          },
+          "birthDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "profilePicture": {
+            "type": "string",
+            "nullable": true,
+            "example": "https://res.cloudinary.com/demo/image/upload/profile.jpg"
+          },
+          "favorites": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Favorite"
+            }
+          },
+          "discount": {
+            "type": "number",
+            "nullable": true,
+            "example": 10
+          }
+        },
+        "description": "Perfil del usuario cliente"
+      },
+      "Favorite": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "oneOf": [
+              {
+                "type": "string",
+                "example": "64a7b8c9d1e2f3g4h5i6j7k8"
+              },
+              {
+                "$ref": "#/components/schemas/Product"
+              }
+            ]
+          },
+          "_id": {
+            "type": "string",
+            "example": "64a7b8c9d1e2f3g4h5i6j7k9"
+          }
+        },
+        "description": "Producto favorito del cliente"
+      },
+      "RuletaCode": {
+        "type": "object",
+        "properties": {
+          "codeId": {
+            "type": "string",
+            "example": "64a7b8c9d1e2f3g4h5i6j7k8"
+          },
+          "code": {
+            "type": "string",
+            "example": "ABC12345"
+          },
+          "name": {
+            "type": "string",
+            "example": "Verano 2025"
+          },
+          "discount": {
+            "type": "string",
+            "example": "25% OFF"
+          },
+          "color": {
+            "type": "string",
+            "example": "#FADDDD"
+          },
+          "textColor": {
+            "type": "string",
+            "example": "#374151"
+          },
+          "status": {
+            "type": "string",
+            "example": "active",
+            "enum": [
+              "active",
+              "used",
+              "expired"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "usedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "usedInOrderId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "description": "Código de descuento generado por ruleta"
+      },
+      "DiscountData": {
+        "type": "object",
+        "properties": {
+          "codeId": {
+            "type": "string",
+            "example": "64a7b8c9d1e2f3g4h5i6j7k8"
+          },
+          "code": {
+            "type": "string",
+            "example": "VERANO2025"
+          },
+          "name": {
+            "type": "string",
+            "example": "Verano 2025"
+          },
+          "discount": {
+            "type": "string",
+            "example": "25% OFF"
+          },
+          "color": {
+            "type": "string",
+            "example": "#FADDDD"
+          },
+          "textColor": {
+            "type": "string",
+            "example": "#374151"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "Datos del descuento validado"
+      },
+      "UsedCode": {
+        "type": "object",
+        "properties": {
+          "codeId": {
+            "type": "string",
+            "example": "64a7b8c9d1e2f3g4h5i6j7k8"
+          },
+          "code": {
+            "type": "string",
+            "example": "VERANO2025"
+          },
+          "name": {
+            "type": "string",
+            "example": "Verano 2025"
+          },
+          "discount": {
+            "type": "string",
+            "example": "25% OFF"
+          },
+          "usedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "orderId": {
+            "type": "string",
+            "nullable": true
+          },
+          "previousStatus": {
+            "type": "string",
+            "example": "active"
+          },
+          "newStatus": {
+            "type": "string",
+            "example": "used"
+          }
+        },
+        "description": "Código promocional usado"
+      },
+      "PromotionalCode": {
+        "type": "object",
+        "properties": {
+          "codeId": {
+            "type": "string",
+            "example": "64a7b8c9d1e2f3g4h5i6j7k8"
+          },
+          "code": {
+            "type": "string",
+            "example": "VERANO2025"
+          },
+          "name": {
+            "type": "string",
+            "example": "Verano 2025"
+          },
+          "discount": {
+            "type": "string",
+            "example": "25% OFF"
+          },
+          "color": {
+            "type": "string",
+            "example": "#FADDDD"
+          },
+          "textColor": {
+            "type": "string",
+            "example": "#374151"
+          },
+          "status": {
+            "type": "string",
+            "example": "active",
+            "enum": [
+              "active",
+              "used",
+              "expired"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "usedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "usedInOrderId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "description": "Código promocional del cliente"
+      },
+      "ShoppingCart": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "format": "objectid",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          "clientId": {
+            "type": "string",
+            "format": "objectid",
+            "example": "507f1f77bcf86cd799439012"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShoppingCart_items"
+            }
+          },
+          "status": {
+            "type": "string",
+            "example": "Activo",
+            "default": "Activo",
+            "enum": [
+              "Activo",
+              "Completado",
+              "Cancelado"
+            ]
+          },
+          "promotionalCode": {
+            "type": "string",
+            "example": "SUMMER2024"
+          },
+          "total": {
+            "minimum": 0,
+            "type": "number",
+            "example": 299.99
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-08-16T10:30:00Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-08-16T11:15:00Z"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-08-16T12:00:00Z"
+          }
+        }
+      },
+      "ShoppingCartUpdate": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShoppingCartUpdate_items"
+            }
+          },
+          "promotionalCode": {
+            "type": "string"
+          },
+          "total": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Activo",
+              "Completado",
+              "Cancelado"
+            ]
+          }
+        }
+      },
+      "CustomProduct": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "format": "objectid",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          "clientId": {
+            "type": "string",
+            "format": "objectid",
+            "example": "507f1f77bcf86cd799439012"
+          },
+          "productToPersonalize": {
+            "type": "string",
+            "example": "Ramo de flores naturales",
+            "enum": [
+              "Ramo de flores naturales",
+              "Ramo de flores secas",
+              "Giftbox"
+            ]
+          },
+          "selectedMaterials": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomProduct_selectedMaterials"
+            }
+          },
+          "referenceImage": {
+            "type": "string",
+            "description": "URL de la imagen de referencia en Cloudinary",
+            "format": "uri",
+            "example": "https://res.cloudinary.com/example/image/upload/v1234567890/custom-products/reference-images/abc123.jpg"
+          },
+          "extraComments": {
+            "minLength": 10,
+            "type": "string",
+            "example": "Por favor usar tonos pastel y agregar un lazo rosa"
+          },
+          "totalPrice": {
+            "minimum": 0,
+            "type": "number",
+            "example": 189.99
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-08-16T10:30:00Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-08-16T11:15:00Z"
+          }
+        }
+      },
+      "CustomProductMaterial": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "format": "objectid",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          "productToPersonalize": {
+            "type": "string",
+            "example": "Ramo de flores naturales",
+            "enum": [
+              "Ramo de flores naturales",
+              "Ramo de flores secas",
+              "Giftbox"
+            ]
+          },
+          "categoryToParticipate": {
+            "type": "string",
+            "description": "Categoría del material dentro del producto",
+            "example": "Flores principales"
+          },
+          "name": {
+            "type": "string",
+            "description": "Nombre del material",
+            "example": "Rosa roja premium"
+          },
+          "image": {
+            "type": "string",
+            "description": "URL de la imagen en Cloudinary",
+            "format": "uri",
+            "example": "https://res.cloudinary.com/example/image/upload/v1234567890/custom-products-materials/rosa-roja.jpg"
+          },
+          "price": {
+            "minimum": 0,
+            "type": "number",
+            "description": "Precio unitario del material",
+            "example": 15.99
+          },
+          "stock": {
+            "minimum": 0,
+            "type": "integer",
+            "description": "Cantidad disponible en stock",
+            "example": 50
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-08-16T10:30:00Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-08-16T11:15:00Z"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "message": {
+            "type": "string",
+            "example": "Error interno del servidor"
+          },
+          "error": {
+            "type": "string",
+            "example": "Database connection failed"
+          }
+        }
+      },
+      "ValidationErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "message": {
+            "type": "string",
+            "example": "Error de validación"
+          },
+          "errors": {
+            "type": "array",
+            "example": [
+              "El clientId es requerido",
+              "Los items deben ser un array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "error": {
+            "type": "string",
+            "example": "Validation failed"
+          }
+        }
+      },
+      "inline_response_200": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Category"
+            }
+          },
+          "count": {
+            "type": "integer"
+          }
+        }
+      },
+      "categories_body": {
+        "required": [
+          "image",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string",
+            "format": "binary"
+          }
+        }
+      },
+      "categories_id_body": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string",
+            "format": "binary"
+          }
+        }
+      },
+      "media_body": {
+        "required": [
+          "type"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "Dato Curioso",
+              "Tip",
+              "Blog"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string",
+            "format": "binary"
+          },
+          "video": {
+            "type": "string",
+            "format": "binary"
+          }
+        }
+      },
+      "media_id_body": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "Dato Curioso",
+              "Tip",
+              "Blog"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string",
+            "format": "binary"
+          },
+          "video": {
+            "type": "string",
+            "format": "binary"
+          }
+        }
+      },
+      "products_body": {
+        "required": [
+          "categoryId",
+          "description",
+          "name",
+          "price"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "stock": {
+            "type": "integer"
+          },
+          "categoryId": {
+            "type": "string"
+          },
+          "isPersonalizable": {
+            "type": "boolean"
+          },
+          "details": {
+            "type": "string"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "binary"
+            }
+          }
+        }
+      },
+      "products_id_body": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "stock": {
+            "type": "integer"
+          },
+          "categoryId": {
+            "type": "string"
+          },
+          "isPersonalizable": {
+            "type": "boolean"
+          },
+          "details": {
+            "type": "string"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "binary"
+            }
+          }
+        }
+      },
+      "id_moderate_body": {
+        "required": [
+          "action"
+        ],
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "reject"
+            ]
+          }
+        }
+      },
+      "id_reply_body": {
+        "required": [
+          "response"
+        ],
+        "type": "object",
+        "properties": {
+          "response": {
+            "type": "string"
+          }
+        }
+      },
+      "inline_response_200_1": {
+        "type": "object",
+        "properties": {
+          "totalReviews": {
+            "type": "integer"
+          },
+          "averageRating": {
+            "type": "number"
+          }
+        }
+      },
+      "inline_response_200_2": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Sale"
+            }
+          },
+          "pagination": {
+            "type": "object"
+          }
+        }
+      },
+      "sales_body": {
+        "required": [
+          "ShoppingCartId",
+          "deliveryAddress",
+          "deliveryDate",
+          "deliveryPoint",
+          "paymentProofImage",
+          "paymentType",
+          "receiverName",
+          "receiverPhone"
+        ],
+        "type": "object",
+        "properties": {
+          "paymentType": {
+            "type": "string",
+            "enum": [
+              "Transferencia",
+              "Efectivo",
+              "Débito",
+              "Crédito"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Pendiente",
+              "Pagado"
+            ]
+          },
+          "trackingStatus": {
+            "type": "string",
+            "enum": [
+              "Agendado",
+              "En proceso",
+              "Entregado"
+            ]
+          },
+          "deliveryAddress": {
+            "type": "string"
+          },
+          "receiverName": {
+            "type": "string"
+          },
+          "receiverPhone": {
+            "type": "string"
+          },
+          "deliveryPoint": {
+            "type": "string"
+          },
+          "deliveryDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "ShoppingCartId": {
+            "type": "string"
+          },
+          "paymentProofImage": {
+            "type": "string",
+            "format": "binary"
+          }
+        }
+      },
+      "sales_id_body": {
+        "type": "object",
+        "properties": {
+          "paymentType": {
+            "type": "string",
+            "enum": [
+              "Transferencia",
+              "Efectivo",
+              "Débito",
+              "Crédito"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Pendiente",
+              "Pagado"
+            ]
+          },
+          "trackingStatus": {
+            "type": "string",
+            "enum": [
+              "Agendado",
+              "En proceso",
+              "Entregado"
+            ]
+          },
+          "deliveryAddress": {
+            "type": "string"
+          },
+          "receiverName": {
+            "type": "string"
+          },
+          "receiverPhone": {
+            "type": "string"
+          },
+          "deliveryPoint": {
+            "type": "string"
+          },
+          "deliveryDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "ShoppingCartId": {
+            "type": "string"
+          },
+          "paymentProofImage": {
+            "type": "string",
+            "format": "binary"
+          }
+        }
+      },
+      "id_paymentstatus_body": {
+        "required": [
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "Pendiente",
+              "Pagado"
+            ]
+          }
+        }
+      },
+      "id_trackingstatus_body": {
+        "required": [
+          "trackingStatus"
+        ],
+        "type": "object",
+        "properties": {
+          "trackingStatus": {
+            "type": "string",
+            "enum": [
+              "Agendado",
+              "En proceso",
+              "Entregado"
+            ]
+          }
+        }
+      },
+      "id_paymentproof_body": {
+        "required": [
+          "paymentProofImage"
+        ],
+        "type": "object",
+        "properties": {
+          "paymentProofImage": {
+            "type": "string",
+            "format": "binary"
+          }
+        }
+      },
+      "inline_response_200_3": {
+        "type": "object",
+        "properties": {
+          "soldProducts": {
+            "type": "integer"
+          }
+        }
+      },
+      "inline_response_200_4": {
+        "type": "object",
+        "properties": {
+          "totalSales": {
+            "type": "number"
+          }
+        }
+      },
+      "inline_response_200_5": {
+        "type": "object",
+        "properties": {
+          "totalSales": {
+            "type": "number"
+          },
+          "totalOrders": {
+            "type": "integer"
+          },
+          "pendingOrders": {
+            "type": "integer"
+          }
+        }
+      },
+      "login_body": {
+        "required": [
+          "email",
+          "password",
+          "userType"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "Email del usuario",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "description": "Contraseña del usuario"
+          },
+          "userType": {
+            "type": "string",
+            "description": "Tipo de usuario"
+          }
+        }
+      },
+      "inline_response_200_6": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "token": {
+            "type": "string"
+          },
+          "user": {
+            "type": "object"
+          }
+        }
+      },
+      "updatepassword_body": {
+        "required": [
+          "email",
+          "newPassword",
+          "verificationCode"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "Email del usuario que desea actualizar contraseña",
+            "format": "email"
+          },
+          "verificationCode": {
+            "type": "number",
+            "description": "Código de verificación"
+          },
+          "newPassword": {
+            "type": "string",
+            "description": "Nueva contraseña que el usuario desee"
+          }
+        }
+      },
+      "updatepassword_body_1": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "x-stoplight": {
+              "id": "wup2jsc2eklv9"
+            }
+          },
+          "verificationCode": {
+            "type": "string",
+            "x-stoplight": {
+              "id": "sxitd2q3j84xk"
+            }
+          }
+        }
+      },
+      "chat_message_body": {
+        "type": "object",
+        "properties": {
+          "conversationId": {
+            "type": "string",
+            "description": "ID de la conversación (opcional para clientes)",
+            "example": "client_67890_conv"
+          },
+          "message": {
+            "type": "string",
+            "description": "Mensaje de texto (opcional si se envía archivo)",
+            "example": "Hola, tengo una consulta sobre el producto"
+          },
+          "file": {
+            "type": "string",
+            "description": "Archivo de imagen (JPG, PNG, GIF, WebP, máx 10MB)",
+            "format": "binary"
+          }
+        }
+      },
+      "inline_response_201": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "$ref": "#/components/schemas/ChatMessage"
+          },
+          "conversationId": {
+            "type": "string",
+            "example": "client_67890_conv"
+          },
+          "limitInfo": {
+            "$ref": "#/components/schemas/inline_response_201_limitInfo"
+          }
+        }
+      },
+      "inline_response_200_7": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "conversation": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ChatConversation"
+              },
+              {
+                "type": "object",
+                "nullable": true
+              }
+            ]
+          },
+          "message": {
+            "type": "string",
+            "example": "No hay conversación activa. Se creará al enviar el primer mensaje."
+          }
+        }
+      },
+      "inline_response_200_8": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatMessage"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        }
+      },
+      "inline_response_200_9": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "conversations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatConversation"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        }
+      },
+      "inline_response_200_10": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "stats": {
+            "$ref": "#/components/schemas/ChatStats"
+          }
+        }
+      },
+      "inline_response_200_11": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Limpieza física completada exitosamente"
+          },
+          "results": {
+            "$ref": "#/components/schemas/CleanupResult"
+          }
+        }
+      },
+      "inline_response_200_12": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "storageStats": {
+            "$ref": "#/components/schemas/StorageStats"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "inline_response_200_13": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "integrity": {
+            "$ref": "#/components/schemas/SystemIntegrity"
+          }
+        }
+      },
+      "clients_profile_body": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "description": "Teléfono del cliente (8 dígitos)",
+            "example": "12345678"
+          },
+          "address": {
+            "type": "string",
+            "description": "Dirección del cliente (mínimo 10 caracteres)",
+            "example": "Calle Principal #123, San Salvador"
+          },
+          "fullName": {
+            "type": "string",
+            "description": "Nombre completo (3-100 caracteres, solo letras)",
+            "example": "Juan Carlos Pérez"
+          },
+          "profilePicture": {
+            "type": "string",
+            "description": "Imagen de perfil (JPG, PNG, WEBP, máx 5MB)",
+            "format": "binary"
+          }
+        }
+      },
+      "inline_response_200_14": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "favorites": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Favorite"
+            }
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserProfile"
+          }
+        }
+      },
+      "favorites_add_body": {
+        "required": [
+          "productId"
+        ],
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "description": "ID del producto a agregar",
+            "example": "64a7b8c9d1e2f3g4h5i6j7k8"
+          }
+        }
+      },
+      "favorites_toggle_body": {
+        "required": [
+          "productId"
+        ],
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "description": "ID del producto",
+            "example": "64a7b8c9d1e2f3g4h5i6j7k8"
+          }
+        }
+      },
+      "ruleta_generate_body": {
+        "type": "object",
+        "properties": {
+          "discount": {
+            "type": "string",
+            "description": "Descuento personalizado (opcional)",
+            "example": "25% OFF"
+          },
+          "name": {
+            "type": "string",
+            "description": "Nombre personalizado (opcional)",
+            "example": "Verano 2025"
+          },
+          "color": {
+            "type": "string",
+            "description": "Color de fondo personalizado (opcional)",
+            "example": "#FADDDD"
+          },
+          "textColor": {
+            "type": "string",
+            "description": "Color del texto personalizado (opcional)",
+            "example": "#374151"
+          },
+          "expiresInDays": {
+            "type": "integer",
+            "description": "Días hasta expiración",
+            "example": 30,
+            "default": 30
+          }
+        }
+      },
+      "ruleta_use_body": {
+        "required": [
+          "codeId"
+        ],
+        "type": "object",
+        "properties": {
+          "codeId": {
+            "type": "string",
+            "description": "ID del código a usar",
+            "example": "64a7b8c9d1e2f3g4h5i6j7k8"
+          },
+          "orderId": {
+            "type": "string",
+            "description": "ID de la orden donde se usa (opcional)",
+            "example": "64a7b8c9d1e2f3g4h5i6j7k9"
+          }
+        }
+      },
+      "inline_response_200_15": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "total": {
+            "type": "integer",
+            "example": 1250
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "clientId_validatecode_body": {
+        "required": [
+          "code"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Código promocional a validar",
+            "example": "VERANO2025"
+          }
+        }
+      },
+      "clientId_usecode_body": {
+        "required": [
+          "codeId"
+        ],
+        "type": "object",
+        "properties": {
+          "codeId": {
+            "type": "string",
+            "description": "ID del código a usar"
+          },
+          "orderId": {
+            "type": "string",
+            "description": "ID de la orden"
+          }
+        }
+      },
+      "inline_response_200_16": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShoppingCart"
+            }
+          },
+          "token": {
+            "type": "string",
+            "example": "session_maintained"
+          }
+        }
+      },
+      "shoppingcart_items": {
+        "required": [
+          "productId",
+          "quantity"
+        ],
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "format": "objectid",
+            "example": "507f1f77bcf86cd799439012"
+          },
+          "quantity": {
+            "minimum": 1,
+            "type": "number",
+            "example": 2
+          }
+        }
+      },
+      "shoppingcart_body": {
+        "required": [
+          "clientId",
+          "items",
+          "total"
+        ],
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "description": "ID del cliente",
+            "format": "objectid",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          "items": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/shoppingcart_items"
+            }
+          },
+          "promotionalCode": {
+            "type": "string",
+            "example": "SUMMER2024"
+          },
+          "total": {
+            "minimum": 0,
+            "type": "number",
+            "example": 299.99
+          }
+        }
+      },
+      "shoppingcart_updatequantity_body": {
+        "required": [
+          "clientId",
+          "itemId",
+          "quantity"
+        ],
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "format": "objectid",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          "itemId": {
+            "type": "string",
+            "format": "objectid",
+            "example": "507f1f77bcf86cd799439012"
+          },
+          "quantity": {
+            "maximum": 99,
+            "minimum": 1,
+            "type": "integer",
+            "example": 3
+          }
+        }
+      },
+      "shoppingcart_additem_body": {
+        "required": [
+          "clientId",
+          "itemId"
+        ],
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "format": "objectid",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          "itemId": {
+            "type": "string",
+            "format": "objectid",
+            "example": "507f1f77bcf86cd799439012"
+          },
+          "quantity": {
+            "maximum": 99,
+            "minimum": 1,
+            "type": "integer",
+            "example": 2,
+            "default": 1
+          },
+          "itemType": {
+            "type": "string",
+            "example": "product",
+            "default": "product",
+            "enum": [
+              "product",
+              "custom"
+            ]
+          }
+        }
+      },
+      "cartId_clearafterpurchase_body": {
+        "required": [
+          "userId"
+        ],
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "ID del usuario",
+            "format": "objectid",
+            "example": "507f1f77bcf86cd799439011"
+          }
+        }
+      },
+      "inline_response_200_17": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Productos personalizados obtenidos exitosamente"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomProduct"
+            }
+          },
+          "count": {
+            "type": "integer",
+            "example": 15
+          }
+        }
+      },
+      "customproducts_body": {
+        "required": [
+          "clientId",
+          "productToPersonalize",
+          "selectedMaterials",
+          "totalPrice"
+        ],
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "description": "ID del cliente",
+            "format": "objectid",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          "productToPersonalize": {
+            "type": "string",
+            "description": "Tipo de producto a personalizar",
+            "example": "Ramo de flores naturales",
+            "enum": [
+              "Ramo de flores naturales",
+              "Ramo de flores secas",
+              "Giftbox"
+            ]
+          },
+          "selectedMaterials": {
+            "type": "string",
+            "description": "JSON string con array de materiales seleccionados",
+            "example": "[{\"materialId\":\"507f1f77bcf86cd799439012\",\"quantity\":2}]"
+          },
+          "extraComments": {
+            "minLength": 10,
+            "type": "string",
+            "description": "Comentarios adicionales (mínimo 10 caracteres)",
+            "example": "Por favor usar colores pastel y agregar un lazo rosa"
+          },
+          "totalPrice": {
+            "minimum": 0,
+            "type": "number",
+            "description": "Precio total del producto personalizado",
+            "example": 149.99
+          },
+          "referenceImage": {
+            "type": "string",
+            "description": "Imagen de referencia (opcional, máximo 5MB)",
+            "format": "binary"
+          }
+        }
+      },
+      "customproducts_selectedMaterials": {
+        "required": [
+          "materialId"
+        ],
+        "type": "object",
+        "properties": {
+          "materialId": {
+            "type": "string",
+            "format": "objectid",
+            "example": "507f1f77bcf86cd799439012"
+          },
+          "quantity": {
+            "minimum": 1,
+            "type": "integer",
+            "example": 2
+          }
+        }
+      },
+      "customproducts_body_1": {
+        "required": [
+          "clientId",
+          "productToPersonalize",
+          "selectedMaterials",
+          "totalPrice"
+        ],
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "format": "objectid",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          "productToPersonalize": {
+            "type": "string",
+            "example": "Ramo de flores naturales",
+            "enum": [
+              "Ramo de flores naturales",
+              "Ramo de flores secas",
+              "Giftbox"
+            ]
+          },
+          "selectedMaterials": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/customproducts_selectedMaterials"
+            }
+          },
+          "extraComments": {
+            "minLength": 10,
+            "type": "string",
+            "example": "Por favor usar colores pastel"
+          },
+          "totalPrice": {
+            "minimum": 0,
+            "type": "number",
+            "example": 149.99
+          }
+        }
+      },
+      "inline_response_200_18": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomProductMaterial"
+            }
+          }
+        }
+      },
+      "customproductsmaterials_body": {
+        "required": [
+          "categoryToParticipate",
+          "image",
+          "name",
+          "price",
+          "productToPersonalize",
+          "stock"
+        ],
+        "type": "object",
+        "properties": {
+          "productToPersonalize": {
+            "type": "string",
+            "description": "Tipo de producto al que pertenece el material",
+            "example": "Ramo de flores naturales",
+            "enum": [
+              "Ramo de flores naturales",
+              "Ramo de flores secas",
+              "Giftbox"
+            ]
+          },
+          "categoryToParticipate": {
+            "type": "string",
+            "description": "Categoría del material",
+            "example": "Flores principales"
+          },
+          "name": {
+            "type": "string",
+            "description": "Nombre del material",
+            "example": "Rosa roja premium"
+          },
+          "price": {
+            "minimum": 0,
+            "type": "number",
+            "description": "Precio del material",
+            "example": 15.99
+          },
+          "stock": {
+            "minimum": 0,
+            "type": "integer",
+            "description": "Cantidad disponible en stock",
+            "example": 50
+          },
+          "image": {
+            "type": "string",
+            "description": "Imagen del material (requerida)",
+            "format": "binary"
+          }
+        }
+      },
+      "customproductsmaterials_id_body": {
+        "type": "object",
+        "properties": {
+          "productToPersonalize": {
+            "type": "string",
+            "example": "Ramo de flores naturales",
+            "enum": [
+              "Ramo de flores naturales",
+              "Ramo de flores secas",
+              "Giftbox"
+            ]
+          },
+          "categoryToParticipate": {
+            "type": "string",
+            "example": "Flores principales"
+          },
+          "name": {
+            "type": "string",
+            "example": "Rosa roja premium"
+          },
+          "price": {
+            "minimum": 0,
+            "type": "number",
+            "example": 15.99
+          },
+          "stock": {
+            "minimum": 0,
+            "type": "integer",
+            "example": 50
+          },
+          "image": {
+            "type": "string",
+            "description": "Nueva imagen del material (opcional)",
+            "format": "binary"
+          }
+        }
+      },
+      "Product_images": {
+        "type": "object",
+        "properties": {
+          "image": {
+            "type": "string"
+          }
+        }
+      },
+      "Review_products": {
+        "type": "object",
+        "properties": {
+          "itemType": {
+            "type": "string"
+          },
+          "itemId": {
+            "type": "string"
+          },
+          "itemTypeRef": {
+            "type": "string"
+          }
+        }
+      },
+      "ReviewRequest_products": {
+        "required": [
+          "itemId",
+          "itemType",
+          "itemTypeRef"
+        ],
+        "type": "object",
+        "properties": {
+          "itemType": {
+            "type": "string",
+            "enum": [
+              "product",
+              "custom"
+            ]
+          },
+          "itemId": {
+            "type": "string"
+          },
+          "itemTypeRef": {
+            "type": "string"
+          }
+        }
+      },
+      "ChatMessage_media": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Tipo de media (siempre \"image\")",
+            "example": "image"
+          },
+          "url": {
+            "type": "string",
+            "description": "URL del archivo en Cloudinary",
+            "example": "https://res.cloudinary.com/demo/image/upload/sample.jpg"
+          },
+          "filename": {
+            "type": "string",
+            "description": "Nombre original del archivo",
+            "example": "producto_consulta.jpg"
+          },
+          "size": {
+            "type": "integer",
+            "description": "Tamaño del archivo en bytes",
+            "example": 256000
+          }
+        },
+        "description": "Archivo multimedia adjunto (si existe)",
+        "nullable": true
+      },
+      "StorageStats_fileTypes": {
+        "type": "object",
+        "properties": {
+          "jpg": {
+            "type": "integer",
+            "description": "Cantidad de archivos JPG",
+            "example": 120
+          },
+          "png": {
+            "type": "integer",
+            "description": "Cantidad de archivos PNG",
+            "example": 80
+          },
+          "gif": {
+            "type": "integer",
+            "description": "Cantidad de archivos GIF",
+            "example": 30
+          },
+          "webp": {
+            "type": "integer",
+            "description": "Cantidad de archivos WebP",
+            "example": 20
+          }
+        },
+        "description": "Distribución por tipos de archivo"
+      },
+      "SystemIntegrity_issues": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Tipo de problema detectado",
+            "example": "conversations_without_messages"
+          },
+          "count": {
+            "type": "integer",
+            "description": "Cantidad de instancias del problema",
+            "example": 3
+          },
+          "severity": {
+            "type": "string",
+            "description": "Severidad del problema",
+            "example": "low",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          }
+        }
+      },
+      "ShoppingCart_items": {
+        "type": "object",
+        "properties": {
+          "itemType": {
+            "type": "string",
+            "example": "product",
+            "enum": [
+              "product",
+              "custom"
+            ]
+          },
+          "itemId": {
+            "type": "string",
+            "format": "objectid",
+            "example": "507f1f77bcf86cd799439013"
+          },
+          "itemTypeRef": {
+            "type": "string",
+            "example": "products",
+            "enum": [
+              "products",
+              "CustomProducts"
+            ]
+          },
+          "quantity": {
+            "maximum": 99,
+            "minimum": 1,
+            "type": "integer",
+            "example": 2
+          },
+          "subtotal": {
+            "minimum": 0,
+            "type": "number",
+            "example": 59.98
+          }
+        }
+      },
+      "ShoppingCartUpdate_items": {
+        "type": "object",
+        "properties": {
+          "itemType": {
+            "type": "string",
+            "enum": [
+              "product",
+              "custom"
+            ]
+          },
+          "itemId": {
+            "type": "string",
+            "format": "objectid"
+          },
+          "quantity": {
+            "maximum": 99,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "subtotal": {
+            "minimum": 0,
+            "type": "number"
+          }
+        }
+      },
+      "CustomProduct_selectedMaterials": {
+        "type": "object",
+        "properties": {
+          "materialId": {
+            "type": "string",
+            "format": "objectid",
+            "example": "507f1f77bcf86cd799439013"
+          },
+          "quantity": {
+            "minimum": 1,
+            "type": "integer",
+            "example": 3,
+            "default": 1
+          }
+        }
+      },
+      "inline_response_201_limitInfo": {
+        "type": "object",
+        "properties": {
+          "deletedMessages": {
+            "type": "integer",
+            "example": 5
+          },
+          "deletedFiles": {
+            "type": "integer",
+            "example": 2
+          },
+          "remainingMessages": {
+            "type": "integer",
+            "example": 75
+          }
+        },
+        "description": "Información sobre eliminación automática (si aplica)"
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Usuario no autenticado",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Usuario no autenticado"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Acceso denegado",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "message": {
+                  "type": "string",
+                  "example": "No tienes permisos para acceder a este recurso"
+                }
+              }
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "Error interno del servidor",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Error interno del servidor"
+                }
+              }
+            }
+          }
+        }
+      },
+      "BadRequest": {
+        "description": "Solicitud inválida",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Datos de entrada inválidos"
+                },
+                "code": {
+                  "type": "string",
+                  "example": "INVALID_INPUT"
+                }
+              }
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Recurso no encontrado",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Recurso no encontrado"
+                }
+              }
+            }
+          }
+        }
+      },
+      "FileTypeError": {
+        "description": "Tipo de archivo no permitido",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Solo se permiten archivos de imagen (JPG, PNG, GIF, WebP)"
+                },
+                "code": {
+                  "type": "string",
+                  "example": "INVALID_FILE_TYPE"
+                }
+              }
+            }
+          }
+        }
+      },
+      "FileSizeError": {
+        "description": "Archivo demasiado grande",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "message": {
+                  "type": "string",
+                  "example": "El archivo es demasiado grande (máximo 10MB)"
+                },
+                "code": {
+                  "type": "string",
+                  "example": "FILE_TOO_LARGE"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "description": "Token JWT obtenido del endpoint de login.\n**Formato:** `Authorization: Bearer <token>`\n**Roles disponibles:**\n- `admin`: Acceso completo a todas las funciones\n- `Customer`: Acceso limitado a sus propias conversaciones\n**Obtención del token:** Usar el endpoint `POST /login` con credenciales válidas.\n",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "cookieAuth": {
+        "type": "apiKey",
+        "description": "Token de autenticación almacenado como cookie",
+        "name": "authToken",
+        "in": "cookie"
+      }
+    }
+  }
+}

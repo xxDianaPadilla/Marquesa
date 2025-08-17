@@ -6,6 +6,9 @@ import cookieParser from 'cookie-parser';
  
 // Importa cors para habilitar Cross-Origin Resource Sharing
 import cors from "cors";
+import swaggerUi from "swagger-ui-express";
+import fs from "fs";
+import path from "path";
  
 // Importa todas las rutas de la aplicación
 import productsRoutes from './src/routes/products.js';
@@ -35,6 +38,10 @@ app.use(
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] // ✅ AGREGADO: 'PATCH'
     })
 );
+
+const swaggerDocument = JSON.parse(
+  fs.readFileSync(path.resolve("./Marqueza.json"), "utf-8")
+);
  
 // Middleware para parsear diferentes tipos de datos en las peticiones
 app.use(express.json({ limit: '50mb' })); // Parsea JSON con límite de 50MB
@@ -61,6 +68,8 @@ app.use('/api/passwordReset', passwordResetRoutes); // Recuperación de contrase
 app.use('/api/emailVerification', emailVerificationRoutes); // Verificación de email
 app.use('/api/chat', chatRoutes); // Sistema de chat
 app.use('/api/customProductsMaterials', customProductsMaterialsRoutes); // Materiales para productos personalizados
+app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
  
 // Exporta la aplicación para ser utilizada
 export default app;

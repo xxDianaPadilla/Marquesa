@@ -727,8 +727,8 @@ const OrderDetail = () => {
                 {productsData && productsData.length > 0 ? (
                   productsData.map((item, index) => {
                     // Detectar si es un producto personalizado
-                    const isPersonalized = !item.referenceImage ||
-                      item.isPersonalized ||
+                    const isPersonalized = item.collection === 'CustomProducts' ||
+                      (item.isPersonalized && item.collection !== 'Products') ||
                       item.type === 'personalizado' ||
                       item.customized === true;
 
@@ -748,8 +748,8 @@ const OrderDetail = () => {
                               {item.name || 'Producto sin nombre'}
                             </p>
                             {isPersonalized && (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                <span className="mr-1">🎨</span>
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-pink-100 text-pink-800">
+                                <span className="mr-1 text-sm">🎨</span>
                                 Personalizado
                               </span>
                             )}

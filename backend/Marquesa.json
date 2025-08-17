@@ -87,6 +87,10 @@
     {
       "name": "Custom Products Materials",
       "description": "Operaciones para materiales de productos personalizados"
+    },
+    {
+      "name": "Email Verification",
+      "description": "Proceso de registro de nuevos usuarios mediante verificación por correo electrónico"
     }
   ],
   "paths": {
@@ -635,6 +639,120 @@
         }
       }
     },
+    "/products/featured": {
+      "get": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Obtener productos destacados",
+        "description": "Devuelve una selección aleatoria de hasta 6 productos que tienen stock disponible. Ideal para mostrar en la página de inicio.",
+        "responses": {
+          "200": {
+            "description": "Productos destacados obtenidos exitosamente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200_1"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor."
+          }
+        }
+      }
+    },
+    "/products/bestSelling": {
+      "get": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Obtener los productos más vendidos",
+        "description": "Calcula y devuelve una lista de los 10 productos más vendidos basándose en las ventas completadas ('Pagado').",
+        "responses": {
+          "200": {
+            "description": "Productos más vendidos obtenidos exitosamente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200_2"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor."
+          },
+          "503": {
+            "description": "Servicio de base de datos no disponible temporalmente."
+          }
+        }
+      }
+    },
+    "/products/bestRated": {
+      "get": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Obtener los productos mejor calificados",
+        "description": "Devuelve una lista de los 10 productos mejor calificados. Actualmente utiliza datos simulados de calificación para demostración.",
+        "responses": {
+          "200": {
+            "description": "Productos mejor calificados obtenidos exitosamente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200_3"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor."
+          }
+        }
+      }
+    },
+    "/products/byCategory/{categoryId}": {
+      "get": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Obtener productos por categoría",
+        "description": "Busca y devuelve todos los productos que pertenecen a un ID de categoría específico.",
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "path",
+            "description": "ID de la categoría para filtrar los productos.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "objectid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Productos para la categoría obtenidos exitosamente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200_4"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ID de categoría no válido o no proporcionado."
+          },
+          "500": {
+            "description": "Error interno del servidor."
+          }
+        }
+      }
+    },
     "/reviews": {
       "get": {
         "tags": [
@@ -990,7 +1108,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/inline_response_200_1"
+                  "$ref": "#/components/schemas/inline_response_200_5"
                 }
               }
             }
@@ -1100,7 +1218,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/inline_response_200_2"
+                  "$ref": "#/components/schemas/inline_response_200_6"
                 }
               }
             }
@@ -1256,7 +1374,7 @@
         }
       }
     },
-    "/sales/{id}/payment-status": {
+    "/sales/{id}/paymentStatus": {
       "patch": {
         "tags": [
           "Sales"
@@ -1276,7 +1394,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/id_paymentstatus_body"
+                "$ref": "#/components/schemas/id_paymentStatus_body"
               }
             }
           },
@@ -1298,7 +1416,7 @@
         }
       }
     },
-    "/sales/{id}/tracking-status": {
+    "/sales/{id}/trackingStatus": {
       "patch": {
         "tags": [
           "Sales"
@@ -1318,7 +1436,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/id_trackingstatus_body"
+                "$ref": "#/components/schemas/id_trackingStatus_body"
               }
             }
           },
@@ -1340,7 +1458,7 @@
         }
       }
     },
-    "/sales/{id}/payment-proof": {
+    "/sales/{id}/paymentProof": {
       "patch": {
         "tags": [
           "Sales"
@@ -1360,7 +1478,7 @@
           "content": {
             "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/id_paymentproof_body"
+                "$ref": "#/components/schemas/id_paymentProof_body"
               }
             }
           },
@@ -1382,7 +1500,7 @@
         }
       }
     },
-    "/sales/payment-status/{status}": {
+    "/sales/paymentStatus/{status}": {
       "get": {
         "tags": [
           "Sales"
@@ -1443,7 +1561,7 @@
         }
       }
     },
-    "/sales/tracking-status/{trackingStatus}": {
+    "/sales/trackingStatus/{trackingStatus}": {
       "get": {
         "tags": [
           "Sales"
@@ -1505,7 +1623,7 @@
         }
       }
     },
-    "/sales/stats/sold-products": {
+    "/sales/stats/soldProducts": {
       "get": {
         "tags": [
           "Sales"
@@ -1532,7 +1650,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/inline_response_200_3"
+                  "$ref": "#/components/schemas/inline_response_200_7"
                 }
               }
             }
@@ -1558,7 +1676,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/inline_response_200_4"
+                  "$ref": "#/components/schemas/inline_response_200_8"
                 }
               }
             }
@@ -1581,7 +1699,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/inline_response_200_5"
+                  "$ref": "#/components/schemas/inline_response_200_9"
                 }
               }
             }
@@ -1646,12 +1764,13 @@
         "tags": [
           "Login"
         ],
-        "summary": "Inicio de sesión",
+        "summary": "Iniciar sesión de usuario",
+        "description": "Autentica a un usuario (cliente o administrador) y retorna un token JWT. Implementa un sistema de límite de intentos para prevenir ataques de fuerza bruta.",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/login_body"
+                "$ref": "#/components/schemas/LoginRequest"
               }
             }
           },
@@ -1659,23 +1778,222 @@
         },
         "responses": {
           "200": {
-            "description": "Login exitoso",
+            "description": "Inicio de sesión exitoso. Retorna el token y la información del usuario.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/inline_response_200_6"
+                  "$ref": "#/components/schemas/LoginSuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos de entrada inválidos (email o contraseña no cumplen con el formato).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "401": {
-            "description": "Token inválido"
+            "description": "Credenciales inválidas (usuario no encontrado o contraseña incorrecta).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
-          "404": {
-            "description": "Usuario no encontrado"
+          "429": {
+            "description": "Demasiados intentos fallidos. La cuenta ha sido bloqueada temporalmente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LockStatusResponse"
+                }
+              }
+            }
           },
           "500": {
-            "description": "Error interno del servidor"
+            "description": "Error interno del servidor."
+          },
+          "503": {
+            "description": "Servicio de base de datos no disponible temporalmente."
+          }
+        }
+      }
+    },
+    "/login/verify": {
+      "get": {
+        "tags": [
+          "Login"
+        ],
+        "summary": "Verificar token de autenticación",
+        "description": "Valida un token JWT proporcionado a través de cookies o del encabezado de autorización para verificar si la sesión del usuario es activa y válida.",
+        "responses": {
+          "200": {
+            "description": "El estado del token es retornado. `isAuthenticated` será `true` si el token es válido, y `false` en caso contrario.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenVerificationResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/login/userInfo": {
+      "get": {
+        "tags": [
+          "Login"
+        ],
+        "summary": "Obtener información del usuario autenticado",
+        "description": "Recupera la información detallada del perfil del usuario actualmente autenticado, basándose en el token JWT.",
+        "responses": {
+          "200": {
+            "description": "Información del usuario obtenida exitosamente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200_10"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autorizado. El token no fue proporcionado, es inválido o ha expirado."
+          },
+          "404": {
+            "description": "Usuario no encontrado en la base de datos."
+          },
+          "500": {
+            "description": "Error interno del servidor."
+          },
+          "503": {
+            "description": "Servicio de base de datos no disponible."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/login/refresh": {
+      "post": {
+        "tags": [
+          "Login"
+        ],
+        "summary": "Renovar token de autenticación",
+        "description": "Genera un nuevo token JWT para un usuario con una sesión activa, extendiendo la duración de la misma sin requerir que el usuario vuelva a ingresar sus credenciales.",
+        "responses": {
+          "200": {
+            "description": "Token renovado exitosamente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200_11"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token no proporcionado, inválido o expirado."
+          },
+          "500": {
+            "description": "Error interno del servidor."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/login/lockStatus": {
+      "get": {
+        "tags": [
+          "Login"
+        ],
+        "summary": "Consultar estado de bloqueo de cuenta",
+        "description": "Verifica si una cuenta está actualmente bloqueada debido a múltiples intentos de inicio de sesión fallidos y proporciona información sobre el bloqueo.",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "query",
+            "description": "Email de la cuenta a verificar.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "email"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estado de bloqueo de la cuenta obtenido exitosamente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LockStatusResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "El parámetro email es requerido o tiene un formato inválido."
+          },
+          "500": {
+            "description": "Error interno del servidor."
+          }
+        }
+      }
+    },
+    "/login/clearAttempts": {
+      "post": {
+        "tags": [
+          "Login"
+        ],
+        "summary": "Limpiar intentos de inicio de sesión",
+        "description": "Reinicia el contador de intentos de inicio de sesión fallidos para una cuenta específica. Esta acción desbloquea inmediatamente una cuenta que ha sido bloqueada.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/login_clearAttempts_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Los intentos de inicio de sesión para la cuenta han sido limpiados exitosamente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200_12"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "El campo email es requerido o tiene un formato inválido."
+          },
+          "500": {
+            "description": "Error interno del servidor."
           }
         }
       }
@@ -1686,6 +2004,7 @@
           "Logout"
         ],
         "summary": "Cerrar sesión",
+        "description": "Endpoint para cerrar la sesión del usuario.",
         "responses": {
           "200": {
             "description": "Sesión cerrada exitosamente"
@@ -1699,17 +2018,19 @@
         }
       }
     },
-    "/update-password": {
-      "put": {
+    "/updatePassword/request": {
+      "post": {
         "tags": [
           "recoverPassword"
         ],
-        "summary": "Actualizar Contraseña",
+        "summary": "1. Solicitar código de recuperación",
+        "description": "Inicia el proceso de recuperación de contraseña. El usuario proporciona su email y el sistema le envía un código de verificación de 6 dígitos que expira en 5 minutos.",
+        "operationId": "requestPasswordReset",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/updatepassword_body"
+                "$ref": "#/components/schemas/RequestPasswordResetBody"
               }
             }
           },
@@ -1717,54 +2038,312 @@
         },
         "responses": {
           "200": {
-            "description": "Contraseña actualizada correctamente"
+            "description": "Correo con el código de recuperación enviado exitosamente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
           },
           "400": {
-            "description": "Código de verificación incorrecto o expirado"
+            "description": "El formato del email proporcionado no es válido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Usuario no encontrado"
+            "description": "No se encontró ningún usuario con el email proporcionado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
-          "500": {
-            "description": "Error interno del servidor"
+          "502": {
+            "description": "Error al intentar enviar el correo electrónico de recuperación.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "503": {
-            "description": "Error en la base de datos"
+            "description": "Error en el servicio de la base de datos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
-      },
+      }
+    },
+    "/updatePassword/verify": {
       "post": {
         "tags": [
           "recoverPassword"
         ],
-        "summary": "request",
-        "description": "Ruta para solicitar código de recuperación de contraseña Envía un código de recuperación al email del usuario",
-        "operationId": "post-request",
+        "summary": "2. Verificar código de recuperación",
+        "description": "Verifica que el email y el código de 6 dígitos proporcionados por el usuario sean correctos, no hayan expirado y no hayan sido utilizados.",
+        "operationId": "verifyResetCode",
         "requestBody": {
-          "description": "",
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/updatepassword_body_1"
+                "$ref": "#/components/schemas/VerifyCodeBody"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
-            "description": "Correo enviado, tienes 5 minutos para usar el código"
+            "description": "El código de verificación es correcto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
           },
-          "404": {
-            "description": "Usuario no existe\r\n"
-          },
-          "500": {
-            "description": "Error interno del servidor"
-          },
-          "502": {
-            "description": "Error enviando correo de recuperación. Inténtalo de nuevo."
+          "400": {
+            "description": "El código de verificación es incorrecto, ya fue utilizado o ha expirado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "503": {
-            "description": "Servicio de base de datos no disponible temporalmente"
+            "description": "Error en el servicio de la base de datos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/updatePassword/update": {
+      "post": {
+        "tags": [
+          "recoverPassword"
+        ],
+        "summary": "3. Actualizar la contraseña",
+        "description": "Permite al usuario establecer una nueva contraseña después de haber verificado exitosamente su identidad con el código de recuperación.",
+        "operationId": "updatePassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePasswordBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "La contraseña ha sido actualizada exitosamente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos inválidos. Puede ser que el código de verificación sea incorrecto/expirado, o que la nueva contraseña no cumpla con los requisitos de seguridad.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No se encontró el usuario asociado al email.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error en el servicio de la base de datos al intentar actualizar la contraseña.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/email-verification/request": {
+      "post": {
+        "tags": [
+          "Email Verification"
+        ],
+        "summary": "1. Solicitar código de verificación para registro",
+        "description": "Inicia el proceso de registro de un nuevo usuario. \n- Verifica que el correo no esté ya registrado.\n- Implementa un límite de tiempo (30 segundos) para evitar solicitudes repetidas.\n- Envía un código de 6 dígitos al correo del usuario, válido por 10 minutos.\n",
+        "operationId": "requestEmailVerification",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestEmailVerificationBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Correo de verificación enviado exitosamente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos de entrada inválidos (ej. formato de email incorrecto).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "El correo electrónico proporcionado ya se encuentra registrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas solicitudes. Se debe esperar antes de solicitar otro código.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Error al intentar enviar el correo electrónico de verificación.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Servicio de base de datos no disponible temporalmente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/email-verification/verify": {
+      "post": {
+        "tags": [
+          "Email Verification"
+        ],
+        "summary": "2. Verificar código y completar registro",
+        "description": "Verifica el código de 6 dígitos y, si es correcto, crea la nueva cuenta de cliente con los datos proporcionados.\n- Valida que el código sea correcto, no haya expirado y no haya sido utilizado.\n- Valida todos los datos del nuevo usuario (edad mínima, longitud de campos, etc.).\n- Hashea la contraseña antes de guardarla.\n- Una vez completado, elimina todos los códigos de verificación para ese correo.\n",
+        "operationId": "verifyEmailAndRegister",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyAndRegisterBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Usuario registrado exitosamente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos inválidos. Puede ser que el código sea incorrecto/expirado, o que los datos del usuario no cumplan los requisitos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto. El correo electrónico ya fue registrado mientras se realizaba la verificación.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error en el servicio de la base de datos al intentar crear el usuario.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -1845,7 +2424,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/inline_response_200_7"
+                  "$ref": "#/components/schemas/inline_response_200_13"
                 }
               }
             }
@@ -1918,7 +2497,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/inline_response_200_8"
+                  "$ref": "#/components/schemas/inline_response_200_14"
                 }
               }
             }
@@ -2064,7 +2643,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/inline_response_200_9"
+                  "$ref": "#/components/schemas/inline_response_200_15"
                 }
               }
             }
@@ -2099,7 +2678,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/inline_response_200_10"
+                  "$ref": "#/components/schemas/inline_response_200_16"
                 }
               }
             }
@@ -2134,7 +2713,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/inline_response_200_11"
+                  "$ref": "#/components/schemas/inline_response_200_17"
                 }
               }
             }
@@ -2169,7 +2748,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/inline_response_200_12"
+                  "$ref": "#/components/schemas/inline_response_200_18"
                 }
               }
             }
@@ -2232,7 +2811,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/inline_response_200_13"
+                  "$ref": "#/components/schemas/inline_response_200_19"
                 }
               }
             }
@@ -2308,7 +2887,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/inline_response_200_14"
+                  "$ref": "#/components/schemas/inline_response_200_20"
                 }
               }
             }
@@ -2609,7 +3188,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/inline_response_200_15"
+                  "$ref": "#/components/schemas/inline_response_200_21"
                 }
               }
             }
@@ -2674,7 +3253,7 @@
         }
       }
     },
-    "/clients/{clientId}/validate-code": {
+    "/clients/{clientId}/validateCode": {
       "post": {
         "tags": [
           "Clients"
@@ -2695,7 +3274,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/clientId_validatecode_body"
+                "$ref": "#/components/schemas/clientId_validateCode_body"
               }
             }
           },
@@ -2717,7 +3296,7 @@
         }
       }
     },
-    "/clients/{clientId}/use-code": {
+    "/clients/{clientId}/useCode": {
       "put": {
         "tags": [
           "Clients"
@@ -2738,7 +3317,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/clientId_usecode_body"
+                "$ref": "#/components/schemas/clientId_useCode_body"
               }
             }
           },
@@ -2760,7 +3339,7 @@
         }
       }
     },
-    "/clients/{clientId}/promotional-codes": {
+    "/clients/{clientId}/promotionalCodes": {
       "get": {
         "tags": [
           "Clients"
@@ -2804,7 +3383,7 @@
         }
       }
     },
-    "/shopping-cart": {
+    "/shoppingCart": {
       "get": {
         "tags": [
           "Shopping Cart"
@@ -2817,7 +3396,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/inline_response_200_16"
+                  "$ref": "#/components/schemas/inline_response_200_22"
                 }
               }
             }
@@ -2844,7 +3423,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/shoppingcart_body"
+                "$ref": "#/components/schemas/shoppingCart_body"
               }
             }
           },
@@ -2866,7 +3445,7 @@
         }
       }
     },
-    "/shopping-cart/client/{clientId}/item/{itemId}": {
+    "/shoppingCart/client/{clientId}/item/{itemId}": {
       "delete": {
         "tags": [
           "Shopping Cart"
@@ -2913,7 +3492,7 @@
         }
       }
     },
-    "/shopping-cart/update-quantity": {
+    "/shoppingCart/updateQuantity": {
       "put": {
         "tags": [
           "Shopping Cart"
@@ -2924,7 +3503,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/shoppingcart_updatequantity_body"
+                "$ref": "#/components/schemas/shoppingCart_updateQuantity_body"
               }
             }
           },
@@ -2946,7 +3525,7 @@
         }
       }
     },
-    "/shopping-cart/add-item": {
+    "/shoppingCart/addItem": {
       "post": {
         "tags": [
           "Shopping Cart"
@@ -2957,7 +3536,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/shoppingcart_additem_body"
+                "$ref": "#/components/schemas/shoppingCart_addItem_body"
               }
             }
           },
@@ -2979,7 +3558,7 @@
         }
       }
     },
-    "/shopping-cart/cleanup-duplicates": {
+    "/shoppingCart/cleanupDuplicates": {
       "post": {
         "tags": [
           "Shopping Cart"
@@ -2996,7 +3575,7 @@
         }
       }
     },
-    "/shopping-cart/active/{userId}": {
+    "/shoppingCart/active/{userId}": {
       "get": {
         "tags": [
           "Shopping Cart"
@@ -3029,7 +3608,7 @@
         }
       }
     },
-    "/shopping-cart/{id}": {
+    "/shoppingCart/{id}": {
       "get": {
         "tags": [
           "Shopping Cart"
@@ -3138,7 +3717,7 @@
         }
       }
     },
-    "/shopping-cart/client/{clientId}": {
+    "/shoppingCart/client/{clientId}": {
       "get": {
         "tags": [
           "Shopping Cart"
@@ -3174,7 +3753,7 @@
         }
       }
     },
-    "/shopping-cart/{cartId}/clear-after-purchase": {
+    "/shoppingCart/{cartId}/clear-after-purchase": {
       "post": {
         "tags": [
           "Shopping Cart"
@@ -3219,7 +3798,7 @@
         }
       }
     },
-    "/custom-products": {
+    "/customProducts": {
       "get": {
         "tags": [
           "Custom Products"
@@ -3232,7 +3811,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/inline_response_200_17"
+                  "$ref": "#/components/schemas/inline_response_200_23"
                 }
               }
             }
@@ -3258,12 +3837,12 @@
           "content": {
             "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/customproducts_body"
+                "$ref": "#/components/schemas/customProducts_body"
               }
             },
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/customproducts_body_1"
+                "$ref": "#/components/schemas/customProducts_body_1"
               }
             }
           },
@@ -3285,7 +3864,7 @@
         }
       }
     },
-    "/custom-products/client/{clientId}": {
+    "/customProducts/client/{clientId}": {
       "get": {
         "tags": [
           "Custom Products"
@@ -3321,7 +3900,7 @@
         }
       }
     },
-    "/custom-products/{id}": {
+    "/customProducts/{id}": {
       "get": {
         "tags": [
           "Custom Products"
@@ -3390,7 +3969,7 @@
         }
       }
     },
-    "/custom-products-materials": {
+    "/customProductsMaterials": {
       "get": {
         "tags": [
           "Custom Products Materials"
@@ -3403,7 +3982,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/inline_response_200_18"
+                  "$ref": "#/components/schemas/inline_response_200_24"
                 }
               }
             }
@@ -3423,7 +4002,7 @@
           "content": {
             "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/customproductsmaterials_body"
+                "$ref": "#/components/schemas/customProductsMaterials_body"
               }
             }
           },
@@ -3442,7 +4021,7 @@
         }
       }
     },
-    "/custom-products-materials/product/{productType}/category/{category}": {
+    "/customProductsMaterials/product/{productType}/category/{category}": {
       "get": {
         "tags": [
           "Custom Products Materials"
@@ -3486,7 +4065,7 @@
         }
       }
     },
-    "/custom-products-materials/product/{productType}": {
+    "/customProductsMaterials/product/{productType}": {
       "get": {
         "tags": [
           "Custom Products Materials"
@@ -3523,7 +4102,7 @@
         }
       }
     },
-    "/custom-products-materials/{id}": {
+    "/customProductsMaterials/{id}": {
       "get": {
         "tags": [
           "Custom Products Materials"
@@ -3577,7 +4156,7 @@
           "content": {
             "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/customproductsmaterials_id_body"
+                "$ref": "#/components/schemas/customProductsMaterials_id_body"
               }
             }
           },
@@ -3657,6 +4236,89 @@
           }
         }
       },
+      "RequestEmailVerificationBody": {
+        "required": [
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "Correo electrónico para el nuevo registro.",
+            "format": "email",
+            "example": "nuevo.usuario@example.com"
+          },
+          "fullName": {
+            "type": "string",
+            "description": "Nombre completo del usuario (opcional, para personalizar el correo).",
+            "example": "Maria Rosales"
+          }
+        }
+      },
+      "VerifyAndRegisterBody": {
+        "required": [
+          "email",
+          "userData",
+          "verificationCode"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "Correo electrónico del usuario que se está registrando.",
+            "format": "email",
+            "example": "nuevo.usuario@example.com"
+          },
+          "verificationCode": {
+            "type": "string",
+            "description": "Código de 6 dígitos recibido por correo.",
+            "example": "654321"
+          },
+          "userData": {
+            "$ref": "#/components/schemas/NewUserRegistrationData"
+          }
+        }
+      },
+      "NewUserRegistrationData": {
+        "required": [
+          "address",
+          "birthDate",
+          "fullName",
+          "password",
+          "phone"
+        ],
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "string",
+            "description": "Nombre completo del cliente (mínimo 10 caracteres).",
+            "example": "Carlos Alberto Rodriguez"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Número de teléfono del cliente (mínimo 8 caracteres).",
+            "example": "78901234"
+          },
+          "birthDate": {
+            "type": "string",
+            "description": "Fecha de nacimiento del cliente (debe ser mayor de 13 años).",
+            "format": "date",
+            "example": "1995-06-15"
+          },
+          "address": {
+            "type": "string",
+            "description": "Dirección de residencia del cliente (mínimo 10 caracteres).",
+            "example": "Colonia San Benito, Pasaje 1, #5"
+          },
+          "password": {
+            "type": "string",
+            "description": "Contraseña para la nueva cuenta (mínimo 8 caracteres).",
+            "format": "password",
+            "example": "ContraseñaSegura123"
+          }
+        },
+        "description": "Datos completos requeridos para crear una nueva cuenta de cliente."
+      },
       "Media": {
         "type": "object",
         "properties": {
@@ -3681,6 +4343,186 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "LoginRequest": {
+        "required": [
+          "email",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "Correo electrónico del usuario.",
+            "format": "email",
+            "example": "usuario@example.com"
+          },
+          "password": {
+            "type": "string",
+            "description": "Contraseña del usuario (mínimo 8 caracteres).",
+            "format": "password",
+            "example": "password123"
+          }
+        }
+      },
+      "RequestPasswordResetBody": {
+        "required": [
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "Email del usuario para enviar el código de recuperación.",
+            "format": "email",
+            "example": "usuario@example.com"
+          }
+        }
+      },
+      "VerifyCodeBody": {
+        "required": [
+          "email",
+          "verificationCode"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "Email del usuario.",
+            "format": "email",
+            "example": "usuario@example.com"
+          },
+          "verificationCode": {
+            "type": "string",
+            "description": "Código de 6 dígitos recibido por email.",
+            "example": "123456"
+          }
+        }
+      },
+      "UpdatePasswordBody": {
+        "required": [
+          "email",
+          "newPassword",
+          "verificationCode"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "Email del usuario.",
+            "format": "email",
+            "example": "usuario@example.com"
+          },
+          "verificationCode": {
+            "type": "string",
+            "description": "Código de 6 dígitos verificado.",
+            "example": "123456"
+          },
+          "newPassword": {
+            "type": "string",
+            "description": "Nueva contraseña. Debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número.",
+            "format": "password",
+            "example": "NuevaContraseña123"
+          }
+        }
+      },
+      "LoginSuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "login successful"
+          },
+          "userType": {
+            "type": "string",
+            "example": "Customer",
+            "enum": [
+              "admin",
+              "Customer"
+            ]
+          },
+          "token": {
+            "type": "string",
+            "description": "Token JWT para autenticación.",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          },
+          "tokenExpiry": {
+            "type": "number",
+            "description": "Timestamp de expiración del token.",
+            "example": 1678886400
+          },
+          "cookieSet": {
+            "type": "boolean",
+            "description": "Indica si la cookie de autenticación fue establecida.",
+            "example": true
+          },
+          "user": {
+            "$ref": "#/components/schemas/LoginSuccessResponse_user"
+          },
+          "sessionInfo": {
+            "$ref": "#/components/schemas/LoginSuccessResponse_sessionInfo"
+          }
+        }
+      },
+      "TokenVerificationResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "objectid"
+          },
+          "userType": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "Customer"
+            ]
+          },
+          "isAuthenticated": {
+            "type": "boolean"
+          }
+        }
+      },
+      "LockStatusResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "isLocked": {
+            "type": "boolean"
+          },
+          "remainingTime": {
+            "type": "integer",
+            "description": "Tiempo restante de bloqueo en segundos.",
+            "example": 850
+          },
+          "formattedTime": {
+            "type": "string",
+            "description": "Tiempo restante de bloqueo formateado.",
+            "example": "14m 10s"
+          },
+          "attempts": {
+            "type": "integer",
+            "example": 5
+          },
+          "maxAttempts": {
+            "type": "integer",
+            "example": 5
+          },
+          "warning": {
+            "type": "string",
+            "nullable": true,
+            "example": "Te quedan 2 intentos antes de que tu cuenta sea bloqueada temporalmente."
           }
         }
       },
@@ -4662,6 +5504,18 @@
           }
         }
       },
+      "SuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": {
@@ -4692,12 +5546,9 @@
           },
           "errors": {
             "type": "array",
-            "example": [
-              "El clientId es requerido",
-              "Los items deben ser un array"
-            ],
             "items": {
-              "type": "string"
+              "type": "string",
+              "example": "[\"El clientId es requerido\",\"Los items deben ser un array\"]"
             }
           },
           "error": {
@@ -4883,6 +5734,89 @@
           }
         }
       },
+      "inline_response_200_1": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Product"
+            }
+          },
+          "total": {
+            "type": "integer"
+          }
+        }
+      },
+      "inline_response_200_2": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/inline_response_200_2_data"
+            }
+          },
+          "count": {
+            "type": "integer"
+          },
+          "totalSales": {
+            "type": "integer"
+          }
+        }
+      },
+      "inline_response_200_3": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "bestRated": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/inline_response_200_3_bestRated"
+            }
+          },
+          "count": {
+            "type": "integer"
+          }
+        }
+      },
+      "inline_response_200_4": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Product"
+            }
+          },
+          "count": {
+            "type": "integer"
+          }
+        }
+      },
       "id_moderate_body": {
         "required": [
           "action"
@@ -4909,7 +5843,7 @@
           }
         }
       },
-      "inline_response_200_1": {
+      "inline_response_200_5": {
         "type": "object",
         "properties": {
           "totalReviews": {
@@ -4920,7 +5854,7 @@
           }
         }
       },
-      "inline_response_200_2": {
+      "inline_response_200_6": {
         "type": "object",
         "properties": {
           "success": {
@@ -5051,7 +5985,7 @@
           }
         }
       },
-      "id_paymentstatus_body": {
+      "id_paymentStatus_body": {
         "required": [
           "status"
         ],
@@ -5066,7 +6000,7 @@
           }
         }
       },
-      "id_trackingstatus_body": {
+      "id_trackingStatus_body": {
         "required": [
           "trackingStatus"
         ],
@@ -5082,7 +6016,7 @@
           }
         }
       },
-      "id_paymentproof_body": {
+      "id_paymentProof_body": {
         "required": [
           "paymentProofImage"
         ],
@@ -5094,7 +6028,7 @@
           }
         }
       },
-      "inline_response_200_3": {
+      "inline_response_200_7": {
         "type": "object",
         "properties": {
           "soldProducts": {
@@ -5102,7 +6036,7 @@
           }
         }
       },
-      "inline_response_200_4": {
+      "inline_response_200_8": {
         "type": "object",
         "properties": {
           "totalSales": {
@@ -5110,7 +6044,7 @@
           }
         }
       },
-      "inline_response_200_5": {
+      "inline_response_200_9": {
         "type": "object",
         "properties": {
           "totalSales": {
@@ -5124,80 +6058,58 @@
           }
         }
       },
-      "login_body": {
-        "required": [
-          "email",
-          "password",
-          "userType"
-        ],
-        "type": "object",
-        "properties": {
-          "email": {
-            "type": "string",
-            "description": "Email del usuario",
-            "format": "email"
-          },
-          "password": {
-            "type": "string",
-            "description": "Contraseña del usuario"
-          },
-          "userType": {
-            "type": "string",
-            "description": "Tipo de usuario"
-          }
-        }
-      },
-      "inline_response_200_6": {
+      "inline_response_200_10": {
         "type": "object",
         "properties": {
           "success": {
             "type": "boolean"
           },
+          "user": {
+            "$ref": "#/components/schemas/UserProfile"
+          },
           "token": {
             "type": "string"
-          },
-          "user": {
-            "type": "object"
           }
         }
       },
-      "updatepassword_body": {
+      "inline_response_200_11": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "tokenExpiry": {
+            "type": "number"
+          }
+        }
+      },
+      "login_clearAttempts_body": {
         "required": [
-          "email",
-          "newPassword",
-          "verificationCode"
+          "email"
         ],
         "type": "object",
         "properties": {
           "email": {
             "type": "string",
-            "description": "Email del usuario que desea actualizar contraseña",
+            "description": "Email de la cuenta para la cual se limpiarán los intentos.",
             "format": "email"
-          },
-          "verificationCode": {
-            "type": "number",
-            "description": "Código de verificación"
-          },
-          "newPassword": {
-            "type": "string",
-            "description": "Nueva contraseña que el usuario desee"
           }
         }
       },
-      "updatepassword_body_1": {
+      "inline_response_200_12": {
         "type": "object",
         "properties": {
-          "email": {
-            "type": "string",
-            "x-stoplight": {
-              "id": "wup2jsc2eklv9"
-            }
+          "success": {
+            "type": "boolean"
           },
-          "verificationCode": {
-            "type": "string",
-            "x-stoplight": {
-              "id": "sxitd2q3j84xk"
-            }
+          "message": {
+            "type": "string"
           }
         }
       },
@@ -5240,7 +6152,7 @@
           }
         }
       },
-      "inline_response_200_7": {
+      "inline_response_200_13": {
         "type": "object",
         "properties": {
           "success": {
@@ -5264,7 +6176,7 @@
           }
         }
       },
-      "inline_response_200_8": {
+      "inline_response_200_14": {
         "type": "object",
         "properties": {
           "success": {
@@ -5282,7 +6194,7 @@
           }
         }
       },
-      "inline_response_200_9": {
+      "inline_response_200_15": {
         "type": "object",
         "properties": {
           "success": {
@@ -5300,7 +6212,7 @@
           }
         }
       },
-      "inline_response_200_10": {
+      "inline_response_200_16": {
         "type": "object",
         "properties": {
           "success": {
@@ -5312,7 +6224,7 @@
           }
         }
       },
-      "inline_response_200_11": {
+      "inline_response_200_17": {
         "type": "object",
         "properties": {
           "success": {
@@ -5328,7 +6240,7 @@
           }
         }
       },
-      "inline_response_200_12": {
+      "inline_response_200_18": {
         "type": "object",
         "properties": {
           "success": {
@@ -5344,7 +6256,7 @@
           }
         }
       },
-      "inline_response_200_13": {
+      "inline_response_200_19": {
         "type": "object",
         "properties": {
           "success": {
@@ -5381,7 +6293,7 @@
           }
         }
       },
-      "inline_response_200_14": {
+      "inline_response_200_20": {
         "type": "object",
         "properties": {
           "success": {
@@ -5480,7 +6392,7 @@
           }
         }
       },
-      "inline_response_200_15": {
+      "inline_response_200_21": {
         "type": "object",
         "properties": {
           "success": {
@@ -5497,7 +6409,7 @@
           }
         }
       },
-      "clientId_validatecode_body": {
+      "clientId_validateCode_body": {
         "required": [
           "code"
         ],
@@ -5510,7 +6422,7 @@
           }
         }
       },
-      "clientId_usecode_body": {
+      "clientId_useCode_body": {
         "required": [
           "codeId"
         ],
@@ -5526,7 +6438,7 @@
           }
         }
       },
-      "inline_response_200_16": {
+      "inline_response_200_22": {
         "type": "object",
         "properties": {
           "success": {
@@ -5545,7 +6457,7 @@
           }
         }
       },
-      "shoppingcart_items": {
+      "shoppingCart_items": {
         "required": [
           "productId",
           "quantity"
@@ -5564,7 +6476,7 @@
           }
         }
       },
-      "shoppingcart_body": {
+      "shoppingCart_body": {
         "required": [
           "clientId",
           "items",
@@ -5582,7 +6494,7 @@
             "minItems": 1,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/shoppingcart_items"
+              "$ref": "#/components/schemas/shoppingCart_items"
             }
           },
           "promotionalCode": {
@@ -5596,7 +6508,7 @@
           }
         }
       },
-      "shoppingcart_updatequantity_body": {
+      "shoppingCart_updateQuantity_body": {
         "required": [
           "clientId",
           "itemId",
@@ -5622,7 +6534,7 @@
           }
         }
       },
-      "shoppingcart_additem_body": {
+      "shoppingCart_addItem_body": {
         "required": [
           "clientId",
           "itemId"
@@ -5671,7 +6583,7 @@
           }
         }
       },
-      "inline_response_200_17": {
+      "inline_response_200_23": {
         "type": "object",
         "properties": {
           "success": {
@@ -5694,7 +6606,7 @@
           }
         }
       },
-      "customproducts_body": {
+      "customProducts_body": {
         "required": [
           "clientId",
           "productToPersonalize",
@@ -5743,7 +6655,7 @@
           }
         }
       },
-      "customproducts_selectedMaterials": {
+      "customProducts_selectedMaterials": {
         "required": [
           "materialId"
         ],
@@ -5761,7 +6673,7 @@
           }
         }
       },
-      "customproducts_body_1": {
+      "customProducts_body_1": {
         "required": [
           "clientId",
           "productToPersonalize",
@@ -5788,7 +6700,7 @@
             "minItems": 1,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/customproducts_selectedMaterials"
+              "$ref": "#/components/schemas/customProducts_selectedMaterials"
             }
           },
           "extraComments": {
@@ -5803,7 +6715,7 @@
           }
         }
       },
-      "inline_response_200_18": {
+      "inline_response_200_24": {
         "type": "object",
         "properties": {
           "success": {
@@ -5818,7 +6730,7 @@
           }
         }
       },
-      "customproductsmaterials_body": {
+      "customProductsMaterials_body": {
         "required": [
           "categoryToParticipate",
           "image",
@@ -5868,7 +6780,7 @@
           }
         }
       },
-      "customproductsmaterials_id_body": {
+      "customProductsMaterials_id_body": {
         "type": "object",
         "properties": {
           "productToPersonalize": {
@@ -5902,6 +6814,42 @@
             "type": "string",
             "description": "Nueva imagen del material (opcional)",
             "format": "binary"
+          }
+        }
+      },
+      "LoginSuccessResponse_user": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "objectid",
+            "example": "64a7b8c9d1e2f3g4h5i6j7k8"
+          },
+          "userType": {
+            "type": "string",
+            "example": "Customer"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "usuario@example.com"
+          }
+        }
+      },
+      "LoginSuccessResponse_sessionInfo": {
+        "type": "object",
+        "properties": {
+          "loginTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresIn": {
+            "type": "string",
+            "example": "7 days"
+          },
+          "persistent": {
+            "type": "boolean",
+            "example": true
           }
         }
       },
@@ -6103,6 +7051,50 @@
             "type": "integer",
             "example": 3,
             "default": 1
+          }
+        }
+      },
+      "inline_response_200_2_data": {
+        "type": "object",
+        "properties": {
+          "product": {
+            "$ref": "#/components/schemas/Product"
+          },
+          "sold": {
+            "type": "integer"
+          },
+          "revenue": {
+            "type": "number"
+          },
+          "percentage": {
+            "type": "number"
+          }
+        }
+      },
+      "inline_response_200_3_bestRated": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string",
+            "format": "uri"
+          },
+          "averageRating": {
+            "type": "number"
+          },
+          "reviewCount": {
+            "type": "integer"
           }
         }
       },

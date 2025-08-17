@@ -14,18 +14,18 @@ router.route("/")
     .post(shoppingCartController.createShoppingCart);
 
 // VERIFICAR QUE ESTA RUTA ESTÉ PRESENTE Y ANTES DE LAS RUTAS CON PARÁMETROS
-router.route("/remove-item")
+router.route("/removeItem")
     .delete(shoppingCartController.removeSpecificItem);
 
 // VERIFICAR QUE ESTAS RUTAS ESTÉN PRESENTES
-router.route("/update-quantity")
+router.route("/updateQuantity")
     .put(shoppingCartController.updateItemQuantity);
 
-router.route("/add-item")
+router.route("/addItem")
     .post(shoppingCartController.addItemToCartNew);
 
 // NUEVA RUTA: Para limpiar carritos duplicados
-router.route("/cleanup-duplicates")
+router.route("/cleanupDuplicates")
     .post(shoppingCartController.cleanupDuplicateCarts);
 
 // NUEVA RUTA: Obtener carrito activo de un usuario específico
@@ -41,7 +41,7 @@ router.route("/:id")
 router.route("/client/:clientId")
     .get(shoppingCartController.getShoppingCartByClient);
 
-router.route("/:clientId/add-item")
+router.route("/:clientId/addItem")
     .post(shoppingCartController.addItemToCart);
 
 router.route("/client/:clientId/items")
@@ -51,7 +51,7 @@ router.route("/client/:clientId/items")
 router.route("/:cartId/promotionalCode")
     .put(shoppingCartController.applyPromotionalCode);
 
-router.route("/:cartId/clear-after-purchase")
+router.route("/:cartId/clearAfterPurchase")
     .post(shoppingCartController.clearCartAfterPurchase);
 
 // Exportar el enrutador

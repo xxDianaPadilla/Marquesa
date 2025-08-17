@@ -21,7 +21,7 @@ export const useBestRankedProducts = () => {
 
         // CORREGIDO: Usar el endpoint correcto que existe en el backend
         const response = await fetch(
-          "https://marquesa.onrender.com/api/products/best-rated", // ← BACKEND URL CORRECTA
+          "https://marquesa.onrender.com/api/products/bestRated", // ← BACKEND URL CORRECTA
           {
             method: 'GET',
             credentials: 'include',
@@ -36,7 +36,7 @@ export const useBestRankedProducts = () => {
         }
 
         const responseData = await response.json();
-        console.log("Datos recibidos del servidor (best-rated):", responseData);
+        console.log("Datos recibidos del servidor (bestRated):", responseData);
 
         // CORREGIDO: Verificar la estructura correcta que devuelve el backend
         if (responseData.success && Array.isArray(responseData.bestRated)) {

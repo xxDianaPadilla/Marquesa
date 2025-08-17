@@ -89,7 +89,7 @@ router.get("/:saleId/details", salesController.getOrderDetails);
 router.put("/:saleId/cancel", salesController.cancelOrder);
 
 // Ruta para verificar si un pedido puede ser cancelado
-router.get("/:saleId/cancellation-eligibility", salesController.checkCancellationEligibility);
+router.get("/:saleId/cancellationEligibility", salesController.checkCancellationEligibility);
 
 // ===== RUTAS CON PARÁMETROS :id =====
 

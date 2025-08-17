@@ -26,7 +26,7 @@ export const useBestSellingProducts = () => {
         console.log('🛒 Obteniendo productos más vendidos...');
 
         // CORREGIDO: Agregar headers apropiados y manejo de errores mejorado
-        const response = await fetch("https://marquesa.onrender.com/api/products/best-selling", {
+        const response = await fetch("https://marquesa.onrender.com/api/products/bestSelling", {
           method: 'GET',
           credentials: 'include',
           headers: {

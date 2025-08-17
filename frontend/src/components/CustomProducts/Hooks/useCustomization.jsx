@@ -140,10 +140,10 @@ const useCustomization = () => {
  
             console.log('=== DATOS ENVIADOS AL BACKEND ===');
             console.log('Payload:', requestPayload);
-            console.log('URL:', 'https://marquesa.onrender.com/api/shoppingCart/add-item');
+            console.log('URL:', 'https://marquesa.onrender.com/api/shoppingCart/addItem');
  
             // ✅ USAR EL ENDPOINT CORRECTO (sin userId en la URL)
-            const response = await fetch('https://marquesa.onrender.com/api/shoppingCart/add-item', {
+            const response = await fetch('https://marquesa.onrender.com/api/shoppingCart/addItem', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -121,13 +121,13 @@ router.put("/ruleta/use",
 
 // ==================== RUTAS CON PARÁMETROS (VAN AL FINAL) ====================
 
-router.route("/:clientId/validate-code")
+router.route("/:clientId/validateCode")
     .post(clientsController.validatePromotionalCode);
 
-router.route("/:clientId/use-code")
+router.route("/:clientId/useCode")
     .put(clientsController.usePromotionalCode);
 
-router.route("/:clientId/promotional-codes")
+router.route("/:clientId/promotionalCodes")
     .get(clientsController.getClientPromotionalCodes);
 
 // Manejo de errores de multer

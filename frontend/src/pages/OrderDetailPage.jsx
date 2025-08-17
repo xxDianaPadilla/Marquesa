@@ -126,7 +126,7 @@ const OrderDetail = () => {
   // Función para verificar elegibilidad de cancelación
   const getCancellationEligibility = async (saleId) => {
     try {
-      const response = await fetch(`https://marquesa.onrender.com/api/sales/${saleId}/cancellation-eligibility`, {
+      const response = await fetch(`https://marquesa.onrender.com/api/sales/${saleId}/cancellationEligibility`, {
         method: 'GET',
         credentials: 'include',
         headers: {

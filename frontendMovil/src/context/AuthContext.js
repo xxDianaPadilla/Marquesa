@@ -225,7 +225,7 @@ export const AuthProvider = ({ children }) => {
         try {
             console.log('Obteniendo información del usuario...');
 
-            const response = await fetch('https://marquesa.onrender.com/api/login/user-info', {
+            const response = await fetch('https://marquesa.onrender.com/api/login/userInfo', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',

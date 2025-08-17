@@ -108,7 +108,7 @@ const ErrorState = ({ error, onRetry }) => (
     </div>
 );
 
-// Main component that manages the display of best-selling products
+// Main component that manages the display of bestSelling products
 const BestSelledProductsCards = () => {
     // Custom hook to fetch best selling products data
     const { bestSelling, loading, error, totalSales } = useBestSellingProducts();

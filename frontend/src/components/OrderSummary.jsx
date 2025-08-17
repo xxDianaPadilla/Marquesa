@@ -27,7 +27,7 @@ const OrderSummary = ({
      */
     const validatePromotionalCode = async (code) => {
         try {
-            const response = await fetch(`https://marquesa.onrender.com/api/clients/${userId}/validate-code`, {
+            const response = await fetch(`https://marquesa.onrender.com/api/clients/${userId}/validateCode`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {

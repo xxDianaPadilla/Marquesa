@@ -565,7 +565,7 @@ export const AuthProvider = ({ children }) => {
 
             console.log('🔑 Haciendo petición con token disponible');
 
-            const response = await fetch('https://marquesa.onrender.com/api/login/user-info', {
+            const response = await fetch('https://marquesa.onrender.com/api/login/userInfo', {
                 method: 'GET',
                 credentials: 'include', // ✅ AGREGADO: incluir cookies para verificación híbrida
                 headers: getAuthHeaders(), // ✅ CORRECCIÓN: Usar headers híbridos
@@ -762,7 +762,7 @@ export const AuthProvider = ({ children }) => {
 
                 if (token) {
                     try {
-                        const response = await fetch('https://marquesa.onrender.com/api/login/user-info', {
+                        const response = await fetch('https://marquesa.onrender.com/api/login/userInfo', {
                             method: 'GET',
                             credentials: 'include', // ✅ AGREGADO: incluir cookies
                             headers: getAuthHeaders(), // ✅ CORRECCIÓN: Usar headers híbridos
@@ -1081,7 +1081,7 @@ export const AuthProvider = ({ children }) => {
                }
 
                try {
-                   const response = await fetch('https://marquesa.onrender.com/api/login/user-info', {
+                   const response = await fetch('https://marquesa.onrender.com/api/login/userInfo', {
                        method: 'GET',
                        credentials: 'include', // ✅ AGREGADO: incluir cookies
                        headers: getAuthHeaders(), // ✅ CORRECCIÓN: Usar headers híbridos
@@ -1235,7 +1235,7 @@ export const AuthProvider = ({ children }) => {
                // Verificar con servidor cada 15 minutos
                const token = getBestAvailableToken();
                if (token) {
-                   fetch('https://marquesa.onrender.com/api/login/user-info', {
+                   fetch('https://marquesa.onrender.com/api/login/userInfo', {
                        method: 'GET',
                        credentials: 'include', // ✅ AGREGADO: incluir cookies
                        headers: getAuthHeaders(), // ✅ CORRECCIÓN: Usar headers híbridos

@@ -95,13 +95,13 @@ router.get('/featured', (req, res, next) => {
     next();
 }, productsController.getFeaturedProducts);
 
-router.get('/best-selling', (req, res, next) => {
-    console.log('🏆 [ROUTE] Ejecutando ruta /best-selling');
+router.get('/bestSelling', (req, res, next) => {
+    console.log('🏆 [ROUTE] Ejecutando ruta /bestSelling');
     next();
 }, productsController.getBestSellingProducts);
 
-router.get('/best-rated', (req, res, next) => {
-    console.log('⭐ [ROUTE] Ejecutando ruta /best-rated');
+router.get('/bestRated', (req, res, next) => {
+    console.log('⭐ [ROUTE] Ejecutando ruta /bestRated');
     next();
 }, productsController.getBestRatedProducts);
 

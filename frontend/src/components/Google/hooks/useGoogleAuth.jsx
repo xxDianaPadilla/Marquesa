@@ -432,7 +432,7 @@ const useGoogleAuth = () => {
         try {
             console.log('📋 Obteniendo información específica de Google...');
            
-            const response = await fetch('https://marquesa.onrender.com/api/auth/google/user-info', {
+            const response = await fetch('https://marquesa.onrender.com/api/auth/google/userInfo', {
                 method: 'GET',
                 credentials: 'include',
                 headers: {

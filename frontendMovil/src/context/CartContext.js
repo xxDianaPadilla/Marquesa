@@ -416,7 +416,7 @@ export const CartProvider = ({ children }) => {
 
             console.log('Agregando al carrito:', requestBody);
 
-            const url = `${API_BASE_URL}/shoppingCart/add-item`;
+            const url = `${API_BASE_URL}/shoppingCart/addItem`;
             const response = await fetchWithTimeout(url, {
                 method: 'POST',
                 headers,
@@ -471,7 +471,7 @@ export const CartProvider = ({ children }) => {
             
             console.log('Actualizando cantidad:', { itemId, newQuantity });
 
-            const url = `${API_BASE_URL}/shoppingCart/update-quantity`;
+            const url = `${API_BASE_URL}/shoppingCart/updateQuantity`;
             const response = await fetchWithTimeout(url, {
                 method: 'PUT',
                 headers,
@@ -561,7 +561,7 @@ export const CartProvider = ({ children }) => {
             console.log('Removiendo del carrito:', itemId);
 
             // Intentar ruta específica primero
-            let response = await fetchWithTimeout(`${API_BASE_URL}/shoppingCart/remove-item`, {
+            let response = await fetchWithTimeout(`${API_BASE_URL}/shoppingCart/removeItem`, {
                 method: 'DELETE',
                 headers,
                 body: JSON.stringify({
@@ -642,7 +642,7 @@ export const CartProvider = ({ children }) => {
             
             console.log('Limpiando carrito después de compra:', shoppingCartId);
 
-            const url = `${API_BASE_URL}/shoppingCart/${shoppingCartId}/clear-after-purchase`;
+            const url = `${API_BASE_URL}/shoppingCart/${shoppingCartId}/clearAfterPurchase`;
             const response = await fetchWithTimeout(url, {
                 method: 'POST',
                 headers,
@@ -805,7 +805,7 @@ export const CartProvider = ({ children }) => {
             });
 
             const headers = await getAuthHeaders();
-            const url = `${API_BASE_URL}/clients/${user.id}/use-code`;
+            const url = `${API_BASE_URL}/clients/${user.id}/useCode`;
             const response = await fetchWithTimeout(url, {
                 method: 'PUT',
                 headers,
@@ -845,8 +845,8 @@ export const CartProvider = ({ children }) => {
 
         try {
             const url = status
-                ? `${API_BASE_URL}/clients/${user.id}/promotional-codes?status=${status}`
-                : `${API_BASE_URL}/clients/${user.id}/promotional-codes`;
+                ? `${API_BASE_URL}/clients/${user.id}/promotionalCodes?status=${status}`
+                : `${API_BASE_URL}/clients/${user.id}/promotionalCodes`;
 
             const headers = await getAuthHeaders();
             const response = await fetchWithTimeout(url, {
@@ -929,7 +929,7 @@ export const CartProvider = ({ children }) => {
             console.log('Ejecutando limpieza de carritos duplicados...');
 
             const headers = await getAuthHeaders();
-            const url = `${API_BASE_URL}/shoppingCart/cleanup-duplicates`;
+            const url = `${API_BASE_URL}/shoppingCart/cleanupDuplicates`;
             const response = await fetchWithTimeout(url, {
                 method: 'POST',
                 headers

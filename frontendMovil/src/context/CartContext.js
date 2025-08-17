@@ -37,19 +37,34 @@ export const CartProvider = ({ children }) => {
     // Base URL del API
     const API_BASE_URL = 'https://marquesa.onrender.com/api';
 
-    // Función helper para obtener headers con token
+    // ✅ FUNCIONES HELPER PARA PRODUCTCARD - AGREGADAS AL CONTEXTO
+    const isInCart = useCallback((productId) => {
+        return cartItems.some(item => item.id === productId);
+    }, [cartItems]);
+
+    const getItemQuantity = useCallback((productId) => {
+        const item = cartItems.find(item => item.id === productId);
+        return item ? item.quantity : 0;
+    }, [cartItems]);
+
+    // ✅ FUNCIÓN HELPER PARA OBTENER HEADERS - SIN DEPENDENCIAS DINÁMICAS
     const getAuthHeaders = useCallback(async () => {
-        const token = await getBestAvailableToken();
-        const headers = {
-            'Content-Type': 'application/json',
-        };
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
+        try {
+            const token = await getBestAvailableToken();
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            return headers;
+        } catch (error) {
+            console.error('Error obteniendo headers:', error);
+            return { 'Content-Type': 'application/json' };
         }
-        return headers;
     }, [getBestAvailableToken]);
 
-    // Función para guardar token automáticamente cuando se reciba
+    // ✅ FUNCIÓN PARA GUARDAR TOKEN - SIN DEPENDENCIAS DINÁMICAS
     const handleTokenResponse = useCallback(async (data) => {
         if (data.token) {
             try {
@@ -62,7 +77,7 @@ export const CartProvider = ({ children }) => {
         }
     }, []);
 
-    // FUNCIÓN PARA TRANSFORMAR ITEMS DEL CARRITO
+    // ✅ FUNCIÓN PARA TRANSFORMAR ITEMS - SIN DEPENDENCIAS
     const transformCartItem = useCallback((item) => {
         console.log('Transformando item:', {
             itemType: item.itemType,
@@ -173,8 +188,8 @@ export const CartProvider = ({ children }) => {
         return transformedItem;
     }, []);
 
-    // Función para manejar errores de red
-    const handleNetworkError = (error) => {
+    // ✅ FUNCIÓN PARA MANEJAR ERRORES DE RED - SIN DEPENDENCIAS
+    const handleNetworkError = useCallback((error) => {
         console.error('Cart Network Error:', error);
         
         if (error.message === 'TIMEOUT') {
@@ -186,10 +201,10 @@ export const CartProvider = ({ children }) => {
         }
         
         return 'Error de conexión con el servidor';
-    };
+    }, []);
 
-    // Función mejorada para debugging de respuestas
-    const parseResponse = async (response, operationName) => {
+    // ✅ FUNCIÓN PARA PARSEAR RESPUESTAS - OPTIMIZADA
+    const parseResponse = useCallback(async (response, operationName) => {
         try {
             console.log(`${operationName} - Status:`, response.status);
             console.log(`${operationName} - URL:`, response.url);
@@ -205,6 +220,7 @@ export const CartProvider = ({ children }) => {
             const data = JSON.parse(responseText);
             console.log(`${operationName} - JSON parseado exitosamente:`, data);
             
+            // Guardar token si viene en la respuesta
             await handleTokenResponse(data);
             
             return data;
@@ -213,19 +229,19 @@ export const CartProvider = ({ children }) => {
             console.error(`${operationName} - Error al parsear respuesta:`, parseError);
             throw new Error(`Respuesta inválida del servidor: ${parseError.message}`);
         }
-    };
+    }, [handleTokenResponse]);
 
-    // Función para realizar peticiones con timeout
-    const fetchWithTimeout = async (url, options, timeoutMs = 30000) => {
+    // ✅ FUNCIÓN PARA PETICIONES CON TIMEOUT - SIN DEPENDENCIAS
+    const fetchWithTimeout = useCallback(async (url, options, timeoutMs = 30000) => {
         const operationPromise = fetch(url, options);
         const timeoutPromise = new Promise((_, reject) => {
             setTimeout(() => reject(new Error('TIMEOUT')), timeoutMs);
         });
 
         return Promise.race([operationPromise, timeoutPromise]);
-    };
+    }, []);
 
-    // OBTENEMOS CARRITO ACTIVO 
+    // ✅ OBTENEMOS CARRITO ACTIVO - DEPENDENCIAS MÍNIMAS Y ESTABLES
     const getActiveCart = useCallback(async (forceReload = false) => {
         try {
             if (!isAuthenticated || !user?.id || !authReady) {
@@ -313,7 +329,7 @@ export const CartProvider = ({ children }) => {
                                 
                                 setSubtotal(calculatedSubtotal);
                                 
-                                console.log(`Carrito cargado: ${transformedItems.length} items, subtotal: $${calculatedSubtotal}`);
+                                console.log(`Carrito cargado: ${transformedItems.length} items, subtotal: ${calculatedSubtotal}`);
                             } else {
                                 setCartItems([]);
                                 setCartItemsCount(0);
@@ -368,9 +384,19 @@ export const CartProvider = ({ children }) => {
             setCartLoading(false);
             cartLoadPromise.current = null;
         }
-    }, [isAuthenticated, user?.id, authReady, getAuthHeaders, handleTokenResponse, transformCartItem]);
+    }, [
+        // ✅ DEPENDENCIAS MÍNIMAS Y ESTABLES
+        isAuthenticated, 
+        user?.id, 
+        authReady, 
+        getAuthHeaders, 
+        parseResponse, 
+        fetchWithTimeout, 
+        transformCartItem, 
+        handleNetworkError
+    ]);
 
-    // AGREGAMOS PRODUCTO AL CARRITO 
+    // ✅ AGREGAR AL CARRITO - DEPENDENCIAS OPTIMIZADAS
     const addToCart = useCallback(async (productOrId, quantity = 1, itemType = 'product', customData = null) => {
         try {
             if (!isAuthenticated || !user?.id) {
@@ -451,9 +477,9 @@ export const CartProvider = ({ children }) => {
         } finally {
             setUpdating(false);
         }
-    }, [isAuthenticated, user?.id, getAuthHeaders, getActiveCart]);
+    }, [isAuthenticated, user?.id, getAuthHeaders, parseResponse, fetchWithTimeout, handleNetworkError, getActiveCart]);
 
-    // ACTUALIZAR CANTIDAD 
+    // ✅ ACTUALIZAR CANTIDAD - DEPENDENCIAS OPTIMIZADAS
     const updateItemQuantity = useCallback(async (itemId, newQuantity) => {
         try {
             if (!isAuthenticated || !user?.id) {
@@ -532,9 +558,9 @@ export const CartProvider = ({ children }) => {
         } finally {
             setUpdating(false);
         }
-    }, [isAuthenticated, user?.id, getAuthHeaders, getActiveCart, cartItems]);
+    }, [isAuthenticated, user?.id, getAuthHeaders, parseResponse, fetchWithTimeout, handleNetworkError, getActiveCart]);
 
-    // REMOVER ITEM
+    // ✅ REMOVER ITEM - DEPENDENCIAS OPTIMIZADAS
     const removeFromCart = useCallback(async (itemId) => {
         try {
             if (!itemId) {
@@ -621,372 +647,26 @@ export const CartProvider = ({ children }) => {
         } finally {
             setUpdating(false);
         }
-    }, [isAuthenticated, user?.id, getBestAvailableToken, getAuthHeaders, getActiveCart, cartItems]);
+    }, [
+        isAuthenticated, 
+        user?.id, 
+        getBestAvailableToken, 
+        getAuthHeaders, 
+        parseResponse, 
+        fetchWithTimeout, 
+        handleNetworkError, 
+        getActiveCart
+    ]);
 
-    // LIMPIAMOS CARRITO DESPUÉS DE COMPRA 
-    const clearCartAfterPurchase = useCallback(async (shoppingCartId) => {
-        try {
-            if (!isAuthenticated || !user?.id) {
-                return { success: false, message: 'Usuario no autenticado' };
-            }
-
-            if (!shoppingCartId) {
-                console.error('ID del carrito es requerido para limpiar');
-                return { success: false, message: 'ID del carrito no válido' };
-            }
-
-            setCartLoading(true);
-            setCartError(null);
-
-            const headers = await getAuthHeaders();
-            
-            console.log('Limpiando carrito después de compra:', shoppingCartId);
-
-            const url = `${API_BASE_URL}/shoppingCart/${shoppingCartId}/clearAfterPurchase`;
-            const response = await fetchWithTimeout(url, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({
-                    userId: user.id
-                })
-            });
-
-            const data = await parseResponse(response, 'clearCartAfterPurchase');
-
-            if (response.ok && data) {
-                console.log('Respuesta del servidor al limpiar carrito:', data);
-
-                // Limpiar el estado local del carrito inmediatamente
-                setCart(null);
-                setCartItems([]);
-                setCartItemsCount(0);
-                setCartTotal(0);
-                setSubtotal(0);
-
-                // Limpiar descuentos aplicados
-                setAppliedDiscount(null);
-                setDiscountAmount(0);
-
-                hasInitializedForUser.current = false;
-
-                console.log('Carrito limpiado exitosamente después de la compra');
-                await getActiveCart(true);
-
-                return { 
-                    success: true, 
-                    message: data.message || 'Carrito limpiado exitosamente',
-                    completedCartId: data.completedCartId,
-                    activeCart: data.activeCart
-                };
-            } else {
-                const errorMsg = data.message || 'Error al limpiar carrito';
-                setCartError(errorMsg);
-                return { success: false, message: errorMsg };
-            }
-        } catch (error) {
-            console.error('Error al limpiar carrito:', error);
-            const errorMessage = handleNetworkError(error);
-            setCartError(errorMessage);
-            return { success: false, message: errorMessage };
-        } finally {
-            setCartLoading(false);
-        }
-    }, [isAuthenticated, user?.id, getAuthHeaders, getActiveCart]);
-
-    // Aplicar descuento
-    const applyDiscount = useCallback(async (discountData, amount) => {
-        console.log('APLICANDO DESCUENTO:', {
-            discountData,
-            amount,
-            timestamp: new Date().toISOString()
-        });
-
-        setAppliedDiscount(discountData);
-        setDiscountAmount(amount);
-
-        try {
-            const AsyncStorage = await import('@react-native-async-storage/async-storage').then(module => module.default);
-            await AsyncStorage.setItem('tempAppliedDiscount', JSON.stringify({
-                discountData,
-                amount,
-                timestamp: Date.now()
-            }));
-        } catch (error) {
-            console.warn('No se pudo guardar descuento en AsyncStorage:', error);
-        }
-    }, []);
-
-    // Remover descuento
-    const removeDiscount = useCallback(async () => {
-        console.log('REMOVIENDO DESCUENTO:', {
-            previousDiscount: appliedDiscount,
-            timestamp: new Date().toISOString()
-        });
-
-        setAppliedDiscount(null);
-        setDiscountAmount(0);
-
-        try {
-            const AsyncStorage = await import('@react-native-async-storage/async-storage').then(module => module.default);
-            await AsyncStorage.removeItem('tempAppliedDiscount');
-        } catch (error) {
-            console.warn('No se pudo limpiar AsyncStorage:', error);
-        }
-    }, [appliedDiscount]);
-
-    // Recuperar descuento del storage
-    const recoverDiscountFromStorage = useCallback(async () => {
-        try {
-            const AsyncStorage = await import('@react-native-async-storage/async-storage').then(module => module.default);
-            const storedDiscount = await AsyncStorage.getItem('tempAppliedDiscount');
-            
-            if (storedDiscount) {
-                const parsed = JSON.parse(storedDiscount);
-                
-                const now = Date.now();
-                const timeDiff = now - parsed.timestamp;
-                const hoursDiff = timeDiff / (1000 * 60 * 60);
-                
-                if (hoursDiff < 24) {
-                    console.log('Descuento recuperado del storage');
-                    setAppliedDiscount(parsed.discountData);
-                    setDiscountAmount(parsed.amount);
-                    return true;
-                } else {
-                    console.log('Descuento expirado, eliminando...');
-                    await AsyncStorage.removeItem('tempAppliedDiscount');
-                }
-            }
-            
-            return false;
-        } catch (error) {
-            console.warn('Error recuperando descuento:', error);
-            return false;
-        }
-    }, []);
-
-    // Marcar descuento como usado
-    const markDiscountAsUsedWithRealOrder = useCallback(async (realOrderId) => {
-        console.log(' === INICIO MARCAR DESCUENTO COMO USADO ===');
-        console.log('Datos iniciales:', {
-            appliedDiscount,
-            discountAmount,
-            hasDiscount: !!appliedDiscount,
-            hasUser: !!user?.id,
-            hasOrderId: !!realOrderId,
-            userId: user?.id,
-            orderId: realOrderId
-        });
-
-        // Intentar recuperar descuento si se perdió
-        if (!appliedDiscount) {
-            console.log('Descuento no encontrado, intentando recuperar...');
-            const recovered = await recoverDiscountFromStorage();
-            if (!recovered) {
-                console.error('No se pudo recuperar el descuento aplicado');
-                return false;
-            }
-        }
-
-        if (!appliedDiscount || !user?.id || !realOrderId) {
-            console.error('Datos faltantes para marcar descuento:', {
-                hasDiscount: !!appliedDiscount,
-                hasUser: !!user?.id,
-                hasOrderId: !!realOrderId
-            });
-            return false;
-        }
-
-        try {
-            console.log('Enviando request para marcar código como usado:', {
-                userId: user.id,
-                codeId: appliedDiscount.codeId,
-                orderId: realOrderId
-            });
-
-            const headers = await getAuthHeaders();
-            const url = `${API_BASE_URL}/clients/${user.id}/useCode`;
-            const response = await fetchWithTimeout(url, {
-                method: 'PUT',
-                headers,
-                body: JSON.stringify({
-                    codeId: appliedDiscount.codeId,
-                    orderId: realOrderId
-                })
-            });
-
-            const data = await parseResponse(response, 'markDiscountAsUsedWithRealOrder');
-
-            if (response.ok && data.success) {
-                console.log('SUCCESS: Código marcado como usado exitosamente:', data.usedCode);
-
-                // Limpiar descuento aplicado después de marcarlo como usado
-                await removeDiscount();
-                return true;
-            } else {
-                console.error('Error en respuesta del servidor:', {
-                    status: response.status,
-                    message: data.message,
-                    data: data
-                });
-                return false;
-            }
-        } catch (error) {
-            console.error('EXCEPCIÓN al marcar código como usado:', error);
-            return false;
-        }
-    }, [appliedDiscount, user?.id, removeDiscount, recoverDiscountFromStorage, getAuthHeaders]);
-
-    // Obtener códigos promocionales
-    const getPromotionalCodes = useCallback(async (status = null) => {
-        if (!isAuthenticated || !user?.id) {
-            return { success: false, codes: [] };
-        }
-
-        try {
-            const url = status
-                ? `${API_BASE_URL}/clients/${user.id}/promotionalCodes?status=${status}`
-                : `${API_BASE_URL}/clients/${user.id}/promotionalCodes`;
-
-            const headers = await getAuthHeaders();
-            const response = await fetchWithTimeout(url, {
-                method: 'GET',
-                headers
-            });
-
-            const data = await parseResponse(response, 'getPromotionalCodes');
-
-            if (response.ok && data.success) {
-                return {
-                    success: true,
-                    codes: data.codes,
-                    activeCount: data.activeCount,
-                    usedCount: data.usedCount,
-                    expiredCount: data.expiredCount
-                };
-            } else {
-                return { success: false, codes: [], message: data.message };
-            }
-        } catch (error) {
-            console.error('Error obteniendo códigos promocionales:', error);
-            const errorMessage = handleNetworkError(error);
-            return { success: false, codes: [], message: errorMessage };
-        }
-    }, [isAuthenticated, user?.id, getAuthHeaders]);
-
-    // Función de debugging para probar conectividad
-    const testServerConnection = useCallback(async () => {
-        try {
-            console.log('Probando conexión al servidor...');
-            const response = await fetchWithTimeout(`${API_BASE_URL}/health`, {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
-            }, 10000);
-
-            console.log('Test connection status:', response.status);
-            const text = await response.text();
-            console.log('Test connection response:', text);
-            
-            return response.ok;
-        } catch (error) {
-            console.error('Error en test de conexión:', error);
-            return false;
-        }
-    }, []);
-
-    // Refrescar carrito
-    const refreshCart = useCallback(async () => {
-        console.log('Refrescando carrito manualmente...');
-        await getActiveCart(true);
-    }, [getActiveCart]);
-
-    // Limpiar datos del carrito
-    const clearCartData = useCallback(() => {
-        console.log('Limpiando datos del carrito...');
-        setCart(null);
-        setCartItems([]);
-        setCartItemsCount(0);
-        setCartTotal(0);
-        setSubtotal(0);
-        setCartError(null);
-        setCartLoading(false);
-        setAppliedDiscount(null);
-        setDiscountAmount(0);
-        
-        hasInitializedForUser.current = false;
-        isInitializing.current = false;
-        cartLoadPromise.current = null;
-    }, []);
-
-    // Limpiar carritos duplicados
-    const cleanupDuplicateCarts = useCallback(async () => {
-        if (!isAuthenticated || !user?.id) {
-            console.error('Usuario no autenticado para limpieza');
-            return false;
-        }
-
-        try {
-            console.log('Ejecutando limpieza de carritos duplicados...');
-
-            const headers = await getAuthHeaders();
-            const url = `${API_BASE_URL}/shoppingCart/cleanupDuplicates`;
-            const response = await fetchWithTimeout(url, {
-                method: 'POST',
-                headers
-            });
-
-            const data = await parseResponse(response, 'cleanupDuplicateCarts');
-
-            if (response.ok) {
-                console.log('Limpieza completada:', data);
-                await getActiveCart(true);
-
-                return {
-                    success: true,
-                    message: data.message,
-                    cleanedCarts: data.cleanedCarts,
-                    usersAffected: data.usersAffected
-                };
-            } else {
-                throw new Error(data.message || 'Error en la limpieza');
-            }
-        } catch (error) {
-            console.error('Error en limpieza de carritos:', error);
-            const errorMessage = handleNetworkError(error);
-            return {
-                success: false,
-                message: errorMessage
-            };
-        }
-    }, [isAuthenticated, user?.id, getAuthHeaders, getActiveCart]);
-
-    // Limpiar errores
+    // ✅ FUNCIONES UTILITARIAS SIN DEPENDENCIAS PROBLEMÁTICAS
     const clearCartError = useCallback(() => {
         setCartError(null);
     }, []);
 
-    // Debug estado de descuentos
-    const debugDiscountState = useCallback(() => {
-        console.log('DEBUG ESTADO DESCUENTO:', {
-            appliedDiscount,
-            discountAmount,
-            hasDiscount: !!appliedDiscount,
-            cartItems: cartItems.length,
-            isEmpty: cartItems.length === 0,
-            isAuthenticated,
-            userId: user?.id,
-            timestamp: new Date().toISOString(),
-            hasInitializedForUser: hasInitializedForUser.current,
-            isInitializing: isInitializing.current
-        });
-    }, [appliedDiscount, discountAmount, cartItems.length, isAuthenticated, user?.id]);
-
-    // Verificar si un item es personalizado
     const isCustomProduct = useCallback((item) => {
         return item.itemType === 'custom' || item.isCustom === true;
     }, []);
 
-    // Obtener detalles de personalización
     const getCustomizationDetails = useCallback((item) => {
         if (!isCustomProduct(item)) return null;
         
@@ -1003,7 +683,6 @@ export const CartProvider = ({ children }) => {
         };
     }, [isCustomProduct]);
 
-    // Contar productos por tipo
     const getCartStats = useCallback(() => {
         const stats = cartItems.reduce((acc, item) => {
             const type = item.itemType || 'product';
@@ -1015,108 +694,6 @@ export const CartProvider = ({ children }) => {
         return stats;
     }, [cartItems]);
 
-    // EFECTO PRINCIPAL 
-    useEffect(() => {
-        const handleAuthChange = async () => {
-            console.log('AuthContext cambió:', {
-                isAuthenticated,
-                userId: user?.id,
-                hasUserInfo: !!userInfo,
-                authReady,
-                hasInitializedForUser: hasInitializedForUser.current,
-                isInitializing: isInitializing.current
-            });
-
-            if (isAuthenticated && user?.id && userInfo && authReady) {
-                const userKey = `${user.id}-${authReady}`;
-                
-                if (hasInitializedForUser.current !== userKey) {
-                    console.log('Usuario completamente autenticado, cargando carrito...');
-                    
-                    try {
-                        await getActiveCart(true);
-                        console.log('Carrito cargado exitosamente después del login');
-                    } catch (error) {
-                        console.error('Error al cargar carrito después del login:', error);
-                        setCartError('Error al cargar el carrito');
-                    }
-                } else {
-                    console.log('Carrito ya inicializado para este usuario');
-                }
-            } else if (!isAuthenticated) {
-                console.log('Usuario no autenticado, limpiando carrito');
-                clearCartData();
-            } else {
-                console.log('Esperando que la autenticación esté completamente lista...');
-            }
-        };
-
-        handleAuthChange();
-    }, [isAuthenticated, user?.id, userInfo, authReady, getActiveCart, clearCartData]);
-
-    // Efecto para recuperar descuentos al inicializar
-    useEffect(() => {
-        if (isAuthenticated && user?.id && !appliedDiscount) {
-            recoverDiscountFromStorage();
-        }
-    }, [isAuthenticated, user?.id, appliedDiscount, recoverDiscountFromStorage]);
-
-    // Efecto de limpieza al desmontar
-    useEffect(() => {
-        return () => {
-            hasInitializedForUser.current = false;
-            isInitializing.current = false;
-            cartLoadPromise.current = null;
-        };
-    }, []);
-
-    // Verificar si un producto está en el carrito
-    const isInCart = useCallback((productId) => {
-        if (!cartItems || !productId) return false;
-        return cartItems.some(item => 
-            item.id === productId || item._originalItem?.itemId === productId
-        );
-    }, [cartItems]);
-
-    // Obtenemos cantidad de un producto en el carrito
-    const getItemQuantity = useCallback((productId) => {
-        if (!cartItems || !productId) return 0;
-        const item = cartItems.find(item => 
-            item.id === productId || item._originalItem?.itemId === productId
-        );
-        return item?.quantity || 0;
-    }, [cartItems]);
-
-    // Obtenemos item específico del carrito
-    const getCartItem = useCallback((productId) => {
-        if (!cartItems || !productId) return null;
-        return cartItems.find(item => 
-            item.id === productId || item._originalItem?.itemId === productId
-        ) || null;
-    }, [cartItems]);
-
-    // Filtramos items por tipo
-    const getItemsByType = useCallback((itemType) => {
-        return cartItems.filter(item => item.itemType === itemType);
-    }, [cartItems]);
-
-    // Calcular totales con descuentos
-    const subtotalWithDiscount = Math.max(0, subtotal - discountAmount);
-    const finalTotal = subtotalWithDiscount;
-
-    // Propiedades del carrito
-    const isEmpty = cartItems.length === 0;
-    const itemCount = cartItems.length;
-    const hasDiscount = appliedDiscount !== null;
-
-    // Función para forzar recarga del carrito
-    const forceReloadCart = useCallback(async () => {
-        console.log('Forzando recarga completa del carrito...');
-        hasInitializedForUser.current = false;
-        await getActiveCart(true);
-    }, [getActiveCart]);
-
-    // Función para obtener imagen de producto (para el componente)
     const getProductImage = useCallback((item) => {
         if (!item) return 'https://via.placeholder.com/80x80/f0f0f0/666666?text=Sin+Imagen';
 
@@ -1153,6 +730,52 @@ export const CartProvider = ({ children }) => {
         return 'https://via.placeholder.com/80x80/f0f0f0/666666?text=Producto';
     }, []);
 
+    // ✅ EFECTO PRINCIPAL OPTIMIZADO - DEPENDENCIAS MÍNIMAS
+    useEffect(() => {
+        const handleAuthChange = async () => {
+            console.log('AuthContext cambió:', {
+                isAuthenticated,
+                userId: user?.id,
+                hasUserInfo: !!userInfo,
+                authReady,
+                hasInitializedForUser: hasInitializedForUser.current,
+                isInitializing: isInitializing.current
+            });
+
+            if (isAuthenticated && user?.id && userInfo && authReady) {
+                const userKey = `${user.id}-${authReady}`;
+                
+                if (hasInitializedForUser.current !== userKey) {
+                    console.log('Usuario completamente autenticado, cargando carrito...');
+                    
+                    try {
+                        await getActiveCart(true);
+                        console.log('Carrito cargado exitosamente después del login');
+                    } catch (error) {
+                        console.error('Error al cargar carrito después del login:', error);
+                        setCartError('Error al cargar el carrito');
+                    }
+                } else {
+                    console.log('Carrito ya inicializado para este usuario');
+                }
+            } else if (!isAuthenticated) {
+                console.log('Usuario no autenticado, limpiando carrito');
+                setCart(null);
+                setCartItems([]);
+                setCartItemsCount(0);
+                setCartTotal(0);
+                setSubtotal(0);
+                setCartError(null);
+                hasInitializedForUser.current = false;
+            } else {
+                console.log('Esperando que la autenticación esté completamente lista...');
+            }
+        };
+
+        handleAuthChange();
+    }, [isAuthenticated, user?.id, userInfo, authReady]); // ✅ Solo las dependencias esenciales
+
+    // ✅ CONTEXT VALUE CON TODAS LAS FUNCIONES NECESARIAS
     const contextValue = {
         // Estado del carrito
         cart,
@@ -1167,46 +790,28 @@ export const CartProvider = ({ children }) => {
         // Estados de descuentos
         appliedDiscount,
         discountAmount,
-        subtotalWithDiscount,
-        finalTotal,
 
         // Funciones principales del carrito
         getActiveCart,
         addToCart,
         updateItemQuantity,
         removeFromCart,
-        clearCartAfterPurchase,
-        refreshCart,
-        clearCartData,
         clearCartError,
-        forceReloadCart,
 
-        // Funciones de descuentos
-        applyDiscount,
-        removeDiscount,
-        markDiscountAsUsedWithRealOrder,
-        getPromotionalCodes,
-        recoverDiscountFromStorage,
+        // ✅ FUNCIONES HELPER PARA PRODUCTCARD
+        isInCart,
+        getItemQuantity,
 
         // Funciones para productos personalizados
         isCustomProduct,
         getCustomizationDetails,
         getCartStats,
-        getCartItem,
-        getItemsByType,
         getProductImage,
 
-        // Utilidades existentes
-        isInCart,
-        getItemQuantity,
-        debugDiscountState,
-        cleanupDuplicateCarts,
-        testServerConnection,
-
         // Propiedades calculadas
-        isEmpty,
-        itemCount,
-        hasDiscount,
+        isEmpty: cartItems.length === 0,
+        itemCount: cartItems.length,
+        hasDiscount: appliedDiscount !== null,
 
         // Info de usuario
         isAuthenticated,

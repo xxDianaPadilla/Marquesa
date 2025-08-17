@@ -92,7 +92,7 @@ export default function ProfileScreen({ navigation }) {
             id: 4,
             title: "Media",
             icon: mediaIcon,
-            onPress: () => console.log("Media")
+            onPress: () => navigation.navigate('Media')
         },
         {
             id: 5,

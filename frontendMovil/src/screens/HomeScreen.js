@@ -42,14 +42,13 @@ export default function HomeScreen({ navigation }) {
         refreshFavorites
     } = useAuth();
 
-    // USAMOS EL CONTEXTO DEL CARRITO
+    // USAMOS EL CONTEXTO DEL CARRITO - ACTUALIZADO
     const {
         addToCart,
-        cartLoading,
         cartError,
         cartItemsCount,
-        isInCart,
-        getItemQuantity,
+        cartItems,
+        updating,
         clearCartError
     } = useCart();
 
@@ -62,6 +61,9 @@ export default function HomeScreen({ navigation }) {
     const [priceRange, setPriceRange] = useState({ min: 0, max: 100 });
 
     const categories = ['Todo', 'Naturales', 'Secas', 'Tarjetas', 'Cuadros', 'Giftboxes'];
+
+    // Nota: ProductCard ahora usa isInCart y getItemQuantity directamente del contexto CartContext
+    // Por lo tanto, no necesitamos definir estas funciones aquí
 
     // Función para mostrar toast/mensaje
     const showToast = (message) => {
@@ -95,9 +97,11 @@ export default function HomeScreen({ navigation }) {
     // Limpiar errores del carrito cuando se monte el componente
     useEffect(() => {
         return () => {
-            clearCartError();
+            if (clearCartError) {
+                clearCartError();
+            }
         };
-    }, []);
+    }, [clearCartError]);
 
     // Función para refrescar toda la pantalla
     const onRefresh = async () => {
@@ -131,7 +135,7 @@ export default function HomeScreen({ navigation }) {
         });
     };
 
-    // FUNCIÓN PARA AGREGAR AL CARRITO
+    // ✅ FUNCIÓN PARA AGREGAR AL CARRITO - ACTUALIZADA
     const handleAddToCart = async (product, quantity = 1, itemType = 'product') => {
         try {
             // Verificar autenticación
@@ -173,13 +177,12 @@ export default function HomeScreen({ navigation }) {
                 itemType
             });
 
-            // Llamar a la función del contexto
-            const result = await addToCart(product, quantity, itemType);
+            // Llamar a la función del contexto - usando el productId directamente
+            const result = await addToCart(product._id, quantity, itemType);
 
             if (result.success) {
                 // Mostrar mensaje de éxito
                 showToast(`${product.name} agregado al carrito`);
-
                 console.log('Producto agregado exitosamente:', result);
             } else {
                 // Mostrar error específico
@@ -223,9 +226,8 @@ export default function HomeScreen({ navigation }) {
                 onPress={handleProductPress} 
                 onAddToCart={handleAddToCart}
                 navigation={navigation}
-                // Props adicionales para mostrar estado del carrito
-                isAddingToCart={addingToCart === item._id}
-                cartQuantity={getItemQuantity(item._id)}
+                // Solo pasamos isAddingToCart ya que ProductCard maneja el resto internamente
+                isAddingToCart={addingToCart === item._id || updating}
             />
         </View>
     );
@@ -327,7 +329,7 @@ export default function HomeScreen({ navigation }) {
                 </View>
             )}
 
-            {/* INDICADOR DE ERROR DEL CARRITO */}
+            {/* ✅ INDICADOR DE ERROR DEL CARRITO - ACTUALIZADO */}
             {cartError && (
                 <View style={styles.errorContainer}>
                     <Icon name="error-outline" size={16} color="#e74c3c" />
@@ -352,6 +354,14 @@ export default function HomeScreen({ navigation }) {
                     >
                         <Text style={styles.retryButtonText}>Reintentar</Text>
                     </TouchableOpacity>
+                </View>
+            )}
+
+            {/* ✅ INDICADOR DE LOADING CUANDO SE ESTÁ ACTUALIZANDO EL CARRITO */}
+            {updating && (
+                <View style={styles.loadingBanner}>
+                    <Icon name="shopping-cart" size={16} color="#4A4170" />
+                    <Text style={styles.loadingBannerText}>Actualizando carrito...</Text>
                 </View>
             )}
 
@@ -436,7 +446,7 @@ export default function HomeScreen({ navigation }) {
                     onPress={() => navigation.navigate('Cart')}
                 >
                     <Icon name="shopping-cart" size={isSmallDevice ? 20 : 24} color="#ccc" />
-                    {/* BADGE DEL CARRITO */}
+                    {/* ✅ BADGE DEL CARRITO - USANDO cartItemsCount */}
                     {isAuthenticated && cartItemsCount > 0 && (
                         <View style={styles.cartBadge}>
                             <Text style={styles.cartBadgeText}>
@@ -668,6 +678,23 @@ const styles = StyleSheet.create({
     closeButton: {
         padding: 4,
         marginLeft: 8,
+    },
+    // ✅ NUEVO ESTILO PARA EL BANNER DE LOADING
+    loadingBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#e8f4f8',
+        margin: horizontalPadding,
+        padding: 12,
+        borderRadius: 8,
+        borderLeftWidth: 4,
+        borderLeftColor: '#4A4170',
+    },
+    loadingBannerText: {
+        fontSize: 12,
+        color: '#4A4170',
+        marginLeft: 8,
+        fontFamily: 'Poppins-Regular',
     },
     loadingContainer: {
         flex: 1,

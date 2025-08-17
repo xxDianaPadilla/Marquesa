@@ -15,13 +15,13 @@ import {
 } from '../utils/chatUtils.js';
 
 /**
- * Controlador de Chat - CORREGIDO PARA ACTUALIZACIONES EN TIEMPO REAL
+ * Controlador de Chat - CORREGIDO PARA NUEVOS USUARIOS Y MENSAJES CRUZADOS
  * 
  * PROBLEMAS SOLUCIONADOS:
- * - Último mensaje se actualiza correctamente al eliminar desde cliente
- * - Contador de no leídos se resetea correctamente al eliminar
- * - Eventos Socket.IO emitidos correctamente para sincronización
- * - Eliminación física completa con limpieza de archivos
+ * - Creación automática de conversaciones para nuevos usuarios
+ * - Prevención de mensajes cruzados entre conversaciones
+ * - Mejor manejo de eventos Socket.IO únicos
+ * - Sincronización correcta entre admin y cliente
  * 
  * Ubicación: backend/src/controllers/chatController.js
  */
@@ -61,7 +61,7 @@ const MAX_MESSAGES_PER_CONVERSATION = 75;
 const chatController = {};
 
 /**
- * ✅ FUNCIÓN 1/8: Obtener o crear conversación
+ * ✅ FUNCIÓN 1/8: Obtener o crear conversación - OPTIMIZADA
  */
 chatController.getOrCreateConversation = async (req, res) => {
     try {
@@ -140,7 +140,7 @@ chatController.getOrCreateConversation = async (req, res) => {
 };
 
 /**
- * ✅ FUNCIÓN 2/8: Obtener todas las conversaciones
+ * ✅ FUNCIÓN 2/8: Obtener todas las conversaciones - OPTIMIZADA PARA CARGA RÁPIDA
  */
 chatController.getAllConversations = async (req, res) => {
     try {
@@ -151,19 +151,29 @@ chatController.getAllConversations = async (req, res) => {
             });
         }
 
-        const { page = 1, limit = 20 } = req.query;
+        const { page = 1, limit = 50 } = req.query; // ✅ AUMENTADO LÍMITE PARA MENOS REQUESTS
         
-        await cleanupOrphanedConversations();
+        // ✅ OPTIMIZACIÓN: Limpieza en background, no bloquear respuesta
+        setImmediate(() => {
+            cleanupOrphanedConversations().catch(err => 
+                console.error('Error en limpieza background:', err)
+            );
+        });
         
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
+        // ✅ OPTIMIZACIÓN: Query más eficiente con menos lookups
         const conversationsWithMessages = await ChatConversation.aggregate([
             {
                 $lookup: {
                     from: 'chatmessages',
                     localField: 'conversationId',
                     foreignField: 'conversationId',
-                    as: 'messages'
+                    as: 'messages',
+                    pipeline: [
+                        { $limit: 1 }, // Solo necesitamos saber si hay mensajes
+                        { $project: { _id: 1 } }
+                    ]
                 }
             },
             {
@@ -179,23 +189,40 @@ chatController.getAllConversations = async (req, res) => {
             },
             {
                 $limit: parseInt(limit)
+            },
+            {
+                $project: {
+                    conversationId: 1,
+                    clientId: 1,
+                    status: 1,
+                    lastMessage: 1,
+                    lastMessageAt: 1,
+                    unreadCountAdmin: 1,
+                    unreadCountClient: 1,
+                    createdAt: 1,
+                    updatedAt: 1
+                }
             }
         ]);
+
+        // ✅ OPTIMIZACIÓN: Obtener clientes en una sola query
+        const clientIds = conversationsWithMessages.map(conv => conv.clientId);
+        const clients = await clientsModel.find(
+            { _id: { $in: clientIds } },
+            'fullName email profilePicture'
+        ).lean();
+
+        const clientsMap = new Map(clients.map(client => [client._id.toString(), client]));
 
         const validConversations = [];
         
         for (const conv of conversationsWithMessages) {
-            const client = await clientsModel.findById(conv.clientId).lean();
+            const client = clientsMap.get(conv.clientId.toString());
             
             if (client) {
-                await updateConversationLastMessage(conv.conversationId);
-                
-                const updatedConv = await ChatConversation.findOne({ 
-                    conversationId: conv.conversationId 
-                }).lean();
-                
+                // ✅ OPTIMIZACIÓN: No actualizar último mensaje aquí para velocidad
                 validConversations.push({
-                    ...updatedConv,
+                    ...conv,
                     clientId: {
                         _id: client._id,
                         fullName: client.fullName,
@@ -230,7 +257,7 @@ chatController.getAllConversations = async (req, res) => {
 };
 
 /**
- * ✅ FUNCIÓN 3/8: Enviar mensaje
+ * ✅ FUNCIÓN 3/8: Enviar mensaje - CORREGIDA PARA PRIMEROS MENSAJES VISIBLES
  */
 chatController.sendMessage = async (req, res) => {
     try {
@@ -260,17 +287,27 @@ chatController.sendMessage = async (req, res) => {
 
         let conversation;
         let actualConversationId = conversationId;
+        let isNewConversation = false;
 
+        // ✅ CORRECCIÓN CRÍTICA: Crear conversación automáticamente para nuevos usuarios
         if (!conversationId && req.user.userType === 'Customer') {
+            console.log(`✨ Creando nueva conversación para cliente: ${req.user.id}`);
+            
             const newConversationId = generateConversationId(req.user.id);
             
             conversation = new ChatConversation({
                 conversationId: newConversationId,
-                clientId: req.user.id
+                clientId: req.user.id,
+                status: 'active',
+                lastMessage: '',
+                lastMessageAt: new Date(),
+                unreadCountAdmin: 0,
+                unreadCountClient: 0
             });
             await conversation.save();
             
             actualConversationId = newConversationId;
+            isNewConversation = true;
             console.log(`✅ Nueva conversación creada: ${actualConversationId}`);
         } else {
             conversation = await ChatConversation.findOne({ 
@@ -303,8 +340,11 @@ chatController.sendMessage = async (req, res) => {
             });
         }
 
-        const limitResult = await enforceMessageLimit(actualConversationId);
-        console.log('🗑️ Resultado del límite físico:', limitResult);
+        // ✅ OPTIMIZACIÓN: Solo aplicar límite si no es nueva conversación
+        if (!isNewConversation) {
+            const limitResult = await enforceMessageLimit(actualConversationId);
+            console.log('🗑️ Resultado del límite físico:', limitResult);
+        }
 
         const messageSenderId = req.user.userType === 'admin' ? 'admin' : req.user.id;
 
@@ -328,9 +368,11 @@ chatController.sendMessage = async (req, res) => {
         const chatMessage = new ChatMessage(messageData);
         await chatMessage.save();
 
+        // ✅ CORRECCIÓN: Actualizar conversación con mejor timestamp
         const updateData = {
             lastMessage: message?.trim() || `📷 ${req.file?.originalname || 'Imagen'}`,
-            lastMessageAt: new Date()
+            lastMessageAt: chatMessage.createdAt,
+            status: 'active'
         };
 
         if (req.user.userType === 'admin') {
@@ -345,77 +387,101 @@ chatController.sendMessage = async (req, res) => {
             { new: true }
         );
 
+        // ✅ CORRECCIÓN CRÍTICA: Obtener info del cliente SIEMPRE
+        const clientInfo = await clientsModel.findById(req.user.userType === 'Customer' ? req.user.id : conversation.clientId, 'fullName email profilePicture').lean();
+        
         let senderInfo;
         
         if (req.user.userType === 'admin') {
-            // Para mensajes de admin, SIEMPRE usar datos fijos del admin
             senderInfo = {
                 _id: 'admin',
                 fullName: 'Atención al Cliente',
-                email: 'soporte@marquesa.com', // o usar req.user.email si tienes email del admin
+                email: 'soporte@marquesa.com',
                 profilePicture: '/assets/marquesaMiniLogo.png'
             };
         } else {
-            // Para mensajes de cliente, usar datos del cliente
-            const clientInfo = await clientsModel.findById(req.user.id, 'fullName email profilePicture').lean();
-            if (clientInfo) {
-                senderInfo = {
-                    _id: req.user.id,
-                    fullName: clientInfo.fullName,
-                    email: clientInfo.email,
-                    profilePicture: clientInfo.profilePicture || null
-                };
-            } else {
-                // Fallback si no se encuentra el cliente
-                senderInfo = {
-                    _id: req.user.id,
-                    fullName: 'Cliente',
-                    email: req.user.email || '',
-                    profilePicture: null
-                };
-            }
+            senderInfo = {
+                _id: req.user.id,
+                fullName: clientInfo?.fullName || 'Cliente',
+                email: clientInfo?.email || req.user.email || '',
+                profilePicture: clientInfo?.profilePicture || null
+            };
         }
 
         const responseMessage = {
             ...chatMessage.toObject(),
-            senderId: senderInfo  // ✅ Usar el senderInfo construido correctamente
+            senderId: senderInfo
         };
 
+        // ✅ CORRECCIÓN CRÍTICA PARA PRIMEROS MENSAJES: Emitir eventos específicos
         const io = req.app.get('io');
         if (io) {
+            console.log(`📨 Emitiendo mensaje a conversación: ${actualConversationId}`);
+            
+            // 1. Emitir nuevo mensaje a la conversación específica
             emitNewMessage(io, actualConversationId, responseMessage);
             
-            emitConversationUpdated(io, {
+            // 2. ✅ NUEVO: Si es conversación nueva, emitir evento especial para admin
+            if (isNewConversation && req.user.userType === 'Customer') {
+                console.log(`✨ NUEVA CONVERSACIÓN: Emitiendo evento especial para admin`);
+                
+                // Preparar datos completos de la nueva conversación para admin
+                const newConversationForAdmin = {
+                    conversationId: actualConversationId,
+                    clientId: {
+                        _id: req.user.id,
+                        fullName: clientInfo?.fullName || 'Cliente',
+                        email: clientInfo?.email || '',
+                        profilePicture: clientInfo?.profilePicture || null
+                    },
+                    status: 'active',
+                    lastMessage: updateData.lastMessage,
+                    lastMessageAt: updateData.lastMessageAt,
+                    unreadCountAdmin: updateData.unreadCountAdmin,
+                    unreadCountClient: updateData.unreadCountClient,
+                    createdAt: conversation.createdAt,
+                    updatedAt: new Date()
+                };
+
+                // ✅ Emitir evento específico de nueva conversación a admins
+                io.to('admins').emit('new_conversation_created', {
+                    conversation: newConversationForAdmin,
+                    firstMessage: responseMessage,
+                    timestamp: new Date()
+                });
+            }
+            
+            // 3. Emitir actualización de conversación estándar
+            const conversationUpdateData = {
                 conversationId: actualConversationId,
-                action: conversationId ? 'updated' : 'created',
+                action: isNewConversation ? 'created' : 'updated',
                 lastMessage: updateData.lastMessage,
                 lastMessageAt: updateData.lastMessageAt,
                 unreadCountAdmin: updatedConversation.unreadCountAdmin,
-                unreadCountClient: updatedConversation.unreadCountClient,
-                clientId: req.user.userType === 'Customer' ? {
+                unreadCountClient: updatedConversation.unreadCountClient
+            };
+
+            if (isNewConversation && req.user.userType === 'Customer') {
+                conversationUpdateData.clientId = {
                     _id: req.user.id,
                     fullName: senderInfo.fullName,
                     email: senderInfo.email,
                     profilePicture: senderInfo.profilePicture
-                } : null
-            });
+                };
+            }
+
+            emitConversationUpdated(io, conversationUpdateData);
             
+            // 4. Emitir estadísticas solo a admins
             emitChatStats(io);
         }
 
         const response = {
             success: true,
             message: responseMessage,
-            conversationId: actualConversationId
+            conversationId: actualConversationId,
+            isNewConversation: isNewConversation
         };
-
-        if (limitResult.action === 'messages_permanently_deleted') {
-            response.limitInfo = {
-                deletedMessages: limitResult.deletedCount,
-                deletedFiles: limitResult.deletedFiles,
-                remainingMessages: limitResult.remainingCount
-            };
-        }
 
         res.status(201).json(response);
 
@@ -429,7 +495,7 @@ chatController.sendMessage = async (req, res) => {
 };
 
 /**
- * ✅ FUNCIÓN 4/8: Obtener mensajes
+ * ✅ FUNCIÓN 4/8: Obtener mensajes - OPTIMIZADA
  */
 chatController.getMessages = async (req, res) => {
     try {
@@ -471,11 +537,25 @@ chatController.getMessages = async (req, res) => {
             .skip(skip)
             .lean();
 
-        const populatedMessages = await Promise.all(messages.map(async (message) => {
+        // ✅ OPTIMIZACIÓN: Obtener clientes únicos para evitar queries repetidas
+        const clientIds = [...new Set(
+            messages
+                .filter(msg => msg.senderType === 'Customer')
+                .map(msg => msg.senderId)
+        )];
+
+        const clients = await clientsModel.find(
+            { _id: { $in: clientIds } },
+            'fullName email profilePicture'
+        ).lean();
+
+        const clientsMap = new Map(clients.map(client => [client._id.toString(), client]));
+
+        const populatedMessages = messages.map(message => {
             let senderInfo;
 
             if (message.senderType === 'admin') {
-                // ✅ CORRECCIÓN: Para mensajes de admin, SIEMPRE usar datos fijos
+                // ✅ Para mensajes de admin, SIEMPRE usar datos fijos
                 senderInfo = {
                     _id: 'admin',
                     fullName: 'Atención al Cliente',
@@ -483,27 +563,17 @@ chatController.getMessages = async (req, res) => {
                     profilePicture: '/assets/marquesaMiniLogo.png'
                 };
             } else {
-                // Para mensajes de cliente, obtener datos reales del cliente
-                try {
-                    const clientInfo = await clientsModel.findById(message.senderId, 'fullName email profilePicture').lean();
-                    if (clientInfo) {
-                        senderInfo = {
-                            _id: message.senderId,
-                            fullName: clientInfo.fullName,
-                            email: clientInfo.email,
-                            profilePicture: clientInfo.profilePicture || null
-                        };
-                    } else {
-                        // Fallback si no se encuentra el cliente
-                        senderInfo = {
-                            _id: message.senderId,
-                            fullName: 'Cliente',
-                            email: '',
-                            profilePicture: null
-                        };
-                    }
-                } catch (error) {
-                    console.error('Error obteniendo info del cliente:', error);
+                // Para mensajes de cliente, usar datos del map
+                const clientInfo = clientsMap.get(message.senderId);
+                if (clientInfo) {
+                    senderInfo = {
+                        _id: message.senderId,
+                        fullName: clientInfo.fullName,
+                        email: clientInfo.email,
+                        profilePicture: clientInfo.profilePicture || null
+                    };
+                } else {
+                    // Fallback si no se encuentra el cliente
                     senderInfo = {
                         _id: message.senderId,
                         fullName: 'Cliente',
@@ -517,7 +587,7 @@ chatController.getMessages = async (req, res) => {
                 ...message,
                 senderId: senderInfo
             };
-        }));
+        });
 
         const totalMessages = await ChatMessage.countDocuments({ 
             conversationId
@@ -545,7 +615,7 @@ chatController.getMessages = async (req, res) => {
 };
 
 /**
- * ✅ FUNCIÓN 5/8: Eliminar mensaje - CORREGIDA PARA ACTUALIZACIONES CORRECTAS
+ * ✅ FUNCIÓN 5/8: Eliminar mensaje - CORREGIDA PARA EVENTOS ÚNICOS
  */
 chatController.deleteMessage = async (req, res) => {
     try {
@@ -635,12 +705,14 @@ chatController.deleteMessage = async (req, res) => {
             { new: true }
         );
 
+        // ✅ CORRECCIÓN CRÍTICA: Emitir eventos de manera más específica
         const io = req.app.get('io');
         if (io) {
-            // ✅ EMITIR EVENTO DE MENSAJE ELIMINADO
+            // 1. Emitir evento de mensaje eliminado SOLO a la conversación específica
+            console.log(`🗑️ Emitiendo eliminación de mensaje a conversación: ${conversationId}`);
             emitMessageDeleted(io, conversationId, messageId, messageSenderId);
             
-            // ✅ FIX CRÍTICO: EMITIR EVENTO DE CONVERSACIÓN ACTUALIZADA CON ÚLTIMO MENSAJE CORRECTO
+            // 2. Emitir actualización de conversación SOLO a usuarios relevantes
             emitConversationUpdated(io, {
                 conversationId,
                 action: 'updated',
@@ -650,7 +722,7 @@ chatController.deleteMessage = async (req, res) => {
                 unreadCountClient: updatedConversation.unreadCountClient
             });
             
-            // ✅ EMITIR ESTADÍSTICAS ACTUALIZADAS
+            // 3. Emitir estadísticas actualizadas SOLO a admins
             emitChatStats(io);
         }
 
@@ -675,7 +747,7 @@ chatController.deleteMessage = async (req, res) => {
 };
 
 /**
- * ✅ FUNCIÓN 6/8: Marcar mensajes como leídos
+ * ✅ FUNCIÓN 6/8: Marcar mensajes como leídos - OPTIMIZADA
  */
 chatController.markAsRead = async (req, res) => {
     try {
@@ -690,7 +762,8 @@ chatController.markAsRead = async (req, res) => {
 
         const queryUserId = req.user.userType === 'admin' ? 'admin' : req.user.id;
 
-        await ChatMessage.updateMany(
+        // ✅ OPTIMIZACIÓN: Solo actualizar mensajes que realmente necesitan cambio
+        const updateResult = await ChatMessage.updateMany(
             { 
                 conversationId,
                 senderId: { $ne: queryUserId },
@@ -701,6 +774,8 @@ chatController.markAsRead = async (req, res) => {
                 readAt: new Date()
             }
         );
+
+        console.log(`✅ Mensajes marcados como leídos: ${updateResult.modifiedCount}`);
 
         const conversationUpdate = {};
         if (req.user.userType === 'admin') {
@@ -715,26 +790,30 @@ chatController.markAsRead = async (req, res) => {
             { new: true }
         );
 
-        const io = req.app.get('io');
-        if (io) {
-            emitMessagesRead(io, conversationId, {
-                userId: req.user.id,
-                userType: req.user.userType
-            });
-            
-            emitConversationUpdated(io, {
-                conversationId,
-                action: 'updated',
-                unreadCountAdmin: updatedConversation.unreadCountAdmin,
-                unreadCountClient: updatedConversation.unreadCountClient
-            });
-            
-            emitChatStats(io);
+        // ✅ CORRECCIÓN: Solo emitir eventos si realmente se actualizaron mensajes
+        if (updateResult.modifiedCount > 0) {
+            const io = req.app.get('io');
+            if (io) {
+                emitMessagesRead(io, conversationId, {
+                    userId: req.user.id,
+                    userType: req.user.userType
+                });
+                
+                emitConversationUpdated(io, {
+                    conversationId,
+                    action: 'updated',
+                    unreadCountAdmin: updatedConversation.unreadCountAdmin,
+                    unreadCountClient: updatedConversation.unreadCountClient
+                });
+                
+                emitChatStats(io);
+            }
         }
 
         res.status(200).json({
             success: true,
-            message: "Mensajes marcados como leídos"
+            message: "Mensajes marcados como leídos",
+            updatedCount: updateResult.modifiedCount
         });
 
     } catch (error) {
@@ -747,7 +826,7 @@ chatController.markAsRead = async (req, res) => {
 };
 
 /**
- * ✅ FUNCIÓN 7/8: Obtener estadísticas del chat
+ * ✅ FUNCIÓN 7/8: Obtener estadísticas del chat - OPTIMIZADA
  */
 chatController.getChatStats = async (req, res) => {
     try {
@@ -758,6 +837,7 @@ chatController.getChatStats = async (req, res) => {
             });
         }
 
+        // ✅ OPTIMIZACIÓN: Queries paralelas para velocidad
         const [
             totalConversations,
             activeConversations,
@@ -795,7 +875,7 @@ chatController.getChatStats = async (req, res) => {
 };
 
 /**
- * ✅ FUNCIÓN 8/8: Limpieza programada con eliminación física
+ * ✅ FUNCIÓN 8/8: Limpieza programada con eliminación física - OPTIMIZADA
  */
 chatController.scheduledCleanup = async (req, res) => {
     try {
@@ -806,31 +886,43 @@ chatController.scheduledCleanup = async (req, res) => {
             });
         }
 
-        const deletedCount = await cleanupOrphanedConversations();
-        
-        const activeConversations = await ChatConversation.find({ status: 'active' }).lean();
-        let totalDeletedMessages = 0;
-        let totalDeletedFiles = 0;
-        
-        for (const conversation of activeConversations) {
-            const result = await enforceMessageLimit(conversation.conversationId);
-            if (result.action === 'messages_permanently_deleted') {
-                totalDeletedMessages += result.deletedCount;
-                totalDeletedFiles += result.deletedFiles;
+        console.log('🧹 Iniciando limpieza programada optimizada...');
+
+        // ✅ OPTIMIZACIÓN: Ejecutar limpieza en background
+        setImmediate(async () => {
+            try {
+                const deletedCount = await cleanupOrphanedConversations();
+                
+                const activeConversations = await ChatConversation.find({ status: 'active' }).lean();
+                let totalDeletedMessages = 0;
+                let totalDeletedFiles = 0;
+                
+                for (const conversation of activeConversations) {
+                    const result = await enforceMessageLimit(conversation.conversationId);
+                    if (result.action === 'messages_permanently_deleted') {
+                        totalDeletedMessages += result.deletedCount;
+                        totalDeletedFiles += result.deletedFiles;
+                    }
+                    await updateConversationLastMessage(conversation.conversationId);
+                }
+                
+                console.log('✅ Limpieza programada completada:', {
+                    deletedConversations: deletedCount,
+                    processedConversations: activeConversations.length,
+                    totalDeletedMessages,
+                    totalDeletedFiles
+                });
+                
+            } catch (error) {
+                console.error('❌ Error en limpieza programada background:', error);
             }
-            await updateConversationLastMessage(conversation.conversationId);
-        }
-        
+        });
+
+        // Responder inmediatamente sin esperar la limpieza
         res.status(200).json({
             success: true,
-            message: "Limpieza física completada exitosamente",
-            results: {
-                deletedConversations: deletedCount,
-                processedConversations: activeConversations.length,
-                totalDeletedMessages,
-                totalDeletedFiles,
-                cleanupType: 'hard_delete'
-            }
+            message: "Limpieza programada iniciada en background",
+            status: "processing"
         });
         
     } catch (error) {

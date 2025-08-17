@@ -63,25 +63,25 @@ const ShoppingCart = ({ navigation }) => {
     }
   };
 
-  // Cargar carrito al montar el componente
+  // ✅ CORREGIDO: Cargar carrito al montar el componente - CON ARRAY DE DEPENDENCIAS
   useEffect(() => {
-    if (isAuthenticated && user?.id) {
+    if (isAuthenticated && user?.id && getActiveCart) {
       getActiveCart();
     }
-  });
+  }, [isAuthenticated, user?.id]); // ✅ Dependencias específicas y estables
 
-  // Limpiar errores cuando cambie el componente
+  // ✅ CORREGIDO: Limpiar errores cuando cambie el componente - CON ARRAY DE DEPENDENCIAS
   useEffect(() => {
     return () => {
       if (clearCartError) {
         clearCartError();
       }
     };
-  }, [clearCartError]);
+  }, []); // ✅ Array vacío porque es cleanup
 
   // Log para debugging - Ver estadísticas del carrito
   useEffect(() => {
-    if (cartItems.length > 0) {
+    if (cartItems.length > 0 && getCartStats && isCustomProduct) {
       const stats = getCartStats();
       console.log('Estadísticas del carrito:', stats);
       console.log('Items del carrito:', cartItems.map(item => ({
@@ -93,7 +93,7 @@ const ShoppingCart = ({ navigation }) => {
         quantity: item.quantity
       })));
     }
-  }, [cartItems, getCartStats, isCustomProduct]);
+  }, [cartItems.length]); // ✅ Solo depende de la longitud del array
 
   // Función para refrescar el carrito
   const onRefresh = async () => {
@@ -134,7 +134,7 @@ const ShoppingCart = ({ navigation }) => {
       // Marcar item como actualizándose
       setUpdatingItems(prev => new Set([...prev, itemId]));
 
-      console.log(`Actualizando cantidad de ${isCustomProduct(currentItem) ? 'producto personalizado' : 'producto'}: ${currentItem.name}`);
+      console.log(`Actualizando cantidad de ${isCustomProduct ? isCustomProduct(currentItem) ? 'producto personalizado' : 'producto' : 'producto'}: ${currentItem.name}`);
 
       const result = await updateItemQuantity(itemId, newQuantity);
 
@@ -233,15 +233,23 @@ const ShoppingCart = ({ navigation }) => {
     }
 
     // Mostramos estadísticas antes del checkout
-    const stats = getCartStats();
-    console.log('Procediendo al checkout con:', stats);
+    if (getCartStats) {
+      const stats = getCartStats();
+      console.log('Procediendo al checkout con:', stats);
 
-    navigation.navigate('Checkout', {
-      cart: cart,
-      cartItems: cartItems,
-      total: cartTotal || subtotal,
-      stats: stats
-    });
+      navigation.navigate('Checkout', {
+        cart: cart,
+        cartItems: cartItems,
+        total: cartTotal || subtotal,
+        stats: stats
+      });
+    } else {
+      navigation.navigate('Checkout', {
+        cart: cart,
+        cartItems: cartItems,
+        total: cartTotal || subtotal
+      });
+    }
   };
 
   // Verificar que los contextos estén disponibles
@@ -375,7 +383,7 @@ const ShoppingCart = ({ navigation }) => {
         )}
 
         {/* ESTADÍSTICAS DEL CARRITO */}
-        {cartItems.length > 0 && (
+        {cartItems.length > 0 && getCartStats && (
           <View style={styles.statsContainer}>
             <Text style={styles.statsText}>
               {(() => {

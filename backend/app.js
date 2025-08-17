@@ -40,7 +40,7 @@ app.use(
 );
 
 const swaggerDocument = JSON.parse(
-  fs.readFileSync(path.resolve("./Marqueza.json"), "utf-8")
+  fs.readFileSync(path.resolve("./Marquesa.json"), "utf-8")
 );
  
 // Middleware para parsear diferentes tipos de datos en las peticiones

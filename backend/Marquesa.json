@@ -3753,7 +3753,7 @@
         }
       }
     },
-    "/shoppingCart/{cartId}/clear-after-purchase": {
+    "/shoppingCart/{cartId}/clearAfterPurchase": {
       "post": {
         "tags": [
           "Shopping Cart"

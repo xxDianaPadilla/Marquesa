@@ -181,15 +181,27 @@ La plataforma incluye:
   <li><b>Tailwind CSS:</b> Framework de utilidades CSS para crear diseños modernos y responsivos.</li>
 </ul>
 
-<h4>🛠️ Herramientas de desarrollo</h4>
+<h3>📱 Librerías Utilizadas (Frontend Móvil)</h3>
+
+<p>Para el desarrollo de la aplicación móvil se ha utilizado <b>React Native</b> junto con <b>Expo</b> como framework principal. Estas son las principales librerías y módulos:</p>
+
 <ul>
-  <li><b>Vite:</b> Herramienta de desarrollo rápida y moderna para aplicaciones React.</li>
-  <li><b>@vitejs/plugin-react:</b> Plugin oficial para integrar React con Vite.</li>
-  <li><b>ESLint:</b> Herramienta de análisis de código para mantener buenas prácticas.</li>
-  <li><b>eslint-plugin-react-hooks:</b> Enfocado en buenas prácticas con los hooks de React.</li>
-  <li><b>eslint-plugin-react-refresh:</b> Mejora la experiencia de desarrollo con recarga en caliente.</li>
-  <li><b>@types/react y @types/react-dom:</b> Tipado estático para React y el DOM en TypeScript.</li>
-  <li><b>Globals:</b> Lista de variables globales predefinidas para configurar ESLint.</li>
+  <li><b>Expo:</b> Framework que facilita el desarrollo de aplicaciones móviles en React Native.</li>
+  <li><b>Expo Font:</b> Carga y uso de tipografías personalizadas dentro de la app.</li>
+  <li><b>Expo Splash Screen:</b> Manejo y personalización de la pantalla de carga inicial de la aplicación.</li>
+  <li><b>Expo Status Bar:</b> Control y personalización de la barra de estado en dispositivos móviles.</li>
+  <li><b>Expo Blur:</b> Efectos de desenfoque nativos para mejorar la UI.</li>
+  <li><b>@expo-google-fonts/poppins:</b> Integración de la tipografía Poppins desde Google Fonts.</li>
+  <li><b>@expo/vector-icons:</b> Colección de íconos lista para usarse en aplicaciones Expo.</li>
+  <li><b>React Native Vector Icons:</b> Biblioteca de íconos escalables y personalizables.</li>
+  <li><b>Lucide React:</b> Íconos en estilo minimalista y moderno.</li>
+  <li><b>@react-native-async-storage/async-storage:</b> Almacenamiento local persistente para datos clave-valor.</li>
+  <li><b>@react-native-community/blur:</b> Implementación comunitaria de efectos de desenfoque.</li>
+  <li><b>@react-native-community/datetimepicker:</b> Selector de fecha y hora nativo para iOS y Android.</li>
+  <li><b>@react-native-community/slider:</b> Componente de control deslizante para valores numéricos.</li>
+  <li><b>@react-navigation/native:</b> Manejo de navegación en aplicaciones React Native.</li>
+  <li><b>@react-navigation/bottom-tabs:</b> Navegación con pestañas en la parte inferior de la app.</li>
+  <li><b>@react-navigation/native-stack:</b> Navegación tipo stack con mejor rendimiento nativo.</li>
 </ul>
 
 <hr>
@@ -207,6 +219,13 @@ La plataforma incluye:
   <li><b>Para cambiarnos a la carpeta del frontend</b>"cd frontend" </li>
   <li><b>Para instalar los modulos ocupados en Frontend</b>"npm install"</li>
   <li><b>Para Ejecutar el Proyecto</b>"npm run dev"</li>
+</ul>
+
+<h3>📱 Comandos para Ejecutar Movil </h3>
+<ul>
+  <li><b>Para cambiarnos a la carpeta del frontendMovil</b>"cd frontendMovil" </li>
+  <li><b>Para instalar los modulos ocupados en frontendMovil</b>"npm install"</li>
+  <li><b>Para Ejecutar el Proyecto</b>"npx expo start"</li>
 </ul>
 
 

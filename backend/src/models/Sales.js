@@ -3,21 +3,25 @@ import { Schema, model } from "mongoose";
 
 // Definimos el esquema para las ventas
 const salesSchema = new Schema({
-    // Tipo de pago con opciones predefinidas, por defecto "Efectivo"
+    // Tipo de pago con opciones predefinidas
     paymentType: {
         type: String,
         enum: {
-            values: ["Transferencia", "Efectivo", "Débito", "Crédito"],
-            message: "El método de pago debe ser 'Transferencia', 'Efectivo', 'Débito' o 'Crédito'"
-        },
-        default: "Efectivo",
+            values: ["Transferencia", "Débito", "Crédito"],
+            message: "El método de pago debe ser 'Transferencia', 'Débito' o 'Crédito'"
+        }
     },
-    // Imagen del comprobante de pago (obligatorio menos en la opción de pago en efectivo)
+    // Imagen del comprobante de pago (obligatorio menos en la opción de pago en credito y débito)
     paymentProofImage: {
         type: String,
-        required: function () {
-            return this.paymentType !== 'Efectivo';
-        }
+        required: false,
+        validate: { 
+            validator: function(value) {
+                // Solo es obligatorio si el tipo de pago no es 'Crédito' o 'Débito'
+                return this.paymentType !== "Crédito" && this.paymentType !== "Débito" ? value != null : true;
+            },
+            message: "La imagen del comprobante de pago es obligatoria para Transferencia"
+        }   
     },
     // Estado del pago de la venta, por defecto "Pendiente"
     status: {

@@ -7,33 +7,41 @@ import bgImage from "../assets/bgImage.png";
 const PageContainer = ({ children }) => {
     return (
         <div className="min-h-screen w-full flex">
-            {/* Sección izquierda - Rosa con logo */}
-            <div className="w-1/4 flex flex-col justify-center items-center relative" style={{ backgroundColor: '#FDB4B7' }}>
-                <div className="text-center">
+            {/* Sección izquierda - Rosa con logo (oculta en pantallas pequeñas) */}
+            <div className="hidden md:flex md:w-1/3 lg:w-1/4 flex-col justify-center items-center relative" style={{ backgroundColor: '#FDB4B7' }}>
+                <div className="text-center px-4">
                     <img
                         src={marquesaLogo}
                         alt="Marquesa Logo"
-                        className="object-contain"
-                        style={{width:"200px", height: "200px"}}
+                        className="object-contain w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 lg:w-52 lg:h-52"
                     />
                 </div>
             </div>
 
             {/* Sección derecha - Fondo floral con scroll */}
-            <div className="w-3/4 relative overflow-hidden">
+            <div className="w-full md:w-2/3 lg:w-3/4 relative overflow-hidden">
                 {/* Imagen de fondo floral */}
                 <div className="absolute inset-0">
                     <img
                         src={bgImage}
                         alt="Fondo floral"
-                        className="w-[150%] h-full object-cover"
+                        className="w-full md:w-[150%] h-full object-cover"
+                    />
+                </div>
+
+                {/* Logo pequeño en la esquina superior para móvil */}
+                <div className="md:hidden absolute top-4 left-4 z-20">
+                    <img
+                        src={marquesaLogo}
+                        alt="Marquesa Logo"
+                        className="w-12 h-12 object-contain opacity-80"
                     />
                 </div>
 
                 {/* Contenedor scrolleable para el contenido */}
                 <div className="relative z-10 w-full h-screen overflow-y-auto">
-                    <div className="min-h-full flex justify-center items-center py-8 px-4">
-                        <div className="w-full max-w-2xl">
+                    <div className="min-h-full flex justify-center items-center py-8 px-4 sm:px-6 md:px-8">
+                        <div className="w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-2xl">
                             {children}
                         </div>
                     </div>

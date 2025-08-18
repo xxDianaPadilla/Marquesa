@@ -73,16 +73,24 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, remaini
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop con blur */}
-      <div 
-        className="absolute inset-0 backdrop-blur-sm transition-opacity" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+    // CAMBIO PRINCIPAL: Aumentar z-index para estar por encima del mapa
+    <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 10000 }}>
+      {/* Backdrop con blur - z-index alto */}
+      <div
+        className="absolute inset-0 backdrop-blur-sm transition-opacity"
+        style={{
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          zIndex: 9999  // Asegurar que esté por encima del mapa
+        }}
         onClick={onClose}
       />
-      
-      {/* Modal */}
-      <div className="relative bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all">
-        {/* Header del modal */}
+
+      {/* Modal - z-index más alto que el backdrop */}
+      <div
+        className="relative bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all"
+        style={{ zIndex: 10001 }}
+      >
+        {/* Resto del contenido del modal permanece igual */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
@@ -101,13 +109,11 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, remaini
           </button>
         </div>
 
-        {/* Contenido del modal */}
         <div className="p-6">
           <p className="text-gray-600 mb-4 leading-relaxed">
             {message}
           </p>
-          
-          {/* Información adicional sobre el tiempo restante */}
+
           {remainingHours && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
               <div className="flex items-center space-x-2">
@@ -119,7 +125,6 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, remaini
             </div>
           )}
 
-          {/* Botones de acción */}
           <div className="flex space-x-3">
             <button
               onClick={onClose}
@@ -145,7 +150,6 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, remaini
           </div>
         </div>
 
-        {/* Footer informativo */}
         <div className="px-6 py-4 bg-gray-50 rounded-b-xl">
           <p className="text-xs text-gray-500 text-center">
             Esta acción no se puede deshacer una vez confirmada
@@ -366,7 +370,7 @@ const OrderDetail = () => {
   const handleCancelOrderClick = () => {
     // Verificar que existan datos del pedido y sea cancelable
     if (!orderData || !cancellationInfo?.isCancellable) return;
-    
+
     // Mostrar modal de confirmación
     setShowConfirmModal(true);
   };
@@ -1049,7 +1053,7 @@ const OrderDetail = () => {
                             showError={true}
                           />
                         </div>
-                        
+
                         {/* Información del producto con diseño original exacto */}
                         <div className="flex-1">
                           <p className="text-sm font-medium text-gray-900">
@@ -1070,14 +1074,14 @@ const OrderDetail = () => {
                             </div>
                           )}
                         </div>
-                        
+
                         {/* Precio del producto con diseño original */}
                         <div className="text-right">
                           <p className="text-sm font-medium text-gray-900">
-                            ${(item.subtotal?.toFixed(2) || 
-                               item.price?.toFixed(2) || 
-                               item.totalPrice?.toFixed(2) || 
-                               '0.00')}
+                            ${(item.subtotal?.toFixed(2) ||
+                              item.price?.toFixed(2) ||
+                              item.totalPrice?.toFixed(2) ||
+                              '0.00')}
                           </p>
                         </div>
                       </div>

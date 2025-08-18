@@ -1,16 +1,18 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import Header from "../components/Header/Header";
-import Footer from "../components/Footer";
-import MediaContentCards from "../components/MediaContentCards";
-import useMedia from "../components/Media/Hooks/useMedia";
-import calendarIcon from "../assets/calendar.png";
+import React, { useState, useEffect, useMemo } from "react"; // Importamos React
+import { useParams, useNavigate } from "react-router-dom"; // Importamos librería para navegación
+import Header from "../components/Header/Header"; // Importamos componente de Header
+import Footer from "../components/Footer"; // Importamos componente de Footer
+import MediaContentCards from "../components/MediaContentCards"; // Importamos cards para media
+import useMedia from "../components/Media/Hooks/useMedia"; // Importamos hook para acciones
+import calendarIcon from "../assets/calendar.png"; // Importamos icono de calendario
 
+// Importamos página de detalles de multimedia
 const MediaDetailPage = () => {
     const { id } = useParams(); 
     const navigate = useNavigate();
     const { allMediaItems, getItemById, getRelatedItems, loading } = useMedia(); 
 
+    // Obtemos en item actual
     const currentItem = useMemo(() => {
         console.log('=== MediaDetailPage useMemo ===');
         console.log('ID from URL:', id);
@@ -26,6 +28,7 @@ const MediaDetailPage = () => {
         return item;
     }, [id, allMediaItems, getItemById]);
 
+    // Importamos items similares
     const relatedItems = useMemo(() => {
         if (!currentItem || allMediaItems.length === 0) return [];
 
@@ -35,6 +38,7 @@ const MediaDetailPage = () => {
         return related;
     }, [currentItem, getRelatedItems, allMediaItems]);
 
+    // useEffect para carga constante de items de media
     useEffect(() => {
         if (!loading && !currentItem && id && allMediaItems.length > 0) {
             console.warn(`No se encontró el artículo con ID: ${id}`);
@@ -45,10 +49,12 @@ const MediaDetailPage = () => {
         }
     }, [currentItem, id, navigate, loading, allMediaItems]);
 
+    // Manejamos regreso a la página de media
     const handleBackToBlog = () => {
         navigate('/mediaPage');
     };
 
+    // Diseño en el caso de que la página se quede cargando
     if (loading) {
         return (
             <>
@@ -66,6 +72,7 @@ const MediaDetailPage = () => {
         );
     }
 
+    // Diseño en el caso que no se encuentre ningún item
     if (!currentItem) {
         return (
             <>
@@ -100,6 +107,7 @@ const MediaDetailPage = () => {
         );
     }
 
+    // Diseño de la página de detalles de multimedia
     return (
         <>
             <Header />

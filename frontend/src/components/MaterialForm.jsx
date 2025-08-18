@@ -1,9 +1,10 @@
 // components/MaterialForm.js
-import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { X } from "lucide-react";
-import OverlayBackdrop from './OverlayBackdrop';
+import React, { useState, useEffect } from 'react'; // Importamos React
+import { useForm } from 'react-hook-form'; // Importamos librería para validación de formularios
+import { X } from "lucide-react"; // Importando librería para iconos
+import OverlayBackdrop from './OverlayBackdrop'; // Importante componente para fondo
 
+// Componente y formulario para creación de materiales para productos personalizados
 const MaterialForm = ({ onSubmit, initialData = null, onCancel, isLoading = false, submitText = null }) => {
   const [selectedProduct, setSelectedProduct] = useState('');
   const [availableCategories, setAvailableCategories] = useState([]);

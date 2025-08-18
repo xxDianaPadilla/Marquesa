@@ -1,5 +1,5 @@
-import React from "react";
-import MediaContentCards from "./MediaContentCards";
+import React from "react"; // Importando React
+import MediaContentCards from "./MediaContentCards"; // Importando componente de cards para media
 
 // Componente para mostrar una cuadrícula de elementos multimedia
 // Utiliza MediaContentCards para renderizar cada elemento

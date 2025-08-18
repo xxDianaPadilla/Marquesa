@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import chatIcon from "../assets/chatIcon.png";
-import marquesaMiniLogo from "../assets/marquesaMiniLogo.png";
+import React, { useState, useEffect } from "react"; // Importanto React
+import { useNavigate } from "react-router-dom"; // Importando librería para navegación
+import { useAuth } from "../context/AuthContext"; // Importando contexto global
+import chatIcon from "../assets/chatIcon.png"; // Importando icono de chat
+import marquesaMiniLogo from "../assets/marquesaMiniLogo.png"; // Importando icono de logo
 
 // Componente para las herramientas del administrador
 // Muestra iconos de chat, notificaciones y perfil del administrador

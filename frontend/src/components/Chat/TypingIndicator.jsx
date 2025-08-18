@@ -1,5 +1,6 @@
-import React from 'react';
+import React from 'react'; // Importando React
 
+// Componente indicador de verificación de cambio del input
 const TypingIndicator = ({ users = [], compact = false }) => {
     if (!users || users.length === 0) return null;
 

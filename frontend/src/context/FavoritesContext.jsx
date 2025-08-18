@@ -1,8 +1,10 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { useAuth } from './AuthContext';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'; // Importando React
+import { useAuth } from './AuthContext'; // Importando contexto global
 
+// Creando contexto para favoritos
 const FavoritesContext = createContext();
 
+// Creando hook para favoritos
 export const useFavorites = () => {
     const context = useContext(FavoritesContext);
     if (!context) {

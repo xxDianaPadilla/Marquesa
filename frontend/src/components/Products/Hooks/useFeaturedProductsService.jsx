@@ -3,6 +3,7 @@
 // CORREGIDO: URL del backend en lugar del frontend
 const API_BASE_URL = 'https://marquesa.onrender.com/api';
 
+// Hook para obtener los productos mejor evaluados
 export const useFeaturedProductsService = {
     getFeaturedProducts: async () => {
         try {

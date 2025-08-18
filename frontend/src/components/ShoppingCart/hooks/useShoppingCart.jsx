@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
-import { useAuth } from '../../../context/AuthContext';
+import { useState, useEffect, useCallback } from "react"; // Importando React
+import { useAuth } from '../../../context/AuthContext'; // Importando el context para manejar el carrito
 
+// Hook para manejar las acciones del carrito de compras
 const useShoppingCart = () => {
     const [cartItems, setCartItems] = useState([]);
     const [cartTotal, setCartTotal] = useState(0);

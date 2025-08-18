@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState } from "react"; // Importando React
 // Imports de los íconos de Lucide
 import {
   Eye,
@@ -13,7 +13,7 @@ import {
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
-import OverlayBackdrop from "./OverlayBackdrop";
+import OverlayBackdrop from "./OverlayBackdrop"; // Importando componente para fondo
 
 const SalesCard = ({ sale, onUpdateStatus }) => {
   const [isUpdating, setIsUpdating] = useState(false);
@@ -21,6 +21,7 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
   const [updateError, setUpdateError] = useState(null); // ✅ NUEVO: Estado para errores específicos
   const [showSuccess, setShowSuccess] = useState(false); // ✅ NUEVO: Estado para mostrar éxito
 
+  // Obtenemos el color según el estado
   const getStatusColor = (status) => {
     switch (status) {
       case "Agendado":
@@ -34,6 +35,7 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
     }
   };
 
+  // Obtenemos el color de la etiqueta según el estado
   const getStatusBadgeColor = (status) => {
     switch (status) {
       case "Agendado":
@@ -47,6 +49,7 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
     }
   };
 
+  // Obtenemos el icono según el estado
   const getStatusIcon = (status) => {
     switch (status) {
       case "Agendado":
@@ -60,6 +63,7 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
     }
   };
 
+  // Obtenemos el icono del tipo de pago según el estado
   const getPaymentTypeIcon = (paymentType) => {
     switch (paymentType) {
       case "Transferencia":
@@ -126,6 +130,7 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
     }
   };
 
+  // Formatemos la fecha
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("es-ES", {
@@ -135,6 +140,7 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
     });
   };
 
+  // Formatemos el tiempo
   const formatTime = (dateString) => {
     return new Date(dateString).toLocaleTimeString("es-ES", {
       hour: "2-digit",

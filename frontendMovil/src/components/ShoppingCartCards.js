@@ -1,4 +1,4 @@
-import React from 'react';
+import React from 'react'; // Importamos react
 import {
     View,
     Text,
@@ -9,9 +9,10 @@ import {
     Alert,
     ToastAndroid,
     Platform
-} from 'react-native';
-import iconBasura from '../images/iconBasura.png';
+} from 'react-native'; // Importamos react native
+import iconBasura from '../images/iconBasura.png'; // Importamos iconos de basura
 
+// Componentes y cards para carrito de compras
 const ShoppingCartCards = ({
     cartItems = [],
     updatingItems = new Set(),
@@ -96,6 +97,7 @@ const ShoppingCartCards = ({
         return null;
     }
 
+    // Diseño de cards
     return (
         <View style={styles.container}>
             {cartItems.map((item, index) => {
@@ -168,6 +170,7 @@ const ShoppingCartCards = ({
     );
 };
 
+// Configuración de estilos
 const styles = StyleSheet.create({
     container: {
         flex: 1,

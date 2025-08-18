@@ -1,5 +1,5 @@
-import React from "react";
-import useGoogleAuth from "../components/Google/hooks/useGoogleAuth";
+import React from "react"; // Importamos React
+import useGoogleAuth from "../components/Google/hooks/useGoogleAuth"; // Importamos hook de acciones
  
 /**
  * Botón de Google OAuth actualizado
@@ -12,12 +12,14 @@ const GoogleButton = ({
 }) => {
     const { isLoading, startGoogleAuth } = useGoogleAuth();
  
+    // Manejamps el clic del botón
     const handleClick = () => {
         if (!disabled && !isLoading) {
             startGoogleAuth();
         }
     };
  
+    // Diseño del botón
     return (
         <button
             type="button"

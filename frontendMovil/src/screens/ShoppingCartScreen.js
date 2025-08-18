@@ -13,8 +13,12 @@ import {
   ToastAndroid,
   Platform
 } from 'react-native';
+
+// Importación de contextos personalizados
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
+
+// Importación de iconos y componentes
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import backIcon from '../images/backIcon.png';
 import ShoppingCartCards from '../components/ShoppingCartCards';
@@ -22,7 +26,10 @@ import { ConfirmationDialog } from '../components/CustomAlerts';
 import { useAlert } from '../hooks/useAlert'; 
 
 const ShoppingCart = ({ navigation }) => {
+  // Extraer funciones y estados del contexto de autenticación
   const { isAuthenticated, user } = useAuth();
+  
+  // Extraer funciones y estados del contexto del carrito
   const {
     cart,
     cartItems,
@@ -40,12 +47,13 @@ const ShoppingCart = ({ navigation }) => {
     getProductImage
   } = useCart();
 
-  const [refreshing, setRefreshing] = useState(false);
-  const [discountCode, setDiscountCode] = useState('');
-  const [applyingDiscount, setApplyingDiscount] = useState(false);
-  const [updatingItems, setUpdatingItems] = useState(new Set());
+  // Estados locales para la UI del componente
+  const [refreshing, setRefreshing] = useState(false); // Para controlar el refresh del ScrollView
+  const [discountCode, setDiscountCode] = useState(''); // Código de descuento ingresado por el usuario
+  const [applyingDiscount, setApplyingDiscount] = useState(false); // Estado de carga al aplicar descuento
+  const [updatingItems, setUpdatingItems] = useState(new Set()); // Items que están siendo actualizados
 
-  // Hook para alertas personalizadas
+  // Hook personalizado para manejar alertas y confirmaciones
   const {
     alertState,
     showConfirmation,
@@ -54,7 +62,7 @@ const ShoppingCart = ({ navigation }) => {
     showSuccessToast
   } = useAlert();
 
-  // Función para mostrar toast/mensaje
+  // Función para mostrar mensajes toast multiplataforma
   const showToast = (message) => {
     if (Platform.OS === 'android') {
       ToastAndroid.show(message, ToastAndroid.SHORT);
@@ -63,14 +71,14 @@ const ShoppingCart = ({ navigation }) => {
     }
   };
 
-  // ✅ CORREGIDO: Cargar carrito al montar el componente - CON ARRAY DE DEPENDENCIAS
+  // ✅ Effect para cargar el carrito al montar el componente
   useEffect(() => {
     if (isAuthenticated && user?.id && getActiveCart) {
       getActiveCart();
     }
   }, [isAuthenticated, user?.id]); // ✅ Dependencias específicas y estables
 
-  // ✅ CORREGIDO: Limpiar errores cuando cambie el componente - CON ARRAY DE DEPENDENCIAS
+  // ✅ Effect para limpiar errores cuando el componente se desmonte
   useEffect(() => {
     return () => {
       if (clearCartError) {
@@ -79,7 +87,7 @@ const ShoppingCart = ({ navigation }) => {
     };
   }, []); // ✅ Array vacío porque es cleanup
 
-  // Log para debugging - Ver estadísticas del carrito
+  // Effect para logging y debugging - Ver estadísticas del carrito
   useEffect(() => {
     if (cartItems.length > 0 && getCartStats && isCustomProduct) {
       const stats = getCartStats();
@@ -95,13 +103,13 @@ const ShoppingCart = ({ navigation }) => {
     }
   }, [cartItems.length]); // ✅ Solo depende de la longitud del array
 
-  // Función para refrescar el carrito
+  // Función para refrescar el carrito mediante pull-to-refresh
   const onRefresh = async () => {
     if (!isAuthenticated || !getActiveCart) return;
 
     setRefreshing(true);
     try {
-      await getActiveCart(true);
+      await getActiveCart(true); // true para forzar recarga
     } catch (error) {
       console.error('Error al refrescar carrito:', error);
     } finally {
@@ -109,12 +117,12 @@ const ShoppingCart = ({ navigation }) => {
     }
   };
 
-  // Manejador para actualizar cantidad - Se pasa al componente ShoppingCartCards
+  // Manejador para actualizar la cantidad de un producto en el carrito
   const handleUpdateQuantity = async (itemId, delta) => {
     try {
       if (!cartItems || !itemId || !updateItemQuantity) return;
 
-      // Buscamos el item en cartItems transformados
+      // Buscar el item actual en la lista de productos del carrito
       const currentItem = cartItems.find(item => item.id === itemId);
 
       if (!currentItem) {
@@ -122,6 +130,7 @@ const ShoppingCart = ({ navigation }) => {
         return;
       }
 
+      // Calcular nueva cantidad con límites mínimos y máximos
       const newQuantity = Math.max(1, currentItem.quantity + delta);
 
       if (newQuantity > 99) {
@@ -131,11 +140,12 @@ const ShoppingCart = ({ navigation }) => {
 
       if (newQuantity === currentItem.quantity) return;
 
-      // Marcar item como actualizándose
+      // Marcar item como "actualizándose" para mostrar indicador de carga
       setUpdatingItems(prev => new Set([...prev, itemId]));
 
       console.log(`Actualizando cantidad de ${isCustomProduct ? isCustomProduct(currentItem) ? 'producto personalizado' : 'producto' : 'producto'}: ${currentItem.name}`);
 
+      // Llamar a la función del contexto para actualizar la cantidad
       const result = await updateItemQuantity(itemId, newQuantity);
 
       if (result && result.success) {
@@ -147,6 +157,7 @@ const ShoppingCart = ({ navigation }) => {
       console.error('Error al actualizar cantidad:', error);
       Alert.alert('Error', 'Error inesperado al actualizar cantidad');
     } finally {
+      // Remover item del set de "actualizándose"
       setUpdatingItems(prev => {
         const newSet = new Set(prev);
         newSet.delete(itemId);
@@ -155,7 +166,7 @@ const ShoppingCart = ({ navigation }) => {
     }
   };
 
-  // Manejador para remover item - MODIFICADO PARA USAR ALERTA PERSONALIZADA
+  // Manejador para eliminar un producto del carrito con confirmación personalizada
   const handleRemoveItem = async (itemId, itemName, itemType) => {
     try {
       if (!removeFromCart) {
@@ -165,20 +176,22 @@ const ShoppingCart = ({ navigation }) => {
 
       const productTypeText = itemType === 'custom' ? 'producto personalizado' : 'producto';
 
-      // Usar ConfirmationDialog personalizado en lugar de Alert.alert
+      // Mostrar diálogo de confirmación personalizado
       showConfirmation({
         title: 'Confirmar eliminación',
         message: `¿Estás seguro de que quieres eliminar este ${productTypeText} "${itemName}" del carrito?`,
         confirmText: 'Eliminar',
         cancelText: 'Cancelar',
-        isDangerous: true, // Marcar como peligroso para que use color rojo
+        isDangerous: true, // Marcar como peligroso para usar color rojo
         onConfirm: async () => {
           hideConfirmation();
           
+          // Marcar item como "actualizándose"
           setUpdatingItems(prev => new Set([...prev, itemId]));
 
           console.log(`Eliminando ${productTypeText}: ${itemName}`);
 
+          // Llamar a la función del contexto para remover el item
           const result = await removeFromCart(itemId);
 
           if (result && result.success) {
@@ -187,6 +200,7 @@ const ShoppingCart = ({ navigation }) => {
             showErrorToast(result?.message || 'No se pudo eliminar el producto');
           }
 
+          // Remover item del set de "actualizándose"
           setUpdatingItems(prev => {
             const newSet = new Set(prev);
             newSet.delete(itemId);
@@ -204,7 +218,7 @@ const ShoppingCart = ({ navigation }) => {
     }
   };
 
-  // Aplicar código de descuento (placeholder)
+  // Función para aplicar código de descuento (implementación placeholder)
   const handleApplyDiscount = async () => {
     if (!discountCode.trim()) {
       Alert.alert('Error', 'Por favor ingresa un código de descuento');
@@ -214,8 +228,8 @@ const ShoppingCart = ({ navigation }) => {
     setApplyingDiscount(true);
 
     try {
-      // Aquí implementarías la lógica para aplicar descuentos
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // TODO: Implementar lógica real para aplicar descuentos
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulación de carga
       showToast('Código de descuento aplicado');
       setDiscountCode('');
     } catch (error) {
@@ -225,18 +239,19 @@ const ShoppingCart = ({ navigation }) => {
     }
   };
 
-  // Proceder al checkout
+  // Función para proceder al checkout
   const handleCheckout = () => {
     if (!cartItems || cartItems.length === 0) {
       Alert.alert('Carrito vacío', 'Agrega algunos productos antes de continuar');
       return;
     }
 
-    // Mostramos estadísticas antes del checkout
+    // Obtener estadísticas del carrito si están disponibles
     if (getCartStats) {
       const stats = getCartStats();
       console.log('Procediendo al checkout con:', stats);
 
+      // Navegar al checkout con datos y estadísticas
       navigation.navigate('Checkout', {
         cart: cart,
         cartItems: cartItems,
@@ -244,6 +259,7 @@ const ShoppingCart = ({ navigation }) => {
         stats: stats
       });
     } else {
+      // Navegar al checkout sin estadísticas
       navigation.navigate('Checkout', {
         cart: cart,
         cartItems: cartItems,
@@ -252,7 +268,7 @@ const ShoppingCart = ({ navigation }) => {
     }
   };
 
-  // Verificar que los contextos estén disponibles
+  // Estado de carga inicial - Mostrar spinner mientras se determina el estado de autenticación
   if (!isAuthenticated && isAuthenticated !== false) {
     return (
       <View style={styles.container}>
@@ -264,10 +280,11 @@ const ShoppingCart = ({ navigation }) => {
     );
   }
 
-  // Si no está autenticado
+  // Pantalla para usuarios no autenticados
   if (!isAuthenticated) {
     return (
       <View style={styles.container}>
+        {/* Header con botón de retroceso */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Image source={backIcon} style={{ width: 24, height: 24, resizeMode: 'contain' }} />
@@ -276,6 +293,7 @@ const ShoppingCart = ({ navigation }) => {
           <View style={{ width: 24 }} />
         </View>
 
+        {/* Estado vacío con botón de login */}
         <View style={styles.emptyStateContainer}>
           <Icon name="shopping-cart" size={80} color="#ccc" />
           <Text style={styles.emptyStateTitle}>Inicia sesión</Text>
@@ -293,10 +311,11 @@ const ShoppingCart = ({ navigation }) => {
     );
   }
 
-  // Si hay error y no hay datos del carrito
+  // Pantalla de error cuando hay problemas cargando el carrito
   if (cartError && !cartItems.length) {
     return (
       <View style={styles.container}>
+        {/* Header con botón de retroceso */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Image source={backIcon} style={{ width: 24, height: 24, resizeMode: 'contain' }} />
@@ -305,6 +324,7 @@ const ShoppingCart = ({ navigation }) => {
           <View style={{ width: 24 }} />
         </View>
 
+        {/* Estado de error con botón de reintentar */}
         <View style={styles.errorStateContainer}>
           <Icon name="error-outline" size={80} color="#e74c3c" />
           <Text style={styles.errorStateTitle}>Error al cargar carrito</Text>
@@ -320,9 +340,10 @@ const ShoppingCart = ({ navigation }) => {
     );
   }
 
+  // Pantalla principal del carrito de compras
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {/* Header con título y botón de navegación */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Image source={backIcon} style={{ width: 24, height: 24, resizeMode: 'contain' }} />
@@ -331,7 +352,7 @@ const ShoppingCart = ({ navigation }) => {
         <View style={{ width: 24 }} />
       </View>
 
-      {/* Indicador de error */}
+      {/* Banner de error (se muestra si hay errores pero el carrito tiene contenido) */}
       {cartError && (
         <View style={styles.errorBanner}>
           <Icon name="warning" size={16} color="#e74c3c" />
@@ -342,7 +363,7 @@ const ShoppingCart = ({ navigation }) => {
         </View>
       )}
 
-      {/* SCROLL VIEW MEJORADO */}
+      {/* ScrollView principal con RefreshControl */}
       <ScrollView
         style={styles.scrollContainer}
         contentContainerStyle={styles.scrollContent}
@@ -357,7 +378,7 @@ const ShoppingCart = ({ navigation }) => {
           />
         }
       >
-        {/* Loading inicial */}
+        {/* Indicador de carga inicial del carrito */}
         {cartLoading && cartItems.length === 0 && (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#4A4170" />
@@ -365,7 +386,7 @@ const ShoppingCart = ({ navigation }) => {
           </View>
         )}
 
-        {/* Carrito vacío */}
+        {/* Estado cuando el carrito está vacío */}
         {!cartLoading && cartItems.length === 0 && (
           <View style={styles.emptyStateContainer}>
             <Icon name="shopping-cart" size={80} color="#ccc" />
@@ -382,7 +403,7 @@ const ShoppingCart = ({ navigation }) => {
           </View>
         )}
 
-        {/* ESTADÍSTICAS DEL CARRITO */}
+        {/* Sección de estadísticas del carrito */}
         {cartItems.length > 0 && getCartStats && (
           <View style={styles.statsContainer}>
             <Text style={styles.statsText}>
@@ -398,7 +419,7 @@ const ShoppingCart = ({ navigation }) => {
           </View>
         )}
 
-        {/* COMPONENTE REUTILIZABLE PARA ITEMS DEL CARRITO */}
+        {/* Componente reutilizable que renderiza las tarjetas de productos del carrito */}
         <ShoppingCartCards
           cartItems={cartItems}
           updatingItems={updatingItems}
@@ -409,9 +430,10 @@ const ShoppingCart = ({ navigation }) => {
           onRemoveItem={handleRemoveItem}
         />
 
-        {/* Botón seguir comprando y totales */}
+        {/* Sección que se muestra solo cuando hay productos en el carrito */}
         {cartItems.length > 0 && (
           <>
+            {/* Botón para continuar comprando */}
             <TouchableOpacity
               style={styles.keepWorkingButton}
               onPress={() => navigation.navigate('Home')}
@@ -419,7 +441,7 @@ const ShoppingCart = ({ navigation }) => {
               <Text style={styles.keepWorkingText}>Seguir buscando</Text>
             </TouchableOpacity>
 
-            {/* Resumen de totales */}
+            {/* Contenedor de resumen de totales */}
             <View style={styles.totalContainer}>
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Sub Total</Text>
@@ -436,7 +458,7 @@ const ShoppingCart = ({ navigation }) => {
               </View>
             </View>
 
-            {/* Código de descuento */}
+            {/* Sección de código de descuento */}
             <Text style={styles.discountLabel}>Código de descuento</Text>
             <View style={styles.discountRow}>
               <TextInput
@@ -459,7 +481,7 @@ const ShoppingCart = ({ navigation }) => {
               </TouchableOpacity>
             </View>
 
-            {/* Botón de compra */}
+            {/* Botón principal de completar compra */}
             <TouchableOpacity
               style={[styles.checkoutButton, cartLoading && styles.buttonDisabled]}
               onPress={handleCheckout}
@@ -475,7 +497,7 @@ const ShoppingCart = ({ navigation }) => {
         )}
       </ScrollView>
 
-      {/* COMPONENTE DE CONFIRMACIÓN PERSONALIZADO */}
+      {/* Diálogo de confirmación personalizado para eliminar productos */}
       <ConfirmationDialog
         visible={alertState.confirmation.visible}
         title={alertState.confirmation.title}
@@ -490,12 +512,14 @@ const ShoppingCart = ({ navigation }) => {
   );
 };
 
-// ESTILOS (mantener los mismos)
+// Definición de estilos para todos los componentes
 const styles = StyleSheet.create({
+  // Contenedor principal de la pantalla
   container: {
     flex: 1,
     backgroundColor: '#ffffff'
   },
+  // Header con título y navegación
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -509,10 +533,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     zIndex: 1,
   },
+  // Botón de retroceso en el header
   backButton: {
     padding: 4,
     marginTop: 15,
   },
+  // Título del header
   headerTitle: {
     flex: 1,
     textAlign: 'center',
@@ -521,6 +547,7 @@ const styles = StyleSheet.create({
     color: '#333',
     marginTop: 15,
   },
+  // Banner de error que aparece encima del contenido
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -532,6 +559,7 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: '#e74c3c',
   },
+  // Texto del banner de error
   errorBannerText: {
     flex: 1,
     fontSize: 12,
@@ -539,14 +567,17 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontFamily: 'Poppins-Regular',
   },
+  // Contenedor del ScrollView
   scrollContainer: {
     flex: 1,
     backgroundColor: '#ffffff',
   },
+  // Contenido interno del ScrollView
   scrollContent: {
     padding: 16,
     paddingBottom: 32,
   },
+  // Contenedor para indicadores de carga
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -554,12 +585,14 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
     minHeight: 200,
   },
+  // Texto que acompaña los indicadores de carga
   loadingText: {
     fontSize: 16,
     color: '#666',
     marginTop: 16,
     fontFamily: 'Poppins-Regular',
   },
+  // Contenedor para estados vacíos
   emptyStateContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -567,6 +600,7 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
     minHeight: 300,
   },
+  // Título del estado vacío
   emptyStateTitle: {
     fontSize: 20,
     fontWeight: '600',
@@ -574,6 +608,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontFamily: 'Poppins-SemiBold',
   },
+  // Texto descriptivo del estado vacío
   emptyStateText: {
     fontSize: 14,
     color: '#666',
@@ -582,6 +617,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 40,
     fontFamily: 'Poppins-Regular',
   },
+  // Botón de iniciar sesión
   loginButton: {
     backgroundColor: '#4A4170',
     paddingHorizontal: 32,
@@ -589,12 +625,14 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     marginTop: 24,
   },
+  // Texto del botón de iniciar sesión
   loginButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'Poppins-SemiBold',
   },
+  // Contenedor para estados de error
   errorStateContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -602,6 +640,7 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
     minHeight: 300,
   },
+  // Título del estado de error
   errorStateTitle: {
     fontSize: 20,
     fontWeight: '600',
@@ -609,6 +648,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontFamily: 'Poppins-SemiBold',
   },
+  // Texto del estado de error
   errorStateText: {
     fontSize: 14,
     color: '#e74c3c',
@@ -617,6 +657,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 40,
     fontFamily: 'Poppins-Regular',
   },
+  // Botón de reintentar
   retryButton: {
     backgroundColor: '#e74c3c',
     paddingHorizontal: 32,
@@ -624,12 +665,14 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     marginTop: 24,
   },
+  // Texto del botón de reintentar
   retryButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'Poppins-SemiBold',
   },
+  // Contenedor de estadísticas del carrito
   statsContainer: {
     backgroundColor: '#fff',
     padding: 16,
@@ -643,12 +686,14 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
   },
+  // Texto de las estadísticas
   statsText: {
     fontSize: 14,
     color: '#4A4170',
     fontWeight: '500',
     fontFamily: 'Poppins-Medium',
   },
+  // Botón "Seguir buscando"
   keepWorkingButton: {
     borderWidth: 1,
     borderColor: '#FDB4B7',
@@ -658,12 +703,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fff',
   },
+  // Texto del botón "Seguir buscando"
   keepWorkingText: {
     color: '#000000',
     fontSize: 14,
     fontWeight: '500',
     fontFamily: 'Poppins-Medium',
   },
+  // Botón "Seguir comprando" (para carrito vacío)
   keepShoppingButton: {
     backgroundColor: '#4A4170',
     paddingHorizontal: 32,
@@ -671,12 +718,14 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     marginTop: 24,
   },
+  // Texto del botón "Seguir comprando"
   keepShoppingText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'Poppins-SemiBold',
   },
+  // Contenedor del resumen de totales
   totalContainer: {
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -690,32 +739,38 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
   },
+  // Fila individual de totales
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginVertical: 4
   },
+  // Etiqueta de cada total
   totalLabel: {
     fontSize: 14,
     color: '#333',
     fontFamily: 'Poppins-Regular',
   },
+  // Valor de cada total
   totalValue: {
     fontSize: 14,
     color: '#333',
     fontFamily: 'Poppins-Regular',
   },
+  // Estilo para totales en negrita
   totalBold: {
     fontWeight: '700',
     fontSize: 16,
     fontFamily: 'Poppins-Bold',
     color: '#4A4170',
   },
+  // Separador entre subtotal y total
   totalSeparator: {
     borderTopWidth: 1,
     borderTopColor: 'rgba(153,153,153,0.3)',
     marginVertical: 8,
   },
+  // Etiqueta de código de descuento
   discountLabel: {
     marginTop: 20,
     fontSize: 16,
@@ -723,10 +778,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontFamily: 'Poppins-Bold',
   },
+  // Fila del código de descuento
   discountRow: {
     flexDirection: 'row',
     marginTop: 8
   },
+  // Input para código de descuento
   discountInput: {
     flex: 1,
     borderWidth: 1,
@@ -738,6 +795,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     marginBottom: 20,
   },
+  // Botón para aplicar descuento
   applyButton: {
     backgroundColor: '#E8ACD2',
     borderRadius: 8,
@@ -747,12 +805,14 @@ const styles = StyleSheet.create({
     minWidth: 80,
     height: 44,
   },
+  // Texto del botón aplicar descuento
   applyButtonText: {
     color: '#fff',
     fontWeight: '500',
     fontFamily: 'Poppins-Medium',
     textAlign: 'center',
   },
+  // Botón principal de checkout
   checkoutButton: {
     backgroundColor: '#FDB4B7',
     borderRadius: 15,
@@ -766,12 +826,14 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     marginBottom: 90,
   },
+  // Texto del botón de checkout
   checkoutButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'Poppins-SemiBold',
   },
+  // Estilo para botones deshabilitados
   buttonDisabled: {
     opacity: 0.5,
   },

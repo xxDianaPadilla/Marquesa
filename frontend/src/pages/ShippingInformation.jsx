@@ -1,7 +1,8 @@
-import React from "react";
-import Header from "../components/Header/Header";
-import Footer from "../components/Footer";
+import React from "react"; // Importando React
+import Header from "../components/Header/Header"; // Importando componente de Header
+import Footer from "../components/Footer"; // Importamos componente de Footer
 
+// Página de información de envío
 const ShippingInformation = () => {
     return (
         <>

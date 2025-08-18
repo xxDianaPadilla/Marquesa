@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState } from 'react'; // Importando React
 
+// Componente y sección para mostrar los productos personalizables
 const CustomCategorySection = ({
     title,
     products,

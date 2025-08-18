@@ -1,4 +1,4 @@
-import React from 'react';
+import React from 'react'; // Importando React
 import {
   View,
   Text,
@@ -8,10 +8,10 @@ import {
   Dimensions,
   Alert,
   ActivityIndicator,
-} from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import { useAuth } from '../../context/AuthContext';
-import { useCart } from '../../context/CartContext';
+} from 'react-native'; // Importando react native
+import Icon from 'react-native-vector-icons/MaterialIcons'; // Importando iconos
+import { useAuth } from '../../context/AuthContext'; // Importamos contexto global
+import { useCart } from '../../context/CartContext'; // Importamos contexto de carrito de compras
 
 const { width: screenWidth } = Dimensions.get('window');
 const cardWidth = (screenWidth - 48) / 2;

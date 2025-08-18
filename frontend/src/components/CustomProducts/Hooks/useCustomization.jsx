@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState } from 'react'; // Importando React
  
+// Hook para el proceso de ppersonalización de productos
 const useCustomization = () => {
     const [isLoading, setIsLoading] = useState(false);
  

@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect } from "react"; // Importamos react
 
+// Hook para reseñas de usuarios
 const useReviewsUsers = (productId, alertHelpers = null) => {
     const [reviews, setReviews] = useState({
         average: 0,

@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import toast, { Toaster } from 'react-hot-toast';
+import React, { useState, useCallback } from 'react'; // Importando React
+import toast, { Toaster } from 'react-hot-toast'; // Importando librería para alertas
 
 // Mover CardForm FUERA del componente principal
 const CardForm = ({

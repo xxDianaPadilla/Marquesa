@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react'; // Importando React
 
+// Importando item para los mensajes
 const MessageItem = ({ 
     message, 
     isOwnMessage, 

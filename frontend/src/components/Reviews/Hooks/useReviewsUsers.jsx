@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
-import toast from 'react-hot-toast';
+import { useState, useEffect } from "react"; // Importando React
+import toast from 'react-hot-toast'; // Importanto react-hot-toast para las alertas
 
+// Hoom para obtener las reseñas de los usuarios
 const useReviewsUsers = (productId) => {
     const [reviews, setReviews] = useState({
         average: 0,

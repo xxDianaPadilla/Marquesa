@@ -1,7 +1,8 @@
-import React from "react";
-import Header from "../components/Header/Header";
-import Footer from "../components/Footer";
+import React from "react"; // Importamos React
+import Header from "../components/Header/Header"; // Importamos componente de Header
+import Footer from "../components/Footer"; // Importamos componente de Footer
 
+// Página de condiciones de promoción
 const ConditionsPromotions = () => {
     return (
         <>

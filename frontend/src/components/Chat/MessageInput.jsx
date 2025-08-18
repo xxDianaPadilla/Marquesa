@@ -1,5 +1,7 @@
-import React, { useRef } from 'react';
+import React, { useRef } from 'react'; // Importando React
 
+
+// Componente de input para los mensajes
 const MessageInput = ({
     value,
     onChange,

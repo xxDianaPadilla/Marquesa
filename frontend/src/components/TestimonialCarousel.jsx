@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react";
-import TestimonialCard from './TestimonialCard';
-import useAllReviews from "./Reviews/Hooks/useAllReviews";
+import React, { useState, useEffect, useCallback } from "react"; // Importando React
+import TestimonialCard from './TestimonialCard'; // Importando componente de card para las reseñas
+import useAllReviews from "./Reviews/Hooks/useAllReviews"; // Importando hook de acciones
 
+// Componente y carrusel de reseñas
 const TestimonialCarousel = ({ maxReviews = 6, autoSlideInterval = 4000 }) => {
     const { reviews, loading, error } = useAllReviews();
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -28,6 +29,7 @@ const TestimonialCarousel = ({ maxReviews = 6, autoSlideInterval = 4000 }) => {
         return () => window.removeEventListener('resize', handleResize);
     }, [getItemsPerView]);
 
+    // useEffect para mostrar el máximo de reseñas en el carrusel
     useEffect(() => {
         if (reviews.length > 0) {
             const bestReviews = reviews
@@ -64,6 +66,7 @@ const TestimonialCarousel = ({ maxReviews = 6, autoSlideInterval = 4000 }) => {
         }
     }, [displayReviews.length, itemsPerView, maxSlides, autoSlideInterval]);
 
+    // Función para movernos adelante en el carrusel
     const goToNext = () => {
         setCurrentIndex(prev => {
             const nextIndex = prev + 1;
@@ -71,16 +74,19 @@ const TestimonialCarousel = ({ maxReviews = 6, autoSlideInterval = 4000 }) => {
         });
     };
 
+    // Función para volver en el carrusel
     const goToPrevious = () => {
         setCurrentIndex(prev => {
             return prev <= 0 ? maxSlides - 1 : prev - 1;
         });
     };
 
+    // Función para movernos adelante del carrusel
     const goToSlide = (index) => {
         setCurrentIndex(index);
     };
 
+    // Diseño en el caso de que el carrusel se encuentre cargando
     if (loading) {
         return (
             <section className="bg-pink-50 py-8 sm:py-14">
@@ -98,6 +104,7 @@ const TestimonialCarousel = ({ maxReviews = 6, autoSlideInterval = 4000 }) => {
         );
     }
 
+    // Diseño en el caso de que se encuentre un error en el carrusel
     if (error || displayReviews.length === 0) {
         return (
             <section className="bg-pink-50 py-8 sm:py-14">
@@ -146,6 +153,7 @@ const TestimonialCarousel = ({ maxReviews = 6, autoSlideInterval = 4000 }) => {
         );
     }
 
+    // Diseño del carrusel de reseñas
     return (
         <section className="bg-pink-50 py-8 sm:py-14">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

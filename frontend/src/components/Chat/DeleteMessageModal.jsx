@@ -1,6 +1,7 @@
-import React from 'react';
-import OverlayBackdrop from '../OverlayBackdrop';
+import React from 'react'; // Importamos React
+import OverlayBackdrop from '../OverlayBackdrop'; // Inmportamos fondo para desaparecer el fondo
 
+// Componente de confirmación de eliminación de elementos
 const DeleteMessageModal = ({ 
     isOpen, 
     onClose, 
@@ -12,6 +13,7 @@ const DeleteMessageModal = ({
 }) => {
     if (!isOpen) return null;
 
+    // Diseño del componente de confirmación de eliminación de elementos
     return (
         <OverlayBackdrop isVisible={true} onClose={onClose}>
             <div className="flex items-center justify-center min-h-screen p-4">

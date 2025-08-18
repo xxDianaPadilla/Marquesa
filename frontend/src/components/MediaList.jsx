@@ -1,5 +1,5 @@
-import React from 'react';
-import { useMediaUtils } from './Media/Hooks/useMediaUtils';
+import React from 'react'; // Importando React
+import { useMediaUtils } from './Media/Hooks/useMediaUtils'; // Importando hook de acciones
 
 // Componente para mostrar una lista de elementos multimedia
 // Permite editar, eliminar y copiar URLs de imágenes y videos

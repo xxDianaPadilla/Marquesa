@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react';
-import { Alert } from 'react-native';
+import { useState, useCallback } from 'react'; // Importamos React
+import { Alert } from 'react-native'; // importamos react native
 
+// Hook para pedidos
 const useOrders = () => {
     const [userOrders, setUserOrders] = useState([]);
     const [loadingOrders, setLoadingOrders] = useState(false);

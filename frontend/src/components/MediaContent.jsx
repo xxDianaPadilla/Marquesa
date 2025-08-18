@@ -1,7 +1,7 @@
-import React from 'react';
-import MediaTable from './MediaTable';
-import MediaList from './MediaList';
-import LoadingState from './LoadingState';
+import React from 'react'; // Importando React
+import MediaTable from './MediaTable'; // Importando componente de tabla para media
+import MediaList from './MediaList'; // Importando componente de lista para media
+import LoadingState from './LoadingState'; // Importando componente de carga
 
 // Componente para mostrar contenido multimedia
 // Este componente maneja la visualización de elementos multimedia en diferentes formatos
@@ -17,6 +17,7 @@ const MediaContent = ({
         return <LoadingState />;
     }
 
+    // Diseño del componente y contenedor de media
     return (
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
             {/* Vista Desktop - Tabla */}

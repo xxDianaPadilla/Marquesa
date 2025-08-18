@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react"; // Importamos React
 
+// hook para funciones media
 const useMedia = () => {
     const [allMediaItems, setAllMediaItems] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -20,6 +21,7 @@ const useMedia = () => {
         }
     };
 
+    // Obtenemos el label según la categoría
     const getCategoryLabel = (type) => {
         const categoryMap = {
             'Blog': 'Blog',
@@ -32,6 +34,7 @@ const useMedia = () => {
         return categoryMap[type] || 'General';
     };
 
+    // Programamos una imagen por defecto
     const getDefaultImage = (type) => {
         return 'https://via.placeholder.com/400x250/f3f4f6/6b7280?text=Media';
     };

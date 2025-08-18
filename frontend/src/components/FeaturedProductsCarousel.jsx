@@ -1,15 +1,16 @@
-import React, { useState, useEffect, useCallback } from "react";
-import useFeaturedProductsService from './Products/Hooks/useFeaturedProductsService';
-import Container from "./Container";
-import ActionButton from "./ActionButton";
-import PriceDisplay from "./PriceDisplay";
-import iconFavorites from '../assets/favoritesIcon.png';
-import { useNavigate } from "react-router-dom";
-import { useFavorites } from "../context/FavoritesContext";
+import React, { useState, useEffect, useCallback } from "react"; // Importando React
+import useFeaturedProductsService from './Products/Hooks/useFeaturedProductsService'; // Importando hook de acciones
+import Container from "./Container"; // Importando componente para el container
+import ActionButton from "./ActionButton"; // Importando componente de acciones disponibles
+import PriceDisplay from "./PriceDisplay"; // Importando componente para mostrar precios
+import iconFavorites from '../assets/favoritesIcon.png'; // Importando icono de favoritos
+import { useNavigate } from "react-router-dom"; // Importando librería para navegación
+import { useFavorites } from "../context/FavoritesContext"; // Importando contexto global de favoritos
 // ✅ AGREGAR: Importar contexto de autenticación
-import { useAuth } from "../context/AuthContext";
-import toast from "react-hot-toast";
+import { useAuth } from "../context/AuthContext"; // Importando contexto global
+import toast from "react-hot-toast"; // Importando toast para alertas
  
+// Componente y carrusel para productos mejor evaluados
 const FeaturedProductsCarousel = ({
     autoSlideInterval = 5000,
     showArrows = true,
@@ -29,6 +30,7 @@ const FeaturedProductsCarousel = ({
     const [isAutoSliding, setIsAutoSliding] = useState(true);
     const [favoriteToggling, setFavoriteToggling] = useState(new Set());
  
+    // Función para cargar los productos mejor evaluados
     const loadFeaturedProducts = useCallback(async () => {
         try {
             setLoading(true);
@@ -52,10 +54,12 @@ const FeaturedProductsCarousel = ({
         }
     }, []);
  
+    // useEffect para actulizar la carga del carrusel de productos
     useEffect(() => {
         loadFeaturedProducts();
     }, [loadFeaturedProducts]);
  
+    // useEffect para manejar un scroll horizontal constante en los elementos del carruseñ
     useEffect(() => {
         if (!isAutoSliding || products.length <= 1) return;
  
@@ -66,6 +70,7 @@ const FeaturedProductsCarousel = ({
         return () => clearInterval(interval);
     }, [isAutoSliding, products.length, autoSlideInterval]);
  
+    // Obtenemos los productos por scroll del carrusel
     const getProductsPerSlide = () => {
         if (typeof window === 'undefined') return 3;
         if (window.innerWidth >= 1024) return 3;
@@ -73,12 +78,14 @@ const FeaturedProductsCarousel = ({
         return 1;
     };
  
+    // Nos movemos en el carrusel al inicializarse
     const goToSlide = (slideIndex) => {
         setCurrentSlide(slideIndex);
         setIsAutoSliding(false);
         setTimeout(() => setIsAutoSliding(true), 3000);
     };
  
+    // Nos vamos a la otra parte del carrusel 
     const nextSlide = () => {
         const maxSlides = Math.ceil(products.length / getProductsPerSlide());
         setCurrentSlide((prev) => (prev + 1) % maxSlides);
@@ -86,6 +93,7 @@ const FeaturedProductsCarousel = ({
         setTimeout(() => setIsAutoSliding(true), 3000);
     };
  
+    // Regresamos a la parte del carrusel que ya había pasado
     const prevSlide = () => {
         const maxSlides = Math.ceil(products.length / getProductsPerSlide());
         setCurrentSlide((prev) => (prev - 1 + maxSlides) % maxSlides);
@@ -93,6 +101,7 @@ const FeaturedProductsCarousel = ({
         setTimeout(() => setIsAutoSliding(true), 3000);
     };
  
+    // Marcamos productos como favoritos desde el carrusel
     const normalizeProductForFavorites = useCallback((product) => {
         if (!product) return null;
  
@@ -230,6 +239,7 @@ const FeaturedProductsCarousel = ({
         }
     }, [normalizeProductForFavorites, toggleFavorite, favoriteToggling, isFavorite, isAuthenticated]);
  
+    // Agregamos al carrito de compras desde el carrusel de productos
     const handleAddToCart = (product) => {
         const existingItem = cart.find(item => item._id === product._id);
         if (existingItem) {
@@ -253,22 +263,26 @@ const FeaturedProductsCarousel = ({
         });
     };
  
+    // Manejamos el clic de las cards de productos del carrusel
     const handleProductClick = (product) => {
         if (product.categoryId) {
             navigate(`/categoria/${product.categoryId}`);
         }
     };
  
+    // Carga constante de productos en el carrusel
     const handleRefreshProducts = () => {
         loadFeaturedProducts();
     };
  
+    // Obtener los productos del carrusel
     const getCurrentSlideProducts = () => {
         const productsPerSlide = getProductsPerSlide();
         const startIndex = currentSlide * productsPerSlide;
         return products.slice(startIndex, startIndex + productsPerSlide);
     };
  
+    // Diseño en el caso de que el carrusel se quede cargando
     if (loading) {
         return (
             <section className={`bg-pink-50 py-8 sm:py-14 ${className}`}>
@@ -295,6 +309,7 @@ const FeaturedProductsCarousel = ({
         );
     }
  
+    // Diseño en el caso de que hubo un error obteniendo el carrusel
     if (error || products.length === 0) {
         return (
             <section className={`bg-pink-50 py-8 sm:py-14 ${className}`}>
@@ -313,9 +328,11 @@ const FeaturedProductsCarousel = ({
         );
     }
  
+    // Control de cantidad de productos a mostrar según el tamaño de la pantalla
     const maxSlides = Math.ceil(products.length / getProductsPerSlide());
     const currentProducts = getCurrentSlideProducts();
  
+    // Diseño del carrusel de proeuctos
     return (
         <section className={`bg-pink-50 py-8 sm:py-14 ${className}`}>
             <Container>

@@ -1,9 +1,10 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import floresNaturales from '../assets/floresNaturales.jpg';
-import floresSecas from '../assets/floresSecas.jpeg';
-import giftbox from '../assets/giftbox.jpg';
+import React from 'react'; // Importando React
+import { useNavigate } from 'react-router-dom'; // Importando librería para navegación
+import floresNaturales from '../assets/floresNaturales.jpg'; // Importando imagen para diseño
+import floresSecas from '../assets/floresSecas.jpeg'; // Importando imagen para diseño
+import giftbox from '../assets/giftbox.jpg'; // Importando imagen para diseño
 
+// Componente y sección para productos personalizables
 const PersonalizableSection = () => {
     const navigate = useNavigate();
 

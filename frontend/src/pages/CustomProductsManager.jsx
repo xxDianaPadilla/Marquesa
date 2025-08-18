@@ -1,10 +1,11 @@
-import React, { useState } from "react";
-import toast, { Toaster } from 'react-hot-toast';
-import AdminLayout from "../components/AdminLayout";
-import MaterialForm from "../components/MaterialForm";
-import DeleteConfirmModal from "../components/DeleteConfirmModal";
-import useCustomProductsMaterials from "../components/CustomProductsMaterials/hooks/useCustomProductsMaterials";
+import React, { useState } from "react"; // Importamos React
+import toast, { Toaster } from 'react-hot-toast'; // Importamos librería de alertas
+import AdminLayout from "../components/AdminLayout"; // Importamos componente de diseño de layout
+import MaterialForm from "../components/MaterialForm"; // Importamos componente de formulario
+import DeleteConfirmModal from "../components/DeleteConfirmModal"; // Importamos componente de confirmación
+import useCustomProductsMaterials from "../components/CustomProductsMaterials/hooks/useCustomProductsMaterials"; // Hook
 
+// Página para el manejo de productos personalizados
 const CustomProductsManager = () => {
     const {
         materials,
@@ -35,6 +36,7 @@ const CustomProductsManager = () => {
         material.categoryToParticipate.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    // Función para crear materiales para oersonalización
     const handleCreateMaterial = async (materialData) => {
         setOperationLoading(prev => ({ ...prev, creating: true }));
         try {
@@ -65,6 +67,7 @@ const CustomProductsManager = () => {
         }
     };
 
+    // Función para actualizar materiales para personalización
     const handleUpdateMaterial = async (materialData) => {
         setOperationLoading(prev => ({ ...prev, updating: true }));
         try {
@@ -149,16 +152,19 @@ const CustomProductsManager = () => {
         setMaterialToDelete(null);
     };
 
+    // Función para manejar el click de edición
     const handleEditClick = (material) => {
         setEditingMaterial(material);
         setShowForm(true);
     };
 
+    // Función para manejar el cerrar del formulario
     const handleCloseForm = () => {
         setShowForm(false);
         setEditingMaterial(null);
     };
 
+    // Función para manejar el stock de los materiales
     const getStockStatus = (stock) => {
         if (stock === 0) return { text: 'Agotado', class: 'bg-red-100 text-red-800' };
         if (stock <= 5) return { text: 'Bajo Stock', class: 'bg-yellow-100 text-yellow-800' };

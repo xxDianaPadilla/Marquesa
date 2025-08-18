@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import toast from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
-import CustomizationModal from './CustomizationModal';
+import React, { useState } from 'react'; // Importando React
+import toast from 'react-hot-toast'; // Importando librería para alertas 
+import { useNavigate } from 'react-router-dom'; // Importando librería para navegación
+import CustomizationModal from './CustomizationModal'; // Importando componente de confirmación
  
+// Componente y panel para la sección de productos personalizables
 const CustomizationPanel = ({
     selectedProducts = [],
     onRemoveProduct,

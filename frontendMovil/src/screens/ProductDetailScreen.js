@@ -23,19 +23,22 @@ import useReviewsUsers from '../hooks/useReviewUsers';
 import { useAlert } from '../hooks/useAlert';
 import { CustomAlert, ConfirmationDialog, ToastDialog } from '../components/CustomAlerts';
 
+// Obtener dimensiones de la pantalla para elementos responsivos
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
+// Componente principal para mostrar los detalles de un producto
 const ProductDetailScreen = ({ route, navigation }) => {
+    // Obtener el ID del producto desde los parámetros de navegación
     const { productId } = route.params;
     
-    // Estados locales
-    const [currentImageIndex, setCurrentImageIndex] = useState(0);
-    const [quantity, setQuantity] = useState(1);
-    const [reviewText, setReviewText] = useState('');
-    const [reviewRating, setReviewRating] = useState(0);
-    const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+    // Estados locales del componente
+    const [currentImageIndex, setCurrentImageIndex] = useState(0); // Índice de la imagen actual en el carrusel
+    const [quantity, setQuantity] = useState(1); // Cantidad seleccionada para agregar al carrito
+    const [reviewText, setReviewText] = useState(''); // Texto de la reseña que está escribiendo el usuario
+    const [reviewRating, setReviewRating] = useState(0); // Calificación seleccionada para la reseña (1-5 estrellas)
+    const [isSubmittingReview, setIsSubmittingReview] = useState(false); // Estado de carga al enviar reseña
 
-    // Hook de alertas personalizadas
+    // Hook personalizado para manejar alertas y notificaciones
     const {
         alertState,
         showSuccess,
@@ -49,7 +52,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
         hideToast
     } = useAlert();
 
-    // Crear objeto de helpers para las alertas
+    // Crear objeto de helpers para pasar a otros hooks que necesiten mostrar alertas
     const alertHelpers = {
         showSuccess,
         showError,
@@ -60,7 +63,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
         showInfoToast: (message) => showSuccess(message, 'Información')
     };
 
-    // Contextos
+    // Hook de autenticación - maneja usuario, favoritos y estado de login
     const { 
         user, 
         userInfo, 
@@ -70,6 +73,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
         favoritesLoading 
     } = useAuth();
     
+    // Hook del carrito - maneja agregar productos y estado del carrito
     const {
         addToCart,
         cartLoading,
@@ -79,11 +83,11 @@ const ProductDetailScreen = ({ route, navigation }) => {
         clearCartError
     } = useCart();
 
-    // Hooks personalizados - Pasar alertHelpers al hook de reviews
+    // Hooks personalizados para datos del producto y reseñas
     const { product, loading: productLoading, error: productError } = useDataBaseProductsDetail(productId);
     const { reviews, loading: reviewsLoading, submitting: reviewSubmitting, submitReview, fetchProductReviews } = useReviewsUsers(productId, alertHelpers);
 
-    // Función para mostrar toast/mensaje
+    // Función para mostrar mensajes toast multiplataforma
     const showToast = (message) => {
         if (Platform.OS === 'android') {
             ToastAndroid.show(message, ToastAndroid.SHORT);
@@ -92,28 +96,29 @@ const ProductDetailScreen = ({ route, navigation }) => {
         }
     };
 
-    // Limpiar errores del carrito cuando se monte el componente
+    // Limpiar errores del carrito al desmontar el componente
     useEffect(() => {
         return () => {
             clearCartError();
         };
     }, []);
 
-    // Verificar si el producto está en favoritos
+    // Verificar si el producto actual está en la lista de favoritos del usuario
     const isProductFavorite = product ? isFavorite(product._id) : false;
 
-    // Verificar si el producto está en el carrito
+    // Verificar si el producto está en el carrito y obtener cantidad
     const productInCart = product ? isInCart(product._id) : false;
     const cartQuantity = product ? getItemQuantity(product._id) : 0;
 
-    // Manejar navegación hacia atrás
+    // Función para regresar a la pantalla anterior
     const handleGoBack = () => {
         navigation.goBack();
     };
 
-    // Manejar toggle de favorito
+    // Manejar la acción de agregar/quitar de favoritos
     const handleToggleFavorite = async () => {
         try {
+            // Verificar si el usuario está autenticado
             if (!isAuthenticated) {
                 showConfirmation({
                     title: "Iniciar sesión",
@@ -131,6 +136,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
 
             if (!product) return;
 
+            // Ejecutar la acción de toggle favorito
             const result = await toggleFavorite(product);
             if (!result.success) {
                 showError(result.message || 'No se pudo actualizar favoritos', 'Error');
@@ -140,22 +146,25 @@ const ProductDetailScreen = ({ route, navigation }) => {
         }
     };
 
-    // Manejar cambio de cantidad
+    // Manejar cambios en la cantidad seleccionada
     const handleQuantityChange = (increment) => {
         if (increment) {
+            // Incrementar cantidad si no excede el stock disponible
             if (quantity < product.stock) {
                 setQuantity(prev => prev + 1);
             }
         } else {
+            // Decrementar cantidad si es mayor a 1
             if (quantity > 1) {
                 setQuantity(prev => prev - 1);
             }
         }
     };
 
-    // Manejar agregar al carrito
+    // Manejar la acción de agregar producto al carrito
     const handleAddToCart = async () => {
         try {
+            // Verificar autenticación del usuario
             if (!isAuthenticated) {
                 showConfirmation({
                     title: "Iniciar sesión",
@@ -173,11 +182,13 @@ const ProductDetailScreen = ({ route, navigation }) => {
 
             if (!product) return;
 
+            // Verificar disponibilidad de stock
             if (product.stock === 0) {
                 showError("Este producto no está disponible en este momento", "Sin stock");
                 return;
             }
 
+            // Intentar agregar el producto al carrito
             const result = await addToCart(product, quantity, 'product');
 
             if (result.success) {
@@ -191,9 +202,10 @@ const ProductDetailScreen = ({ route, navigation }) => {
         }
     };
 
-    // Manejar envío de reseña
+    // Manejar el envío de una nueva reseña
     const handleSubmitReview = async () => {
         try {
+            // Verificar autenticación
             if (!isAuthenticated) {
                 showConfirmation({
                     title: "Iniciar sesión",
@@ -209,11 +221,13 @@ const ProductDetailScreen = ({ route, navigation }) => {
                 return;
             }
 
+            // Validar que se haya seleccionado una calificación
             if (reviewRating === 0) {
                 showError('Por favor selecciona una calificación', 'Calificación requerida');
                 return;
             }
 
+            // Validar que se haya escrito un comentario
             if (reviewText.trim() === '') {
                 showError('Por favor escribe un comentario', 'Comentario requerido');
                 return;
@@ -221,6 +235,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
 
             setIsSubmittingReview(true);
 
+            // Preparar datos de la reseña
             const reviewData = {
                 productId: product._id,
                 clientId: userInfo._id,
@@ -228,12 +243,13 @@ const ProductDetailScreen = ({ route, navigation }) => {
                 message: reviewText.trim()
             };
 
+            // Enviar la reseña
             const result = await submitReview(reviewData);
 
             if (result.success) {
+                // Limpiar el formulario y recargar reseñas
                 setReviewText('');
                 setReviewRating(0);
-                // Recargar reseñas
                 fetchProductReviews(productId);
             }
 
@@ -244,7 +260,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
         }
     };
 
-    // Renderizar estrellas para calificación
+    // Función para renderizar estrellas de calificación (interactivas o no)
     const renderRatingStars = (rating, interactive = false, onPress = null) => {
         return (
             <View style={styles.starsContainer}>
@@ -266,15 +282,16 @@ const ProductDetailScreen = ({ route, navigation }) => {
         );
     };
 
-    // Obtener primera imagen
+    // Función para obtener la imagen del producto (con fallback)
     const getProductImage = (index = 0) => {
         if (product && product.images && Array.isArray(product.images) && product.images.length > 0) {
             return product.images[index] || product.images[0];
         }
+        // Imagen placeholder si no hay imagen disponible
         return 'https://via.placeholder.com/300x240/f0f0f0/666666?text=Sin+Imagen';
     };
 
-    // Estados de carga
+    // Mostrar pantalla de carga mientras se cargan los datos del producto
     if (productLoading) {
         return (
             <View style={styles.loadingContainer}>
@@ -284,6 +301,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
         );
     }
 
+    // Mostrar pantalla de error si no se pudo cargar el producto
     if (productError || !product) {
         return (
             <View style={styles.errorContainer}>
@@ -300,12 +318,14 @@ const ProductDetailScreen = ({ route, navigation }) => {
 
     return (
         <View style={styles.container}>
-            {/* Header */}
+            {/* Header con navegación y favoritos */}
             <View style={styles.header}>
+                {/* Botón para regresar */}
                 <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
                     <Image source={backIcon} style={styles.backIcon} />
                 </TouchableOpacity>
                 
+                {/* Botón de favoritos */}
                 <TouchableOpacity
                     style={[
                         styles.favoriteButton,
@@ -322,8 +342,9 @@ const ProductDetailScreen = ({ route, navigation }) => {
                 </TouchableOpacity>
             </View>
 
+            {/* Contenido principal con scroll */}
             <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-                {/* Imagen del producto */}
+                {/* Contenedor de imagen del producto */}
                 <View style={styles.imageContainer}>
                     <Image
                         source={{ uri: getProductImage(currentImageIndex) }}
@@ -331,7 +352,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
                         resizeMode="cover"
                     />
                     
-                    {/* Indicador de stock */}
+                    {/* Overlay para productos sin stock */}
                     {product.stock === 0 && (
                         <View style={styles.outOfStockOverlay}>
                             <Text style={styles.outOfStockText}>Sin stock</Text>
@@ -339,12 +360,13 @@ const ProductDetailScreen = ({ route, navigation }) => {
                     )}
                 </View>
 
-                {/* Información del producto */}
+                {/* Contenedor de información del producto */}
                 <View style={styles.contentContainer}>
+                    {/* Nombre y precio del producto */}
                     <Text style={styles.productName}>{product.name}</Text>
                     <Text style={styles.productPrice}>{product.price}</Text>
                     
-                    {/* Calificación */}
+                    {/* Sección de calificación y reseñas */}
                     <View style={styles.ratingContainer}>
                         {renderRatingStars(reviews.average)}
                         <Text style={styles.ratingText}>
@@ -352,25 +374,27 @@ const ProductDetailScreen = ({ route, navigation }) => {
                         </Text>
                     </View>
 
+                    {/* Estado de disponibilidad */}
                     <Text style={styles.availabilityText}>
                         {product.stock > 0 ? `Disponible en stock` : 'No disponible'}
                     </Text>
 
-                    {/* Descripción */}
+                    {/* Sección de descripción del producto */}
                     <View style={styles.descriptionSection}>
                         <Text style={styles.sectionTitle}>Descripción</Text>
                         <Text style={styles.descriptionText}>{product.description}</Text>
                     </View>
 
-                    {/* Detalles */}
+                    {/* Sección de detalles del producto */}
                     <View style={styles.detailsSection}>
                         <Text style={styles.sectionTitle}>Detalles</Text>
                         <Text style={styles.detailsText}>{product.details}</Text>
                     </View>
 
-                    {/* Selector de cantidad y botón agregar al carrito */}
+                    {/* Sección de acciones (cantidad y agregar al carrito) - solo si hay stock */}
                     {product.stock > 0 && (
                         <View style={styles.actionSection}>
+                            {/* Selector de cantidad */}
                             <View style={styles.quantityContainer}>
                                 <TouchableOpacity
                                     style={styles.quantityButton}
@@ -391,6 +415,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
                                 </TouchableOpacity>
                             </View>
 
+                            {/* Botón para agregar al carrito */}
                             <TouchableOpacity
                                 style={styles.addToCartButton}
                                 onPress={handleAddToCart}
@@ -412,9 +437,10 @@ const ProductDetailScreen = ({ route, navigation }) => {
                     <View style={styles.reviewsSection}>
                         <Text style={styles.sectionTitle}>Nos importa tu opinión</Text>
                         
-                        {/* Escribir reseña */}
+                        {/* Formulario para escribir reseña (solo usuarios autenticados) */}
                         {isAuthenticated && (
                             <View style={styles.writeReviewContainer}>
+                                {/* Campo de texto para la reseña */}
                                 <View style={styles.reviewInputContainer}>
                                     <TextInput
                                         style={styles.reviewInput}
@@ -425,6 +451,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
                                         maxLength={500}
                                     />
                                     
+                                    {/* Botón para enviar reseña */}
                                     <TouchableOpacity
                                         style={styles.sendButton}
                                         onPress={handleSubmitReview}
@@ -438,13 +465,14 @@ const ProductDetailScreen = ({ route, navigation }) => {
                                     </TouchableOpacity>
                                 </View>
                                 
+                                {/* Selector de calificación con estrellas */}
                                 <View style={styles.ratingInputContainer}>
                                     {renderRatingStars(reviewRating, true, setReviewRating)}
                                 </View>
                             </View>
                         )}
 
-                        {/* Lista de reseñas */}
+                        {/* Lista de reseñas existentes */}
                         {reviewsLoading ? (
                             <View style={styles.reviewsLoadingContainer}>
                                 <ActivityIndicator size="small" color="#4A4170" />
@@ -457,7 +485,8 @@ const ProductDetailScreen = ({ route, navigation }) => {
                 </View>
             </ScrollView>
 
-            {/* Alertas personalizadas */}
+            {/* Componentes de alertas personalizadas */}
+            {/* Alerta básica para mostrar mensajes */}
             <CustomAlert
                 visible={alertState.basicAlert.visible}
                 title={alertState.basicAlert.title}
@@ -470,6 +499,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
                 showCancel={alertState.basicAlert.showCancel}
             />
 
+            {/* Diálogo de confirmación para acciones importantes */}
             <ConfirmationDialog
                 visible={alertState.confirmation.visible}
                 title={alertState.confirmation.title}
@@ -481,6 +511,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
                 isDangerous={alertState.confirmation.isDangerous}
             />
 
+            {/* Toast para notificaciones rápidas */}
             <ToastDialog
                 visible={alertState.toast.visible}
                 message={alertState.toast.message}
@@ -492,12 +523,15 @@ const ProductDetailScreen = ({ route, navigation }) => {
     );
 };
 
+// Estilos del componente
 const styles = StyleSheet.create({
+    // Contenedor principal de la pantalla
     container: {
         flex: 1,
         backgroundColor: '#fff',
-        paddingTop: 45,
+        paddingTop: 45, // Espacio para la status bar
     },
+    // Header fijo con navegación y favoritos
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -505,19 +539,22 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingVertical: 10,
         backgroundColor: '#fff',
-        zIndex: 10,
+        zIndex: 10, // Asegurar que esté sobre otros elementos
     },
+    // Botón de navegación hacia atrás
     backButton: {
         width: 30,
         height: 30,
         justifyContent: 'center',
         alignItems: 'center',
     },
+    // Icono del botón de regreso
     backIcon: {
         width: 24,
         height: 24,
         resizeMode: 'contain',
     },
+    // Botón de favoritos con estilo circular
     favoriteButton: {
         width: 40,
         height: 40,
@@ -532,24 +569,29 @@ const styles = StyleSheet.create({
         },
         shadowOpacity: 0.1,
         shadowRadius: 4,
-        elevation: 3,
+        elevation: 3, // Sombra en Android
     },
+    // Estado activo del botón de favoritos
     favoriteButtonActive: {
         backgroundColor: '#ff6b8a',
     },
+    // Contenedor del scroll principal
     scrollContainer: {
         flex: 1,
     },
+    // Contenedor de la imagen principal del producto
     imageContainer: {
         width: screenWidth,
-        height: screenWidth * 0.8,
+        height: screenWidth * 0.8, // Aspect ratio 4:3
         position: 'relative',
     },
+    // Imagen del producto
     productImage: {
         width: '100%',
         height: '100%',
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#f5f5f5', // Color de fondo mientras carga
     },
+    // Overlay para productos sin stock
     outOfStockOverlay: {
         position: 'absolute',
         top: 0,
@@ -560,79 +602,95 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
+    // Texto del overlay sin stock
     outOfStockText: {
         fontSize: 18,
         color: '#fff',
         fontFamily: 'Poppins-Bold',
     },
+    // Contenedor principal del contenido
     contentContainer: {
         padding: 20,
     },
+    // Nombre del producto
     productName: {
         fontSize: 24,
         fontFamily: 'Poppins-Bold',
         color: '#333',
         marginBottom: 8,
     },
+    // Precio del producto
     productPrice: {
         fontSize: 28,
         fontFamily: 'Poppins-Bold',
         color: '#4A4170',
         marginBottom: 12,
     },
+    // Contenedor de calificación y reseñas
     ratingContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 8,
     },
+    // Contenedor de las estrellas
     starsContainer: {
         flexDirection: 'row',
         marginRight: 8,
     },
+    // Estilo para estrellas interactivas
     interactiveStar: {
         padding: 2,
     },
+    // Texto de número de reseñas
     ratingText: {
         fontSize: 14,
         color: '#666',
         fontFamily: 'Poppins-Regular',
     },
+    // Texto de disponibilidad
     availabilityText: {
         fontSize: 14,
         color: '#27ae60',
         fontFamily: 'Poppins-Medium',
         marginBottom: 20,
     },
+    // Sección de descripción
     descriptionSection: {
         marginBottom: 20,
     },
+    // Sección de detalles
     detailsSection: {
         marginBottom: 20,
     },
+    // Título de secciones
     sectionTitle: {
         fontSize: 18,
         fontFamily: 'Poppins-SemiBold',
         color: '#333',
         marginBottom: 8,
     },
+    // Texto de descripción
     descriptionText: {
         fontSize: 14,
         color: '#666',
         lineHeight: 20,
         fontFamily: 'Poppins-Regular',
     },
+    // Texto de detalles
     detailsText: {
         fontSize: 14,
         color: '#666',
         lineHeight: 20,
         fontFamily: 'Poppins-Regular',
     },
+    // Sección de acciones (cantidad + botón)
     actionSection: {
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 30,
         gap: 16,
     },
+    // Contenedor del selector de cantidad
     quantityContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -640,6 +698,7 @@ const styles = StyleSheet.create({
         borderRadius: 25,
         paddingHorizontal: 4,
     },
+    // Botones de + y - para cantidad
     quantityButton: {
         width: 36,
         height: 36,
@@ -647,6 +706,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderRadius: 18,
     },
+    // Texto que muestra la cantidad actual
     quantityText: {
         fontSize: 16,
         fontFamily: 'Poppins-SemiBold',
@@ -655,6 +715,7 @@ const styles = StyleSheet.create({
         minWidth: 20,
         textAlign: 'center',
     },
+    // Botón principal para agregar al carrito
     addToCartButton: {
         flex: 1,
         flexDirection: 'row',
@@ -665,25 +726,30 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 8,
     },
+    // Texto del botón de agregar al carrito
     addToCartText: {
         fontSize: 16,
         fontFamily: 'Poppins-SemiBold',
         color: '#fff',
     },
+    // Sección completa de reseñas
     reviewsSection: {
         marginTop: 20,
     },
+    // Contenedor del formulario para escribir reseñas
     writeReviewContainer: {
         marginBottom: 20,
         backgroundColor: '#f8f8f8',
         borderRadius: 12,
         padding: 16,
     },
+    // Contenedor del input y botón enviar
     reviewInputContainer: {
         flexDirection: 'row',
         alignItems: 'flex-end',
         marginBottom: 12,
     },
+    // Campo de texto para escribir reseña
     reviewInput: {
         flex: 1,
         backgroundColor: '#fff',
@@ -694,8 +760,9 @@ const styles = StyleSheet.create({
         maxHeight: 100,
         fontSize: 14,
         fontFamily: 'Poppins-Regular',
-        textAlignVertical: 'top',
+        textAlignVertical: 'top', // Alinear texto arriba en multiline
     },
+    // Botón para enviar reseña
     sendButton: {
         width: 40,
         height: 40,
@@ -704,38 +771,45 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
+    // Icono del botón enviar
     sendIcon: {
         width: 20,
         height: 20,
         resizeMode: 'contain',
     },
+    // Contenedor del selector de calificación
     ratingInputContainer: {
         alignItems: 'flex-start',
     },
+    // Contenedor de carga para reseñas
     reviewsLoadingContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         paddingVertical: 20,
     },
+    // Texto de carga de reseñas
     reviewsLoadingText: {
         fontSize: 14,
         color: '#666',
         fontFamily: 'Poppins-Regular',
         marginLeft: 8,
     },
+    // Contenedor de pantalla de carga
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: '#fff',
     },
+    // Texto de carga principal
     loadingText: {
         fontSize: 16,
         color: '#666',
         fontFamily: 'Poppins-Regular',
         marginTop: 12,
     },
+    // Contenedor de pantalla de error
     errorContainer: {
         flex: 1,
         justifyContent: 'center',
@@ -743,6 +817,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         padding: 20,
     },
+    // Texto de error
     errorText: {
         fontSize: 16,
         color: '#e74c3c',
@@ -750,12 +825,14 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         marginVertical: 16,
     },
+    // Botón para reintentar o volver
     retryButton: {
         backgroundColor: '#4A4170',
         paddingHorizontal: 20,
         paddingVertical: 12,
         borderRadius: 25,
     },
+    // Texto del botón de reintentar
     retryButtonText: {
         fontSize: 16,
         color: '#fff',

@@ -1,4 +1,4 @@
-import React from "react";
+import React from "react"; // Importando React
 import {
     View,
     Text,
@@ -6,11 +6,12 @@ import {
     StyleSheet,
     FlatList,
     Dimensions
-} from "react-native";
-import Icon from 'react-native-vector-icons/MaterialIcons';
+} from "react-native"; // Importando React Native
+import Icon from 'react-native-vector-icons/MaterialIcons'; // Importando iconos
 
 const { width: screenWidth } = Dimensions.get('window');
 
+// Componente y cards de reseñas
 const ReviewCards = ({ reviews = [] }) => {
 
     // Renderizar estrellas para la calificación
@@ -137,6 +138,7 @@ const ReviewCards = ({ reviews = [] }) => {
     );
 };
 
+// Configuración de estilos
 const styles = StyleSheet.create({
     container: {
         flex: 1,

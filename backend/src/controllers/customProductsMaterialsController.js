@@ -54,6 +54,7 @@ customProductsMaterialsController.getCustomProductsMaterialById = async (req, re
     }
 };
 
+// Método para obtener los materiales para productos personalizables por su producto
 customProductsMaterialsController.getMaterialsByProduct = async (req, res) => {
     try {
         const {productType} = req.params;
@@ -95,6 +96,7 @@ customProductsMaterialsController.getMaterialsByProduct = async (req, res) => {
     }
 };
 
+// Métodod para obtener el material para el producto de personalización por categoría
 customProductsMaterialsController.getMaterialsByCategory = async (req, res) => {
     try {
         const {productType, category} = req.params;

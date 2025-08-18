@@ -1,13 +1,15 @@
 // frontend/src/components/Media/Hooks/useMedia.jsx
 import { useState, useMemo, useEffect, useCallback } from "react";
 
+// Hook para manejar las acciones de multimedia
 const useMedia = () => {
   const [allMediaItems, setAllMediaItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeFilter, setActiveFilter] = useState("all");
   const [visibleItems, setVisibleItems] = useState(6);
-
+  
+  // Función para obtener todos los elemento de multimedia
   const fetchMediaData = useCallback(async (type = null, search = null) => {
     try {
       setLoading(true);

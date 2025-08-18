@@ -1,6 +1,7 @@
 // frontend/src/components/ConfirmDialog.jsx
 import React from 'react';
 
+// Componente de confirmación para acciones peligrosas
 const ConfirmDialog = ({ 
     isOpen, 
     title, 

@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import Header from "../components/Header/Header";
-import Footer from "../components/Footer";
-import ProductCard from "../components/ProductCard";
-import LoadingSpinner from "../components/LoadingSpinner";
-import EmptyState from "../components/EmptyState";
-import Container from "../components/Container";
-import ActionButton from "../components/ActionButton";
-import { useFavorites } from "../context/FavoritesContext";
-import { useAuth } from "../context/AuthContext";
+import React, { useState, useEffect } from "react"; // Importamos React
+import { useNavigate } from "react-router-dom"; // Importamos librería para navegación
+import Header from "../components/Header/Header"; // Importamos componente de Header
+import Footer from "../components/Footer"; // Importamos componente de Footer
+import ProductCard from "../components/ProductCard"; // Importamos componente de cards 
+import LoadingSpinner from "../components/LoadingSpinner"; // Importamos componente de carga
+import EmptyState from "../components/EmptyState"; // Importamos componente de carga vacía
+import Container from "../components/Container"; // Importamos componente de contenedor
+import ActionButton from "../components/ActionButton"; // Importamos componente de boton
+import { useFavorites } from "../context/FavoritesContext"; // Importamos contexto de favoritos
+import { useAuth } from "../context/AuthContext"; // Importamos contexto global
 
+// Página de guardados
 const Saves = () => {
     const navigate = useNavigate();
     const {
@@ -52,19 +53,23 @@ const Saves = () => {
         }
     };
 
+    // Manejamos clic para explorar productos
     const handleExploreProducts = () => {
         navigate('/categoryProducts');
     };
 
+    // Manejamos vista de carrito de compras
     const handleViewCart = () => {
         navigate('/shoppingCart');
     };
 
+    // Manjemos carga manual
     const handleRetry = () => {
         clearFavoritesError();
         refreshFavorites();
     };
 
+    // Manejemos redirección a login
     const handleLogin = () => {
         navigate('/login');
     };

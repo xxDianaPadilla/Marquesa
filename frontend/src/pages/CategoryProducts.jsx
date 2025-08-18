@@ -1,18 +1,19 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useNavigate, useLocation, useParams } from "react-router-dom";
-import toast from "react-hot-toast";
-import { useFavorites } from "../context/FavoritesContext";
-import { useAuth } from "../context/AuthContext";
-import Header from "../components/Header/Header";
-import Footer from "../components/Footer";
-import CategoryNavigation from "../components/CategoryNavigation";
-import PersonalizableSection from "../components/PersonalizableSection";
-import LoadingSpinner from "../components/LoadingSpinner";
-import Container from "../components/Container";
-import ProductCard from "../components/ProductCard";
+import React, { useState, useEffect, useCallback, useMemo } from "react"; // Importando React
+import { useNavigate, useLocation, useParams } from "react-router-dom"; // Importando navegación
+import toast from "react-hot-toast"; // Importando librerpia para alertas
+import { useFavorites } from "../context/FavoritesContext"; // Importando contexto de favoritos
+import { useAuth } from "../context/AuthContext"; // Importando contexto global
+import Header from "../components/Header/Header"; // Importando componente de header
+import Footer from "../components/Footer"; // Importando componente de footer
+import CategoryNavigation from "../components/CategoryNavigation"; // Importando componente de navegación
+import PersonalizableSection from "../components/PersonalizableSection"; // Importando sección de personalizados
+import LoadingSpinner from "../components/LoadingSpinner"; // Importando componente de carga
+import Container from "../components/Container"; // Importando componente de contenedor
+import ProductCard from "../components/ProductCard"; // Importando componente de card de productos
  
 let currentFetch = null;
  
+// Página para mostrar la categoría de productos
 const CategoryProducts = () => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -23,6 +24,7 @@ const CategoryProducts = () => {
     // ✅ AGREGAR: Obtener estado de autenticación
     const { isAuthenticated } = useAuth();
  
+    // Definimos las categprías más importantes
     const categories = useMemo(() => [
         { _id: 'todos', name: 'Todos' },
         { _id: '688175a69579a7cde1657aaa', name: 'Arreglos con flores naturales' },
@@ -32,6 +34,7 @@ const CategoryProducts = () => {
         { _id: '688175e79579a7cde1657ac6', name: 'Tarjetas' }
     ], []);
  
+    // Definimos las categprías más importantes
     const categoryMap = useMemo(() => ({
         '688175a69579a7cde1657aaa': 'Arreglos con flores naturales',
         '688175d89579a7cde1657ac2': 'Arreglos con flores secas',
@@ -40,6 +43,7 @@ const CategoryProducts = () => {
         '688175e79579a7cde1657ac6': 'Tarjetas'
     }), []);
  
+    // Obtenmos la categoría actual
     const getCurrentCategory = useCallback(() => {
         const pathParts = location.pathname.split('/');
        
@@ -58,6 +62,8 @@ const CategoryProducts = () => {
         return 'todos';
     }, [location.pathname, params.categoryId]);
  
+
+    // Acciones rapidas
     const [activeCategory, setActiveCategory] = useState(getCurrentCategory());
     const [products, setProducts] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -66,6 +72,7 @@ const CategoryProducts = () => {
  
     const { isFavorite, toggleFavorite } = useFavorites();
  
+    // Cargamos todos los productos disponibles
     const loadProducts = useCallback(async (categoryId) => {
         console.log(`🎯 Cargando productos desde servidor para: ${categoryId}`);
  
@@ -159,6 +166,7 @@ const CategoryProducts = () => {
         }
     }, [API_BASE_URL, categoryMap, getCurrentCategory]);
  
+    // useEeffect para mantener la carga de categorías constante
     useEffect(() => {
         const urlCategory = getCurrentCategory();
        
@@ -204,15 +212,18 @@ const CategoryProducts = () => {
         }, 100);
     }, [activeCategory, navigate]);
  
+    // Manejamos el clic de las cards de productos personalizables
     const handlePersonalizeClick = useCallback((categoryId) => {
         console.log('🎨 Navegando a personalización:', categoryId);
         navigate(`/personalizar/${categoryId}`);
     }, [navigate]);
  
+    // Obtenemos productos por su id
     const getProductId = useCallback((product) => {
         return product?._id || product?.id || null;
     }, []);
  
+    // Manejamos el marcado de favoritos desde esta página
     const normalizeProductForFavorites = useCallback((product) => {
         if (!product) return null;
  
@@ -346,6 +357,7 @@ const CategoryProducts = () => {
         }
     }, [getProductId, normalizeProductForFavorites, toggleFavorite, favoriteToggling, isFavorite, isAuthenticated]);
  
+    // Obtenemos productos por su categoría
     const productsByCategory = useMemo(() => {
         if (!Array.isArray(products) || products.length === 0) {
             return {};
@@ -389,6 +401,7 @@ const CategoryProducts = () => {
         }
     }, [products, activeCategory, categoryMap, categories]);
  
+    // Formatemos las cards de los productos 
     const formatProductForCard = useCallback((product) => {
         if (!product) return null;
  
@@ -428,6 +441,7 @@ const CategoryProducts = () => {
         };
     }, [getProductId, categoryMap]);
  
+    // Renderizamos la sección de productos
     const renderProductGrid = useCallback((productsToRender) => {
         if (!productsToRender || productsToRender.length === 0) {
             return (
@@ -468,6 +482,7 @@ const CategoryProducts = () => {
         );
     }, [formatProductForCard, isFavorite, favoriteToggling, handleToggleFavorite, activeCategory]);
  
+    // Majemos la carga manual de productos
     const handleRetry = useCallback(() => {
         console.log('🔄 Retry solicitado - Recargando desde servidor');
         setError(null);
@@ -480,6 +495,8 @@ const CategoryProducts = () => {
         loadProducts(activeCategory);
     }, [activeCategory, loadProducts]);
  
+
+    // Diseño en el caso de que la página se quede cargando
     if (isLoading) {
         return (
             <div className="min-h-screen bg-white-50">
@@ -495,6 +512,7 @@ const CategoryProducts = () => {
         );
     }
  
+    // Diseño en el caso de que se encuentre un error cargando los productos
     if (error && products.length === 0) {
         return (
             <div className="min-h-screen bg-white-50">
@@ -521,6 +539,7 @@ const CategoryProducts = () => {
         );
     }
  
+    // Diseño de la página de productos
     return (
         <div className="min-h-screen bg-white-50">
             <Header />

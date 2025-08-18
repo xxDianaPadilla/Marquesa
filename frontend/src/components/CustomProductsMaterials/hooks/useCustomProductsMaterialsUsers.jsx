@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect } from "react"; // Importanto React
 
+// Definimos la url base para usarla en distintos fetch
 const API_BASE_URL = 'https://marquesa.onrender.com/api/customProductsMaterials';
 
 export const useCustomProductsMaterialsUsers = () => {
@@ -7,6 +8,8 @@ export const useCustomProductsMaterialsUsers = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+
+    // useEffect para actulizar los materiales de personalización disponibles
     useEffect(() => {
         const fetchMaterials = async () => {
             try {
@@ -34,6 +37,7 @@ export const useCustomProductsMaterialsUsers = () => {
     return {materials, loading, error, refetch: () => window.location.reload()};
 };
 
+// Pequeño hook para obtener los materiales de personalización por tipo de material
 export const useCustomProductsByType = (productType) => {
     const [productData, setProductData] = useState({
         productType: '',
@@ -79,6 +83,7 @@ export const useCustomProductsByType = (productType) => {
     return {productData, loading, error};
 };
 
+// Pequeño hook para obtener los materiales de personalización por categoría del material
 export const useCustomProductsByCategory = (productType, category) => {
     const [materials, setMaterials] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -120,6 +125,7 @@ export const useCustomProductsByCategory = (productType, category) => {
     return {materials, loading, error};
 };
 
+// Pequeño hook para manejar las acciones de los productos personalizables
 export const useCustomProductMaterial = (materialId) => {
     const [material, setMaterial] = useState(null);
     const [loading, setLoading] = useState(true);

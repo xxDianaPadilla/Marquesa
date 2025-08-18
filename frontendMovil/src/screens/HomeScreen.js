@@ -22,15 +22,19 @@ import useFetchProducts from "../hooks/useFetchProducts";
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import PriceFilterModal from '../components/PriceFilterModal';
 
+// Obtener dimensiones de la pantalla
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
+// Constantes para diseño responsivo
 const isSmallDevice = screenWidth < 375;
 const isMediumDevice = screenWidth >= 375 && screenWidth < 414;
 
+// Configuración de espaciado responsivo
 const horizontalPadding = isSmallDevice ? 16 : isMediumDevice ? 20 : 24;
 const elementGap = isSmallDevice ? 8 : isMediumDevice ? 10 : 12;
 
 export default function HomeScreen({ navigation }) {
+    // Contexto de autenticación - obtiene datos del usuario, favoritos y estado de autenticación
     const {
         user,
         userInfo,
@@ -42,7 +46,7 @@ export default function HomeScreen({ navigation }) {
         refreshFavorites
     } = useAuth();
 
-    // USAMOS EL CONTEXTO DEL CARRITO - ACTUALIZADO
+    // Contexto del carrito de compras - maneja todas las operaciones del carrito
     const {
         addToCart,
         cartError,
@@ -52,20 +56,22 @@ export default function HomeScreen({ navigation }) {
         clearCartError
     } = useCart();
 
+    // Hook personalizado para obtener productos de la API
     const { productos, loading, refetch } = useFetchProducts();
-    const [selectedCategory, setSelectedCategory] = useState('Todo');
-    const [refreshing, setRefreshing] = useState(false);
-    const [addingToCart, setAddingToCart] = useState(null);
+    
+    // Estados locales del componente
+    const [selectedCategory, setSelectedCategory] = useState('Todo'); // Categoría seleccionada actualmente
+    const [refreshing, setRefreshing] = useState(false); // Estado de pull-to-refresh
+    const [addingToCart, setAddingToCart] = useState(null); // ID del producto que se está agregando al carrito
+    
+    // Estados para el modal de filtros de precio
+    const [showPriceFilter, setShowPriceFilter] = useState(false); // Mostrar/ocultar modal
+    const [priceRange, setPriceRange] = useState({ min: 0, max: 100 }); // Rango de precios actual
 
-    const [showPriceFilter, setShowPriceFilter] = useState(false);
-    const [priceRange, setPriceRange] = useState({ min: 0, max: 100 });
-
+    // Lista de categorías disponibles
     const categories = ['Todo', 'Naturales', 'Secas', 'Tarjetas', 'Cuadros', 'Giftboxes'];
 
-    // Nota: ProductCard ahora usa isInCart y getItemQuantity directamente del contexto CartContext
-    // Por lo tanto, no necesitamos definir estas funciones aquí
-
-    // Función para mostrar toast/mensaje
+    // Función para mostrar mensajes toast según la plataforma
     const showToast = (message) => {
         if (Platform.OS === 'android') {
             ToastAndroid.show(message, ToastAndroid.SHORT);
@@ -74,7 +80,7 @@ export default function HomeScreen({ navigation }) {
         }
     };
 
-    // Cargar favoritos cuando el usuario esté autenticado
+    // Efecto para cargar favoritos cuando el usuario está autenticado
     useEffect(() => {
         if (isAuthenticated && userInfo) {
             console.log('Usuario autenticado, cargando favoritos...');
@@ -84,7 +90,7 @@ export default function HomeScreen({ navigation }) {
         }
     }, [isAuthenticated, userInfo]);
 
-    // Escuchar cambios en el estado de autenticación
+    // Efecto para monitorear cambios en el estado de favoritos
     useEffect(() => {
         console.log('Estado de favoritos actualizado:', {
             favoritesCount: favorites.length,
@@ -94,7 +100,7 @@ export default function HomeScreen({ navigation }) {
         });
     }, [favorites, isAuthenticated, favoritesLoading, favoritesError]);
 
-    // Limpiar errores del carrito cuando se monte el componente
+    // Efecto para limpiar errores del carrito al desmontar el componente
     useEffect(() => {
         return () => {
             if (clearCartError) {
@@ -103,16 +109,16 @@ export default function HomeScreen({ navigation }) {
         };
     }, [clearCartError]);
 
-    // Función para refrescar toda la pantalla
+    // Función para refrescar toda la pantalla (pull-to-refresh)
     const onRefresh = async () => {
         setRefreshing(true);
         try {
-            // Refrescar productos
+            // Refrescar productos desde la API
             if (refetch) {
                 await refetch();
             }
 
-            // Refrescar favoritos si está autenticado
+            // Refrescar favoritos si el usuario está autenticado
             if (isAuthenticated) {
                 await refreshFavorites();
             }
@@ -123,10 +129,12 @@ export default function HomeScreen({ navigation }) {
         }
     };
 
+    // Navegación a la pantalla de perfil
     const handleProfilePress = () => {
         navigation.navigate('Profile');
     };
 
+    // Navegación a la pantalla de detalle del producto
     const handleProductPress = (product) => {
         console.log('Navegando a ProductDetail con producto:', product._id);
         navigation.navigate('ProductDetail', {
@@ -135,10 +143,10 @@ export default function HomeScreen({ navigation }) {
         });
     };
 
-    // ✅ FUNCIÓN PARA AGREGAR AL CARRITO - ACTUALIZADA
+    // Función principal para agregar productos al carrito
     const handleAddToCart = async (product, quantity = 1, itemType = 'product') => {
         try {
-            // Verificar autenticación
+            // Verificar si el usuario está autenticado
             if (!isAuthenticated) {
                 Alert.alert(
                     "Iniciar sesión",
@@ -151,13 +159,13 @@ export default function HomeScreen({ navigation }) {
                 return;
             }
 
-            // Validar producto
+            // Validar que el producto es válido
             if (!product || !product._id) {
                 Alert.alert('Error', 'Producto inválido');
                 return;
             }
 
-            // Verificar stock
+            // Verificar disponibilidad en stock
             if (product.stock === 0) {
                 Alert.alert(
                     "Sin stock",
@@ -166,7 +174,7 @@ export default function HomeScreen({ navigation }) {
                 return;
             }
 
-            // Marcar producto como añadiéndose
+            // Mostrar estado de carga para este producto específico
             setAddingToCart(product._id);
 
             console.log('🛒 Agregando producto al carrito:', {
@@ -177,15 +185,15 @@ export default function HomeScreen({ navigation }) {
                 itemType
             });
 
-            // Llamar a la función del contexto - usando el productId directamente
+            // Llamar a la función del contexto para agregar al carrito
             const result = await addToCart(product._id, quantity, itemType);
 
+            // Manejar resultado exitoso
             if (result.success) {
-                // Mostrar mensaje de éxito
                 showToast(`${product.name} agregado al carrito`);
                 console.log('Producto agregado exitosamente:', result);
             } else {
-                // Mostrar error específico
+                // Manejar errores específicos
                 Alert.alert(
                     'Error al agregar al carrito',
                     result.message || 'No se pudo agregar el producto al carrito'
@@ -194,31 +202,37 @@ export default function HomeScreen({ navigation }) {
             }
 
         } catch (error) {
+            // Manejar errores inesperados
             console.error('Error inesperado al agregar al carrito:', error);
             Alert.alert(
                 'Error inesperado',
                 'Ocurrió un error inesperado. Inténtalo nuevamente.'
             );
         } finally {
-            // Quitar marca de loading
+            // Limpiar estado de carga
             setAddingToCart(null);
         }
     };
 
+    // Aplicar filtros de precio desde el modal
     const handleApplyPriceFilter = (minPrice, maxPrice) => {
         setPriceRange({ min: minPrice, max: maxPrice });
         console.log('Filtros de precio aplicados:', { minPrice, maxPrice });
     };
 
+    // Filtrar productos según categoría seleccionada y rango de precios
     const filteredProducts = productos.filter(product => {
+        // Verificar coincidencia con la categoría
         const matchesCategory = selectedCategory === 'Todo' ||
             product.category?.toLowerCase().includes(selectedCategory.toLowerCase());
 
+        // Verificar si el precio está dentro del rango
         const matchesPrice = product.price >= priceRange.min && product.price <= priceRange.max;
 
         return matchesCategory && matchesPrice;
     });
 
+    // Renderizar cada producto en la lista (FlatList)
     const renderProduct = ({ item, index }) => (
         <View style={[styles.cardWrapper, { marginRight: index % 2 === 0 ? elementGap : 0 }]}>
             <ProductCard
@@ -226,7 +240,7 @@ export default function HomeScreen({ navigation }) {
                 onPress={handleProductPress} 
                 onAddToCart={handleAddToCart}
                 navigation={navigation}
-                // Solo pasamos isAddingToCart ya que ProductCard maneja el resto internamente
+                // Pasar estado de carga para deshabilitar botón mientras se agrega
                 isAddingToCart={addingToCart === item._id || updating}
             />
         </View>
@@ -234,10 +248,12 @@ export default function HomeScreen({ navigation }) {
 
     return (
         <View style={styles.container}>
-            {/* Header solo con botón de perfil */}
+            {/* Header con botón de perfil */}
             <View style={styles.header}>
+                {/* Espaciador para centrar el botón de perfil */}
                 <View style={styles.headerSpacer} />
 
+                {/* Botón de perfil */}
                 <TouchableOpacity
                     style={styles.profileButton}
                     onPress={handleProfilePress}
@@ -246,12 +262,15 @@ export default function HomeScreen({ navigation }) {
                 </TouchableOpacity>
             </View>
 
+            {/* Título principal de la pantalla */}
             <View style={styles.titleContainer}>
                 <Text style={styles.mainTitle}>Descubre formas de</Text>
                 <Text style={styles.mainTitle}>sorprender</Text>
             </View>
 
+            {/* Contenedor de búsqueda y filtros */}
             <View style={styles.searchWrapper}>
+                {/* Botón para abrir filtros de precio */}
                 <TouchableOpacity
                     style={styles.filterIconButton}
                     onPress={() => setShowPriceFilter(true)}
@@ -259,6 +278,7 @@ export default function HomeScreen({ navigation }) {
                     <Icon name="tune" size={isSmallDevice ? 18 : 20} color="#999" />
                 </TouchableOpacity>
 
+                {/* Barra de búsqueda (navegación a pantalla de búsqueda) */}
                 <View style={styles.searchContainer}>
                     <TouchableOpacity
                         style={styles.searchTouchable}
@@ -273,6 +293,7 @@ export default function HomeScreen({ navigation }) {
                 </View>
             </View>
 
+            {/* Scroll horizontal de categorías */}
             <View style={styles.categoryScrollContainer}>
                 <ScrollView
                     horizontal
@@ -289,7 +310,9 @@ export default function HomeScreen({ navigation }) {
                             key={category}
                             style={[
                                 styles.categoryButton,
+                                // Aplicar estilo activo si está seleccionada
                                 selectedCategory === category && styles.categoryButtonActive,
+                                // Remover margen del último elemento
                                 index === categories.length - 1 && styles.lastCategoryButton
                             ]}
                             onPress={() => setSelectedCategory(category)}
@@ -298,6 +321,7 @@ export default function HomeScreen({ navigation }) {
                             <Text
                                 style={[
                                     styles.categoryText,
+                                    // Cambiar color de texto si está activa
                                     selectedCategory === category && styles.categoryTextActive
                                 ]}
                                 numberOfLines={1}
@@ -311,7 +335,7 @@ export default function HomeScreen({ navigation }) {
                 </ScrollView>
             </View>
 
-            {/* Indicador de filtros aplicados */}
+            {/* Indicador visual de filtros aplicados */}
             {(priceRange.min > 0 || priceRange.max < 100) && (
                 <View style={styles.filterIndicatorContainer}>
                     <View style={styles.filterChip}>
@@ -319,6 +343,7 @@ export default function HomeScreen({ navigation }) {
                         <Text style={styles.filterChipText}>
                             Precio: ${priceRange.min} - ${priceRange.max}
                         </Text>
+                        {/* Botón para limpiar filtros */}
                         <TouchableOpacity
                             onPress={() => setPriceRange({ min: 0, max: 100 })}
                             style={styles.filterChipClose}
@@ -329,11 +354,12 @@ export default function HomeScreen({ navigation }) {
                 </View>
             )}
 
-            {/* ✅ INDICADOR DE ERROR DEL CARRITO - ACTUALIZADO */}
+            {/* Banner de error del carrito */}
             {cartError && (
                 <View style={styles.errorContainer}>
                     <Icon name="error-outline" size={16} color="#e74c3c" />
                     <Text style={styles.errorText}>{cartError}</Text>
+                    {/* Botón para cerrar el error */}
                     <TouchableOpacity
                         onPress={clearCartError}
                         style={styles.closeButton}
@@ -343,11 +369,12 @@ export default function HomeScreen({ navigation }) {
                 </View>
             )}
 
-            {/* Indicador de estado de favoritos */}
+            {/* Banner de error de favoritos */}
             {isAuthenticated && favoritesError && (
                 <View style={styles.errorContainer}>
                     <Icon name="error-outline" size={16} color="#e74c3c" />
                     <Text style={styles.errorText}>{favoritesError}</Text>
+                    {/* Botón para reintentar cargar favoritos */}
                     <TouchableOpacity
                         onPress={() => getFavorites()}
                         style={styles.retryButton}
@@ -357,7 +384,7 @@ export default function HomeScreen({ navigation }) {
                 </View>
             )}
 
-            {/* ✅ INDICADOR DE LOADING CUANDO SE ESTÁ ACTUALIZANDO EL CARRITO */}
+            {/* Banner de carga cuando se actualiza el carrito */}
             {updating && (
                 <View style={styles.loadingBanner}>
                     <Icon name="shopping-cart" size={16} color="#4A4170" />
@@ -365,19 +392,21 @@ export default function HomeScreen({ navigation }) {
                 </View>
             )}
 
-            {/* Lista de productos */}
+            {/* Lista principal de productos */}
             <FlatList
                 data={filteredProducts}
                 renderItem={renderProduct}
                 keyExtractor={(item) => item._id}
-                numColumns={2}
+                numColumns={2} // Mostrar 2 columnas
                 contentContainerStyle={styles.productsContainer}
                 showsVerticalScrollIndicator={false}
                 columnWrapperStyle={styles.row}
+                // Optimizaciones de rendimiento
                 initialNumToRender={10}
                 maxToRenderPerBatch={10}
                 windowSize={10}
                 removeClippedSubviews={true}
+                // Pull-to-refresh
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing}
@@ -386,11 +415,13 @@ export default function HomeScreen({ navigation }) {
                         tintColor="#4A4170"
                     />
                 }
+                // Optimización de layout para mejor rendimiento
                 getItemLayout={(data, index) => ({
                     length: 200,
                     offset: 200 * Math.floor(index / 2),
                     index,
                 })}
+                // Componente cuando no hay productos
                 ListEmptyComponent={
                     loading ? (
                         <View style={styles.loadingContainer}>
@@ -416,17 +447,20 @@ export default function HomeScreen({ navigation }) {
                 currentMaxPrice={priceRange.max}
             />
 
-            {/* Bottom Navigation */}
+            {/* Barra de navegación inferior */}
             <View style={styles.bottomNav}>
+                {/* Botón Home (activo) */}
                 <TouchableOpacity style={styles.navItem}>
                     <Icon name="home" size={isSmallDevice ? 20 : 24} color="#4A4170" />
                 </TouchableOpacity>
+                
+                {/* Botón Favoritos con badge */}
                 <TouchableOpacity
                     style={styles.navItem}
                     onPress={() => navigation.navigate('Favorites')}
                 >
                     <Image source={favoritesIcon} style={styles.navIcon} />
-                    {/* Indicador de cantidad de favoritos */}
+                    {/* Badge con número de favoritos */}
                     {isAuthenticated && favorites.length > 0 && (
                         <View style={styles.favoriteBadge}>
                             <Text style={styles.favoriteBadgeText}>
@@ -435,18 +469,22 @@ export default function HomeScreen({ navigation }) {
                         </View>
                     )}
                 </TouchableOpacity>
+                
+                {/* Botón Chat */}
                 <TouchableOpacity
                     style={styles.navItem}
                     onPress={() => navigation.navigate('Chat')}
                 >
                     <Icon name="chat" size={isSmallDevice ? 20 : 24} color="#ccc" />
                 </TouchableOpacity>
+                
+                {/* Botón Carrito con badge */}
                 <TouchableOpacity
                     style={styles.navItem}
                     onPress={() => navigation.navigate('Cart')}
                 >
                     <Icon name="shopping-cart" size={isSmallDevice ? 20 : 24} color="#ccc" />
-                    {/* ✅ BADGE DEL CARRITO - USANDO cartItemsCount */}
+                    {/* Badge con número de items en el carrito */}
                     {isAuthenticated && cartItemsCount > 0 && (
                         <View style={styles.cartBadge}>
                             <Text style={styles.cartBadgeText}>
@@ -461,11 +499,14 @@ export default function HomeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+    // Contenedor principal de la pantalla
     container: {
         flex: 1,
         backgroundColor: "#ffffff",
-        paddingTop: isSmallDevice ? 45 : 50,
+        paddingTop: isSmallDevice ? 45 : 50, // Espaciado superior responsivo
     },
+    
+    // Estilos del header
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -486,6 +527,8 @@ const styles = StyleSheet.create({
         height: "100%",
         resizeMode: "contain",
     },
+    
+    // Estilos del título principal
     titleContainer: {
         paddingHorizontal: horizontalPadding,
         marginBottom: isSmallDevice ? 24 : 30,
@@ -496,6 +539,8 @@ const styles = StyleSheet.create({
         color: '#333',
         lineHeight: isSmallDevice ? 28 : isMediumDevice ? 30 : 34,
     },
+    
+    // Estilos de la sección de búsqueda y filtros
     searchWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -570,6 +615,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         overflow: 'hidden',
     },
+    
+    // Estilos de las categorías
     categoryScrollContainer: {
         marginBottom: isSmallDevice ? 10 : 12,
         height: isSmallDevice ? 50 : 55,
@@ -623,6 +670,8 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontFamily: 'Poppins-SemiBold',
     },
+    
+    // Estilos de los indicadores de filtros
     filterIndicatorContainer: {
         paddingHorizontal: horizontalPadding,
         paddingVertical: 8,
@@ -646,6 +695,8 @@ const styles = StyleSheet.create({
         marginLeft: 4,
         padding: 2,
     },
+    
+    // Estilos de los contenedores de error
     errorContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -679,7 +730,8 @@ const styles = StyleSheet.create({
         padding: 4,
         marginLeft: 8,
     },
-    // ✅ NUEVO ESTILO PARA EL BANNER DE LOADING
+    
+    // Banner de estado de carga del carrito
     loadingBanner: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -696,6 +748,8 @@ const styles = StyleSheet.create({
         marginLeft: 8,
         fontFamily: 'Poppins-Regular',
     },
+    
+    // Estilos de estados de carga y vacío
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
@@ -719,10 +773,12 @@ const styles = StyleSheet.create({
         marginTop: 12,
         fontFamily: 'Poppins-Regular',
     },
+    
+    // Estilos de la lista de productos
     productsContainer: {
         paddingHorizontal: horizontalPadding,
         paddingTop: 5,
-        paddingBottom: isSmallDevice ? 90 : 100,
+        paddingBottom: isSmallDevice ? 90 : 100, // Espacio para la navegación inferior
     },
     row: {
         justifyContent: 'space-between',
@@ -733,6 +789,8 @@ const styles = StyleSheet.create({
         width: (screenWidth - (horizontalPadding * 2) - elementGap - 4) / 2,
         minHeight: isSmallDevice ? 180 : 200,
     },
+    
+    // Estilos de la navegación inferior
     bottomNav: {
         position: 'absolute',
         bottom: 0,
@@ -767,6 +825,8 @@ const styles = StyleSheet.create({
         height: isSmallDevice ? 20 : 24,
         resizeMode: 'contain',
     },
+    
+    // Estilos de los badges (contadores)
     favoriteBadge: {
         position: 'absolute',
         top: -2,

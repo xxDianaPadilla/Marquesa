@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
-import { useAuth } from "../context/AuthContext";
+import { useState, useEffect } from "react"; // Importamos React
+import { useAuth } from "../context/AuthContext"; // Importamos contexto global
 
+// Hook para manejar la edición de perfil
 const useEditProfile = (alertFunctions = {}) => {
     const { userInfo, getBestAvailableToken, getUserInfo } = useAuth();
     const { 

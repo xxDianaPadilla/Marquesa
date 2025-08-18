@@ -1,6 +1,7 @@
 // frontend/src/components/TestimonialCard.jsx
-import React from 'react';
+import React from 'react'; // Importando React
 
+// Componente y card para las reseñas de los clientes
 const TestimonialCard = ({ 
     name, 
     year, 

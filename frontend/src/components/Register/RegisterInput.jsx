@@ -6,6 +6,7 @@ import PasswordRequirements from "../PasswordRequirements";
  * Componente de input personalizado para el formulario de registro
  * COMPLETAMENTE OPTIMIZADO: Uso de memo, useCallback y manejo mejorado de estado
  * Incluye validación visual con bordes rojos cuando hay errores y feedback en tiempo real
+ * TOTALMENTE RESPONSIVE: Adaptado para móviles, tablets y escritorio
  * 
  * @param {string} name - Nombre del campo para identificación
  * @param {string} type - Tipo de input (text, email, password, tel, date, etc.)
@@ -164,12 +165,15 @@ const RegisterInput = memo(({
     const shouldShowError = error && isTouched;
 
     /**
-     * Calcula las clases CSS para el contenedor del input
-     * Incluye estados de error, focus y disabled
+     * Calcula las clases CSS para el contenedor del input - RESPONSIVE
+     * Incluye estados de error, focus y disabled con adaptaciones móviles
      */
     const containerClasses = `
-        flex items-center bg-white bg-opacity-50 border-2 rounded-lg px-4 py-3 
+        flex items-center bg-white bg-opacity-50 border-2 rounded-lg 
+        px-3 py-2.5 sm:px-4 sm:py-3 
         transition-all duration-200 relative
+        min-h-[48px] sm:min-h-[52px]
+        w-full
         ${shouldShowError
             ? 'border-red-400 bg-red-50 shadow-red-100 shadow-md'
             : 'border-[#FDB4B7] focus-within:border-pink-500 focus-within:shadow-pink-200 focus-within:shadow-md'
@@ -178,11 +182,12 @@ const RegisterInput = memo(({
     `.trim();
 
     /**
-     * Calcula las clases CSS para el icono
-     * Incluye estados de error y disabled
+     * Calcula las clases CSS para el icono - RESPONSIVE
+     * Incluye estados de error y disabled con tamaños adaptativos
      */
     const iconClasses = `
-        w-5 h-5 mr-3 transition-opacity duration-200 
+        w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3 
+        transition-opacity duration-200 flex-shrink-0
         ${shouldShowError
             ? 'opacity-70 filter brightness-75'
             : 'opacity-60'
@@ -190,11 +195,14 @@ const RegisterInput = memo(({
     `.trim();
 
     /**
-     * Calcula las clases CSS para el input
-     * Incluye estados de error y estilos de texto
+     * Calcula las clases CSS para el input - RESPONSIVE
+     * Incluye estados de error y estilos de texto con tamaños adaptativos
      */
     const inputClasses = `
-        flex-1 bg-transparent outline-none text-sm transition-colors duration-200 
+        flex-1 bg-transparent outline-none 
+        text-sm sm:text-base
+        transition-colors duration-200 
+        min-w-0
         ${shouldShowError
             ? 'placeholder-red-400 text-red-700'
             : 'placeholder-gray-400 text-gray-700'
@@ -204,11 +212,11 @@ const RegisterInput = memo(({
     // ============ RENDERIZADO DEL COMPONENTE ============
 
     return (
-        <div className="relative mb-4">
-            {/* Container principal del input con estilos dinámicos */}
+        <div className="relative mb-3 sm:mb-4 w-full">
+            {/* Container principal del input con estilos dinámicos responsive */}
             <div className={containerClasses}>
 
-                {/* Icono izquierdo (opcional) */}
+                {/* Icono izquierdo (opcional) - responsive */}
                 {icon && (
                     <img
                         src={icon}
@@ -217,7 +225,7 @@ const RegisterInput = memo(({
                     />
                 )}
 
-                {/* Input principal con todas las funcionalidades */}
+                {/* Input principal con todas las funcionalidades - responsive */}
                 <input
                     name={name}
                     type={inputType}
@@ -240,30 +248,38 @@ const RegisterInput = memo(({
                     {...props}
                 />
 
-                {/* Botón para mostrar/ocultar contraseña */}
+                {/* Botón para mostrar/ocultar contraseña - responsive */}
                 {type === "password" && onTogglePassword && (
                     <button
                         type="button"
                         onClick={handleTogglePassword}
                         disabled={disabled}
-                        className={`ml-3 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-pink-300 rounded p-1 ${shouldShowError
+                        className={`
+                            ml-2 sm:ml-3 transition-colors duration-200 
+                            focus:outline-none focus:ring-2 focus:ring-pink-300 
+                            rounded p-1 flex-shrink-0
+                            min-w-[32px] min-h-[32px] sm:min-w-[36px] sm:min-h-[36px]
+                            flex items-center justify-center
+                            ${shouldShowError
                                 ? 'text-red-500 hover:text-red-600'
                                 : 'text-gray-400 hover:text-gray-600'
-                            } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                            } 
+                            ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}
+                        `}
                         aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                     >
                         {showPassword ? (
-                            <EyeOff className="w-5 h-5" />
+                            <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" />
                         ) : (
-                            <Eye className="w-5 h-5" />
+                            <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
                         )}
                     </button>
                 )}
 
-                {/* Indicador visual de error en el lado derecho */}
+                {/* Indicador visual de error en el lado derecho - responsive */}
                 {shouldShowError && (
-                    <div className="ml-2 text-red-500" aria-hidden="true">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="ml-1 sm:ml-2 text-red-500 flex-shrink-0" aria-hidden="true">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                                 d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -271,37 +287,37 @@ const RegisterInput = memo(({
                 )}
             </div>
 
-            {/* Popup de requisitos de contraseña */}
+            {/* Popup de requisitos de contraseña - responsive */}
             {type === "password" && isPasswordFocused && value && (
-                <div className="relative z-50">
+                <div className="relative z-50 w-full">
                     <PasswordRequirements
                         password={value || ''}
                         isVisible={true}
-                        className="password-requirements-container mt-2"
+                        className="password-requirements-container mt-2 w-full max-w-full"
                     />
                 </div>
             )}
 
-            {/* Mensaje de error con animación */}
+            {/* Mensaje de error con animación - responsive */}
             {shouldShowError && (
                 <div
                     id={`${name}-error`}
-                    className="text-red-500 text-sm mt-2 italic flex items-start animate-fadeIn"
+                    className="text-red-500 text-xs sm:text-sm mt-2 italic flex items-start animate-fadeIn px-1"
                     style={{ fontFamily: 'Poppins, sans-serif' }}
                     role="alert"
                     aria-live="polite"
                 >
-                    <svg className="w-4 h-4 mr-1 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                             d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <span className="leading-tight">{error}</span>
+                    <span className="leading-tight break-words">{error}</span>
                 </div>
             )}
 
-            {/* Indicador de caracteres restantes para campos con maxLength */}
+            {/* Indicador de caracteres restantes para campos con maxLength - responsive */}
             {maxLength && value && !shouldShowError && (
-                <div className="text-xs text-gray-400 mt-1 text-right" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                <div className="text-xs text-gray-400 mt-1 text-right px-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
                     {value.length}/{maxLength} caracteres
                 </div>
             )}

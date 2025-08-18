@@ -29,15 +29,6 @@ const PageContainer = ({ children }) => {
                     />
                 </div>
 
-                {/* Logo pequeño en la esquina superior para móvil */}
-                <div className="md:hidden absolute top-4 left-4 z-20">
-                    <img
-                        src={marquesaLogo}
-                        alt="Marquesa Logo"
-                        className="w-12 h-12 object-contain opacity-80"
-                    />
-                </div>
-
                 {/* Contenedor scrolleable para el contenido */}
                 <div className="relative z-10 w-full h-screen overflow-y-auto">
                     <div className="min-h-full flex justify-center items-center py-8 px-4 sm:px-6 md:px-8">

@@ -12,7 +12,7 @@
  * - PageTitle (nuevo)
  * - InfoCard (nuevo)
  * - GradientCard (nuevo)
- * - Container (nuevo)
+ * - Container 
  */
 
 import React from "react";

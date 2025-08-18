@@ -76,7 +76,7 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, remaini
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop con blur */}
       <div 
-        className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 backdrop-blur-sm transition-opacity" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
         onClick={onClose}
       />
       

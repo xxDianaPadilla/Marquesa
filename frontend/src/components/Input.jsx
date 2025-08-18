@@ -5,6 +5,7 @@ import { Eye, EyeOff } from "lucide-react";
  * Componente de input personalizado para formularios generales (principalmente Login)
  * COMPLETAMENTE OPTIMIZADO: Uso de memo, useCallback y manejo mejorado de estado
  * Incluye validación visual, manejo de errores y funcionalidades de accesibilidad
+ * RESPONSIVE OPTIMIZADO: Adaptado para móviles, tablets y desktop
  * 
  * @param {string} name - Nombre del campo para identificación y react-hook-form
  * @param {string} type - Tipo de input (text, email, password, etc.)
@@ -114,10 +115,13 @@ const Input = memo(({
     /**
      * Calcula las clases CSS para el contenedor del input
      * Incluye estados de error, focus, disabled y animaciones
+     * RESPONSIVE: Padding y altura adaptados por breakpoint
      */
     const containerClasses = `
-        flex items-center bg-white bg-opacity-50 border-2 rounded-lg px-4 py-3 
+        flex items-center bg-white bg-opacity-50 border-2 rounded-lg 
+        px-3 py-2.5 sm:px-4 sm:py-3 md:px-4 md:py-3 lg:px-5 lg:py-3.5
         transition-all duration-200 relative
+        min-h-[44px] sm:min-h-[48px] md:min-h-[52px]
         ${shouldShowError 
             ? 'border-red-400 bg-red-50 shadow-red-100 shadow-md' 
             : isFocused 
@@ -130,9 +134,12 @@ const Input = memo(({
     /**
      * Calcula las clases CSS para el icono
      * Incluye estados de error, focus y disabled
+     * RESPONSIVE: Tamaño adaptado por breakpoint
      */
     const iconClasses = `
-        w-5 h-5 mr-3 transition-all duration-200 
+        w-4 h-4 sm:w-5 sm:h-5 md:w-5 md:h-5 lg:w-6 lg:h-6
+        mr-2 sm:mr-3 md:mr-3 lg:mr-4 
+        transition-all duration-200 flex-shrink-0
         ${shouldShowError 
             ? 'opacity-70 filter brightness-75' 
             : isFocused 
@@ -144,9 +151,12 @@ const Input = memo(({
     /**
      * Calcula las clases CSS para el input
      * Incluye estados de error, placeholder y texto
+     * RESPONSIVE: Tamaño de fuente adaptado por breakpoint
      */
     const inputClasses = `
-        flex-1 bg-transparent outline-none text-sm transition-colors duration-200 
+        flex-1 bg-transparent outline-none transition-colors duration-200
+        text-xs sm:text-sm md:text-sm lg:text-base
+        leading-tight sm:leading-normal
         ${shouldShowError 
             ? 'placeholder-red-400 text-red-700' 
             : 'placeholder-gray-400 text-gray-700'
@@ -174,11 +184,11 @@ const Input = memo(({
     // ============ RENDERIZADO DEL COMPONENTE ============
     
     return (
-        <div className="relative mb-4">
-            {/* Container principal del input con estilos dinámicos */}
+        <div className="relative mb-3 sm:mb-4 md:mb-4 lg:mb-5 w-full max-w-full">
+            {/* Container principal del input con estilos dinámicos y responsive */}
             <div className={containerClasses}>
                 
-                {/* Icono izquierdo (opcional) */}
+                {/* Icono izquierdo (opcional) - Responsive */}
                 {icon && (
                     <img
                         src={icon}
@@ -187,7 +197,7 @@ const Input = memo(({
                     />
                 )}
 
-                {/* Input principal con integración de react-hook-form */}
+                {/* Input principal con integración de react-hook-form - Responsive */}
                 <input
                     {...registerProps}
                     type={inputType}
@@ -206,64 +216,74 @@ const Input = memo(({
                     {...props}
                 />
 
-                {/* Botón para mostrar/ocultar contraseña */}
+                {/* Botón para mostrar/ocultar contraseña - Responsive */}
                 {type === "password" && onTogglePassword && (
                     <button
                         type="button"
                         onClick={handleTogglePassword}
                         disabled={disabled}
-                        className={`ml-3 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-pink-300 rounded p-1 ${
-                            shouldShowError 
+                        className={`
+                            ml-2 sm:ml-3 md:ml-3 lg:ml-4 
+                            transition-colors duration-200 focus:outline-none 
+                            focus:ring-2 focus:ring-pink-300 rounded 
+                            p-1 sm:p-1.5 md:p-1.5 lg:p-2
+                            touch-manipulation
+                            ${shouldShowError 
                                 ? 'text-red-500 hover:text-red-600' 
                                 : 'text-gray-400 hover:text-gray-600'
-                        } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                            } 
+                            ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}
+                        `}
                         aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                     >
                         {showPassword ? (
-                            <EyeOff className="w-5 h-5" />
+                            <EyeOff className="w-4 h-4 sm:w-5 sm:h-5 md:w-5 md:h-5 lg:w-6 lg:h-6" />
                         ) : (
-                            <Eye className="w-5 h-5" />
+                            <Eye className="w-4 h-4 sm:w-5 sm:h-5 md:w-5 md:h-5 lg:w-6 lg:h-6" />
                         )}
                     </button>
                 )}
 
-                {/* Indicador visual de error */}
+                {/* Indicador visual de error - Responsive */}
                 {shouldShowError && (
-                    <div className="ml-2 text-red-500" aria-hidden="true">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="ml-1 sm:ml-2 md:ml-2 lg:ml-3 text-red-500 flex-shrink-0" aria-hidden="true">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 md:w-5 md:h-5 lg:w-6 lg:h-6" 
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
                                   d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
                 )}
 
-                {/* Indicador de focus para accesibilidad */}
+                {/* Indicador de focus para accesibilidad - Responsive */}
                 {isFocused && (
-                    <div className="absolute -inset-1 rounded-lg border-2 border-pink-300 opacity-50 pointer-events-none" 
+                    <div className="absolute -inset-0.5 sm:-inset-1 md:-inset-1 lg:-inset-1.5 rounded-lg border-2 border-pink-300 opacity-50 pointer-events-none" 
                          aria-hidden="true" />
                 )}
             </div>
 
-            {/* Mensaje de error con animación */}
+            {/* Mensaje de error con animación - Responsive */}
             {shouldShowError && (
                 <div 
                     id={`${name}-error`}
-                    className="text-red-500 text-sm mt-2 italic flex items-start animate-slideDown" 
+                    className="text-red-500 text-xs sm:text-sm md:text-sm lg:text-base mt-1.5 sm:mt-2 md:mt-2 lg:mt-2.5 italic flex items-start animate-slideDown px-1" 
                     style={{ fontFamily: 'Poppins, sans-serif' }}
                     role="alert"
                     aria-live="polite"
                 >
-                    <svg className="w-4 h-4 mr-1 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3 h-3 sm:w-4 sm:h-4 md:w-4 md:h-4 lg:w-5 lg:h-5 mr-1 mt-0.5 flex-shrink-0" 
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
                               d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <span className="leading-tight">{error}</span>
+                    <span className="leading-tight break-words">{error}</span>
                 </div>
             )}
 
-            {/* Mensaje de ayuda o hint (opcional) */}
+            {/* Mensaje de ayuda o hint (opcional) - Responsive */}
             {!shouldShowError && placeholder && isFocused && (
-                <div className="text-xs text-gray-500 mt-1 italic" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                <div className="text-xs sm:text-xs md:text-sm lg:text-sm text-gray-500 mt-1 sm:mt-1 md:mt-1.5 lg:mt-1.5 italic px-1" 
+                     style={{ fontFamily: 'Poppins, sans-serif' }}>
                     {type === 'email' && 'Ingresa un correo electrónico válido'}
                     {type === 'password' && 'Mínimo 8 caracteres'}
                 </div>

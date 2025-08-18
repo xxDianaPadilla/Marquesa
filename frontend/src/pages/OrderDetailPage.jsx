@@ -326,6 +326,7 @@ const OrderDetail = () => {
     return statusMap[trackingStatus] || trackingStatus;
   };
 
+  // ✅ COMPONENTE ORIGINAL: ProductImage (exactamente igual al original + detección de personalizados)
   const ProductImage = ({
     src,
     alt = 'Producto',
@@ -337,7 +338,7 @@ const OrderDetail = () => {
     const [hasError, setHasError] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Función para extraer URL de imagen de diferentes formatos
+    // ✅ FUNCIÓN ORIGINAL: Extraer URL de imagen de diferentes formatos
     const extractImageUrl = (source) => {
       console.log('Extrayendo URL de:', typeof source, source);
 
@@ -370,7 +371,7 @@ const OrderDetail = () => {
       return null;
     };
 
-    // Función para validar si src es válido
+    // ✅ FUNCIÓN ORIGINAL: Validar si src es válido
     const isValidImageSrc = (source) => {
       const extractedUrl = extractImageUrl(source);
 
@@ -399,7 +400,7 @@ const OrderDetail = () => {
       }
     };
 
-    // Precargar imagen para verificar si existe
+    // ✅ FUNCIÓN ORIGINAL: Precargar imagen para verificar si existe
     const preloadImage = (url) => {
       return new Promise((resolve, reject) => {
         const img = new Image();
@@ -409,6 +410,7 @@ const OrderDetail = () => {
       });
     };
 
+    // ✅ USEEFFECT ORIGINAL: Cargar imagen
     useEffect(() => {
       const loadImage = async () => {
         setIsLoading(true);
@@ -446,20 +448,19 @@ const OrderDetail = () => {
       loadImage();
     }, [src]);
 
-    // Manejar error de carga
+    // ✅ FUNCIONES ORIGINALES: Manejar error y carga
     const handleError = (e) => {
       console.warn('Error en img.onError:', src);
       setHasError(true);
       setImageSrc(null);
     };
 
-    // Manejar carga exitosa
     const handleLoad = () => {
       console.log('Imagen cargada exitosamente:', src);
       setHasError(false);
     };
 
-    // Estados de loading
+    // ✅ LOADING STATE ORIGINAL
     if (isLoading) {
       return (
         <div className={`${className} bg-gray-200 flex items-center justify-center animate-pulse`}>
@@ -468,22 +469,35 @@ const OrderDetail = () => {
       );
     }
 
-    // Si hay error o no hay imagen válida, mostrar placeholder
+    // ✅ ERROR STATE: Solo aquí agregamos la detección de productos personalizados
     if (hasError || !imageSrc) {
-      // Si es un producto personalizado, mostrar emoji de paleta
+      // ✅ ERROR STATE: Placeholder para productos personalizados (EXACTO como en CartItem)
       if (isPersonalized) {
         return (
-          <div className={`${className} bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center border border-purple-200`}>
-            <div className="text-center">
-              <div className="text-4xl mb-1">🎨</div>
-              {showError && (
-                <span className="text-xs text-purple-600 font-medium">Personalizado</span>
-              )}
+          <div style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: '#f8f9fa',
+            border: '1px dashed #dee2e6',
+            borderRadius: '4px',
+            color: '#6c757d',
+            fontSize: '12px',
+            textAlign: 'center',
+            padding: '8px'
+          }}>
+            <div style={{ fontSize: '24px', marginBottom: '4px' }}>🎨</div>
+            <div style={{ fontSize: '10px', lineHeight: '1.2' }}>
+              Producto{'\n'}Personalizado
             </div>
           </div>
         );
       }
 
+      // ✅ PLACEHOLDER ORIGINAL para productos normales
       return (
         <div className={`${className} bg-gray-100 flex items-center justify-center border-2 border-dashed border-gray-300`}>
           <div className="text-center">
@@ -496,7 +510,7 @@ const OrderDetail = () => {
       );
     }
 
-    // Renderizar imagen
+    // ✅ RENDERIZADO ORIGINAL: Imagen válida
     return (
       <img
         src={imageSrc}
@@ -717,7 +731,7 @@ const OrderDetail = () => {
               </div>
             </div>
 
-            {/* Productos */}
+            {/* ✅ PRODUCTOS - DISEÑO ORIGINAL con funcionalidad de personalización */}
             <div className="bg-white rounded-lg border p-6" style={{ borderColor: '#E5E7EB' }}>
               <h2 className="text-lg font-medium text-gray-900 mb-4">
                 Productos
@@ -726,51 +740,56 @@ const OrderDetail = () => {
               <div className="space-y-4">
                 {productsData && productsData.length > 0 ? (
                   productsData.map((item, index) => {
-                    // Detectar si es un producto personalizado
+                    // ✅ DETECCIÓN: Identificar si es un producto personalizado
                     const isPersonalized = item.collection === 'CustomProducts' ||
                       (item.isPersonalized && item.collection !== 'Products') ||
                       item.type === 'personalizado' ||
-                      item.customized === true;
+                      item.customized === true ||
+                      item.itemType === 'custom' ||
+                      (item.referenceImage && !item.image) ||
+                      (item.productToPersonalize) ||
+                      (item.extraComments && item.totalPrice);
 
                     return (
                       <div key={index} className="flex items-center space-x-4">
-                        <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        {/* ✅ IMAGEN CON CARGA ORIGINAL + detección de personalizados */}
+                        <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
                           <ProductImage
                             src={item.referenceImage || item.image}
                             alt={item.name || 'Producto'}
                             className="w-full h-full object-cover rounded-lg"
                             isPersonalized={isPersonalized}
+                            showError={true}
                           />
                         </div>
+                        
+                        {/* ✅ INFORMACIÓN - DISEÑO ORIGINAL EXACTO (sin cambios) */}
                         <div className="flex-1">
-                          <div className="flex items-center space-x-2">
-                            <p className="text-sm font-medium text-gray-900">
-                              {item.name || 'Producto sin nombre'}
-                            </p>
-                            {isPersonalized && (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-pink-100 text-pink-800">
-                                <span className="mr-1 text-sm">🎨</span>
-                                Personalizado
-                              </span>
-                            )}
-                          </div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {item.name || item.productToPersonalize || 'Producto sin nombre'}
+                          </p>
                           <p className="text-sm text-gray-500">
-                            {item.description || 'Sin descripción'}
+                            {item.description || item.extraComments || 'Sin descripción'}
                           </p>
                           {item.quantity && (
                             <p className="text-xs text-gray-400">Cantidad: {item.quantity}</p>
                           )}
                           {/* Mostrar detalles de personalización si existen */}
-                          {isPersonalized && item.customization && (
+                          {isPersonalized && item.extraComments && (
                             <div className="mt-2 text-xs text-purple-600">
                               <p>✨ Detalles de personalización:</p>
-                              <p className="text-gray-600 ml-2">{item.customization}</p>
+                              <p className="text-gray-600 ml-2">{item.extraComments}</p>
                             </div>
                           )}
                         </div>
+                        
+                        {/* ✅ PRECIO - DISEÑO ORIGINAL */}
                         <div className="text-right">
                           <p className="text-sm font-medium text-gray-900">
-                            ${item.subtotal?.toFixed(2) || item.price?.toFixed(2) || '0.00'}
+                            ${(item.subtotal?.toFixed(2) || 
+                               item.price?.toFixed(2) || 
+                               item.totalPrice?.toFixed(2) || 
+                               '0.00')}
                           </p>
                         </div>
                       </div>

@@ -36,29 +36,51 @@ const ShippingInfo = ({
         }
     }, [userInfo, initialData.receiverName]);
 
+    // Función para formatear el teléfono automáticamente
+    const formatPhoneNumber = (value) => {
+        // Remover todo excepto números
+        const numbers = value.replace(/\D/g, '');
+        
+        // Limitar a 8 dígitos
+        const truncated = numbers.slice(0, 8);
+        
+        // Formatear como ####-####
+        if (truncated.length >= 5) {
+            return `${truncated.slice(0, 4)}-${truncated.slice(4)}`;
+        }
+        
+        return truncated;
+    };
+
     // Función para validar el formulario
     const validateForm = () => {
         const newErrors = {};
 
-        // Validar nombre del receptor (mínimo 12 caracteres)
+        // Validar nombre del receptor (mínimo 12 caracteres, solo letras y espacios)
         if (!formData.receiverName || formData.receiverName.trim().length < 12) {
             newErrors.receiverName = 'El nombre debe tener al menos 12 caracteres';
+        } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(formData.receiverName.trim())) {
+            newErrors.receiverName = 'El nombre solo puede contener letras y espacios';
         }
 
-        // Validar teléfono (exactamente 9 dígitos)
-        const phoneRegex = /^\d{9}$|^\d{4}-\d{4}$/;
+        // Validar teléfono (exactamente formato ####-####)
+        const phoneRegex = /^\d{4}-\d{4}$/;
         if (!formData.receiverPhone || !phoneRegex.test(formData.receiverPhone)) {
-            newErrors.receiverPhone = 'El teléfono debe tener 9 dígitos o formato ####-####';
+            newErrors.receiverPhone = 'El teléfono debe tener el formato ####-####';
         }
 
-        // Validar dirección (mínimo 20 caracteres)
+        // Validar dirección (mínimo 20 caracteres, máximo 200)
         if (!formData.deliveryAddress || formData.deliveryAddress.trim().length < 20) {
             newErrors.deliveryAddress = 'La dirección debe tener al menos 20 caracteres';
+        } else if (formData.deliveryAddress.trim().length > 200) {
+            newErrors.deliveryAddress = 'La dirección no puede exceder 200 caracteres';
         }
 
-        // Validar punto de referencia (mínimo 20 caracteres)
+        // Validar punto de referencia (mínimo 20 caracteres, máximo 200)
         if (!formData.deliveryPoint || formData.deliveryPoint.trim().length < 20) {
             newErrors.deliveryPoint = 'El punto de referencia debe tener al menos 20 caracteres';
+        } else if (formData.deliveryPoint.trim().length > 200) {
+            newErrors.deliveryPoint = 'El punto de referencia no puede exceder 200 caracteres';
         }
 
         // Validar fecha de entrega
@@ -80,10 +102,28 @@ const ShippingInfo = ({
     // Manejar cambios en los inputs MEJORADO
     const handleInputChange = (e) => {
         const { name, value } = e.target;
+        let processedValue = value;
+
+        // Procesar según el tipo de campo
+        if (name === 'receiverName') {
+            // Solo permitir letras, espacios y caracteres especiales del español
+            processedValue = value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '');
+            // Limitar a 100 caracteres
+            processedValue = processedValue.slice(0, 100);
+        } else if (name === 'receiverPhone') {
+            // Formatear teléfono automáticamente
+            processedValue = formatPhoneNumber(value);
+        } else if (name === 'deliveryAddress') {
+            // Limitar a 200 caracteres
+            processedValue = value.slice(0, 200);
+        } else if (name === 'deliveryPoint') {
+            // Limitar a 200 caracteres
+            processedValue = value.slice(0, 200);
+        }
 
         setFormData(prev => ({
             ...prev,
-            [name]: value
+            [name]: processedValue
         }));
 
         // Limpiar error específico cuando el usuario empiece a escribir
@@ -92,6 +132,32 @@ const ShippingInfo = ({
                 ...prev,
                 [name]: undefined
             }));
+        }
+    };
+
+    // Manejar cambio de fecha (solo permitir selección del calendario)
+    const handleDateChange = (e) => {
+        const { name, value } = e.target;
+        
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+
+        // Limpiar error específico
+        if (errors[name]) {
+            setErrors(prev => ({
+                ...prev,
+                [name]: undefined
+            }));
+        }
+    };
+
+    // Prevenir escritura manual en el campo de fecha
+    const handleDateKeyDown = (e) => {
+        // Prevenir todas las teclas excepto Tab y Delete/Backspace para navegación
+        if (e.key !== 'Tab' && e.key !== 'Delete' && e.key !== 'Backspace') {
+            e.preventDefault();
         }
     };
 
@@ -232,7 +298,7 @@ const ShippingInfo = ({
                         </p>
                     )}
                     <p className="mt-1 text-xs text-gray-500" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                        Escribe el nombre de la persona que recogerá el pedido
+                        Escribe el nombre de la persona que recogerá el pedido (solo letras)
                     </p>
                 </div>
 
@@ -245,7 +311,7 @@ const ShippingInfo = ({
                         name="receiverPhone"
                         value={formData.receiverPhone}
                         onChange={handleInputChange}
-                        placeholder="1234-5630"
+                        placeholder="1234-5678"
                         className={`w-full px-3 py-2 border rounded-md ${errors.receiverPhone ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
                         style={{ fontFamily: 'Poppins, sans-serif' }}
                         disabled={isSubmitting}
@@ -257,7 +323,7 @@ const ShippingInfo = ({
                         </p>
                     )}
                     <p className="mt-1 text-xs text-gray-500" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                        El teléfono debe tener 9 dígitos o formato ####-####
+                        El teléfono se formateará automáticamente como ####-####
                     </p>
                 </div>
 
@@ -283,7 +349,7 @@ const ShippingInfo = ({
                         </p>
                     )}
                     <p className="mt-1 text-xs text-gray-500" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                        Mínimo 20 caracteres
+                        Entre 20 y 200 caracteres ({formData.deliveryAddress.length}/200)
                     </p>
                 </div>
 
@@ -309,7 +375,7 @@ const ShippingInfo = ({
                         </p>
                     )}
                     <p className="mt-1 text-xs text-gray-500" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                        Mínimo 20 caracteres
+                        Entre 20 y 200 caracteres ({formData.deliveryPoint.length}/200)
                     </p>
                 </div>
 
@@ -322,7 +388,8 @@ const ShippingInfo = ({
                         type="date"
                         name="deliveryDate"
                         value={formData.deliveryDate}
-                        onChange={handleInputChange}
+                        onChange={handleDateChange}
+                        onKeyDown={handleDateKeyDown}
                         min={getMinDate()}
                         className={`w-full px-3 py-2 border rounded-md ${errors.deliveryDate ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
                         style={{ fontFamily: 'Poppins, sans-serif' }}
@@ -334,7 +401,7 @@ const ShippingInfo = ({
                         </p>
                     )}
                     <p className="mt-1 text-xs text-gray-500" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                        Selecciona una fecha a partir de hoy
+                        Selecciona una fecha a partir de hoy usando el calendario
                     </p>
                 </div>
 

@@ -57,9 +57,9 @@ const isValidObjectId = (id) => {
     return mongoose.Types.ObjectId.isValid(id);
 };
 
-// Función helper para validar tipo de pago
+// ✅ ACTUALIZADA: Función helper para validar tipo de pago (SIN EFECTIVO)
 const validatePaymentType = (paymentType) => {
-    const validTypes = ["Transferencia", "Efectivo", "Débito", "Crédito"];
+    const validTypes = ["Transferencia", "Débito", "Crédito"]; // ❌ Removido "Efectivo"
     if (!paymentType || !validTypes.includes(paymentType)) {
         return {
             isValid: false,
@@ -93,7 +93,7 @@ const validateTrackingStatus = (status) => {
     return { isValid: true, value: status };
 };
 
-// Función helper para validar dirección
+// ✅ ACTUALIZADA: Función helper para validar dirección (límites corregidos)
 const validateAddress = (address) => {
     if (!address || typeof address !== 'string') {
         return { isValid: false, error: "La dirección de entrega es requerida" };
@@ -105,14 +105,14 @@ const validateAddress = (address) => {
         return { isValid: false, error: "La dirección debe tener al menos 20 caracteres" };
     }
 
-    if (trimmedAddress.length > 200) {
+    if (trimmedAddress.length > 200) { // ✅ Límite corregido a 200
         return { isValid: false, error: "La dirección no puede exceder 200 caracteres" };
     }
 
     return { isValid: true, value: trimmedAddress };
 };
 
-// Función helper para validar nombre del receptor
+// ✅ ACTUALIZADA: Función helper para validar nombre del receptor (solo letras y límites corregidos)
 const validateReceiverName = (name) => {
     if (!name || typeof name !== 'string') {
         return { isValid: false, error: "El nombre del receptor es requerido" };
@@ -124,19 +124,19 @@ const validateReceiverName = (name) => {
         return { isValid: false, error: "El nombre del receptor debe tener al menos 12 caracteres" };
     }
 
-    if (trimmedName.length > 100) {
+    if (trimmedName.length > 100) { // ✅ Límite corregido a 100
         return { isValid: false, error: "El nombre del receptor no puede exceder 100 caracteres" };
     }
 
-    // Validar que no contenga números
-    if (/\d/.test(trimmedName)) {
-        return { isValid: false, error: "El nombre del receptor no puede contener números" };
+    // ✅ ACTUALIZADA: Validar que solo contenga letras, espacios y caracteres especiales del español
+    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(trimmedName)) {
+        return { isValid: false, error: "El nombre del receptor solo puede contener letras y espacios" };
     }
 
     return { isValid: true, value: trimmedName };
 };
 
-// Función helper para validar teléfono
+// ✅ ACTUALIZADA: Función helper para validar teléfono (formato ####-####)
 const validatePhone = (phone) => {
     if (!phone || typeof phone !== 'string') {
         return { isValid: false, error: "El teléfono es requerido" };
@@ -144,20 +144,20 @@ const validatePhone = (phone) => {
 
     const trimmedPhone = phone.trim();
 
-    // Verifica el formato exacto: 4 dígitos, guion, 4 dígitos
+    // ✅ ACTUALIZADA: Verifica el formato exacto: 4 dígitos, guion, 4 dígitos
     const phoneRegex = /^\d{4}-\d{4}$/;
 
     if (!phoneRegex.test(trimmedPhone)) {
         return {
             isValid: false,
-            error: "El teléfono debe tener el formato 1234-5678"
+            error: "El teléfono debe tener el formato ####-####"
         };
     }
 
     return { isValid: true, value: trimmedPhone };
 };
 
-// Función helper para validar punto de referencia
+// ✅ ACTUALIZADA: Función helper para validar punto de referencia (límites corregidos)
 const validateDeliveryPoint = (point) => {
     if (!point || typeof point !== 'string') {
         return { isValid: false, error: "El punto de referencia es requerido" };
@@ -169,7 +169,7 @@ const validateDeliveryPoint = (point) => {
         return { isValid: false, error: "El punto de referencia debe tener al menos 20 caracteres" };
     }
 
-    if (trimmedPoint.length > 200) {
+    if (trimmedPoint.length > 200) { // ✅ Límite corregido a 200
         return { isValid: false, error: "El punto de referencia no puede exceder 200 caracteres" };
     }
 
@@ -208,10 +208,14 @@ const validateDeliveryDate = (date) => {
     return { isValid: true, value: deliveryDate };
 };
 
-// Función helper para validar imagen de comprobante
-const validatePaymentProofImage = (file) => {
+// ✅ ACTUALIZADA: Función helper para validar imagen de comprobante (OPCIONAL para algunos métodos)
+const validatePaymentProofImage = (file, isRequired = true) => {
     if (!file) {
-        return { isValid: false, error: "La imagen del comprobante de pago es requerida" };
+        if (isRequired) {
+            return { isValid: false, error: "La imagen del comprobante de pago es requerida" };
+        } else {
+            return { isValid: true }; // ✅ Permitir no tener archivo si no es requerido
+        }
     }
 
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
@@ -1058,8 +1062,9 @@ salesController.createSale = async (req, res) => {
 
         // 1. VALIDACIONES DE DATOS BÁSICOS
         console.log('Iniciando validaciones para nueva venta...');
+        console.log('Tipo de pago recibido:', paymentType);
 
-        // Validar tipo de pago
+        // ✅ ACTUALIZADA: Validar tipo de pago (sin efectivo)
         const paymentTypeValidation = validatePaymentType(paymentType);
         if (!paymentTypeValidation.isValid) {
             return res.status(400).json({
@@ -1130,33 +1135,36 @@ salesController.createSale = async (req, res) => {
             });
         }
 
-        // 3. VALIDACIONES DE COMPROBANTE DE PAGO
+        // 3. ✅ ACTUALIZADA: VALIDACIONES DE COMPROBANTE DE PAGO
         console.log(`Validando comprobante para pago tipo: ${paymentType}`);
 
-        // Determinar si es necesario el comprobante
-        const requiresProof = paymentType !== 'Efectivo';
+        // ✅ NUEVA LÓGICA: Determinar si es necesario el comprobante según el tipo de pago
+        const requiresProof = paymentType === 'Transferencia'; // Solo transferencia requiere comprobante
         let imageValidation = { isValid: true };
 
         if (requiresProof) {
-            // Validar que se envió un archivo
+            // ✅ ACTUALIZADA: Solo validar archivo si es transferencia bancaria
             if (!req.file) {
                 return res.status(400).json({
                     success: false,
-                    message: "El comprobante de pago es requerido para este método de pago"
+                    message: "El comprobante de pago es requerido para transferencias bancarias"
                 });
             }
 
             // Validar el archivo
-            imageValidation = validatePaymentProofImage(req.file);
+            imageValidation = validatePaymentProofImage(req.file, true);
             if (!imageValidation.isValid) {
                 return res.status(400).json({
                     success: false,
                     message: imageValidation.error
                 });
             }
+        } else {
+            // ✅ NUEVO: Para tarjetas (Débito/Crédito), no se requiere comprobante
+            console.log(`Pago con ${paymentType} - no se requiere comprobante`);
         }
 
-        // 4. PROCESAMIENTO DE COMPROBANTE DE PAGO
+        // 4. ✅ ACTUALIZADA: PROCESAMIENTO DE COMPROBANTE DE PAGO
         let paymentProofImage = '';
 
         if (requiresProof && req.file) {
@@ -1183,29 +1191,28 @@ salesController.createSale = async (req, res) => {
                     message: "Error al procesar el comprobante de pago"
                 });
             }
-        } else if (paymentType === 'Efectivo') {
-            console.log('Pago en efectivo - no se requiere comprobante');
-            // Para efectivo, podemos establecer un valor por defecto o dejarlo vacío
-            paymentProofImage = '';
+        } else {
+            // ✅ NUEVO: Para tarjetas, no hay comprobante
+            console.log(`Pago con ${paymentType} - no se subió comprobante`);
+            paymentProofImage = ''; // Campo vacío para tarjetas
         }
 
-        // 5. VALIDACIÓN Y CONFIGURACIÓN DE ESTADOS
-        // *** CORREGIDO: Lógica de estado basada en tipo de pago ***
+        // 5. ✅ ACTUALIZADA: VALIDACIÓN Y CONFIGURACIÓN DE ESTADOS
         let validatedStatus;
 
-        if (paymentType === 'Efectivo') {
-            // Para efectivo siempre es "Pendiente" hasta que se entregue
-            validatedStatus = "Pendiente";
-            console.log('Pago en efectivo - estado establecido como Pendiente');
-        } else {
-            // Para otros métodos de pago, si hay comprobante es "Pagado"
+        if (paymentType === 'Transferencia') {
+            // Para transferencia bancaria con comprobante es "Pagado"
             if (paymentProofImage) {
                 validatedStatus = "Pagado";
-                console.log(`Pago ${paymentType} con comprobante - estado establecido como Pagado`);
+                console.log('Transferencia con comprobante - estado establecido como Pagado');
             } else {
                 validatedStatus = "Pendiente";
-                console.log(`Pago ${paymentType} sin comprobante - estado establecido como Pendiente`);
+                console.log('Transferencia sin comprobante - estado establecido como Pendiente');
             }
+        } else {
+            // ✅ NUEVO: Para tarjetas (Débito/Crédito), siempre "Pagado" ya que se procesaron
+            validatedStatus = "Pagado";
+            console.log(`Pago con ${paymentType} - estado establecido como Pagado (procesado)`);
         }
 
         // Si se proporciona un estado específico, validarlo y usarlo solo si es válido

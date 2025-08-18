@@ -46,7 +46,6 @@ const OrderReview = ({
     const getPaymentTypeLabel = (type) => {
         const labels = {
             'Transferencia': 'Transferencia bancaria',
-            'Efectivo': 'Pago en efectivo',
             'Débito': 'Tarjeta de débito',
             'Crédito': 'Tarjeta de crédito'
         };
@@ -116,7 +115,8 @@ const OrderReview = ({
                         </p>
                     </div>
 
-                    {orderData.paymentInfo?.paymentProofImage && (
+                    {/* Solo mostrar comprobante si es transferencia bancaria Y hay comprobante */}
+                    {orderData.paymentInfo?.paymentType === 'Transferencia' && orderData.paymentInfo?.paymentProofImage && (
                         <div className="mt-3">
                             <span className="font-medium text-gray-700 text-sm">Comprobante:</span>
                             <div className="mt-2 flex items-center text-sm text-green-600">
@@ -125,6 +125,20 @@ const OrderReview = ({
                                 </svg>
                                 <span style={{ fontFamily: 'Poppins, sans-serif' }}>
                                     Comprobante cargado correctamente
+                                </span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Mostrar información específica para tarjetas */}
+                    {(orderData.paymentInfo?.paymentType === 'Débito' || orderData.paymentInfo?.paymentType === 'Crédito') && (
+                        <div className="mt-3">
+                            <div className="flex items-center text-sm text-green-600">
+                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                    Datos de tarjeta procesados correctamente
                                 </span>
                             </div>
                         </div>

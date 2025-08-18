@@ -230,13 +230,7 @@ const PaymentProcessPage = () => {
                 setError('Falta seleccionar método de pago');
                 return;
             }
-
-            // Solo validar comprobante si no es efectivo
-            if (orderData.paymentInfo.paymentType !== 'Efectivo' && !orderData.paymentInfo.paymentProofImage) {
-                setError('Falta el comprobante de pago');
-                return;
-            }
-
+            
             // Obtener el ShoppingCartId del usuario actual
             const cartResponse = await fetch(`https://marquesa.onrender.com/api/shoppingCart/client/${user.id}`, {
                 method: 'GET',

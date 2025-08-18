@@ -221,7 +221,7 @@ La plataforma incluye:
   <li><b>Para Ejecutar el Proyecto</b>"npm run dev"</li>
 </ul>
 
-<h3>📱 Comandos para Ejecutar Movil/h3>
+<h3>📱 Comandos para Ejecutar Movil </h3>
 <ul>
   <li><b>Para cambiarnos a la carpeta del frontendMovil</b>"cd frontendMovil" </li>
   <li><b>Para instalar los modulos ocupados en frontendMovil</b>"npm install"</li>

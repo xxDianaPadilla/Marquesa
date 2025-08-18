@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 // Importación de hooks de navegación de React Router
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 // Importación de iconos de Lucide React
-import { ArrowLeft, MapPin, Package, Truck, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { ArrowLeft, MapPin, Package, Truck, CheckCircle2, Clock, AlertCircle, X, AlertTriangle } from "lucide-react";
 // Importación de componentes de React Leaflet para mapas
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 // Importación de Leaflet para configuración de mapas
@@ -47,6 +47,115 @@ const deliveryIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
+// Componente Modal de Confirmación
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, remainingHours, isLoading }) => {
+  // Effect para manejar la tecla Escape
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+      // Prevenir scroll del body cuando el modal está abierto
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen, onClose]);
+
+  // No renderizar si el modal no está abierto
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop con blur */}
+      <div 
+        className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm transition-opacity"
+        onClick={onClose}
+      />
+      
+      {/* Modal */}
+      <div className="relative bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all">
+        {/* Header del modal */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">
+              {title}
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            disabled={isLoading}
+          >
+            <X className="w-5 h-5 text-gray-400" />
+          </button>
+        </div>
+
+        {/* Contenido del modal */}
+        <div className="p-6">
+          <p className="text-gray-600 mb-4 leading-relaxed">
+            {message}
+          </p>
+          
+          {/* Información adicional sobre el tiempo restante */}
+          {remainingHours && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center space-x-2">
+                <Clock className="w-4 h-4 text-yellow-600" />
+                <p className="text-sm text-yellow-800 font-medium">
+                  Tienes hasta {remainingHours} horas para cancelar este pedido
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Botones de acción */}
+          <div className="flex space-x-3">
+            <button
+              onClick={onClose}
+              disabled={isLoading}
+              className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Mantener pedido
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={isLoading}
+              className="flex-1 px-4 py-3 text-white bg-red-600 hover:bg-red-700 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+            >
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Cancelando...</span>
+                </>
+              ) : (
+                <span>Sí, cancelar pedido</span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Footer informativo */}
+        <div className="px-6 py-4 bg-gray-50 rounded-b-xl">
+          <p className="text-xs text-gray-500 text-center">
+            Esta acción no se puede deshacer una vez confirmada
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Componente principal para mostrar detalles de pedidos
 const OrderDetail = () => {
   // Hook para navegación programática
@@ -72,6 +181,8 @@ const OrderDetail = () => {
   const [cancelLoading, setCancelLoading] = useState(false);
   // Estado para centro del mapa con coordenadas de San Salvador por defecto
   const [mapCenter, setMapCenter] = useState([13.692940, -89.218191]);
+  // Estado para controlar el modal de confirmación
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Función para geocodificar dirección usando servicio Nominatim gratuito
   const geocodeAddress = async (address) => {
@@ -251,18 +362,24 @@ const OrderDetail = () => {
     navigate('/profile');
   };
 
-  // Función mejorada para cancelar pedido
-  const handleCancelOrder = async () => {
+  // Función para mostrar modal de confirmación
+  const handleCancelOrderClick = () => {
     // Verificar que existan datos del pedido y sea cancelable
     if (!orderData || !cancellationInfo?.isCancellable) return;
+    
+    // Mostrar modal de confirmación
+    setShowConfirmModal(true);
+  };
 
-    // Crear mensaje de confirmación para el usuario
-    const confirmMessage = `¿Estás seguro de que deseas cancelar este pedido?\n\nTienes hasta ${cancellationInfo.remainingHours} horas para cancelar.`;
-    // Mostrar confirmación al usuario
-    const confirmCancel = window.confirm(confirmMessage);
-    // Salir si el usuario no confirma
-    if (!confirmCancel) return;
+  // Función para cerrar modal de confirmación
+  const handleCloseModal = () => {
+    if (!cancelLoading) {
+      setShowConfirmModal(false);
+    }
+  };
 
+  // Función para confirmar cancelación del pedido
+  const handleConfirmCancel = async () => {
     try {
       // Activar estado de carga para cancelación
       setCancelLoading(true);
@@ -294,6 +411,8 @@ const OrderDetail = () => {
           ...prev,
           isCancellable: false
         }));
+        // Cerrar modal
+        setShowConfirmModal(false);
       } else {
         // Mostrar notificación de error
         toast.error(data.message || 'Error al cancelar el pedido');
@@ -713,6 +832,17 @@ const OrderDetail = () => {
     <div className="min-h-screen bg-white-50">
       <Header />
 
+      {/* Modal de confirmación */}
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={handleCloseModal}
+        onConfirm={handleConfirmCancel}
+        title="Cancelar pedido"
+        message="¿Estás seguro de que deseas cancelar este pedido? Esta acción no se puede deshacer."
+        remainingHours={cancellationInfo?.remainingHours}
+        isLoading={cancelLoading}
+      />
+
       {/* Header personalizado de la página */}
       <div className="bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -742,10 +872,10 @@ const OrderDetail = () => {
                 <button
                   className="px-2 sm:px-4 py-2 text-white rounded-lg text-xs sm:text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ backgroundColor: '#E8ACD2', cursor: 'pointer' }}
-                  onClick={handleCancelOrder}
+                  onClick={handleCancelOrderClick}
                   disabled={cancelLoading}
                 >
-                  {cancelLoading ? 'Cancelando...' : 'Cancelar pedido'}
+                  Cancelar pedido
                 </button>
                 {/* Mostrar tiempo restante para cancelación */}
                 {cancellationInfo?.remainingHours > 0 && (
@@ -1094,12 +1224,7 @@ const OrderDetail = () => {
 
               <div className="space-y-3">
                 {/* ID del pedido */}
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">ID del pedido:</span>
-                  <span className="text-sm font-medium text-gray-900">
-                    #{orderData._id?.slice(-8) || 'N/A'}
-                  </span>
-                </div>
+                <div className="flex justify-between"></div>
                 {/* Fecha de creación */}
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Fecha de creación:</span>

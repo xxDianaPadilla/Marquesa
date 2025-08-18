@@ -64,7 +64,7 @@ const UserSummary = ({ stats = {} }) => {
         {
             icon: cancelar,
             iconAlt: "cancelar",
-            label: "Pedidos cancelados",
+            label: "Pedidos pagados",
             value: finalStats.cancelledOrders,
             id: "cancelled-orders"
         }

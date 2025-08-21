@@ -58,12 +58,12 @@ export default function HomeScreen({ navigation }) {
 
     // Hook personalizado para obtener productos de la API
     const { productos, loading, refetch } = useFetchProducts();
-    
+
     // Estados locales del componente
     const [selectedCategory, setSelectedCategory] = useState('Todo'); // Categoría seleccionada actualmente
     const [refreshing, setRefreshing] = useState(false); // Estado de pull-to-refresh
     const [addingToCart, setAddingToCart] = useState(null); // ID del producto que se está agregando al carrito
-    
+
     // Estados para el modal de filtros de precio
     const [showPriceFilter, setShowPriceFilter] = useState(false); // Mostrar/ocultar modal
     const [priceRange, setPriceRange] = useState({ min: 0, max: 100 }); // Rango de precios actual
@@ -237,7 +237,7 @@ export default function HomeScreen({ navigation }) {
         <View style={[styles.cardWrapper, { marginRight: index % 2 === 0 ? elementGap : 0 }]}>
             <ProductCard
                 product={item}
-                onPress={handleProductPress} 
+                onPress={handleProductPress}
                 onAddToCart={handleAddToCart}
                 navigation={navigation}
                 // Pasar estado de carga para deshabilitar botón mientras se agrega
@@ -262,10 +262,21 @@ export default function HomeScreen({ navigation }) {
                 </TouchableOpacity>
             </View>
 
-            {/* Título principal de la pantalla */}
             <View style={styles.titleContainer}>
-                <Text style={styles.mainTitle}>Descubre formas de</Text>
-                <Text style={styles.mainTitle}>sorprender</Text>
+                {isAuthenticated && userInfo?.name ? (
+                    // Título personalizado cuando el usuario está autenticado
+                    <>
+                        <Text style={styles.greetingText}>¡Hola, {userInfo.name}!</Text>
+                        <Text style={styles.mainTitle}>Descubre formas de</Text>
+                        <Text style={styles.mainTitle}>sorprender</Text>
+                    </>
+                ) : (
+                    // Título por defecto cuando no está autenticado
+                    <>
+                        <Text style={styles.mainTitle}>Descubre formas de</Text>
+                        <Text style={styles.mainTitle}>sorprender</Text>
+                    </>
+                )}
             </View>
 
             {/* Contenedor de búsqueda y filtros */}
@@ -453,7 +464,7 @@ export default function HomeScreen({ navigation }) {
                 <TouchableOpacity style={styles.navItem}>
                     <Icon name="home" size={isSmallDevice ? 20 : 24} color="#4A4170" />
                 </TouchableOpacity>
-                
+
                 {/* Botón Favoritos con badge */}
                 <TouchableOpacity
                     style={styles.navItem}
@@ -469,7 +480,7 @@ export default function HomeScreen({ navigation }) {
                         </View>
                     )}
                 </TouchableOpacity>
-                
+
                 {/* Botón Chat */}
                 <TouchableOpacity
                     style={styles.navItem}
@@ -477,7 +488,7 @@ export default function HomeScreen({ navigation }) {
                 >
                     <Icon name="chat" size={isSmallDevice ? 20 : 24} color="#ccc" />
                 </TouchableOpacity>
-                
+
                 {/* Botón Carrito con badge */}
                 <TouchableOpacity
                     style={styles.navItem}
@@ -505,7 +516,7 @@ const styles = StyleSheet.create({
         backgroundColor: "#ffffff",
         paddingTop: isSmallDevice ? 45 : 50, // Espaciado superior responsivo
     },
-    
+
     // Estilos del header
     header: {
         flexDirection: 'row',
@@ -527,7 +538,7 @@ const styles = StyleSheet.create({
         height: "100%",
         resizeMode: "contain",
     },
-    
+
     // Estilos del título principal
     titleContainer: {
         paddingHorizontal: horizontalPadding,
@@ -539,7 +550,15 @@ const styles = StyleSheet.create({
         color: '#333',
         lineHeight: isSmallDevice ? 28 : isMediumDevice ? 30 : 34,
     },
-    
+
+    greetingText: {
+        fontSize: isSmallDevice ? 16 : isMediumDevice ? 18 : 20,
+        fontFamily: 'Poppins-SemiBold',
+        color: '#4A4170',
+        marginBottom: isSmallDevice ? 4 : 6,
+        lineHeight: isSmallDevice ? 20 : isMediumDevice ? 22 : 24,
+    },
+
     // Estilos de la sección de búsqueda y filtros
     searchWrapper: {
         flexDirection: 'row',
@@ -615,7 +634,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         overflow: 'hidden',
     },
-    
+
     // Estilos de las categorías
     categoryScrollContainer: {
         marginBottom: isSmallDevice ? 10 : 12,
@@ -670,7 +689,7 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontFamily: 'Poppins-SemiBold',
     },
-    
+
     // Estilos de los indicadores de filtros
     filterIndicatorContainer: {
         paddingHorizontal: horizontalPadding,
@@ -695,7 +714,7 @@ const styles = StyleSheet.create({
         marginLeft: 4,
         padding: 2,
     },
-    
+
     // Estilos de los contenedores de error
     errorContainer: {
         flexDirection: 'row',
@@ -730,7 +749,7 @@ const styles = StyleSheet.create({
         padding: 4,
         marginLeft: 8,
     },
-    
+
     // Banner de estado de carga del carrito
     loadingBanner: {
         flexDirection: 'row',
@@ -748,7 +767,7 @@ const styles = StyleSheet.create({
         marginLeft: 8,
         fontFamily: 'Poppins-Regular',
     },
-    
+
     // Estilos de estados de carga y vacío
     loadingContainer: {
         flex: 1,
@@ -773,7 +792,7 @@ const styles = StyleSheet.create({
         marginTop: 12,
         fontFamily: 'Poppins-Regular',
     },
-    
+
     // Estilos de la lista de productos
     productsContainer: {
         paddingHorizontal: horizontalPadding,
@@ -789,7 +808,7 @@ const styles = StyleSheet.create({
         width: (screenWidth - (horizontalPadding * 2) - elementGap - 4) / 2,
         minHeight: isSmallDevice ? 180 : 200,
     },
-    
+
     // Estilos de la navegación inferior
     bottomNav: {
         position: 'absolute',
@@ -825,7 +844,7 @@ const styles = StyleSheet.create({
         height: isSmallDevice ? 20 : 24,
         resizeMode: 'contain',
     },
-    
+
     // Estilos de los badges (contadores)
     favoriteBadge: {
         position: 'absolute',

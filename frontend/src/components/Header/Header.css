@@ -41,10 +41,12 @@
   font-size: 12px;
   outline: none;
   transition: border-color 0.2s ease;
+  width: 100%;
 }
 
 .search-input:focus {
   border-color: #F2C6C2;
+  width: 100%;
 }
 
 .search-button {

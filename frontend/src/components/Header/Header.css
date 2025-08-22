@@ -61,6 +61,68 @@
   transition: background-color 0.2s ease;
 }
 
+/* Estilos para el dropdown de búsqueda */
+.search-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  margin-top: 4px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* Asegurar que el dropdown aparezca sobre otros elementos */
+.search-container.relative {
+  z-index: 1001;
+}
+
+/* Estilos para elementos del dropdown */
+.search-dropdown-item {
+  padding: 12px;
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.search-dropdown-item:hover {
+  background-color: #f9fafb;
+}
+
+.search-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+/* Estilos para el estado de carga del dropdown */
+.search-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  color: #6b7280;
+}
+
+/* Animación del spinner de búsqueda */
+.search-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #f3f4f6;
+  border-radius: 50%;
+  border-top-color: #ec4899;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .icon-style {
   width: 22px;
   height: 25px;
@@ -130,6 +192,11 @@
   .icon-style {
     width: 18px;
     height: 20px;
+  }
+
+  /* Ajustar dropdown en móvil */
+  .search-dropdown {
+    max-height: 300px;
   }
 }
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 // Iconos desde lucide-react 
@@ -11,8 +11,10 @@ import iconCart from './../../assets/cartIcon.png';
 import iconSettings from './../../assets/settingsIcon.png';
 // Icono de la lupa desde la carpeta "assets"
 import iconSearch from './../../assets/searchIcon.png';
+// Componente de dropdown de búsqueda
+import SearchDropdown from '../SearchDropdown';
 // Importe el css del header
-import './../../components/Header/Header.css';
+import './Header.css';
 
 const Header = () => {
   const navigate = useNavigate();
@@ -22,6 +24,183 @@ const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   // Estado para controlar el modal de autenticación
   const [showAuthModal, setShowAuthModal] = useState(false);
+  
+  // Estados para la funcionalidad de búsqueda
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  
+  // Referencias para manejo del dropdown de búsqueda
+  const searchContainerRef = useRef(null);
+  const searchInputRef = useRef(null);
+  const searchTimeoutRef = useRef(null);
+
+  // URL base del API
+  const API_BASE_URL = 'https://marquesa.onrender.com/api';
+
+  // Mapeo de categorías para mostrar nombres legibles
+  const categoryMap = {
+    '688175a69579a7cde1657aaa': 'Arreglos con flores naturales',
+    '688175d89579a7cde1657ac2': 'Arreglos con flores secas',
+    '688175fd9579a7cde1657aca': 'Cuadros decorativos',
+    '688176179579a7cde1657ace': 'Giftboxes',
+    '688175e79579a7cde1657ac6': 'Tarjetas'
+  };
+
+  // Función para realizar búsqueda de productos
+  const searchProducts = useCallback(async (term) => {
+    if (!term.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      // Realizar búsqueda en todos los productos
+      const response = await fetch(`${API_BASE_URL}/products`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      let productsData = [];
+
+      // Extraer productos de diferentes estructuras de respuesta
+      if (Array.isArray(data)) {
+        productsData = data;
+      } else if (data.success && Array.isArray(data.data)) {
+        productsData = data.data;
+      } else if (data.products && Array.isArray(data.products)) {
+        productsData = data.products;
+      } else if (data.data && Array.isArray(data.data)) {
+        productsData = data.data;
+      }
+
+      // Filtrar productos por nombre y categoría
+      const filteredProducts = productsData.filter(product => {
+        const productName = (product.name || '').toLowerCase();
+        const searchLower = term.toLowerCase();
+        
+        // Buscar por nombre del producto
+        const nameMatch = productName.includes(searchLower);
+        
+        // Buscar por categoría
+        let categoryMatch = false;
+        if (typeof product.categoryId === 'object' && product.categoryId?.name) {
+          categoryMatch = product.categoryId.name.toLowerCase().includes(searchLower);
+        } else if (product.categoryId && categoryMap[product.categoryId]) {
+          categoryMatch = categoryMap[product.categoryId].toLowerCase().includes(searchLower);
+        }
+
+        return nameMatch || categoryMatch;
+      });
+
+      // Formatear productos para mostrar en el dropdown
+      const formattedProducts = filteredProducts.map(product => {
+        let categoryName = 'Sin categoría';
+        if (typeof product.categoryId === 'object' && product.categoryId?.name) {
+          categoryName = product.categoryId.name;
+        } else if (product.categoryId && categoryMap[product.categoryId]) {
+          categoryName = categoryMap[product.categoryId];
+        }
+
+        // Determinar imagen del producto
+        let image = '/placeholder-image.jpg';
+        if (product.image) {
+          image = product.image;
+        } else if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+          if (product.images[0]?.image) {
+            image = product.images[0].image;
+          } else if (typeof product.images[0] === 'string') {
+            image = product.images[0];
+          }
+        }
+
+        return {
+          ...product,
+          category: categoryName,
+          image: image,
+          _id: product._id || product.id
+        };
+      });
+
+      setSearchResults(formattedProducts);
+    } catch (error) {
+      console.error('Error al buscar productos:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [API_BASE_URL, categoryMap]);
+
+  // Función para manejar cambios en el input de búsqueda con debounce
+  const handleSearchChange = useCallback((value) => {
+    setSearchTerm(value);
+    setShowSearchDropdown(true);
+
+    // Limpiar timeout anterior
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Configurar nuevo timeout para debounce
+    searchTimeoutRef.current = setTimeout(() => {
+      searchProducts(value);
+    }, 300); // Esperar 300ms después de que el usuario deje de escribir
+  }, [searchProducts]);
+
+  // Función para manejar envío del formulario de búsqueda (Enter)
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (searchTerm.trim()) {
+      setShowSearchDropdown(false);
+      navigate(`/buscar?q=${encodeURIComponent(searchTerm.trim())}`);
+    }
+  };
+
+  // Función para manejar selección de producto desde el dropdown
+  const handleProductSelect = (product) => {
+    setSearchTerm(product.name);
+    setShowSearchDropdown(false);
+    // Aquí podrías navegar al detalle del producto si tienes esa ruta
+    // navigate(`/producto/${product._id}`);
+  };
+
+  // Función para cerrar el dropdown de búsqueda
+  const closeSearchDropdown = () => {
+    setShowSearchDropdown(false);
+  };
+
+  // Effect para manejar clics fuera del área de búsqueda
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+        closeSearchDropdown();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Limpiar timeout al desmontar componente
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Navegación para configuración con verificación de autenticación
   const handleProfileClick = (e) => {
@@ -91,15 +270,31 @@ const Header = () => {
             </div>
 
             <div className="col-span-6 flex justify-center">
-              <div className="search-container max-w-lg">
-                <input
-                  type="text"
-                  placeholder="¿Qué estás buscando?"
-                  className="search-input"
+              <div className="search-container max-w-lg relative" ref={searchContainerRef}>
+                <form onSubmit={handleSearchSubmit}>
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    placeholder="¿Qué estás buscando?"
+                    className="search-input"
+                    value={searchTerm}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    onFocus={() => searchTerm && setShowSearchDropdown(true)}
+                  />
+                  <button type="submit" className="search-button">
+                    <img src={iconSearch} alt="Buscar" className="w-5 h-5" />
+                  </button>
+                </form>
+                
+                {/* Dropdown de resultados de búsqueda */}
+                <SearchDropdown
+                  searchResults={searchResults}
+                  isVisible={showSearchDropdown}
+                  onClose={closeSearchDropdown}
+                  onProductSelect={handleProductSelect}
+                  searchTerm={searchTerm}
+                  isLoading={isSearching}
                 />
-                <button className="search-button">
-                  <img src={iconSearch} alt="Buscar" className="w-5 h-5" />
-                </button>
               </div>
             </div>
 
@@ -150,15 +345,30 @@ const Header = () => {
           <div className={`mobile-menu md:hidden ${isMenuOpen ? 'open' : ''}`}>
             <div className="px-6 space-y-4">
               {/* Buscador en menú móvil */}
-              <div className="search-container">
-                <input
-                  type="text"
-                  placeholder="¿Qué estás buscando?"
-                  className="search-input"
+              <div className="search-container relative" ref={searchContainerRef}>
+                <form onSubmit={handleSearchSubmit}>
+                  <input
+                    type="text"
+                    placeholder="¿Qué estás buscando?"
+                    className="search-input"
+                    value={searchTerm}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    onFocus={() => searchTerm && setShowSearchDropdown(true)}
+                  />
+                  <button type="submit" className="search-button">
+                    <img src={iconSearch} alt="Buscar" className="w-4 h-4" />
+                  </button>
+                </form>
+                
+                {/* Dropdown de resultados de búsqueda para móvil */}
+                <SearchDropdown
+                  searchResults={searchResults}
+                  isVisible={showSearchDropdown}
+                  onClose={closeSearchDropdown}
+                  onProductSelect={handleProductSelect}
+                  searchTerm={searchTerm}
+                  isLoading={isSearching}
                 />
-                <button className="search-button">
-                  <img src={iconSearch} alt="Buscar" className="w-4 h-4" />
-                </button>
               </div>
 
               {/* Iconos en menú móvil */}

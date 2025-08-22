@@ -15,8 +15,8 @@ const SearchDropdown = ({
     const handleProductClick = (product) => {
         onProductSelect(product);
         onClose();
-        // Navegar al detalle del producto si tienes esa ruta
-        // navigate(`/producto/${product._id}`);
+        // Navegar al detalle del producto
+        navigate(`/ProductDetail/${product._id}`);
     };
 
     // Función para ver todos los resultados de búsqueda

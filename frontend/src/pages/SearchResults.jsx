@@ -302,6 +302,14 @@ const SearchResults = () => {
         };
     }, [getProductId, categoryMap]);
 
+    // Función para manejar clic en producto (navegar a detalles)
+    const handleProductClick = useCallback((product) => {
+        const productId = product._id || product.id;
+        if (productId) {
+            navigate(`/ProductDetail/${productId}`);
+        }
+    }, [navigate]);
+
     // Función para manejar reintento
     const handleRetry = useCallback(() => {
         console.log('SearchResults - Retry solicitado');
@@ -417,6 +425,7 @@ const SearchResults = () => {
                                                 showRemoveButton={false}
                                                 isFavorite={isProductFavorite}
                                                 onToggleFavorite={() => handleToggleFavorite(formattedProduct)}
+                                                onClick={() => handleProductClick(formattedProduct)}
                                             />
                                         </div>
                                     );

@@ -48,6 +48,13 @@ const Header = () => {
     '688175e79579a7cde1657ac6': 'Tarjetas'
   };
 
+  // Effect para ocultar el dropdown cuando el modal esté activo
+  useEffect(() => {
+    if (showAuthModal) {
+      setShowSearchDropdown(false);
+    }
+  }, [showAuthModal]);
+
   // Función para realizar búsqueda de productos
   const searchProducts = useCallback(async (term) => {
     if (!term.trim()) {
@@ -144,7 +151,11 @@ const Header = () => {
   // Función para manejar cambios en el input de búsqueda con debounce
   const handleSearchChange = useCallback((value) => {
     setSearchTerm(value);
-    setShowSearchDropdown(true);
+    
+    // No mostrar dropdown si el modal está activo
+    if (!showAuthModal) {
+      setShowSearchDropdown(true);
+    }
 
     // Limpiar timeout anterior
     if (searchTimeoutRef.current) {
@@ -155,7 +166,7 @@ const Header = () => {
     searchTimeoutRef.current = setTimeout(() => {
       searchProducts(value);
     }, 300); // Esperar 300ms después de que el usuario deje de escribir
-  }, [searchProducts]);
+  }, [searchProducts, showAuthModal]);
 
   // Función para manejar envío del formulario de búsqueda (Enter)
   const handleSearchSubmit = (e) => {
@@ -279,7 +290,7 @@ const Header = () => {
                     className="search-input"
                     value={searchTerm}
                     onChange={(e) => handleSearchChange(e.target.value)}
-                    onFocus={() => searchTerm && setShowSearchDropdown(true)}
+                    onFocus={() => searchTerm && !showAuthModal && setShowSearchDropdown(true)}
                   />
                   <button type="submit" className="search-button">
                     <img src={iconSearch} alt="Buscar" className="w-5 h-5" />
@@ -289,7 +300,7 @@ const Header = () => {
                 {/* Dropdown de resultados de búsqueda */}
                 <SearchDropdown
                   searchResults={searchResults}
-                  isVisible={showSearchDropdown}
+                  isVisible={showSearchDropdown && !showAuthModal}
                   onClose={closeSearchDropdown}
                   onProductSelect={handleProductSelect}
                   searchTerm={searchTerm}
@@ -353,7 +364,7 @@ const Header = () => {
                     className="search-input"
                     value={searchTerm}
                     onChange={(e) => handleSearchChange(e.target.value)}
-                    onFocus={() => searchTerm && setShowSearchDropdown(true)}
+                    onFocus={() => searchTerm && !showAuthModal && setShowSearchDropdown(true)}
                   />
                   <button type="submit" className="search-button">
                     <img src={iconSearch} alt="Buscar" className="w-4 h-4" />
@@ -363,7 +374,7 @@ const Header = () => {
                 {/* Dropdown de resultados de búsqueda para móvil */}
                 <SearchDropdown
                   searchResults={searchResults}
-                  isVisible={showSearchDropdown}
+                  isVisible={showSearchDropdown && !showAuthModal}
                   onClose={closeSearchDropdown}
                   onProductSelect={handleProductSelect}
                   searchTerm={searchTerm}

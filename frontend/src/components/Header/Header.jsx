@@ -90,18 +90,7 @@ const Header = () => {
               <p className="slogan">TIENDA DE REGALOS</p>
             </div>
 
-            <div className="col-span-6 flex justify-center">
-              <div className="search-container max-w-lg">
-                <input
-                  type="text"
-                  placeholder="¿Qué estás buscando?"
-                  className="search-input"
-                />
-                <button className="search-button">
-                  <img src={iconSearch} alt="Buscar" className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
+            <div className="col-span-6 flex justify-center"></div>
 
             <div className="col-span-3 flex items-center justify-end gap-8">
               <img

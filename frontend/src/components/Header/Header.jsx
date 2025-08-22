@@ -17,7 +17,7 @@ import './../../components/Header/Header.css';
 const Header = () => {
   const navigate = useNavigate();
   const { isAuthenticated, loading } = useAuth(); // Obtener estado de autenticación
-  
+
   // Estado para controlar si el menú móvil está abierto o cerrado
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   // Estado para controlar el modal de autenticación
@@ -26,12 +26,12 @@ const Header = () => {
   // Navegación para configuración con verificación de autenticación
   const handleProfileClick = (e) => {
     e.preventDefault();
-    
+
     // Si está cargando, no hacer nada
     if (loading) {
       return;
     }
-    
+
     // Si el usuario está autenticado, ir al perfil
     if (isAuthenticated) {
       navigate('/profile');
@@ -90,7 +90,18 @@ const Header = () => {
               <p className="slogan">TIENDA DE REGALOS</p>
             </div>
 
-            <div className="col-span-6 flex justify-center"></div>
+            <div className="col-span-6 flex justify-center">
+              <div className="search-container max-w-lg">
+                <input
+                  type="text"
+                  placeholder="¿Qué estás buscando?"
+                  className="search-input"
+                />
+                <button className="search-button">
+                  <img src={iconSearch} alt="Buscar" className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
 
             <div className="col-span-3 flex items-center justify-end gap-8">
               <img
@@ -208,7 +219,7 @@ const Header = () => {
               <button
                 onClick={closeAuthModal}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
-                style={{cursor: 'pointer'}}
+                style={{ cursor: 'pointer' }}
                 aria-label="Cerrar modal"
               >
                 <X className="w-5 h-5" />
@@ -226,16 +237,16 @@ const Header = () => {
             <div className="flex flex-col gap-3">
               <button
                 onClick={handleLoginRedirect}
-                style={{cursor: 'pointer'}}
+                style={{ cursor: 'pointer' }}
                 className="w-full bg-pink-300 hover:bg-pink-400 text-white font-medium py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center"
               >
                 <LogIn className="w-4 h-4 mr-2" />
                 Iniciar Sesión
               </button>
-              
+
               <button
                 onClick={closeAuthModal}
-                style={{cursor: 'pointer'}}
+                style={{ cursor: 'pointer' }}
                 className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2.5 px-4 rounded-lg transition-colors"
               >
                 Cancelar

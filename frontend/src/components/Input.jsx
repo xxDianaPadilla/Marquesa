@@ -6,6 +6,7 @@ import { Eye, EyeOff } from "lucide-react";
  * COMPLETAMENTE OPTIMIZADO: Uso de memo, useCallback y manejo mejorado de estado
  * Incluye validación visual, manejo de errores y funcionalidades de accesibilidad
  * RESPONSIVE OPTIMIZADO: Adaptado para móviles, tablets y desktop
+ * VERSIÓN MEJORADA: Mejor manejo del contenido y overflow
  * 
  * @param {string} name - Nombre del campo para identificación y react-hook-form
  * @param {string} type - Tipo de input (text, email, password, etc.)
@@ -114,14 +115,15 @@ const Input = memo(({
     
     /**
      * Calcula las clases CSS para el contenedor del input
-     * Incluye estados de error, focus, disabled y animaciones
+     * MEJORADO: Mejor control de overflow y dimensiones
      * RESPONSIVE: Padding y altura adaptados por breakpoint
      */
     const containerClasses = `
         flex items-center bg-white bg-opacity-50 border-2 rounded-lg 
-        px-3 py-2.5 sm:px-4 sm:py-3 md:px-4 md:py-3 lg:px-5 lg:py-3.5
-        transition-all duration-200 relative
-        min-h-[44px] sm:min-h-[48px] md:min-h-[52px]
+        px-2 py-2 sm:px-3 sm:py-2.5 md:px-4 md:py-3 lg:px-5 lg:py-3.5
+        transition-all duration-200 relative overflow-hidden
+        min-h-[40px] sm:min-h-[44px] md:min-h-[48px] lg:min-h-[52px]
+        w-full max-w-full
         ${shouldShowError 
             ? 'border-red-400 bg-red-50 shadow-red-100 shadow-md' 
             : isFocused 
@@ -133,12 +135,12 @@ const Input = memo(({
     
     /**
      * Calcula las clases CSS para el icono
-     * Incluye estados de error, focus y disabled
+     * MEJORADO: Mejor proporción y espaciado
      * RESPONSIVE: Tamaño adaptado por breakpoint
      */
     const iconClasses = `
         w-4 h-4 sm:w-5 sm:h-5 md:w-5 md:h-5 lg:w-6 lg:h-6
-        mr-2 sm:mr-3 md:mr-3 lg:mr-4 
+        mr-1.5 sm:mr-2 md:mr-3 lg:mr-4 
         transition-all duration-200 flex-shrink-0
         ${shouldShowError 
             ? 'opacity-70 filter brightness-75' 
@@ -150,13 +152,18 @@ const Input = memo(({
     
     /**
      * Calcula las clases CSS para el input
-     * Incluye estados de error, placeholder y texto
+     * MEJORADO: Mejor control de overflow y espaciado de texto
      * RESPONSIVE: Tamaño de fuente adaptado por breakpoint
      */
     const inputClasses = `
         flex-1 bg-transparent outline-none transition-colors duration-200
-        text-xs sm:text-sm md:text-sm lg:text-base
+        text-xs sm:text-sm md:text-base lg:text-base
         leading-tight sm:leading-normal
+        min-w-0 w-full overflow-hidden
+        ${name === 'verificationCode' 
+            ? 'text-center font-bold tracking-wider' 
+            : 'text-left'
+        }
         ${shouldShowError 
             ? 'placeholder-red-400 text-red-700' 
             : 'placeholder-gray-400 text-gray-700'
@@ -197,16 +204,21 @@ const Input = memo(({
                     />
                 )}
 
-                {/* Input principal con integración de react-hook-form - Responsive */}
+                {/* Input principal con integración de react-hook-form - MEJORADO */}
                 <input
                     {...registerProps}
                     type={inputType}
                     placeholder={placeholder}
                     className={inputClasses}
                     style={{
-                        fontWeight: '500',
+                        fontWeight: name === 'verificationCode' ? '700' : '500',
                         fontFamily: 'Poppins, sans-serif',
-                        fontStyle: 'italic'
+                        fontStyle: name === 'verificationCode' ? 'normal' : 'italic',
+                        letterSpacing: name === 'verificationCode' ? '0.15em' : 'normal',
+                        fontSize: name === 'verificationCode' 
+                            ? 'clamp(14px, 4vw, 18px)' 
+                            : 'inherit',
+                        ...props.style
                     }}
                     disabled={disabled}
                     autoComplete={autoComplete}
@@ -216,18 +228,18 @@ const Input = memo(({
                     {...props}
                 />
 
-                {/* Botón para mostrar/ocultar contraseña - Responsive */}
+                {/* Botón para mostrar/ocultar contraseña - MEJORADO */}
                 {type === "password" && onTogglePassword && (
                     <button
                         type="button"
                         onClick={handleTogglePassword}
                         disabled={disabled}
                         className={`
-                            ml-2 sm:ml-3 md:ml-3 lg:ml-4 
+                            ml-1 sm:ml-2 md:ml-3 lg:ml-4 
                             transition-colors duration-200 focus:outline-none 
                             focus:ring-2 focus:ring-pink-300 rounded 
                             p-1 sm:p-1.5 md:p-1.5 lg:p-2
-                            touch-manipulation
+                            touch-manipulation flex-shrink-0
                             ${shouldShowError 
                                 ? 'text-red-500 hover:text-red-600' 
                                 : 'text-gray-400 hover:text-gray-600'
@@ -286,6 +298,7 @@ const Input = memo(({
                      style={{ fontFamily: 'Poppins, sans-serif' }}>
                     {type === 'email' && 'Ingresa un correo electrónico válido'}
                     {type === 'password' && 'Mínimo 8 caracteres'}
+                    {name === 'verificationCode' && 'Código de 6 dígitos'}
                 </div>
             )}
         </div>

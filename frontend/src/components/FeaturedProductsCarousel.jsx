@@ -21,10 +21,10 @@ const FeaturedProductsCarousel = ({
 }) => {
     const navigate = useNavigate();
     const { toggleFavorite, isFavorite } = useFavorites();
-    // ✅ AGREGAR: Obtener estado de autenticación
+    // Obtener estado de autenticación
     const { isAuthenticated } = useAuth();
-    // ✅ NUEVO: Obtener funciones del carrito
-    const { addToCart, updating } = useShoppingCart();
+    // Obtener funciones del carrito
+    const { addToCart, removeItem, cartItems, updating } = useShoppingCart();
 
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -33,8 +33,33 @@ const FeaturedProductsCarousel = ({
     const [cart, setCart] = useState([]);
     const [isAutoSliding, setIsAutoSliding] = useState(true);
     const [favoriteToggling, setFavoriteToggling] = useState(new Set());
-    // ✅ NUEVO: Estado para controlar qué productos se están agregando al carrito
+    // Estado para controlar qué productos se están agregando al carrito
     const [addingToCart, setAddingToCart] = useState(new Set());
+    // Estado para controlar qué productos se están removiendo del carrito
+    const [removingFromCart, setRemovingFromCart] = useState(new Set());
+
+    // Verificar si un producto está en el carrito
+    const isProductInCart = useCallback((productId) => {
+        if (!cartItems || cartItems.length === 0) return false;
+        
+        return cartItems.some(item => {
+            // Verificar tanto por ID directo como por el ID original del item
+            return item.id === productId || 
+                   item._originalItem?.itemId === productId ||
+                   item._originalItem?.itemId?._id === productId;
+        });
+    }, [cartItems]);
+
+    // Obtener información del producto en el carrito
+    const getCartItemInfo = useCallback((productId) => {
+        if (!cartItems || cartItems.length === 0) return null;
+        
+        return cartItems.find(item => {
+            return item.id === productId || 
+                   item._originalItem?.itemId === productId ||
+                   item._originalItem?.itemId?._id === productId;
+        });
+    }, [cartItems]);
 
     // Función para cargar los productos mejor evaluados
     const loadFeaturedProducts = useCallback(async () => {
@@ -157,7 +182,7 @@ const FeaturedProductsCarousel = ({
         };
     }, []);
 
-    // ✅ MODIFICAR: handleToggleFavorite con validación de autenticación
+    // handleToggleFavorite con validación de autenticación
     const handleToggleFavorite = useCallback(async (product) => {
         const productId = product._id || product.id;
 
@@ -165,7 +190,7 @@ const FeaturedProductsCarousel = ({
             return;
         }
 
-        // ✅ NUEVA VALIDACIÓN: Verificar autenticación
+        // Verificar autenticación
         if (!isAuthenticated) {
             toast.error('Debes iniciar sesión para agregar productos a favoritos', {
                 duration: 4000,
@@ -189,7 +214,7 @@ const FeaturedProductsCarousel = ({
 
             const wasCurrentlyFavorite = isFavorite(productId);
 
-            console.log('❤️ FeaturedCarousel - Toggle favorite for product:', {
+            console.log('FeaturedCarousel - Toggle favorite for product:', {
                 id: normalizedProduct._id,
                 name: normalizedProduct.name,
                 wasCurrentlyFavorite: wasCurrentlyFavorite
@@ -207,7 +232,7 @@ const FeaturedProductsCarousel = ({
                         color: '#fff',
                     },
                 });
-                console.log('❌ FeaturedCarousel - Producto removido de favoritos');
+                console.log('FeaturedCarousel - Producto removido de favoritos');
             } else {
                 toast.success(`¡${normalizedProduct.name} agregado a favoritos!`, {
                     duration: 3000,
@@ -218,11 +243,11 @@ const FeaturedProductsCarousel = ({
                         color: '#fff',
                     },
                 });
-                console.log('✅ FeaturedCarousel - Producto agregado a favoritos');
+                console.log('FeaturedCarousel - Producto agregado a favoritos');
             }
 
         } catch (error) {
-            console.error('❌ FeaturedCarousel - Error al manejar favoritos:', error);
+            console.error('FeaturedCarousel - Error al manejar favoritos:', error);
            
             let errorMessage = 'Error al actualizar favoritos';
             if (error.message?.includes('storage')) {
@@ -245,7 +270,85 @@ const FeaturedProductsCarousel = ({
         }
     }, [normalizeProductForFavorites, toggleFavorite, favoriteToggling, isFavorite, isAuthenticated]);
 
-    // ✅ MODIFICAR: handleAddToCart con validación de autenticación y uso del hook del carrito
+    // Remover producto del carrito
+    const handleRemoveFromCart = useCallback(async (product) => {
+        const productId = product._id || product.id;
+
+        if (!product || !productId || removingFromCart.has(productId)) {
+            return;
+        }
+
+        if (!isAuthenticated) {
+            toast.error('Debes iniciar sesión para gestionar el carrito', {
+                duration: 4000,
+                position: 'top-center',
+                icon: '🔒',
+                style: {
+                    background: '#F59E0B',
+                    color: '#fff',
+                },
+            });
+            return;
+        }
+
+        try {
+            setRemovingFromCart(prev => new Set([...prev, productId]));
+
+            console.log('🗑️ FeaturedCarousel - Removiendo producto del carrito:', {
+                id: productId,
+                name: product.name
+            });
+
+            // Buscar el item en el carrito para obtener el ID correcto
+            const cartItem = getCartItemInfo(productId);
+            if (!cartItem) {
+                throw new Error('Producto no encontrado en el carrito');
+            }
+
+            const success = await removeItem(cartItem.id);
+
+            if (success) {
+                toast.success(`${product.name} eliminado del carrito`, {
+                    duration: 2000,
+                    position: 'top-center',
+                    icon: '🗑️',
+                    style: {
+                        background: '#EF4444',
+                        color: '#FFFFFF',
+                    },
+                });
+                console.log('FeaturedCarousel - Producto eliminado del carrito exitosamente');
+            } else {
+                throw new Error('No se pudo eliminar el producto del carrito');
+            }
+
+        } catch (error) {
+            console.error('FeaturedCarousel - Error al eliminar del carrito:', error);
+           
+            let errorMessage = 'Error al eliminar el producto del carrito';
+            if (error.message?.includes('timeout') || error.message?.includes('TIMEOUT')) {
+                errorMessage = 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
+            } else if (error.message?.includes('network') || error.name === 'TypeError') {
+                errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+
+            toast.error(errorMessage, {
+                duration: 3000,
+                position: 'top-center',
+                icon: '❌'
+            });
+        } finally {
+            setRemovingFromCart(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(productId);
+                return newSet;
+            });
+        }
+    }, [removeItem, removingFromCart, isAuthenticated, getCartItemInfo]);
+
+    // handleAddToCart con validación de autenticación y uso del hook del carrito
     const handleAddToCart = useCallback(async (product) => {
         const productId = product._id || product.id;
 
@@ -253,7 +356,7 @@ const FeaturedProductsCarousel = ({
             return;
         }
 
-        // ✅ NUEVA VALIDACIÓN: Verificar autenticación
+        // Verificar autenticación
         if (!isAuthenticated) {
             toast.error('Debes iniciar sesión para agregar productos al carrito', {
                 duration: 4000,
@@ -268,7 +371,7 @@ const FeaturedProductsCarousel = ({
         }
 
         try {
-            // ✅ NUEVO: Agregar producto al estado de "agregando"
+            // Agregar producto al estado de "agregando"
             setAddingToCart(prev => new Set([...prev, productId]));
 
             console.log('🛒 FeaturedCarousel - Agregando producto al carrito:', {
@@ -277,7 +380,7 @@ const FeaturedProductsCarousel = ({
                 price: product.price
             });
 
-            // ✅ NUEVO: Usar el hook del carrito en lugar del estado local
+            // Usar el hook del carrito en lugar del estado local
             const success = await addToCart(productId, 1, 'product');
 
             if (success) {
@@ -290,13 +393,13 @@ const FeaturedProductsCarousel = ({
                         color: '#FFFFFF',
                     },
                 });
-                console.log('✅ FeaturedCarousel - Producto agregado al carrito exitosamente');
+                console.log('FeaturedCarousel - Producto agregado al carrito exitosamente');
             } else {
                 throw new Error('No se pudo agregar el producto al carrito');
             }
 
         } catch (error) {
-            console.error('❌ FeaturedCarousel - Error al agregar al carrito:', error);
+            console.error('FeaturedCarousel - Error al agregar al carrito:', error);
            
             let errorMessage = 'Error al agregar el producto al carrito';
             if (error.message?.includes('timeout') || error.message?.includes('TIMEOUT')) {
@@ -313,7 +416,7 @@ const FeaturedProductsCarousel = ({
                 icon: '❌'
             });
         } finally {
-            // ✅ NUEVO: Remover producto del estado de "agregando"
+            // Remover producto del estado de "agregando"
             setAddingToCart(prev => {
                 const newSet = new Set(prev);
                 newSet.delete(productId);
@@ -321,6 +424,18 @@ const FeaturedProductsCarousel = ({
             });
         }
     }, [addToCart, addingToCart, isAuthenticated]);
+
+    // Manejar clic del botón de carrito (agregar o quitar)
+    const handleCartButtonClick = useCallback(async (product) => {
+        const productId = product._id || product.id;
+        const inCart = isProductInCart(productId);
+
+        if (inCart) {
+            await handleRemoveFromCart(product);
+        } else {
+            await handleAddToCart(product);
+        }
+    }, [isProductInCart, handleRemoveFromCart, handleAddToCart]);
 
     // Manejamos el clic de las cards de productos del carrusel
     const handleProductClick = (product) => {
@@ -423,14 +538,17 @@ const FeaturedProductsCarousel = ({
                             const productId = product._id || product.id;
                             const isProductFavorite = isFavorite(productId);
                             const isToggling = favoriteToggling.has(productId);
-                            // ✅ NUEVO: Estados para el carrito
+                            // Estados para el carrito
                             const isAddingToCart = addingToCart.has(productId);
+                            const isRemovingFromCart = removingFromCart.has(productId);
+                            const inCart = isProductInCart(productId);
+                            const cartInfo = getCartItemInfo(productId);
 
                             return (
                                 <div
                                     key={productId}
                                     className={`bg-white rounded-lg shadow-md hover:shadow-lg transition-transform transform hover:scale-105 cursor-pointer ${
-                                        isToggling || isAddingToCart ? 'pointer-events-none opacity-75' : ''
+                                        isToggling || isAddingToCart || isRemovingFromCart ? 'pointer-events-none opacity-75' : ''
                                     }`}
                                     onClick={() => handleProductClick(product)}
                                 >
@@ -448,7 +566,7 @@ const FeaturedProductsCarousel = ({
                                             <PriceDisplay price={product.price} size="sm" />
                                         </div>
 
-                                        {/* ✅ MODIFICAR: Botón de favorito con estado de bloqueo */}
+                                        {/* Botón de favorito con estado de bloqueo */}
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -477,6 +595,15 @@ const FeaturedProductsCarousel = ({
                                                 />
                                             )}
                                         </button>
+
+                                        {/* Indicador de producto en carrito */}
+                                        {inCart && isAuthenticated && (
+                                            <div className="absolute top-12 right-3 bg-green-500 bg-opacity-90 rounded-full p-1.5 shadow-md">
+                                                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="p-4">
@@ -489,7 +616,7 @@ const FeaturedProductsCarousel = ({
 
                                         <div className="flex items-center justify-between mb-3">
                                             <PriceDisplay price={product.price} />
-                                            {/* ✅ MODIFICAR: Indicador de favorito con estado de autenticación */}
+                                            {/* Indicador de favorito con estado de autenticación */}
                                             <div className={`flex items-center gap-2 ${isProductFavorite ? 'text-pink-500' : !isAuthenticated ? 'text-gray-300' : 'text-gray-400'}`}>
                                                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                                                     <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -500,28 +627,61 @@ const FeaturedProductsCarousel = ({
                                             </div>
                                         </div>
 
-                                        {/* ✅ MODIFICAR: Botón de añadir al carrito con validación de autenticación */}
+                                        {/* Indicador de cantidad si está en carrito */}
+                                        {inCart && cartInfo && isAuthenticated && (
+                                            <div className="mb-3 p-2 bg-green-50 rounded-lg border border-green-200">
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <span className="text-green-700 font-medium">En tu carrito:</span>
+                                                    <span className="text-green-600">Cantidad: {cartInfo.quantity}</span>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Botón de añadir al carrito con detección de estado */}
                                         <ActionButton
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                handleAddToCart(product);
+                                                handleCartButtonClick(product);
                                             }}
-                                            variant={!isAuthenticated ? "secondary" : "primary"}
+                                            variant={!isAuthenticated 
+                                                ? "secondary" 
+                                                : inCart 
+                                                    ? "danger" 
+                                                    : "primary"
+                                            }
                                             size="md"
                                             className={`w-full ${
                                                 !isAuthenticated 
                                                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed hover:bg-gray-300 hover:text-gray-500 hover:scale-100' 
                                                     : ''
                                             }`}
-                                            disabled={!isAuthenticated || isAddingToCart || updating}
-                                            loading={isAddingToCart}
-                                            title={!isAuthenticated ? 'Inicia sesión para agregar al carrito' : 'Añadir al carrito'}
+                                            disabled={!isAuthenticated || isAddingToCart || isRemovingFromCart || updating}
+                                            loading={isAddingToCart || isRemovingFromCart}
+                                            title={!isAuthenticated 
+                                                ? 'Inicia sesión para gestionar el carrito' 
+                                                : inCart 
+                                                    ? 'Quitar del carrito' 
+                                                    : 'Añadir al carrito'
+                                            }
+                                            icon={inCart && isAuthenticated ? (
+                                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                                    <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            ) : (
+                                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                                    <path d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17M17 13v4a2 2 0 01-2 2H9a2 2 0 01-2-2v-4m8 0V9a2 2 0 00-2-2H9a2 2 0 00-2 2v4.01" />
+                                                </svg>
+                                            )}
                                         >
                                             {!isAuthenticated 
                                                 ? 'Inicia sesión para comprar' 
                                                 : isAddingToCart 
                                                     ? 'Agregando...' 
-                                                    : 'Añadir al carrito'
+                                                    : isRemovingFromCart 
+                                                        ? 'Eliminando...' 
+                                                        : inCart 
+                                                            ? 'Quitar del carrito' 
+                                                            : 'Añadir al carrito'
                                             }
                                         </ActionButton>
                                     </div>

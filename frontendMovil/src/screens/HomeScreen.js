@@ -10,7 +10,6 @@ import {
     ScrollView,
     Alert,
     RefreshControl,
-    ToastAndroid,
     Platform
 } from "react-native";
 import { useAuth } from "../context/AuthContext";
@@ -21,6 +20,8 @@ import ProductCard from "../components/Products/ProductCard";
 import useFetchProducts from "../hooks/useFetchProducts";
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import PriceFilterModal from '../components/PriceFilterModal';
+import { useAlert } from "../hooks/useAlert";
+import { ToastDialog } from "../components/CustomAlerts";
 
 // Obtener dimensiones de la pantalla
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -49,20 +50,27 @@ export default function HomeScreen({ navigation }) {
     // Contexto del carrito de compras - maneja todas las operaciones del carrito
     const {
         addToCart,
+        removeFromCart,
         cartError,
         cartItemsCount,
         cartItems,
         updating,
-        clearCartError
+        clearCartError,
+        isInCart,
+        getItemQuantity
     } = useCart();
 
     // Hook personalizado para obtener productos de la API
     const { productos, loading, refetch } = useFetchProducts();
 
+    // Hook personalizado para alertas
+    const { alertState, showSuccessToast, showErrorToast, hideToast } = useAlert();
+
     // Estados locales del componente
     const [selectedCategory, setSelectedCategory] = useState('Todo'); // Categoría seleccionada actualmente
     const [refreshing, setRefreshing] = useState(false); // Estado de pull-to-refresh
     const [addingToCart, setAddingToCart] = useState(null); // ID del producto que se está agregando al carrito
+    const [removingFromCart, setRemovingFromCart] = useState(null); // ID del producto que se está removiendo del carrito
 
     // Estados para el modal de filtros de precio
     const [showPriceFilter, setShowPriceFilter] = useState(false); // Mostrar/ocultar modal
@@ -70,15 +78,6 @@ export default function HomeScreen({ navigation }) {
 
     // Lista de categorías disponibles
     const categories = ['Todo', 'Naturales', 'Secas', 'Tarjetas', 'Cuadros', 'Giftboxes'];
-
-    // Función para mostrar mensajes toast según la plataforma
-    const showToast = (message) => {
-        if (Platform.OS === 'android') {
-            ToastAndroid.show(message, ToastAndroid.SHORT);
-        } else {
-            Alert.alert('Información', message);
-        }
-    };
 
     // Efecto para cargar favoritos cuando el usuario está autenticado
     useEffect(() => {
@@ -143,6 +142,65 @@ export default function HomeScreen({ navigation }) {
         });
     };
 
+    // Función para remover producto del carrito
+    const handleRemoveFromCart = async (product) => {
+        try {
+            // Verificar si el usuario está autenticado
+            if (!isAuthenticated) {
+                Alert.alert(
+                    "Iniciar sesión",
+                    "Debes iniciar sesión para remover productos del carrito",
+                    [
+                        { text: "Cancelar", style: "cancel" },
+                        { text: "Iniciar sesión", onPress: () => navigation.navigate('Login') }
+                    ]
+                );
+                return;
+            }
+
+            // Validar que el producto es válido
+            if (!product || !product._id) {
+                Alert.alert('Error', 'Producto inválido');
+                return;
+            }
+
+            // Mostrar estado de carga para este producto específico
+            setRemovingFromCart(product._id);
+
+            console.log('🗑️ Removiendo producto del carrito:', {
+                productId: product._id,
+                productName: product.name
+            });
+
+            // Llamar a la función del contexto para remover del carrito
+            const result = await removeFromCart(product._id);
+
+            // Manejar resultado exitoso
+            if (result.success) {
+                showSuccessToast(`${product.name} removido del carrito`);
+                console.log('Producto removido exitosamente:', result);
+            } else {
+                // Manejar errores específicos
+                Alert.alert(
+                    'Error al remover del carrito',
+                    result.message || 'No se pudo remover el producto del carrito'
+                );
+                console.error('Error al remover producto:', result.message);
+            }
+
+        } catch (error) {
+            // Manejar errores inesperados
+            console.error('Error inesperado al remover del carrito:', error);
+            Alert.alert(
+                'Error inesperado',
+                'Ocurrió un error inesperado. Inténtalo nuevamente.'
+            );
+        } finally {
+            // Limpiar estado de carga
+            setRemovingFromCart(null);
+        }
+    };
+
     // Función principal para agregar productos al carrito
     const handleAddToCart = async (product, quantity = 1, itemType = 'product') => {
         try {
@@ -162,6 +220,15 @@ export default function HomeScreen({ navigation }) {
             // Validar que el producto es válido
             if (!product || !product._id) {
                 Alert.alert('Error', 'Producto inválido');
+                return;
+            }
+
+            // Verificar si el producto ya está en el carrito
+            const productInCart = isInCart(product._id);
+            
+            if (productInCart) {
+                // Si está en el carrito, removerlo
+                await handleRemoveFromCart(product);
                 return;
             }
 
@@ -190,7 +257,7 @@ export default function HomeScreen({ navigation }) {
 
             // Manejar resultado exitoso
             if (result.success) {
-                showToast(`${product.name} agregado al carrito`);
+                showSuccessToast(`${product.name} agregado al carrito`);
                 console.log('Producto agregado exitosamente:', result);
             } else {
                 // Manejar errores específicos
@@ -240,8 +307,11 @@ export default function HomeScreen({ navigation }) {
                 onPress={handleProductPress}
                 onAddToCart={handleAddToCart}
                 navigation={navigation}
-                // Pasar estado de carga para deshabilitar botón mientras se agrega
+                // Pasar estado de carga para deshabilitar botón mientras se agrega/remueve
                 isAddingToCart={addingToCart === item._id || updating}
+                isRemovingFromCart={removingFromCart === item._id}
+                // Verificar si está en el carrito para cambiar comportamiento del botón
+                productInCart={isInCart(item._id)}
             />
         </View>
     );
@@ -456,6 +526,15 @@ export default function HomeScreen({ navigation }) {
                 maxPrice={100}
                 currentMinPrice={priceRange.min}
                 currentMaxPrice={priceRange.max}
+            />
+
+            {/* Toast Dialog personalizado */}
+            <ToastDialog
+                visible={alertState.toast.visible}
+                message={alertState.toast.message}
+                type={alertState.toast.type}
+                duration={alertState.toast.duration}
+                onHide={hideToast}
             />
 
             {/* Barra de navegación inferior */}

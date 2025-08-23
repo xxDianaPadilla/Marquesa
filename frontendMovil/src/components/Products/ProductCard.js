@@ -22,6 +22,8 @@ const ProductCard = ({
   onAddToCart,
   navigation,
   isAddingToCart = false,
+  isRemovingFromCart = false,
+  productInCart = false,
 }) => {
   // Obtener funciones de favoritos del contexto
   const {
@@ -42,7 +44,7 @@ const ProductCard = ({
   const isFavorite = checkIsFavorite(product._id);
 
   // Verificar si el producto está en el carrito
-  const productInCart = isInCart(product._id);
+  const productIsInCart = productInCart || isInCart(product._id);
   const cartQuantity = getItemQuantity(product._id);
 
   // Formatear precio
@@ -114,13 +116,13 @@ const ProductCard = ({
     }
   };
 
-  // MANEJAR AGREGAR AL CARRITO CON VALIDACIONES MEJORADAS
-  const handleAddToCart = async () => {
+  // MANEJAR AGREGAR/REMOVER DEL CARRITO CON VALIDACIONES MEJORADAS
+  const handleCartAction = async () => {
     try {
       if (!isAuthenticated) {
         Alert.alert(
           "Iniciar sesión",
-          "Debes iniciar sesión para agregar productos al carrito",
+          "Debes iniciar sesión para gestionar el carrito",
           [
             { text: "Cancelar", style: "cancel" },
             {
@@ -135,8 +137,8 @@ const ProductCard = ({
         return;
       }
 
-      // Verificar stock
-      if (product.stock === 0) {
+      // Verificar stock solo si no está en el carrito
+      if (!productIsInCart && product.stock === 0) {
         Alert.alert(
           "Sin stock",
           "Este producto no está disponible en este momento",
@@ -145,12 +147,12 @@ const ProductCard = ({
         return;
       }
 
-      // LLAMAR LA FUNCIÓN DESDE EL HOMESCREEN
+      // LLAMAR LA FUNCIÓN DESDE EL HOMESCREEN (que maneja tanto agregar como remover)
       if (onAddToCart) {
         await onAddToCart(product, 1, 'product');
       }
     } catch (error) {
-      console.error('Error al agregar al carrito desde ProductCard:', error);
+      console.error('Error al gestionar carrito desde ProductCard:', error);
       Alert.alert('Error', 'Error inesperado. Inténtalo nuevamente.');
     }
   };
@@ -163,8 +165,11 @@ const ProductCard = ({
     if (isAddingToCart) {
       return "hourglass-empty";
     }
-    if (productInCart) {
-      return "shopping-cart";
+    if (isRemovingFromCart) {
+      return "remove-shopping-cart";
+    }
+    if (productIsInCart) {
+      return "remove-shopping-cart"; // Icono para remover cuando está en el carrito
     }
     return "add-shopping-cart";
   };
@@ -177,10 +182,22 @@ const ProductCard = ({
     if (isAddingToCart) {
       return styles.cartButtonLoading;
     }
-    if (productInCart) {
-      return styles.cartButtonActive;
+    if (isRemovingFromCart) {
+      return styles.cartButtonRemoving;
+    }
+    if (productIsInCart) {
+      return styles.cartButtonRemove; // Estilo para remover (rojo)
     }
     return styles.cartButton;
+  };
+
+  // Determinar el texto del botón de acción (para debugging)
+  const getActionText = () => {
+    if (product.stock === 0) return "Sin stock";
+    if (isAddingToCart) return "Agregando...";
+    if (isRemovingFromCart) return "Removiendo...";
+    if (productIsInCart) return "Remover";
+    return "Agregar";
   };
 
   return (
@@ -234,10 +251,20 @@ const ProductCard = ({
           </View>
         )}
 
-        {/* OVERLAY DE LOADING CUANDO SE ESTÁ AGREGANDO AL CARRITO */}
-        {isAddingToCart && (
+        {/* OVERLAY DE LOADING CUANDO SE ESTÁ AGREGANDO/REMOVIENDO DEL CARRITO */}
+        {(isAddingToCart || isRemovingFromCart) && (
           <View style={styles.loadingOverlay}>
             <ActivityIndicator size="small" color="#4A4170" />
+            <Text style={styles.loadingOverlayText}>
+              {isAddingToCart ? "Agregando..." : "Removiendo..."}
+            </Text>
+          </View>
+        )}
+
+        {/* Indicador visual cuando está en el carrito */}
+        {productIsInCart && !isAddingToCart && !isRemovingFromCart && (
+          <View style={styles.inCartIndicator}>
+            <Icon name="check-circle" size={20} color="#4CAF50" />
           </View>
         )}
       </View>
@@ -259,7 +286,7 @@ const ProductCard = ({
           {/* CONTENEDOR IZQUIERDO PARA EL INDICADOR DE CARRITO */}
           <View style={styles.leftSection}>
             {/* Indicador si está en carrito */}
-            {productInCart && cartQuantity > 0 && (
+            {productIsInCart && cartQuantity > 0 && (
               <View style={styles.cartIndicator}>
                 <Icon name="shopping-cart" size={12} color="#4A4170" />
                 <Text style={styles.cartIndicatorText}>{cartQuantity}</Text>
@@ -270,11 +297,11 @@ const ProductCard = ({
           {/* BOTÓN DE CARRITO SIEMPRE A LA DERECHA */}
           <TouchableOpacity
             style={getCartButtonStyle()}
-            onPress={handleAddToCart}
-            disabled={product.stock === 0 || isAddingToCart}
+            onPress={handleCartAction}
+            disabled={product.stock === 0 || isAddingToCart || isRemovingFromCart}
             activeOpacity={0.8}
           >
-            {isAddingToCart ? (
+            {(isAddingToCart || isRemovingFromCart) ? (
               <ActivityIndicator size={16} color="#fff" />
             ) : (
               <Icon
@@ -382,18 +409,45 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins-Bold',
   },
 
-  // ✅ OVERLAY DE LOADING
   loadingOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
+  },
+
+  loadingOverlayText: {
+    fontSize: 12,
+    color: '#4A4170',
+    marginTop: 8,
+    fontFamily: 'Poppins-Medium',
+  },
+
+  // Indicador visual cuando está en el carrito
+  inCartIndicator: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
 
   content: {
@@ -420,7 +474,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins-Bold',
   },
 
-  // ✅ CAMBIO PRINCIPAL: bottomRow ahora usa justifyContent: 'space-between' pero con secciones definidas
   bottomRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -428,7 +481,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
-  // ✅ NUEVA SECCIÓN IZQUIERDA PARA EL INDICADOR
   leftSection: {
     flex: 1,
     flexDirection: 'row',
@@ -495,12 +547,47 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // ✅ ESTILO PARA EL BOTÓN CUANDO ESTÁ CARGANDO
   cartButtonLoading: {
     width: 36,
     height: 36,
     borderRadius: 18,
     backgroundColor: '#9b59b6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+
+  // Estilo para el botón cuando se está removiendo
+  cartButtonRemoving: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#e67e22',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+
+  // Estilo para el botón cuando el producto está en el carrito (remover)
+  cartButtonRemove: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#e74c3c',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',

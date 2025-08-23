@@ -30,7 +30,7 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const ProductDetailScreen = ({ route, navigation }) => {
     // Obtener el ID del producto desde los parámetros de navegación
     const { productId } = route.params;
-    
+
     // Estados locales del componente
     const [currentImageIndex, setCurrentImageIndex] = useState(0); // Índice de la imagen actual en el carrusel
     const [quantity, setQuantity] = useState(1); // Cantidad seleccionada para agregar al carrito
@@ -64,18 +64,19 @@ const ProductDetailScreen = ({ route, navigation }) => {
     };
 
     // Hook de autenticación - maneja usuario, favoritos y estado de login
-    const { 
-        user, 
-        userInfo, 
-        isAuthenticated, 
-        toggleFavorite, 
+    const {
+        user,
+        userInfo,
+        isAuthenticated,
+        toggleFavorite,
         isFavorite,
-        favoritesLoading 
+        favoritesLoading
     } = useAuth();
-    
+
     // Hook del carrito - maneja agregar productos y estado del carrito
     const {
         addToCart,
+        removeFromCart,
         cartLoading,
         cartError,
         isInCart,
@@ -161,14 +162,14 @@ const ProductDetailScreen = ({ route, navigation }) => {
         }
     };
 
-    // Manejar la acción de agregar producto al carrito
-    const handleAddToCart = async () => {
+    // Nueva función para manejar agregar/quitar del carrito
+    const handleToggleCart = async () => {
         try {
             // Verificar autenticación del usuario
             if (!isAuthenticated) {
                 showConfirmation({
                     title: "Iniciar sesión",
-                    message: "Debes iniciar sesión para agregar productos al carrito",
+                    message: "Debes iniciar sesión para gestionar el carrito",
                     onConfirm: () => {
                         hideConfirmation();
                         navigation.navigate('Login');
@@ -188,18 +189,34 @@ const ProductDetailScreen = ({ route, navigation }) => {
                 return;
             }
 
-            // Intentar agregar el producto al carrito
-            const result = await addToCart(product, quantity, 'product');
+            // Si el producto ya está en el carrito, removelo
+            if (productInCart) {
+                const result = await removeFromCart(product._id);
 
-            if (result.success) {
-                showSuccessToast(`${product.name} agregado al carrito`);
+                if (result.success) {
+                    showSuccessToast(`${product.name} removido del carrito`);
+                } else {
+                    showError(result.message || 'No se pudo remover el producto del carrito', 'Error al remover del carrito');
+                }
             } else {
-                showError(result.message || 'No se pudo agregar el producto al carrito', 'Error al agregar al carrito');
+                // Si no está en el carrito, agregarlo
+                const result = await addToCart(product, quantity, 'product');
+
+                if (result.success) {
+                    showSuccessToast(`${product.name} agregado al carrito`);
+                } else {
+                    showError(result.message || 'No se pudo agregar el producto al carrito', 'Error al agregar al carrito');
+                }
             }
 
         } catch (error) {
             showError('Ocurrió un error inesperado. Inténtalo nuevamente.', 'Error inesperado');
         }
+    };
+
+    // Función antigua mantenida por compatibilidad (puede ser removida si no se usa en otros lugares)
+    const handleAddToCart = async () => {
+        return handleToggleCart();
     };
 
     // Manejar el envío de una nueva reseña
@@ -324,7 +341,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
                 <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
                     <Image source={backIcon} style={styles.backIcon} />
                 </TouchableOpacity>
-                
+
                 {/* Botón de favoritos */}
                 <TouchableOpacity
                     style={[
@@ -351,7 +368,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
                         style={styles.productImage}
                         resizeMode="cover"
                     />
-                    
+
                     {/* Overlay para productos sin stock */}
                     {product.stock === 0 && (
                         <View style={styles.outOfStockOverlay}>
@@ -365,7 +382,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
                     {/* Nombre y precio del producto */}
                     <Text style={styles.productName}>{product.name}</Text>
                     <Text style={styles.productPrice}>{product.price}</Text>
-                    
+
                     {/* Sección de calificación y reseñas */}
                     <View style={styles.ratingContainer}>
                         {renderRatingStars(reviews.average)}
@@ -394,39 +411,63 @@ const ProductDetailScreen = ({ route, navigation }) => {
                     {/* Sección de acciones (cantidad y agregar al carrito) - solo si hay stock */}
                     {product.stock > 0 && (
                         <View style={styles.actionSection}>
-                            {/* Selector de cantidad */}
-                            <View style={styles.quantityContainer}>
-                                <TouchableOpacity
-                                    style={styles.quantityButton}
-                                    onPress={() => handleQuantityChange(false)}
-                                    disabled={quantity <= 1}
-                                >
-                                    <Icon name="remove" size={20} color="#666" />
-                                </TouchableOpacity>
-                                
-                                <Text style={styles.quantityText}>{quantity}</Text>
-                                
-                                <TouchableOpacity
-                                    style={styles.quantityButton}
-                                    onPress={() => handleQuantityChange(true)}
-                                    disabled={quantity >= product.stock}
-                                >
-                                    <Icon name="add" size={20} color="#666" />
-                                </TouchableOpacity>
+                            {/* Contenedor para selector de cantidad e información del carrito */}
+                            <View style={styles.topActionContainer}>
+                                {/* Selector de cantidad - solo mostrar si el producto NO está en el carrito */}
+                                {!productInCart && (
+                                    <View style={styles.quantityContainer}>
+                                        <TouchableOpacity
+                                            style={styles.quantityButton}
+                                            onPress={() => handleQuantityChange(false)}
+                                            disabled={quantity <= 1}
+                                        >
+                                            <Icon name="remove" size={20} color="#666" />
+                                        </TouchableOpacity>
+
+                                        <Text style={styles.quantityText}>{quantity}</Text>
+
+                                        <TouchableOpacity
+                                            style={styles.quantityButton}
+                                            onPress={() => handleQuantityChange(true)}
+                                            disabled={quantity >= product.stock}
+                                        >
+                                            <Icon name="add" size={20} color="#666" />
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+
+                                {/* Información de cantidad si está en el carrito */}
+                                {productInCart && (
+                                    <View style={styles.inCartInfoContainer}>
+                                        <Icon name="check-circle" size={20} color="#27ae60" />
+                                        <Text style={styles.inCartInfoText}>
+                                            En carrito ({cartQuantity} {cartQuantity === 1 ? 'unidad' : 'unidades'})
+                                        </Text>
+                                    </View>
+                                )}
                             </View>
 
-                            {/* Botón para agregar al carrito */}
+                            {/* Botón para agregar/quitar del carrito - siempre en una nueva línea */}
                             <TouchableOpacity
-                                style={styles.addToCartButton}
-                                onPress={handleAddToCart}
+                                style={[
+                                    styles.toggleCartButton,
+                                    productInCart ? styles.removeFromCartButton : styles.addToCartButton
+                                ]}
+                                onPress={handleToggleCart}
                                 disabled={cartLoading}
                             >
                                 {cartLoading ? (
                                     <ActivityIndicator size="small" color="#fff" />
                                 ) : (
                                     <>
-                                        <Icon name="add-shopping-cart" size={20} color="#fff" />
-                                        <Text style={styles.addToCartText}>Añadir al carrito</Text>
+                                        <Icon
+                                            name={productInCart ? "remove-shopping-cart" : "add-shopping-cart"}
+                                            size={20}
+                                            color="#fff"
+                                        />
+                                        <Text style={styles.toggleCartButtonText}>
+                                            {productInCart ? "Quitar del carrito" : "Añadir al carrito"}
+                                        </Text>
                                     </>
                                 )}
                             </TouchableOpacity>
@@ -436,7 +477,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
                     {/* Sección de reseñas */}
                     <View style={styles.reviewsSection}>
                         <Text style={styles.sectionTitle}>Nos importa tu opinión</Text>
-                        
+
                         {/* Formulario para escribir reseña (solo usuarios autenticados) */}
                         {isAuthenticated && (
                             <View style={styles.writeReviewContainer}>
@@ -450,7 +491,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
                                         onChangeText={setReviewText}
                                         maxLength={500}
                                     />
-                                    
+
                                     {/* Botón para enviar reseña */}
                                     <TouchableOpacity
                                         style={styles.sendButton}
@@ -464,7 +505,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
                                         )}
                                     </TouchableOpacity>
                                 </View>
-                                
+
                                 {/* Selector de calificación con estrellas */}
                                 <View style={styles.ratingInputContainer}>
                                     {renderRatingStars(reviewRating, true, setReviewRating)}
@@ -685,10 +726,13 @@ const styles = StyleSheet.create({
     },
     // Sección de acciones (cantidad + botón)
     actionSection: {
-        flexDirection: 'row',
-        alignItems: 'center',
         marginBottom: 30,
         gap: 16,
+    },
+    topActionContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     // Contenedor del selector de cantidad
     quantityContainer: {
@@ -715,19 +759,45 @@ const styles = StyleSheet.create({
         minWidth: 20,
         textAlign: 'center',
     },
-    // Botón principal para agregar al carrito
-    addToCartButton: {
-        flex: 1,
+    // Contenedor de información cuando el producto está en el carrito
+    inCartInfoContainer: {
         flexDirection: 'row',
-        backgroundColor: '#f5c7e6ff',
-        paddingVertical: 12,
+        alignItems: 'center',
+        backgroundColor: '#e8f5e8',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 20,
+        gap: 6,
+    },
+    // Texto de información cuando está en el carrito
+    inCartInfoText: {
+        fontSize: 14,
+        fontFamily: 'Poppins-Medium',
+        color: '#27ae60',
+    },
+    // Estilo base para el botón de toggle carrito
+    toggleCartButton: {
+        flexDirection: 'row',
+        paddingVertical: 14, 
+        paddingHorizontal: 20,
         borderRadius: 25,
         justifyContent: 'center',
         alignItems: 'center',
         gap: 8,
+        width: '100%', 
+        maxWidth: 300, 
+        alignSelf: 'center',
     },
-    // Texto del botón de agregar al carrito
-    addToCartText: {
+    // Botón principal para agregar al carrito
+    addToCartButton: {
+        backgroundColor: '#f5c7e6ff',
+    },
+    // Botón para quitar del carrito
+    removeFromCartButton: {
+        backgroundColor: '#e74c3c',
+    },
+    // Texto del botón de toggle carrito
+    toggleCartButtonText: {
         fontSize: 16,
         fontFamily: 'Poppins-SemiBold',
         color: '#fff',

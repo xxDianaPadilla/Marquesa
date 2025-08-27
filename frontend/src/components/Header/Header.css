@@ -1,3 +1,5 @@
+/*Hoja de estilos para el header*/
+
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500&display=swap');
 
 .header-title {
@@ -190,7 +192,7 @@
     font-size: 12px;
     letter-spacing: 3px;
   }
-  
+
   .slogan {
     font-size: 8px;
     letter-spacing: 1px;
@@ -213,7 +215,7 @@
     font-size: 14px;
     letter-spacing: 4px;
   }
-  
+
   .slogan {
     font-size: 9px;
     letter-spacing: 1px;
@@ -231,7 +233,7 @@
     font-size: 16px;
     letter-spacing: 5px;
   }
-  
+
   .slogan {
     font-size: 10px;
     letter-spacing: 1.5px;
@@ -253,7 +255,7 @@
     font-size: 17px;
     letter-spacing: 6px;
   }
-  
+
   .slogan {
     font-size: 11px;
     letter-spacing: 2px;
@@ -271,7 +273,7 @@
     font-size: 18px;
     letter-spacing: 7px;
   }
-  
+
   .slogan {
     font-size: 12px;
     letter-spacing: 2px;

@@ -12,7 +12,14 @@ const SearchDropdown = ({
     const navigate = useNavigate();
 
     // Función para manejar clic en un producto específico
-    const handleProductClick = (product) => {
+    const handleProductClick = (product, event) => {
+        // Prevenir propagación y comportamiento por defecto
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        
+        console.log('SearchDropdown - Navigating to product:', product._id);
         onProductSelect(product);
         onClose();
         // Navegar al detalle del producto
@@ -52,7 +59,7 @@ const SearchDropdown = ({
                             <div
                                 key={product._id || product.id}
                                 className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                                onClick={() => handleProductClick(product)}
+                                onClick={(e) => handleProductClick(product, e)}
                             >
                                 <div className="flex items-center space-x-3">
                                     {/* Imagen del producto */}

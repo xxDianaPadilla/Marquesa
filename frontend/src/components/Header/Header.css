@@ -1,6 +1,3 @@
-/*CSS del header*/
-
-/*Importamos la fuente de letras*/
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500&display=swap');
 
 .header-title {
@@ -42,7 +39,6 @@
   font-size: 12px;
   outline: none;
   transition: border-color 0.2s ease;
-  width: 500px;
 }
 
 .search-input:focus {
@@ -71,7 +67,7 @@
   top: 100%;
   left: 0;
   right: 0;
-  z-index: 40; /* Reducido para estar por debajo del modal */
+  z-index: 9999;
   background: white;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
@@ -81,14 +77,17 @@
   overflow-y: auto;
 }
 
-/* Asegurar que el dropdown aparezca sobre otros elementos pero por debajo del modal */
+/* Asegurar que el dropdown aparezca sobre otros elementos */
 .search-container.relative {
-  z-index: 39;
+  z-index: 10000;
+  position: relative;
 }
 
-/* Clase para ocultar el dropdown cuando hay un modal activo */
-.search-dropdown.modal-active {
-  display: none;
+/* Asegurar que el contenedor del search tenga mayor z-index en desktop */
+@media (min-width: 768px) {
+  .search-container {
+    z-index: 10001;
+  }
 }
 
 /* Estilos para elementos del dropdown */

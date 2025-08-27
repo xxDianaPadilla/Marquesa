@@ -48,13 +48,6 @@ const Header = () => {
     '688175e79579a7cde1657ac6': 'Tarjetas'
   };
 
-  // Effect para ocultar el dropdown cuando el modal esté activo
-  useEffect(() => {
-    if (showAuthModal) {
-      setShowSearchDropdown(false);
-    }
-  }, [showAuthModal]);
-
   // Función para realizar búsqueda de productos
   const searchProducts = useCallback(async (term) => {
     if (!term.trim()) {
@@ -151,11 +144,7 @@ const Header = () => {
   // Función para manejar cambios en el input de búsqueda con debounce
   const handleSearchChange = useCallback((value) => {
     setSearchTerm(value);
-    
-    // No mostrar dropdown si el modal está activo
-    if (!showAuthModal) {
-      setShowSearchDropdown(true);
-    }
+    setShowSearchDropdown(true);
 
     // Limpiar timeout anterior
     if (searchTimeoutRef.current) {
@@ -166,7 +155,7 @@ const Header = () => {
     searchTimeoutRef.current = setTimeout(() => {
       searchProducts(value);
     }, 300); // Esperar 300ms después de que el usuario deje de escribir
-  }, [searchProducts, showAuthModal]);
+  }, [searchProducts]);
 
   // Función para manejar envío del formulario de búsqueda (Enter)
   const handleSearchSubmit = (e) => {
@@ -281,7 +270,7 @@ const Header = () => {
             </div>
 
             <div className="col-span-6 flex justify-center">
-              <div className="search-container max-w-lg relative" ref={searchContainerRef}>
+              <div className="search-container max-w-lg relative z-50" ref={searchContainerRef}>
                 <form onSubmit={handleSearchSubmit}>
                   <input
                     ref={searchInputRef}
@@ -290,7 +279,7 @@ const Header = () => {
                     className="search-input"
                     value={searchTerm}
                     onChange={(e) => handleSearchChange(e.target.value)}
-                    onFocus={() => searchTerm && !showAuthModal && setShowSearchDropdown(true)}
+                    onFocus={() => searchTerm && setShowSearchDropdown(true)}
                   />
                   <button type="submit" className="search-button">
                     <img src={iconSearch} alt="Buscar" className="w-5 h-5" />
@@ -300,7 +289,7 @@ const Header = () => {
                 {/* Dropdown de resultados de búsqueda */}
                 <SearchDropdown
                   searchResults={searchResults}
-                  isVisible={showSearchDropdown && !showAuthModal}
+                  isVisible={showSearchDropdown}
                   onClose={closeSearchDropdown}
                   onProductSelect={handleProductSelect}
                   searchTerm={searchTerm}
@@ -356,7 +345,7 @@ const Header = () => {
           <div className={`mobile-menu md:hidden ${isMenuOpen ? 'open' : ''}`}>
             <div className="px-6 space-y-4">
               {/* Buscador en menú móvil */}
-              <div className="search-container relative" ref={searchContainerRef}>
+              <div className="search-container relative z-50" ref={searchContainerRef}>
                 <form onSubmit={handleSearchSubmit}>
                   <input
                     type="text"
@@ -364,7 +353,7 @@ const Header = () => {
                     className="search-input"
                     value={searchTerm}
                     onChange={(e) => handleSearchChange(e.target.value)}
-                    onFocus={() => searchTerm && !showAuthModal && setShowSearchDropdown(true)}
+                    onFocus={() => searchTerm && setShowSearchDropdown(true)}
                   />
                   <button type="submit" className="search-button">
                     <img src={iconSearch} alt="Buscar" className="w-4 h-4" />
@@ -374,7 +363,7 @@ const Header = () => {
                 {/* Dropdown de resultados de búsqueda para móvil */}
                 <SearchDropdown
                   searchResults={searchResults}
-                  isVisible={showSearchDropdown && !showAuthModal}
+                  isVisible={showSearchDropdown}
                   onClose={closeSearchDropdown}
                   onProductSelect={handleProductSelect}
                   searchTerm={searchTerm}

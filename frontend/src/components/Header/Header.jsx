@@ -170,8 +170,8 @@ const Header = () => {
   const handleProductSelect = (product) => {
     setSearchTerm(product.name);
     setShowSearchDropdown(false);
-    // Aquí podrías navegar al detalle del producto si tienes esa ruta
-    // navigate(`/producto/${product._id}`);
+    // Navegar al detalle del producto
+    navigate(`/ProductDetail/${product._id}`);
   };
 
   // Función para cerrar el dropdown de búsqueda

@@ -25,7 +25,6 @@ import ProductDetailScreen from "../screens/ProductDetailScreen";
 import ChangePasswordScreen from "../screens/ChangePasswordScreen";
 import EditProfileScreen from "../screens/EditProfileScreen";
 import OrdersScreen from "../screens/OrdersScreen";
-import NotificationsScreen from "../screens/NotificationsScreen";
 import MediaScreen from "../screens/MediaScreen";
 
 // Componente principal de navegación de toda la aplicación
@@ -136,12 +135,6 @@ export default function Navigation() {
                         <Stack.Screen
                             name="Orders"             // Nombre de la ruta
                             component={OrdersScreen}  // Componente a renderizar
-                        />
-
-                        {/* Pantalla de notificaciones */}
-                        <Stack.Screen
-                            name="Notifications"             // Nombre de la ruta
-                            component={NotificationsScreen}  // Componente a renderizar
                         />
 
                         {/* Pantalla de multimedia */}

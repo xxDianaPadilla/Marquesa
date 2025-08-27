@@ -21,7 +21,7 @@
   margin-left: 32px;
 }
 
-/* Search bar */
+/* Search bar - Mejorado para ocupar todo el ancho */
 .search-container {
   display: flex;
   background-color: #fff;
@@ -32,8 +32,15 @@
   z-index: 9999; /* Asegurar que esté por encima de otros elementos */
 }
 
+.search-container form {
+  width: 100%;
+  display: flex;
+  position: relative;
+}
+
 .search-input {
   flex: 1;
+  width: 100%; /* Asegurar que ocupe todo el ancho disponible */
   padding: 10px 50px 10px 15px;
   border: 1px solid #e5e7eb;
   border-radius: 9999px;
@@ -42,6 +49,7 @@
   transition: border-color 0.2s ease;
   position: relative;
   z-index: 1;
+  box-sizing: border-box; /* Incluir padding en el ancho total */
 }
 
 .search-input:focus {

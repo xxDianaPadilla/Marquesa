@@ -429,10 +429,18 @@ const Header = () => {
         </div>
       </header>
 
-      {/* Modal de Autenticación */}
+      {/* Modal de Autenticación con overlay completo */}
       {showAuthModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-          <div className="bg-white rounded-lg shadow-xl p-6 mx-4 max-w-sm w-full">
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Overlay de fondo que oculta todo */}
+          <div 
+            className="absolute inset-0 bg-black bg-opacity-75 backdrop-blur-sm"
+            onClick={closeAuthModal}
+            aria-hidden="true"
+          />
+          
+          {/* Contenido del modal */}
+          <div className="relative bg-white rounded-lg shadow-xl p-6 mx-4 max-w-sm w-full z-10">
             {/* Header del modal */}
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
@@ -479,15 +487,6 @@ const Header = () => {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Overlay para cerrar el modal al hacer clic fuera */}
-      {showAuthModal && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={closeAuthModal}
-          aria-hidden="true"
-        />
       )}
     </>
   );

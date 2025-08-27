@@ -273,7 +273,6 @@ const Header = () => {
               <div className="search-container max-w-lg relative z-50" ref={searchContainerRef}>
                 <form onSubmit={handleSearchSubmit}>
                   <input
-                    ref={searchInputRef}
                     type="text"
                     placeholder="¿Qué estás buscando?"
                     className="search-input"

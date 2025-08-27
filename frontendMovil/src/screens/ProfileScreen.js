@@ -19,7 +19,7 @@ import goIcon from "../images/goIcon.png";
 export default function ProfileScreen({ navigation }) {
     // Hook de autenticación para obtener datos del usuario y función de logout
     const { user, userInfo, logout, isLoggingOut } = useAuth();
-    
+
     // Hook para manejar alertas, confirmaciones y diálogos de carga
     const {
         alertState,
@@ -96,30 +96,24 @@ export default function ProfileScreen({ navigation }) {
         },
         {
             id: 3,
-            title: "Notificaciones",
-            icon: notificationIcon,
-            onPress: () => navigation.navigate('Notifications')
-        },
-        {
-            id: 4,
             title: "Media",
             icon: mediaIcon,
             onPress: () => navigation.navigate('Media')
         },
         {
-            id: 5,
+            id: 4,
             title: "Mis códigos de descuento",
             icon: discountIcon,
             onPress: () => console.log("Mis códigos de descuento") // Funcionalidad pendiente
         },
         {
-            id: 6,
+            id: 5,
             title: "Términos y condiciones",
             icon: termConditionIcon,
             onPress: () => console.log("Términos y condiciones") // Funcionalidad pendiente
         },
         {
-            id: 7,
+            id: 6,
             title: "Ruletas y promociones",
             icon: promocionesIcon,
             onPress: () => console.log("Ruletas y promociones") // Funcionalidad pendiente

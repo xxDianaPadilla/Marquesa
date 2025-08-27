@@ -166,32 +166,47 @@ const Header = () => {
     }
   };
 
-  // Función para manejar selección de producto desde el dropdown
-  const handleProductSelect = (product) => {
-    setSearchTerm(product.name);
+  // Función para manejar selección de producto desde el dropdown - MEJORADA
+  const handleProductSelect = useCallback((product) => {
+    console.log('Header - Product selected:', product);
+    
+    // Cerrar el dropdown primero
     setShowSearchDropdown(false);
-    // Navegar al detalle del producto
-    navigate(`/ProductDetail/${product._id}`);
-  };
+    
+    // Limpiar el término de búsqueda si es necesario
+    // setSearchTerm('');
+    
+    // Usar setTimeout para asegurar que la navegación ocurre después del cierre del dropdown
+    setTimeout(() => {
+      console.log('Header - Navigating to product:', product._id);
+      navigate(`/ProductDetail/${product._id}`);
+    }, 100);
+  }, [navigate]);
 
   // Función para cerrar el dropdown de búsqueda
-  const closeSearchDropdown = () => {
+  const closeSearchDropdown = useCallback(() => {
     setShowSearchDropdown(false);
-  };
+  }, []);
 
-  // Effect para manejar clics fuera del área de búsqueda
+  // Effect para manejar clics fuera del área de búsqueda - MEJORADO
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
-        closeSearchDropdown();
+        // Agregar un pequeño delay para permitir que los clics en el dropdown se procesen primero
+        setTimeout(() => {
+          setShowSearchDropdown(false);
+        }, 150);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    if (showSearchDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [showSearchDropdown]);
 
   // Limpiar timeout al desmontar componente
   useEffect(() => {
@@ -259,7 +274,7 @@ const Header = () => {
 
   return (
     <>
-      <header className="w-full border-b border-gray-300 py-4 px-6">
+      <header className="w-full border-b border-gray-300 py-4 px-6 relative">
         <div className="w-full max-w-screen-xl mx-auto">
 
           {/* Diseño para pantallas grandes (Desktop) */}
@@ -270,9 +285,10 @@ const Header = () => {
             </div>
 
             <div className="col-span-6 flex justify-center">
-              <div className="search-container max-w-lg relative z-50" ref={searchContainerRef}>
+              <div className="search-container max-w-lg relative" ref={searchContainerRef} style={{ zIndex: 9999 }}>
                 <form onSubmit={handleSearchSubmit}>
                   <input
+                    ref={searchInputRef}
                     type="text"
                     placeholder="¿Qué estás buscando?"
                     className="search-input"
@@ -344,7 +360,7 @@ const Header = () => {
           <div className={`mobile-menu md:hidden ${isMenuOpen ? 'open' : ''}`}>
             <div className="px-6 space-y-4">
               {/* Buscador en menú móvil */}
-              <div className="search-container relative z-50" ref={searchContainerRef}>
+              <div className="search-container relative" ref={searchContainerRef} style={{ zIndex: 9999 }}>
                 <form onSubmit={handleSearchSubmit}>
                   <input
                     type="text"

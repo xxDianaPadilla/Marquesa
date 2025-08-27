@@ -11,7 +11,7 @@ const SearchDropdown = ({
 }) => {
     const navigate = useNavigate();
 
-    // Función para manejar clic en un producto específico
+    // Función para manejar clic en un producto específico - MEJORADA
     const handleProductClick = (product, event) => {
         // Prevenir propagación y comportamiento por defecto
         if (event) {
@@ -19,16 +19,36 @@ const SearchDropdown = ({
             event.stopPropagation();
         }
         
-        console.log('SearchDropdown - Navigating to product:', product._id);
-        onProductSelect(product);
-        onClose();
-        // Navegar al detalle del producto
-        navigate(`/ProductDetail/${product._id}`);
+        console.log('SearchDropdown - Product clicked:', product._id);
+        
+        // Llamar a la función de selección del padre
+        if (onProductSelect) {
+            onProductSelect(product);
+        }
+        
+        // Cerrar el dropdown
+        if (onClose) {
+            onClose();
+        }
+        
+        // Navegación directa con un pequeño delay para asegurar que se ejecute
+        setTimeout(() => {
+            console.log('SearchDropdown - Navigating to product:', product._id);
+            navigate(`/ProductDetail/${product._id}`);
+        }, 50);
     };
 
     // Función para ver todos los resultados de búsqueda
-    const handleViewAllResults = () => {
-        onClose();
+    const handleViewAllResults = (event) => {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        
+        if (onClose) {
+            onClose();
+        }
+        
         // Navegar a página de resultados de búsqueda
         navigate(`/buscar?q=${encodeURIComponent(searchTerm)}`);
     };
@@ -39,7 +59,14 @@ const SearchDropdown = ({
     }
 
     return (
-        <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 z-50 max-h-96 overflow-y-auto">
+        <div 
+            className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-96 overflow-y-auto"
+            style={{ 
+                zIndex: 10000,
+                pointerEvents: 'auto'
+            }}
+            onClick={(e) => e.stopPropagation()} // Prevenir que el clic se propague al contenedor padre
+        >
             {/* Estado de carga */}
             {isLoading && (
                 <div className="p-4 text-center">
@@ -58,8 +85,13 @@ const SearchDropdown = ({
                         {searchResults.slice(0, 5).map((product) => (
                             <div
                                 key={product._id || product.id}
-                                className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
                                 onClick={(e) => handleProductClick(product, e)}
+                                onMouseDown={(e) => e.preventDefault()} // Prevenir que el mousedown interfiera
+                                style={{ 
+                                    userSelect: 'none',
+                                    pointerEvents: 'auto'
+                                }}
                             >
                                 <div className="flex items-center space-x-3">
                                     {/* Imagen del producto */}
@@ -71,6 +103,7 @@ const SearchDropdown = ({
                                             onError={(e) => {
                                                 e.target.src = '/placeholder-image.jpg';
                                             }}
+                                            draggable={false}
                                         />
                                     </div>
                                     
@@ -100,7 +133,9 @@ const SearchDropdown = ({
                         <div className="p-3 border-t border-gray-200">
                             <button
                                 onClick={handleViewAllResults}
-                                className="w-full text-center text-sm text-pink-600 hover:text-pink-700 font-medium"
+                                onMouseDown={(e) => e.preventDefault()}
+                                className="w-full text-center text-sm text-pink-600 hover:text-pink-700 font-medium transition-colors"
+                                style={{ pointerEvents: 'auto' }}
                             >
                                 Ver todos los {searchResults.length} resultados
                             </button>

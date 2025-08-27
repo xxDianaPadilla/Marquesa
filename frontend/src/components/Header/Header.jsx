@@ -429,12 +429,19 @@ const Header = () => {
         </div>
       </header>
 
-      {/* Modal de Autenticación con overlay completo */}
+      {/* Modal de Autenticación con overlay completo y z-index más alto */}
       {showAuthModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {/* Overlay de fondo que oculta todo */}
+        <div 
+          className="fixed inset-0 flex items-center justify-center"
+          style={{ 
+            zIndex: 99999, // Z-index muy alto para asegurar que esté por encima de todo
+            backgroundColor: 'rgba(0, 0, 0, 0.5)' // Color de fondo exacto que solicitaste
+          }}
+        >
+          {/* Overlay de fondo que cubre todo */}
           <div 
-            className="absolute inset-0 bg-black bg-opacity-75 backdrop-blur-sm"
+            className="absolute inset-0 w-full h-full"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
             onClick={closeAuthModal}
             aria-hidden="true"
           />

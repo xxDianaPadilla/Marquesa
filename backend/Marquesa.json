@@ -100,6 +100,7 @@
           "Categories"
         ],
         "summary": "Obtener todas las categorías",
+        "description": "Este endpoint devuelve una lista de todas las categorías de productos disponibles en el sistema.",
         "responses": {
           "200": {
             "description": "Lista de categorías",
@@ -124,6 +125,7 @@
           "Categories"
         ],
         "summary": "Crear una nueva categoría",
+        "description": "Permite crear una nueva categoría de productos proporcionando su nombre y una imagen.",
         "requestBody": {
           "content": {
             "multipart/form-data": {
@@ -156,6 +158,7 @@
           "Categories"
         ],
         "summary": "Obtener una categoría por ID",
+        "description": "Recupera los detalles de una categoría específica utilizando su ID único.",
         "parameters": [
           {
             "name": "id",
@@ -193,6 +196,7 @@
           "Categories"
         ],
         "summary": "Actualizar una categoría por ID",
+        "description": "Permite actualizar el nombre y/o la imagen de una categoría existente a través de su ID.",
         "parameters": [
           {
             "name": "id",
@@ -239,6 +243,7 @@
           "Categories"
         ],
         "summary": "Eliminar una categoría por ID",
+        "description": "Elimina permanentemente una categoría del sistema utilizando su ID.",
         "parameters": [
           {
             "name": "id",
@@ -271,6 +276,7 @@
           "Media"
         ],
         "summary": "Obtener todos los elementos de media",
+        "description": "Devuelve una lista de todos los elementos multimedia (blogs, tips, datos curiosos), con opción de filtrar por tipo o buscar por texto.",
         "parameters": [
           {
             "name": "type",
@@ -324,6 +330,7 @@
           "Media"
         ],
         "summary": "Crear un nuevo elemento de media",
+        "description": "Permite crear un nuevo elemento multimedia, como un blog, tip o dato curioso, subiendo su contenido y archivos.",
         "requestBody": {
           "content": {
             "multipart/form-data": {
@@ -356,6 +363,7 @@
           "Media"
         ],
         "summary": "Obtener un elemento de media por ID",
+        "description": "Recupera la información de un elemento multimedia específico a través de su ID.",
         "parameters": [
           {
             "name": "id",
@@ -393,6 +401,7 @@
           "Media"
         ],
         "summary": "Actualizar un elemento de media",
+        "description": "Permite modificar el contenido de un elemento multimedia existente, identificado por su ID.",
         "parameters": [
           {
             "name": "id",
@@ -436,6 +445,7 @@
           "Media"
         ],
         "summary": "Eliminar un elemento de media",
+        "description": "Elimina permanentemente un elemento multimedia del sistema usando su ID.",
         "parameters": [
           {
             "name": "id",
@@ -468,6 +478,7 @@
           "Products"
         ],
         "summary": "Obtener todos los productos",
+        "description": "Este endpoint devuelve una lista completa de todos los productos del catálogo.",
         "responses": {
           "200": {
             "description": "Lista de productos obtenida correctamente",
@@ -495,6 +506,7 @@
           "Products"
         ],
         "summary": "Crear un nuevo producto",
+        "description": "Permite agregar un nuevo producto al catálogo, proporcionando sus detalles, precio, stock e imágenes.",
         "requestBody": {
           "content": {
             "multipart/form-data": {
@@ -530,6 +542,7 @@
           "Products"
         ],
         "summary": "Obtener un producto por ID",
+        "description": "Recupera toda la información de un producto específico utilizando su ID.",
         "parameters": [
           {
             "name": "id",
@@ -567,6 +580,7 @@
           "Products"
         ],
         "summary": "Actualizar un producto",
+        "description": "Permite modificar los detalles de un producto existente en el catálogo a través de su ID.",
         "parameters": [
           {
             "name": "id",
@@ -613,6 +627,7 @@
           "Products"
         ],
         "summary": "Eliminar un producto por ID",
+        "description": "Elimina permanentemente un producto del catálogo utilizando su ID.",
         "parameters": [
           {
             "name": "id",
@@ -759,6 +774,7 @@
           "Reviews"
         ],
         "summary": "Obtener reseñas con paginación y filtros",
+        "description": "Permite obtener una lista paginada de reseñas, con la opción de filtrar por estado (pendiente/respondida) y por calificación.",
         "parameters": [
           {
             "name": "page",
@@ -829,6 +845,7 @@
           "Reviews"
         ],
         "summary": "Crear nueva reseña",
+        "description": "Permite a un cliente enviar una nueva reseña sobre uno o más productos, incluyendo una calificación y un mensaje.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -858,6 +875,7 @@
           "Reviews"
         ],
         "summary": "Obtener una reseña por ID",
+        "description": "Recupera los detalles completos de una reseña específica utilizando su ID.",
         "parameters": [
           {
             "name": "id",
@@ -895,6 +913,7 @@
           "Reviews"
         ],
         "summary": "Actualizar una reseña",
+        "description": "Permite modificar el contenido de una reseña existente a través de su ID.",
         "parameters": [
           {
             "name": "id",
@@ -934,6 +953,7 @@
           "Reviews"
         ],
         "summary": "Eliminar una reseña",
+        "description": "Elimina permanentemente una reseña del sistema utilizando su ID.",
         "parameters": [
           {
             "name": "id",
@@ -963,6 +983,7 @@
           "Reviews"
         ],
         "summary": "Obtener reseñas por cliente",
+        "description": "Devuelve una lista paginada de todas las reseñas realizadas por un cliente específico, identificado por su ID.",
         "parameters": [
           {
             "name": "clientId",
@@ -1018,6 +1039,7 @@
           "Reviews"
         ],
         "summary": "Moderar una reseña",
+        "description": "Permite a un administrador aprobar o rechazar una reseña pendiente.",
         "parameters": [
           {
             "name": "id",
@@ -1060,6 +1082,7 @@
           "Reviews"
         ],
         "summary": "Responder una reseña",
+        "description": "Permite a un administrador añadir una respuesta a una reseña existente.",
         "parameters": [
           {
             "name": "id",
@@ -1102,6 +1125,7 @@
           "Reviews"
         ],
         "summary": "Obtener estadísticas de reseñas",
+        "description": "Devuelve estadísticas generales sobre las reseñas, como el número total y la calificación promedio.",
         "responses": {
           "200": {
             "description": "Estadísticas retornadas exitosamente",
@@ -1125,6 +1149,7 @@
           "Reviews"
         ],
         "summary": "Obtener productos mejor calificados",
+        "description": "Devuelve una lista de los productos con las mejores calificaciones promedio, con un límite configurable.",
         "parameters": [
           {
             "name": "limit",
@@ -1167,6 +1192,7 @@
           "Sales"
         ],
         "summary": "Obtener todas las ventas",
+        "description": "Recupera una lista paginada de todas las ventas, permitiendo filtrar por estado de pago y estado de seguimiento.",
         "parameters": [
           {
             "name": "page",
@@ -1236,6 +1262,7 @@
           "Sales"
         ],
         "summary": "Crear una nueva venta",
+        "description": "Registra una nueva venta en el sistema, asociándola a un carrito de compras y subiendo el comprobante de pago.",
         "requestBody": {
           "content": {
             "multipart/form-data": {
@@ -1271,6 +1298,7 @@
           "Sales"
         ],
         "summary": "Obtener una venta por ID",
+        "description": "Recupera los detalles completos de una venta específica utilizando su ID.",
         "parameters": [
           {
             "name": "id",
@@ -1308,6 +1336,7 @@
           "Sales"
         ],
         "summary": "Actualizar una venta por ID",
+        "description": "Permite modificar la información de una venta existente, como su estado o detalles de entrega, a través de su ID.",
         "parameters": [
           {
             "name": "id",
@@ -1348,6 +1377,7 @@
           "Sales"
         ],
         "summary": "Eliminar una venta por ID",
+        "description": "Elimina permanentemente una venta del sistema utilizando su ID.",
         "parameters": [
           {
             "name": "id",
@@ -1380,6 +1410,7 @@
           "Sales"
         ],
         "summary": "Actualizar solo el estado de pago",
+        "description": "Permite cambiar únicamente el estado de pago de una venta (Pendiente/Pagado) a través de su ID.",
         "parameters": [
           {
             "name": "id",
@@ -1422,6 +1453,7 @@
           "Sales"
         ],
         "summary": "Actualizar solo el estado de seguimiento",
+        "description": "Permite cambiar únicamente el estado de seguimiento de una venta (Agendado/En proceso/Entregado) a través de su ID.",
         "parameters": [
           {
             "name": "id",
@@ -1464,6 +1496,7 @@
           "Sales"
         ],
         "summary": "Actualizar el comprobante de pago",
+        "description": "Permite subir o reemplazar el archivo de imagen del comprobante de pago para una venta específica.",
         "parameters": [
           {
             "name": "id",
@@ -1506,6 +1539,7 @@
           "Sales"
         ],
         "summary": "Obtener ventas por estado de pago",
+        "description": "Devuelve una lista paginada de ventas filtradas por un estado de pago específico (Pendiente o Pagado).",
         "parameters": [
           {
             "name": "status",
@@ -1567,6 +1601,7 @@
           "Sales"
         ],
         "summary": "Obtener ventas por estado de seguimiento",
+        "description": "Devuelve una lista paginada de ventas filtradas por un estado de seguimiento específico (Agendado, En proceso o Entregado).",
         "parameters": [
           {
             "name": "trackingStatus",
@@ -1629,6 +1664,7 @@
           "Sales"
         ],
         "summary": "Obtener cantidad de productos vendidos por período",
+        "description": "Calcula y devuelve la cantidad total de productos vendidos en el período actual o anterior.",
         "parameters": [
           {
             "name": "period",
@@ -1670,6 +1706,7 @@
           "Sales"
         ],
         "summary": "Obtener total de ventas",
+        "description": "Calcula y devuelve el monto total de ingresos por ventas.",
         "responses": {
           "200": {
             "description": "Total de ventas",
@@ -1693,6 +1730,7 @@
           "Sales"
         ],
         "summary": "Obtener métricas del dashboard",
+        "description": "Proporciona métricas clave para el dashboard, como el total de ventas, el número total de órdenes y las órdenes pendientes.",
         "responses": {
           "200": {
             "description": "Métricas del dashboard retornadas",
@@ -1716,6 +1754,7 @@
           "Sales"
         ],
         "summary": "Obtener ventas con detalle de cliente y productos",
+        "description": "Devuelve una lista paginada de ventas, incluyendo información detallada del cliente y de los productos en cada venta.",
         "parameters": [
           {
             "name": "page",
@@ -2842,6 +2881,7 @@
           "Clients"
         ],
         "summary": "Actualizar perfil del cliente autenticado",
+        "description": "Permite al cliente autenticado actualizar su información de perfil, como nombre, teléfono, dirección y foto de perfil.",
         "requestBody": {
           "content": {
             "multipart/form-data": {
@@ -2881,6 +2921,7 @@
           "Clients"
         ],
         "summary": "Obtener favoritos del usuario autenticado",
+        "description": "Devuelve la lista de productos que el usuario autenticado ha marcado como favoritos.",
         "responses": {
           "200": {
             "description": "Favoritos obtenidos exitosamente",
@@ -2915,6 +2956,7 @@
           "Clients"
         ],
         "summary": "Agregar producto a favoritos",
+        "description": "Permite al usuario autenticado agregar un producto a su lista de favoritos.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -2955,6 +2997,7 @@
           "Clients"
         ],
         "summary": "Remover producto de favoritos",
+        "description": "Permite al usuario autenticado remover un producto de su lista de favoritos utilizando el ID del producto.",
         "parameters": [
           {
             "name": "productId",
@@ -2997,6 +3040,7 @@
           "Clients"
         ],
         "summary": "Toggle estado de favorito (agregar/remover)",
+        "description": "Agrega un producto a favoritos si no está, o lo remueve si ya existe. Es una forma de alternar el estado de favorito.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -3034,6 +3078,7 @@
           "Clients"
         ],
         "summary": "Generar nuevo código de descuento desde ruleta",
+        "description": "Permite al usuario autenticado generar un nuevo código de descuento a través de la función de ruleta promocional.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -3073,6 +3118,7 @@
           "Clients"
         ],
         "summary": "Obtener todos los códigos de ruleta del usuario",
+        "description": "Devuelve una lista de todos los códigos de descuento generados por la ruleta para el usuario autenticado.",
         "responses": {
           "200": {
             "description": "Códigos de ruleta obtenidos exitosamente"
@@ -3100,6 +3146,7 @@
           "Clients"
         ],
         "summary": "Validar código de descuento específico",
+        "description": "Verifica si un código de descuento de la ruleta es válido, no ha sido usado y no ha expirado.",
         "parameters": [
           {
             "name": "code",
@@ -3142,6 +3189,7 @@
           "Clients"
         ],
         "summary": "Marcar código como utilizado",
+        "description": "Marca un código de descuento de la ruleta como 'usado', para que no pueda ser utilizado nuevamente.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -3182,6 +3230,7 @@
           "Clients"
         ],
         "summary": "Obtener total de clientes registrados",
+        "description": "Devuelve el número total de clientes registrados en el sistema.",
         "responses": {
           "200": {
             "description": "Total de clientes obtenido exitosamente",
@@ -3208,6 +3257,7 @@
           "Clients"
         ],
         "summary": "Obtener estadísticas de clientes nuevos por trimestre",
+        "description": "Proporciona estadísticas sobre la adquisición de nuevos clientes en el trimestre actual o el anterior.",
         "parameters": [
           {
             "name": "period",
@@ -3243,6 +3293,7 @@
           "Clients"
         ],
         "summary": "Obtener estadísticas detalladas de clientes",
+        "description": "Devuelve un conjunto de estadísticas detalladas sobre la base de clientes.",
         "responses": {
           "200": {
             "description": "Estadísticas detalladas obtenidas exitosamente"
@@ -3259,6 +3310,7 @@
           "Clients"
         ],
         "summary": "Validar código promocional por cliente",
+        "description": "Verifica si un código promocional específico es válido para un cliente determinado.",
         "parameters": [
           {
             "name": "clientId",
@@ -3302,6 +3354,7 @@
           "Clients"
         ],
         "summary": "Marcar código promocional como usado",
+        "description": "Marca un código promocional como 'usado' para un cliente específico, asociándolo a una orden.",
         "parameters": [
           {
             "name": "clientId",
@@ -3345,6 +3398,7 @@
           "Clients"
         ],
         "summary": "Obtener códigos promocionales del cliente",
+        "description": "Devuelve una lista de los códigos promocionales de un cliente, con la opción de filtrar por estado (activo, usado, expirado).",
         "parameters": [
           {
             "name": "clientId",

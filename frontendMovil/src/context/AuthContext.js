@@ -342,6 +342,51 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // Función de registro de usuario
+    const register = async (userData) => {
+        try {
+            // Log del inicio del proceso de registro
+            console.log('Iniciando proceso de registro...');
+
+            // Validaciones básicas antes de enviar al servidor
+            if (!userData.fullName || !userData.email || !userData.password) {
+                return { success: false, message: 'Todos los campos son requeridos' };
+            }
+
+            // Realizar petición de registro al servidor
+            const response = await fetch('https://marquesa.onrender.com/api/registerCustomers/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(userData)
+            });
+
+            // Parsear respuesta del servidor
+            const data = await response.json();
+            console.log('Register response:', data);
+
+            // Verificar si el registro fue exitoso
+            if (response.ok && data.success) {
+                console.log('Registro exitoso');
+                return {
+                    success: true,
+                    message: data.message || 'Registro exitoso'
+                };
+            } else {
+                // Obtener mensaje de error del servidor
+                const errorMsg = data.message || 'Error en el registro';
+                return { success: false, message: errorMsg };
+            }
+        } catch (error) {
+            // Log de error en el proceso de registro
+            console.error('Error en el proceso de registro:', error);
+            // Obtener mensaje de error apropiado
+            const errorMsg = error.message || 'Error de conexión con el servidor';
+            return { success: false, message: errorMsg };
+        }
+    };
+
     // Función para obtener favoritos con lógica mejorada
     const getFavorites = useCallback(async (token = null) => {
         try {
@@ -1383,6 +1428,7 @@ export const AuthProvider = ({ children }) => {
         // Funciones de login y autenticación
         login,
         logout,
+        register, 
         checkAuthStatus,
         getUserInfo,
         clearAuthError,

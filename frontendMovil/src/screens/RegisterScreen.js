@@ -25,8 +25,27 @@ import lockIcon from "../images/lockIcon.png";
 import PinkButton from "../components/PinkButton";
 import PinkInputs from "../components/PinkInputs";
 import QuestionText from "../components/QuestionText";
+import ValidationMessage from "../components/ValidationMessage";
+import { CustomAlert, LoadingDialog } from "../components/CustomDialogs";
+
+// Importación de hooks personalizados
+import useRegister from "../hooks/useRegister";
+import { useAuth } from "../context/AuthContext";
 
 const RegisterScreen = ({ navigation }) => {
+    // Hook personalizado para el registro
+    const {
+        isRegistering,
+        fieldErrors,
+        generalError,
+        handleRegister,
+        clearFieldError,
+        formatPhoneInput
+    } = useRegister();
+
+    // Obtener función de login del contexto para auto-login después del registro
+    const { login } = useAuth();
+
     // Estado para manejar los datos del formulario de registro
     const [formData, setFormData] = useState({
         nombre: '',
@@ -40,29 +59,89 @@ const RegisterScreen = ({ navigation }) => {
     // Estado para manejar la aceptación de términos y condiciones
     const [acceptedTerms, setAcceptedTerms] = useState(false);
 
+    // Estados para controlar las alertas personalizadas
+    const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+    const [showErrorAlert, setShowErrorAlert] = useState(false);
+    const [alertMessage, setAlertMessage] = useState('');
+
     // Función para manejar los cambios en los campos del formulario
     const handleInputChange = (field, value) => {
+        let processedValue = value;
+        
+        // Formatear automáticamente el teléfono mientras se escribe
+        if (field === 'telefono') {
+            processedValue = formatPhoneInput(value);
+        }
+        
         setFormData(prev => ({
             ...prev,
-            [field]: value
+            [field]: processedValue
         }));
+        
+        // Limpiar error del campo cuando el usuario comienza a escribir
+        if (fieldErrors[field]) {
+            clearFieldError(field);
+        }
     };
 
     // Función para procesar el registro del usuario
-    const handleRegister = () => {
-        console.log('Registrando usuario: ', formData);
-        // TODO: Implementar lógica de registro
+    const handleRegisterSubmit = async () => {
+        // Validar que se acepten los términos y condiciones
+        if (!acceptedTerms) {
+            setAlertMessage('Debes aceptar los términos y condiciones para continuar');
+            setShowErrorAlert(true);
+            return;
+        }
+
+        try {
+            // Intentar registrar al usuario
+            const result = await handleRegister(formData);
+            
+            if (result.success) {
+                // Mostrar alerta de éxito personalizada
+                setAlertMessage('Tu cuenta ha sido creada exitosamente. Ahora serás dirigido al inicio.');
+                setShowSuccessAlert(true);
+            } else {
+                // Mostrar error específico
+                setAlertMessage(result.message || 'No se pudo completar el registro');
+                setShowErrorAlert(true);
+            }
+        } catch (error) {
+            console.error('Error en registro:', error);
+            setAlertMessage('Error inesperado durante el registro');
+            setShowErrorAlert(true);
+        }
     };
 
-    // Función para manejar el inicio de sesión con Google
-    const handleGoogleSignIn = () => {
-        console.log('Iniciar sesión con Google');
-        // TODO: Implementar autenticación con Google
+    // Función para manejar la confirmación de registro exitoso
+    const handleSuccessConfirm = async () => {
+        setShowSuccessAlert(false);
+        
+        try {
+            // Intentar hacer login automático después del registro
+            const loginResult = await login(formData.correo, formData.contrasena);
+            
+            if (loginResult.success) {
+                // Navegar al TabNavigator (que incluye Home)
+                navigation.replace('TabNavigator');
+            } else {
+                // Si falla el auto-login, ir a la pantalla de login
+                navigation.replace('Login');
+            }
+        } catch (loginError) {
+            console.log('Error en auto-login:', loginError);
+            // En caso de error, ir a login
+            navigation.replace('Login');
+        }
+    };
+
+    // Función para cerrar alerta de error
+    const handleErrorConfirm = () => {
+        setShowErrorAlert(false);
     };
 
     // Función para redirigir a la pantalla de login
     const handleLoginRedirect = () => {
-        console.log('Navegar a login');
         navigation.navigate('Login');
     };
 
@@ -98,67 +177,119 @@ const RegisterScreen = ({ navigation }) => {
                     {/* Subtítulo de la pantalla */}
                     <Text style={styles.subtitle}>Crea tu cuenta</Text>
 
+                    {/* Mensaje de error general si existe */}
+                    {generalError ? (
+                        <ValidationMessage 
+                            message={generalError}
+                            type="error"
+                            style={styles.generalError}
+                        />
+                    ) : null}
+
                     {/* Contenedor principal del formulario */}
                     <View style={styles.formContainer}>
                         {/* Campo de entrada para el nombre */}
-                        <PinkInputs
-                            placeholder="Nombre"
-                            value={formData.nombre}
-                            onChangeText={(value) => handleInputChange('nombre', value)}
-                            icon={userIcon}
-                            style={styles.inputSpacing}
-                        />
+                        <View style={styles.inputGroup}>
+                            <PinkInputs
+                                placeholder="Nombre completo"
+                                value={formData.nombre}
+                                onChangeText={(value) => handleInputChange('nombre', value)}
+                                icon={userIcon}
+                                style={[styles.inputSpacing, fieldErrors.nombre && styles.inputError]}
+                                editable={!isRegistering}
+                            />
+                            <ValidationMessage 
+                                message={fieldErrors.nombre}
+                                visible={!!fieldErrors.nombre}
+                            />
+                        </View>
 
-                        {/* Campo de entrada para el teléfono */}
-                        <PinkInputs
-                            placeholder="Teléfono"
-                            value={formData.telefono}
-                            onChangeText={(value) => handleInputChange('telefono', value)}
-                            icon={phoneIcon}
-                            keyboardType="phone-pad"
-                            style={styles.inputSpacing}
-                        />
+                        {/* Campo de entrada para el teléfono con formateo automático */}
+                        <View style={styles.inputGroup}>
+                            <PinkInputs
+                                placeholder="Teléfono (xxxx-xxxx)"
+                                value={formData.telefono}
+                                onChangeText={(value) => handleInputChange('telefono', value)}
+                                icon={phoneIcon}
+                                keyboardType="phone-pad"
+                                style={[styles.inputSpacing, fieldErrors.telefono && styles.inputError]}
+                                editable={!isRegistering}
+                                maxLength={9} // 8 números + 1 guión
+                            />
+                            <ValidationMessage 
+                                message={fieldErrors.telefono}
+                                visible={!!fieldErrors.telefono}
+                            />
+                        </View>
 
                         {/* Campo de entrada para el correo electrónico */}
-                        <PinkInputs
-                            placeholder="Correo electrónico"
-                            value={formData.correo}
-                            onChangeText={(value) => handleInputChange('correo', value)}
-                            icon={emailIcon}
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                            style={styles.inputSpacing}
-                        />
+                        <View style={styles.inputGroup}>
+                            <PinkInputs
+                                placeholder="Correo electrónico"
+                                value={formData.correo}
+                                onChangeText={(value) => handleInputChange('correo', value)}
+                                icon={emailIcon}
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                                style={[styles.inputSpacing, fieldErrors.correo && styles.inputError]}
+                                editable={!isRegistering}
+                            />
+                            <ValidationMessage 
+                                message={fieldErrors.correo}
+                                visible={!!fieldErrors.correo}
+                            />
+                        </View>
 
                         {/* Campo de entrada para la fecha de nacimiento */}
-                        <PinkInputs
-                            placeholder="Fecha de nacimiento"
-                            value={formData.fechaNacimiento}
-                            onChangeText={(value) => handleInputChange('fechaNacimiento', value)}
-                            icon={calendarIcon}
-                            style={styles.inputSpacing}
-                            isDateInput={true}
-                            dateFormat="DD/MM/YYYY"
-                        />
+                        <View style={styles.inputGroup}>
+                            <PinkInputs
+                                placeholder="Fecha de nacimiento (DD/MM/YYYY)"
+                                value={formData.fechaNacimiento}
+                                onChangeText={(value) => handleInputChange('fechaNacimiento', value)}
+                                icon={calendarIcon}
+                                style={[styles.inputSpacing, fieldErrors.fechaNacimiento && styles.inputError]}
+                                isDateInput={true}
+                                dateFormat="DD/MM/YYYY"
+                                editable={!isRegistering}
+                            />
+                            <ValidationMessage 
+                                message={fieldErrors.fechaNacimiento}
+                                visible={!!fieldErrors.fechaNacimiento}
+                            />
+                        </View>
 
                         {/* Campo de entrada para la dirección */}
-                        <PinkInputs
-                            placeholder="Dirección"
-                            value={formData.direccion}
-                            onChangeText={(value) => handleInputChange('direccion', value)}
-                            icon={locationIcon}
-                            style={styles.inputSpacing}
-                        />
+                        <View style={styles.inputGroup}>
+                            <PinkInputs
+                                placeholder="Dirección completa"
+                                value={formData.direccion}
+                                onChangeText={(value) => handleInputChange('direccion', value)}
+                                icon={locationIcon}
+                                style={[styles.inputSpacing, fieldErrors.direccion && styles.inputError]}
+                                editable={!isRegistering}
+                            />
+                            <ValidationMessage 
+                                message={fieldErrors.direccion}
+                                visible={!!fieldErrors.direccion}
+                            />
+                        </View>
 
                         {/* Campo de entrada para la contraseña */}
-                        <PinkInputs
-                            placeholder="Contraseña"
-                            value={formData.contrasena}
-                            onChangeText={(value) => handleInputChange('contrasena', value)}
-                            icon={lockIcon}
-                            secureTextEntry={true}
-                            style={styles.inputSpacing}
-                        />
+                        <View style={styles.inputGroup}>
+                            <PinkInputs
+                                placeholder="Contraseña"
+                                value={formData.contrasena}
+                                onChangeText={(value) => handleInputChange('contrasena', value)}
+                                icon={lockIcon}
+                                secureTextEntry={true}
+                                style={[styles.inputSpacing, fieldErrors.contrasena && styles.inputError]}
+                                editable={!isRegistering}
+                            />
+                            <ValidationMessage 
+                                message={fieldErrors.contrasena}
+                                visible={!!fieldErrors.contrasena}
+                            />
+                        </View>
 
                         {/* Sección de términos y condiciones */}
                         <View style={styles.termsContainer}>
@@ -166,6 +297,7 @@ const RegisterScreen = ({ navigation }) => {
                             <TouchableOpacity
                                 style={styles.checkbox}
                                 onPress={() => setAcceptedTerms(!acceptedTerms)}
+                                disabled={isRegistering}
                             >
                                 <View style={[
                                     styles.checkboxSquare,
@@ -181,11 +313,11 @@ const RegisterScreen = ({ navigation }) => {
                             </Text>
                         </View>
 
-                        {/* Botón de registro (habilitado solo si se aceptan los términos) */}
+                        {/* Botón de registro */}
                         <PinkButton
-                            title="Registrarse"
-                            onPress={handleRegister}
-                            disabled={!acceptedTerms}
+                            title={isRegistering ? "Registrando..." : "Registrarse"}
+                            onPress={handleRegisterSubmit}
+                            disabled={!acceptedTerms || isRegistering}
                             style={styles.registerButton}
                         />
 
@@ -199,15 +331,36 @@ const RegisterScreen = ({ navigation }) => {
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            {/* Diálogo de carga durante el registro */}
+            <LoadingDialog
+                visible={isRegistering}
+                title="Registrando..."
+                message="Creando tu cuenta, por favor espera..."
+                color="#FDB4B7"
+            />
+
+            {/* Alerta de éxito personalizada */}
+            <CustomAlert
+                visible={showSuccessAlert}
+                type="success"
+                title="Registro Exitoso"
+                message={alertMessage}
+                confirmText="Continuar"
+                onConfirm={handleSuccessConfirm}
+            />
+
+            {/* Alerta de error personalizada */}
+            <CustomAlert
+                visible={showErrorAlert}
+                type="error"
+                title="Error en el Registro"
+                message={alertMessage}
+                confirmText="Entendido"
+                onConfirm={handleErrorConfirm}
+            />
         </SafeAreaView>
     );
-
-    // Función para manejar la selección de fecha (actualmente no utilizada)
-    const handleDatePress = () => {
-        // Aquí implementarías la lógica del date picker
-        console.log('Abrir date picker');
-        // TODO: Implementar date picker nativo
-    };
 };
 
 // Definición de estilos para todos los componentes
@@ -252,6 +405,12 @@ const styles = StyleSheet.create({
         padding: 10,
         marginRight: 20,
     },
+    // Icono de retroceso
+    backIcon: {
+        width: 24,
+        height: 24,
+        tintColor: '#999999',
+    },
     // Título principal de la pantalla
     title: {
         fontSize: 24,
@@ -271,13 +430,32 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         marginTop: 10,
     },
+    // Mensaje de error general
+    generalError: {
+        marginHorizontal: 20,
+        marginBottom: 15,
+        padding: 10,
+        backgroundColor: '#FEF2F2',
+        borderRadius: 8,
+        borderLeftWidth: 4,
+        borderLeftColor: '#E53E3E',
+    },
     // Contenedor del formulario
     formContainer: {
         paddingHorizontal: 20,
     },
+    // Grupo de input con validación
+    inputGroup: {
+        marginBottom: 16,
+    },
     // Espaciado entre campos de entrada
     inputSpacing: {
-        marginBottom: 16,
+        marginBottom: 0,
+    },
+    // Estilo para inputs con error
+    inputError: {
+        borderColor: '#E53E3E',
+        borderWidth: 2,
     },
     // Contenedor de términos y condiciones
     termsContainer: {
@@ -331,38 +509,6 @@ const styles = StyleSheet.create({
         marginBottom: 30,
         alignSelf: 'center',
         width: '100%',
-    },
-    // Contenedor del separador (actualmente no utilizado)
-    separatorContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 25,
-    },
-    // Línea del separador (actualmente no utilizada)
-    separatorLine: {
-        flex: 1,
-        height: 1,
-        backgroundColor: '#E0E0E0',
-    },
-    // Texto del separador (actualmente no utilizado)
-    separatorText: {
-        fontSize: 14,
-        fontFamily: 'Poppins-Regular',
-        color: '#999999',
-        marginHorizontal: 15,
-    },
-    // Botón de Google (actualmente no utilizado)
-    googleButton: {
-        alignItems: 'center',
-        padding: 12,
-        marginBottom: -15,
-        marginTop: -15,
-    },
-    // Icono de Google (actualmente no utilizado)
-    googleIcon: {
-        width: 62,
-        height: 62,
-        resizeMode: 'contain',
     },
     // Contenedor del enlace de login
     loginContainer: {

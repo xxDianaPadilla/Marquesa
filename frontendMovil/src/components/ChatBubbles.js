@@ -1,124 +1,384 @@
 import React from "react";
-import { View, Text, Image, StyleSheet } from "react-native";
+import { View, Text, Image, StyleSheet, TouchableOpacity } from "react-native";
 
-// Componente para renderizar burbujas de chat individuales
-// Props:
-// - message: El texto del mensaje
-// - time: La hora del mensaje
-// - isOwnMessage: Boolean que indica si el mensaje es del usuario actual
-// - hasImage: Boolean que indica si el mensaje contiene una imagen
-// - imageSource: Fuente de la imagen del mensaje
-const ChatBubbles = ({ message, time, isOwnMessage, hasImage, imageSource }) => {
+// ✅ IMPORTAR ALERTAS PERSONALIZADAS
+import { ConfirmationDialog } from "../components/CustomDialogs";
+import { useAlert } from "../hooks/useAlert";
+
+/**
+ * Componente para renderizar burbujas de chat individuales
+ * ✅ CON ALERTAS PERSONALIZADAS IMPLEMENTADAS
+ */
+const ChatBubbles = ({ 
+    message, 
+    time, 
+    isOwnMessage, 
+    hasImage, 
+    imageSource, 
+    isRead = false,
+    isDelivered = true,
+    onImagePress,
+    onLongPress,
+    showSenderInfo = false,
+    senderName = '',
+    isTyping = false,
+    messageId
+}) => {
+    
+    // ✅ Hook de alertas personalizadas
+    const {
+        alertState,
+        showConfirmation,
+        hideConfirmation
+    } = useAlert();
+    
+    /**
+     * ✅ MANEJA EL PRESS LARGO CON ALERTA PERSONALIZADA
+     */
+    const handleLongPress = () => {
+        // Solo ejecutar si se proporciona la función y es mensaje propio
+        if (onLongPress && isOwnMessage) {
+            onLongPress(messageId, message);
+        } else if (isOwnMessage && !onLongPress) {
+            // ✅ FALLBACK CON ALERTA PERSONALIZADA EN LUGAR DE Alert.alert
+            showConfirmation({
+                title: "Opciones del mensaje",
+                message: "¿Qué deseas hacer con este mensaje?",
+                confirmText: "Eliminar",
+                cancelText: "Cancelar",
+                isDangerous: true,
+                onConfirm: () => {
+                    hideConfirmation();
+                    console.log('🗑️ Eliminar mensaje:', messageId);
+                },
+                onCancel: () => {
+                    hideConfirmation();
+                    console.log('🗑️ Usuario canceló eliminación');
+                }
+            });
+        }
+    };
+
+    /**
+     * Maneja el press en imagen
+     */
+    const handleImagePress = () => {
+        if (onImagePress && imageSource) {
+            onImagePress(imageSource);
+        }
+    };
+
+    /**
+     * Formatea la hora del mensaje
+     */
+    const formatTime = (timestamp) => {
+        if (!timestamp) return '';
+        
+        try {
+            const date = new Date(timestamp);
+            return date.toLocaleTimeString('es-ES', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+        } catch (error) {
+            return time || '';
+        }
+    };
+
+    /**
+     * Renderiza el indicador de estado del mensaje
+     */
+    const renderMessageStatus = () => {
+        if (!isOwnMessage) return null;
+
+        return (
+            <View style={styles.statusContainer}>
+                {isRead ? (
+                    <Text style={styles.statusRead}>✓✓</Text>
+                ) : isDelivered ? (
+                    <Text style={styles.statusDelivered}>✓</Text>
+                ) : (
+                    <Text style={styles.statusSending}>○</Text>
+                )}
+            </View>
+        );
+    };
+
+    /**
+     * Renderiza el contenido del mensaje
+     */
+    const renderMessageContent = () => {
+        if (isTyping) {
+            return (
+                <View style={styles.typingIndicator}>
+                    <Text style={styles.typingText}>escribiendo...</Text>
+                    <View style={styles.typingDots}>
+                        <View style={[styles.dot, styles.dot1]} />
+                        <View style={[styles.dot, styles.dot2]} />
+                        <View style={[styles.dot, styles.dot3]} />
+                    </View>
+                </View>
+            );
+        }
+
+        return (
+            <>
+                {/* Información del remitente para mensajes de grupo */}
+                {!isOwnMessage && showSenderInfo && senderName && (
+                    <Text style={styles.senderName}>{senderName}</Text>
+                )}
+
+                {/* Imagen del mensaje */}
+                {hasImage && imageSource && (
+                    <TouchableOpacity onPress={handleImagePress} activeOpacity={0.8}>
+                        <Image 
+                            source={
+                                typeof imageSource === 'string' 
+                                    ? { uri: imageSource } 
+                                    : imageSource
+                            } 
+                            style={styles.messageImage} 
+                            resizeMode="cover"
+                        />
+                    </TouchableOpacity>
+                )}
+
+                {/* Texto del mensaje */}
+                {message && message.trim() && (
+                    <Text 
+                        style={[
+                            styles.messageText, 
+                            isOwnMessage ? styles.ownText : styles.otherText,
+                            hasImage && styles.messageTextWithImage
+                        ]}
+                    >
+                        {message.trim()}
+                    </Text>
+                )}
+
+                {/* Contenedor de tiempo y estado */}
+                <View style={styles.timeStatusContainer}>
+                    <Text style={[
+                        styles.timeText, 
+                        isOwnMessage ? styles.ownTime : styles.otherTime
+                    ]}>
+                        {formatTime(time)}
+                    </Text>
+                    {renderMessageStatus()}
+                </View>
+            </>
+        );
+    };
+
+    // Si es mensaje de typing sin contenido, usar estilo especial
+    if (isTyping && !message && !hasImage) {
+        return (
+            <View style={[styles.container, styles.otherMessage]}>
+                <View style={styles.avatar}>
+                    <Image 
+                        source={require('../images/marquesaMiniLogo.png')} 
+                        style={styles.avatarImage} 
+                    />
+                </View>
+                <View style={[styles.bubble, styles.otherBubble, styles.typingBubble]}>
+                    {renderMessageContent()}
+                </View>
+            </View>
+        );
+    }
+
     return (
-        // Contenedor principal del mensaje con estilos condicionales según el emisor
         <View style={[styles.container, isOwnMessage ? styles.ownMessage : styles.otherMessage]}>
-            {/* Avatar del remitente - solo se muestra para mensajes de otros usuarios */}
+            {/* Avatar del remitente - solo para mensajes de otros */}
             {!isOwnMessage && (
                 <View style={styles.avatar}>
-                    {/* Imagen del avatar con logo de la marquesa */}
-                    <Image source={require('../images/marquesaMiniLogo.png')} style={styles.avatarImage} />
+                    <Image 
+                        source={require('../images/marquesaMiniLogo.png')} 
+                        style={styles.avatarImage} 
+                    />
                 </View>
             )}
 
-            {/* Burbuja del mensaje con estilos diferentes según el emisor */}
-            <View style={[styles.bubble, isOwnMessage ? styles.ownBubble : styles.otherBubble]}>
-                {/* Imagen del mensaje - se muestra solo si hasImage es true y existe imageSource */}
-                {hasImage && imageSource && (
-                    <Image source={imageSource} style={styles.messageImage} />
-                )}
-                {/* Texto del mensaje con estilos condicionales */}
-                <Text style={[styles.messageText, isOwnMessage ? styles.ownText : styles.otherText]}>
-                    {message}
-                </Text>
-                {/* Timestamp del mensaje */}
-                <Text style={[styles.timeText, isOwnMessage ? styles.ownTime : styles.otherTime]}>
-                    {time}
-                </Text>
-            </View>
+            {/* Burbuja del mensaje */}
+            <TouchableOpacity
+                style={[
+                    styles.bubble, 
+                    isOwnMessage ? styles.ownBubble : styles.otherBubble,
+                    hasImage && styles.bubbleWithImage
+                ]}
+                onLongPress={handleLongPress}
+                activeOpacity={0.8}
+                delayLongPress={500}
+            >
+                {renderMessageContent()}
+            </TouchableOpacity>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    // Contenedor principal - disposición horizontal con espaciado vertical y horizontal
+    // Contenedor principal
     container: {
         flexDirection: 'row',
         marginVertical: 4,
         paddingHorizontal: 16,
     },
-    // Estilo para mensajes propios - alineados a la derecha
     ownMessage: {
         justifyContent: 'flex-end',
     },
-    // Estilo para mensajes de otros - alineados a la izquierda
     otherMessage: {
         justifyContent: 'flex-start',
     },
-    // Contenedor del avatar circular
+
+    // Avatar
     avatar: {
         width: 32,
         height: 32,
         borderRadius: 16,
         marginRight: 8,
         overflow: 'hidden',
+        alignSelf: 'flex-end',
+        marginBottom: 4,
     },
-    // Imagen del avatar que ocupa todo el contenedor
     avatarImage: {
         width: '100%',
         height: '100%',
         resizeMode: 'cover',
     },
-    // Burbuja base del mensaje con padding y bordes redondeados
+
+    // Burbuja del mensaje
     bubble: {
         maxWidth: '75%',
         paddingHorizontal: 12,
         paddingVertical: 8,
         borderRadius: 18,
         position: 'relative',
-        marginBottom: 5,
+        marginBottom: 2,
     },
-    // Estilo específico para burbujas de mensajes propios (color rosa)
     ownBubble: {
         backgroundColor: '#F8BBD9',
-        borderBottomRightRadius: 4, // Cola de la burbuja hacia la derecha
+        borderBottomRightRadius: 4,
     },
-    // Estilo específico para burbujas de otros usuarios (color gris)
     otherBubble: {
         backgroundColor: '#E5E5EA',
-        borderBottomLeftRadius: 4, // Cola de la burbuja hacia la izquierda
+        borderBottomLeftRadius: 4,
     },
-    // Texto principal del mensaje
+    bubbleWithImage: {
+        paddingHorizontal: 8,
+        paddingVertical: 8,
+    },
+    typingBubble: {
+        paddingVertical: 12,
+        minWidth: 80,
+    },
+
+    // Información del remitente
+    senderName: {
+        fontSize: 12,
+        color: '#666666',
+        fontFamily: 'Poppins-Medium',
+        marginBottom: 4,
+    },
+
+    // Texto del mensaje
     messageText: {
         fontSize: 16,
         lineHeight: 20,
         fontFamily: 'Poppins-Regular',
     },
-    // Color del texto para mensajes propios
     ownText: {
         color: '#000000',
     },
-    // Color del texto para mensajes de otros
     otherText: {
-        color: '#000000'
+        color: '#000000',
     },
-    // Estilo base para el timestamp
+    messageTextWithImage: {
+        marginTop: 4,
+    },
+
+    // Imagen del mensaje
+    messageImage: {
+        width: 200,
+        height: 150,
+        borderRadius: 12,
+        marginBottom: 4,
+    },
+
+    // Contenedor de tiempo y estado
+    timeStatusContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        marginTop: 4,
+    },
+
+    // Tiempo del mensaje
     timeText: {
         fontSize: 12,
-        marginTop: 4,
-        fontFamily: 'Poppins-Regular'
+        fontFamily: 'Poppins-Regular',
     },
-    // Estilo específico para timestamp de mensajes de otros
+    ownTime: {
+        color: '#666666',
+        textAlign: 'right',
+    },
     otherTime: {
         color: '#666666',
         textAlign: 'left',
     },
-    // Estilo para imágenes dentro del mensaje
-    messageImage: {
-        width: 150,
-        height: 150,
-        borderRadius: 12,
-        marginBottom: 8,
-        resizeMode: 'cover',
+
+    // Estado del mensaje
+    statusContainer: {
+        marginLeft: 4,
+        minWidth: 16,
+        alignItems: 'center',
+    },
+    statusRead: {
+        fontSize: 12,
+        color: '#4A90E2',
+        fontWeight: 'bold',
+    },
+    statusDelivered: {
+        fontSize: 12,
+        color: '#999999',
+        fontWeight: 'bold',
+    },
+    statusSending: {
+        fontSize: 12,
+        color: '#CCCCCC',
+    },
+
+    // Indicador de escritura
+    typingIndicator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    typingText: {
+        fontSize: 14,
+        color: '#666666',
+        fontFamily: 'Poppins-Regular',
+        fontStyle: 'italic',
+        marginRight: 8,
+    },
+    typingDots: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    dot: {
+        width: 4,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: '#666666',
+        marginHorizontal: 1,
+    },
+    dot1: {
+        opacity: 0.4,
+    },
+    dot2: {
+        opacity: 0.7,
+    },
+    dot3: {
+        opacity: 1,
     },
 });
 

@@ -1,5 +1,4 @@
 import React from 'react';
-// ELIMINA esta línea: import OverlayBackdrop from '../OverlayBackdrop';
 
 const DeleteMessageModal = ({
     isOpen,
@@ -14,20 +13,20 @@ const DeleteMessageModal = ({
 
     return (
         <div 
-            className="fixed inset-0 flex items-center justify-center"
+            className="fixed inset-0 w-full h-full flex items-center justify-center"
             style={{ 
-                zIndex: 99999, // Mismo z-index que tu modal de autenticación funcional
-                backgroundColor: 'rgba(0, 0, 0, 0.5)' 
+                zIndex: 999999, // Z-index extremadamente alto
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                margin: 0,
+                padding: 0
             }}
+            onClick={onClose}
         >
-            {/* Overlay de fondo que cubre todo */}
-            <div 
-                className="absolute inset-0 w-full h-full"
-                style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-                onClick={onClose}
-                aria-hidden="true"
-            />
-            
             {/* Contenido del modal */}
             <div 
                 className={`relative bg-white rounded-lg shadow-2xl ${compact ? 'max-w-sm w-full mx-4' : 'max-w-md w-full mx-4'} transform transition-all duration-300 ease-out border border-gray-200 z-10`}

@@ -29,7 +29,7 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   position: relative;
   width: 100%;
-  z-index: 1001 !important; 
+  z-index: 1001 !important;
 }
 
 .search-container form {
@@ -40,7 +40,8 @@
 
 .search-input {
   flex: 1;
-  width: 100%; /* Asegurar que ocupe todo el ancho disponible */
+  width: 100%;
+  /* Asegurar que ocupe todo el ancho disponible */
   padding: 10px 50px 10px 15px;
   border: 1px solid #e5e7eb;
   border-radius: 9999px;
@@ -49,7 +50,8 @@
   transition: border-color 0.2s ease;
   position: relative;
   z-index: 1;
-  box-sizing: border-box; /* Incluir padding en el ancho total */
+  box-sizing: border-box;
+  /* Incluir padding en el ancho total */
 }
 
 .search-input:focus {
@@ -79,7 +81,8 @@
   top: 100%;
   left: 0;
   right: 0;
-  z-index: 1002 !important; /* Forzar z-index alto */
+  z-index: 1002 !important;
+  /* Forzar z-index alto */
   background: white;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
@@ -87,13 +90,14 @@
   margin-top: 4px;
   max-height: 400px;
   overflow-y: auto;
-  pointer-events: auto; /* Asegurar que los eventos de mouse funcionen */
+  pointer-events: auto;
+  /* Asegurar que los eventos de mouse funcionen */
 }
 
 /* Asegurar que el dropdown aparezca sobre otros elementos en todas las pantallas */
 .search-container {
   position: relative;
-  z-index: 10000 !important;
+  z-index: 1001 !important;
 }
 
 /* Estilos para elementos del dropdown con mejor interactividad */
@@ -102,10 +106,12 @@
   border-bottom: 1px solid #f3f4f6;
   cursor: pointer;
   transition: background-color 0.2s ease;
-  user-select: none; /* Prevenir selección de texto */
-  pointer-events: auto; /* Asegurar que los clics funcionen */
+  user-select: none;
+  /* Prevenir selección de texto */
+  pointer-events: auto;
+  /* Asegurar que los clics funcionen */
   position: relative;
-  z-index: 10001;
+  z-index: 1003 !important;
 }
 
 .search-dropdown-item:hover {
@@ -113,7 +119,8 @@
 }
 
 .search-dropdown-item:active {
-  background-color: #f3f4f6; /* Feedback visual en el clic */
+  background-color: #f3f4f6;
+  /* Feedback visual en el clic */
 }
 
 .search-dropdown-item:last-child {
@@ -207,16 +214,17 @@ header {
 /* Mejoras específicas para el dropdown en desktop */
 @media (min-width: 768px) {
   .search-container {
-    z-index: 10001 !important;
+    z-index: 1001 !important;
   }
-  
+
   .search-dropdown {
-    z-index: 10002 !important;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2); /* Sombra más prominente en desktop */
+    z-index: 1002 !important;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    /* Sombra más prominente en desktop */
   }
-  
+
   .search-dropdown-item {
-    z-index: 10003 !important;
+    z-index: 1003 !important;
   }
 }
 
@@ -226,7 +234,7 @@ header {
     font-size: 12px;
     letter-spacing: 3px;
   }
-  
+
   .slogan {
     font-size: 8px;
     letter-spacing: 1px;
@@ -250,7 +258,7 @@ header {
     font-size: 14px;
     letter-spacing: 4px;
   }
-  
+
   .slogan {
     font-size: 9px;
     letter-spacing: 1px;
@@ -268,7 +276,7 @@ header {
     font-size: 16px;
     letter-spacing: 5px;
   }
-  
+
   .slogan {
     font-size: 10px;
     letter-spacing: 1.5px;
@@ -290,7 +298,7 @@ header {
     font-size: 17px;
     letter-spacing: 6px;
   }
-  
+
   .slogan {
     font-size: 11px;
     letter-spacing: 2px;
@@ -308,7 +316,7 @@ header {
     font-size: 18px;
     letter-spacing: 7px;
   }
-  
+
   .slogan {
     font-size: 12px;
     letter-spacing: 2px;

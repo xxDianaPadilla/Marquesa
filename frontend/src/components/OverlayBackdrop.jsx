@@ -1,7 +1,6 @@
 import React, { useEffect } from "react";
 
 const OverlayBackdrop = ({ isVisible, children, onClose }) => {
-    
     // Bloquear/desbloquear scroll de la página principal
     useEffect(() => {
         if (isVisible) {
@@ -37,15 +36,18 @@ const OverlayBackdrop = ({ isVisible, children, onClose }) => {
     if (!isVisible) return null;
 
     return (
-        <div className="fixed inset-0 flex items-center justify-center" style={{zIndex: 99999 }}>
+        <div 
+            className="fixed inset-0 flex items-center justify-center" 
+            style={{ zIndex: 999999 }} 
+        >
             {/* Backdrop con efecto responsivo */}
             <div 
                 className="absolute inset-0"
                 onClick={onClose}
-                style={{ 
-                    background: 'rgba(0, 0, 0, 0.5)', // Más opaco para mejor contraste en móvil
-                    backdropFilter: 'blur(2px)', // Blur más suave
-                    WebkitBackdropFilter: 'blur(2px)' // Safari support
+                style={{
+                    background: 'rgba(0, 0, 0, 0.5)',
+                    backdropFilter: 'blur(2px)',
+                    WebkitBackdropFilter: 'blur(2px)'
                 }}
             />
             

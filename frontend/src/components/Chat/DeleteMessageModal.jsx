@@ -2,11 +2,11 @@ import React from 'react'; // Importamos React
 import OverlayBackdrop from '../OverlayBackdrop'; // Inmportamos fondo para desaparecer el fondo
 
 // Componente de confirmación de eliminación de elementos
-const DeleteMessageModal = ({ 
-    isOpen, 
-    onClose, 
-    onConfirm, 
-    message, 
+const DeleteMessageModal = ({
+    isOpen,
+    onClose,
+    onConfirm,
+    message,
     isDeleting = false,
     formatTime,
     compact = false
@@ -17,9 +17,9 @@ const DeleteMessageModal = ({
     return (
         <OverlayBackdrop isVisible={true} onClose={onClose}>
             <div className="flex items-center justify-center min-h-screen p-4">
-                <div 
+                <div
                     className={`bg-white rounded-lg shadow-2xl ${compact ? 'max-w-sm w-full mx-4' : 'max-w-md w-full mx-4'} transform transition-all duration-300 ease-out border border-gray-200`}
-                    style={{zIndex: 100000  }}
+                    style={{ zIndex: 1000000 }} 
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Header del modal */}
@@ -58,7 +58,7 @@ const DeleteMessageModal = ({
                             <p className="text-gray-700 mb-3" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                 ¿Estás seguro de que quieres eliminar este mensaje?
                             </p>
-                            
+
                             {/* Preview del mensaje a eliminar */}
                             {message && (
                                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">

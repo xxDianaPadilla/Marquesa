@@ -37,7 +37,7 @@ const OverlayBackdrop = ({ isVisible, children, onClose }) => {
     if (!isVisible) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 flex items-center justify-center" style={{zIndex: 99999 }}>
             {/* Backdrop con efecto responsivo */}
             <div 
                 className="absolute inset-0"

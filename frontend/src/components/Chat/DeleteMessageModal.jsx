@@ -19,6 +19,7 @@ const DeleteMessageModal = ({
             <div className="flex items-center justify-center min-h-screen p-4">
                 <div 
                     className={`bg-white rounded-lg shadow-2xl ${compact ? 'max-w-sm w-full mx-4' : 'max-w-md w-full mx-4'} transform transition-all duration-300 ease-out border border-gray-200`}
+                    style={{zIndex: 100000  }}
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Header del modal */}

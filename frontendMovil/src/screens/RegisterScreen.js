@@ -243,7 +243,7 @@ const RegisterScreen = ({ navigation }) => {
                         {/* Campo de entrada para la fecha de nacimiento */}
                         <View style={styles.inputGroup}>
                             <PinkInputs
-                                placeholder="Fecha de nacimiento (DD/MM/YYYY)"
+                                placeholder="Fecha de nacimiento"
                                 value={formData.fechaNacimiento}
                                 onChangeText={(value) => handleInputChange('fechaNacimiento', value)}
                                 icon={calendarIcon}

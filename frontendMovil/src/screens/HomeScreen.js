@@ -5,18 +5,17 @@ import {
     Image,
     StyleSheet,
     Text,
-    FlatList,
     Dimensions,
     ScrollView,
     Alert,
     RefreshControl,
-    Platform
 } from "react-native";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import perfilIcon from "../images/perfilIcon.png";
 import favoritesIcon from "../images/favoritesIcon.png";
 import ProductCard from "../components/Products/ProductCard";
+import { PersonalizableSection } from "../components/PersonalizableSection";
 import useFetchProducts from "../hooks/useFetchProducts";
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import PriceFilterModal from '../components/PriceFilterModal';
@@ -67,14 +66,14 @@ export default function HomeScreen({ navigation }) {
     const { alertState, showSuccessToast, showErrorToast, hideToast } = useAlert();
 
     // Estados locales del componente
-    const [selectedCategory, setSelectedCategory] = useState('Todo'); // Categoría seleccionada actualmente
-    const [refreshing, setRefreshing] = useState(false); // Estado de pull-to-refresh
-    const [addingToCart, setAddingToCart] = useState(null); // ID del producto que se está agregando al carrito
-    const [removingFromCart, setRemovingFromCart] = useState(null); // ID del producto que se está removiendo del carrito
+    const [selectedCategory, setSelectedCategory] = useState('Todo'); 
+    const [refreshing, setRefreshing] = useState(false); 
+    const [addingToCart, setAddingToCart] = useState(null); 
+    const [removingFromCart, setRemovingFromCart] = useState(null); 
 
     // Estados para el modal de filtros de precio
-    const [showPriceFilter, setShowPriceFilter] = useState(false); // Mostrar/ocultar modal
-    const [priceRange, setPriceRange] = useState({ min: 0, max: 100 }); // Rango de precios actual
+    const [showPriceFilter, setShowPriceFilter] = useState(false);
+    const [priceRange, setPriceRange] = useState({ min: 0, max: 100 });
 
     // Lista de categorías disponibles
     const categories = ['Todo', 'Naturales', 'Secas', 'Tarjetas', 'Cuadros', 'Giftboxes'];
@@ -225,7 +224,7 @@ export default function HomeScreen({ navigation }) {
 
             // Verificar si el producto ya está en el carrito
             const productInCart = isInCart(product._id);
-            
+
             if (productInCart) {
                 // Si está en el carrito, removerlo
                 await handleRemoveFromCart(product);
@@ -332,162 +331,10 @@ export default function HomeScreen({ navigation }) {
                 </TouchableOpacity>
             </View>
 
-            <View style={styles.titleContainer}>
-                {isAuthenticated && userInfo?.name ? (
-                    // Título personalizado cuando el usuario está autenticado
-                    <>
-                        <Text style={styles.greetingText}>¡Hola, {userInfo.name}!</Text>
-                        <Text style={styles.mainTitle}>Descubre formas de</Text>
-                        <Text style={styles.mainTitle}>sorprender</Text>
-                    </>
-                ) : (
-                    // Título por defecto cuando no está autenticado
-                    <>
-                        <Text style={styles.mainTitle}>Descubre formas de</Text>
-                        <Text style={styles.mainTitle}>sorprender</Text>
-                    </>
-                )}
-            </View>
-
-            {/* Contenedor de búsqueda y filtros */}
-            <View style={styles.searchWrapper}>
-                {/* Botón para abrir filtros de precio */}
-                <TouchableOpacity
-                    style={styles.filterIconButton}
-                    onPress={() => setShowPriceFilter(true)}
-                >
-                    <Icon name="tune" size={isSmallDevice ? 18 : 20} color="#999" />
-                </TouchableOpacity>
-
-                {/* Barra de búsqueda (navegación a pantalla de búsqueda) */}
-                <View style={styles.searchContainer}>
-                    <TouchableOpacity
-                        style={styles.searchTouchable}
-                        onPress={() => navigation.navigate('Search')}
-                        activeOpacity={0.7}
-                    >
-                        <Text style={styles.searchPlaceholder}>¿Qué estás buscando?</Text>
-                        <View style={styles.searchButton}>
-                            <Icon name="search" size={isSmallDevice ? 18 : 20} color="#fff" />
-                        </View>
-                    </TouchableOpacity>
-                </View>
-            </View>
-
-            {/* Scroll horizontal de categorías */}
-            <View style={styles.categoryScrollContainer}>
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.categoryContainer}
-                    style={styles.categoryScrollView}
-                    bounces={true}
-                    decelerationRate="fast"
-                    snapToAlignment="start"
-                    snapToInterval={undefined}
-                >
-                    {categories.map((category, index) => (
-                        <TouchableOpacity
-                            key={category}
-                            style={[
-                                styles.categoryButton,
-                                // Aplicar estilo activo si está seleccionada
-                                selectedCategory === category && styles.categoryButtonActive,
-                                // Remover margen del último elemento
-                                index === categories.length - 1 && styles.lastCategoryButton
-                            ]}
-                            onPress={() => setSelectedCategory(category)}
-                            activeOpacity={0.7}
-                        >
-                            <Text
-                                style={[
-                                    styles.categoryText,
-                                    // Cambiar color de texto si está activa
-                                    selectedCategory === category && styles.categoryTextActive
-                                ]}
-                                numberOfLines={1}
-                                adjustsFontSizeToFit={isSmallDevice}
-                                minimumFontScale={0.85}
-                            >
-                                {category}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </ScrollView>
-            </View>
-
-            {/* Indicador visual de filtros aplicados */}
-            {(priceRange.min > 0 || priceRange.max < 100) && (
-                <View style={styles.filterIndicatorContainer}>
-                    <View style={styles.filterChip}>
-                        <Icon name="filter-list" size={16} color="#4A4170" />
-                        <Text style={styles.filterChipText}>
-                            Precio: ${priceRange.min} - ${priceRange.max}
-                        </Text>
-                        {/* Botón para limpiar filtros */}
-                        <TouchableOpacity
-                            onPress={() => setPriceRange({ min: 0, max: 100 })}
-                            style={styles.filterChipClose}
-                        >
-                            <Icon name="close" size={14} color="#666" />
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            )}
-
-            {/* Banner de error del carrito */}
-            {cartError && (
-                <View style={styles.errorContainer}>
-                    <Icon name="error-outline" size={16} color="#e74c3c" />
-                    <Text style={styles.errorText}>{cartError}</Text>
-                    {/* Botón para cerrar el error */}
-                    <TouchableOpacity
-                        onPress={clearCartError}
-                        style={styles.closeButton}
-                    >
-                        <Icon name="close" size={16} color="#e74c3c" />
-                    </TouchableOpacity>
-                </View>
-            )}
-
-            {/* Banner de error de favoritos */}
-            {isAuthenticated && favoritesError && (
-                <View style={styles.errorContainer}>
-                    <Icon name="error-outline" size={16} color="#e74c3c" />
-                    <Text style={styles.errorText}>{favoritesError}</Text>
-                    {/* Botón para reintentar cargar favoritos */}
-                    <TouchableOpacity
-                        onPress={() => getFavorites()}
-                        style={styles.retryButton}
-                    >
-                        <Text style={styles.retryButtonText}>Reintentar</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
-
-            {/* Banner de carga cuando se actualiza el carrito */}
-            {updating && (
-                <View style={styles.loadingBanner}>
-                    <Icon name="shopping-cart" size={16} color="#4A4170" />
-                    <Text style={styles.loadingBannerText}>Actualizando carrito...</Text>
-                </View>
-            )}
-
-            {/* Lista principal de productos */}
-            <FlatList
-                data={filteredProducts}
-                renderItem={renderProduct}
-                keyExtractor={(item) => item._id}
-                numColumns={2} // Mostrar 2 columnas
-                contentContainerStyle={styles.productsContainer}
+            {/* ScrollView principal que contiene todo el contenido */}
+            <ScrollView
+                style={styles.mainScrollView}
                 showsVerticalScrollIndicator={false}
-                columnWrapperStyle={styles.row}
-                // Optimizaciones de rendimiento
-                initialNumToRender={10}
-                maxToRenderPerBatch={10}
-                windowSize={10}
-                removeClippedSubviews={true}
-                // Pull-to-refresh
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing}
@@ -496,26 +343,191 @@ export default function HomeScreen({ navigation }) {
                         tintColor="#4A4170"
                     />
                 }
-                // Optimización de layout para mejor rendimiento
-                getItemLayout={(data, index) => ({
-                    length: 200,
-                    offset: 200 * Math.floor(index / 2),
-                    index,
-                })}
-                // Componente cuando no hay productos
-                ListEmptyComponent={
-                    loading ? (
+            >
+                {/* Título principal */}
+                <View style={styles.titleContainer}>
+                    {isAuthenticated && userInfo?.name ? (
+                        // Título personalizado cuando el usuario está autenticado
+                        <>
+                            <Text style={styles.greetingText}>¡Hola, {userInfo.name}!</Text>
+                            <Text style={styles.mainTitle}>Descubre formas de</Text>
+                            <Text style={styles.mainTitle}>sorprender</Text>
+                        </>
+                    ) : (
+                        // Título por defecto cuando no está autenticado
+                        <>
+                            <Text style={styles.mainTitle}>Descubre formas de</Text>
+                            <Text style={styles.mainTitle}>sorprender</Text>
+                        </>
+                    )}
+                </View>
+
+                {/* Contenedor de búsqueda y filtros */}
+                <View style={styles.searchWrapper}>
+                    {/* Botón para abrir filtros de precio */}
+                    <TouchableOpacity
+                        style={styles.filterIconButton}
+                        onPress={() => setShowPriceFilter(true)}
+                    >
+                        <Icon name="tune" size={isSmallDevice ? 18 : 20} color="#999" />
+                    </TouchableOpacity>
+
+                    {/* Barra de búsqueda (navegación a pantalla de búsqueda) */}
+                    <View style={styles.searchContainer}>
+                        <TouchableOpacity
+                            style={styles.searchTouchable}
+                            onPress={() => navigation.navigate('Search')}
+                            activeOpacity={0.7}
+                        >
+                            <Text style={styles.searchPlaceholder}>¿Qué estás buscando?</Text>
+                            <View style={styles.searchButton}>
+                                <Icon name="search" size={isSmallDevice ? 18 : 20} color="#fff" />
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                {/* Scroll horizontal de categorías */}
+                <View style={styles.categoryScrollContainer}>
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.categoryContainer}
+                        style={styles.categoryScrollView}
+                        bounces={true}
+                        decelerationRate="fast"
+                        snapToAlignment="start"
+                        snapToInterval={undefined}
+                    >
+                        {categories.map((category, index) => (
+                            <TouchableOpacity
+                                key={category}
+                                style={[
+                                    styles.categoryButton,
+                                    // Aplicar estilo activo si está seleccionada
+                                    selectedCategory === category && styles.categoryButtonActive,
+                                    // Remover margen del último elemento
+                                    index === categories.length - 1 && styles.lastCategoryButton
+                                ]}
+                                onPress={() => setSelectedCategory(category)}
+                                activeOpacity={0.7}
+                            >
+                                <Text
+                                    style={[
+                                        styles.categoryText,
+                                        // Cambiar color de texto si está activa
+                                        selectedCategory === category && styles.categoryTextActive
+                                    ]}
+                                    numberOfLines={1}
+                                    adjustsFontSizeToFit={isSmallDevice}
+                                    minimumFontScale={0.85}
+                                >
+                                    {category}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                </View>
+
+                {/* Indicador visual de filtros aplicados */}
+                {(priceRange.min > 0 || priceRange.max < 100) && (
+                    <View style={styles.filterIndicatorContainer}>
+                        <View style={styles.filterChip}>
+                            <Icon name="filter-list" size={16} color="#4A4170" />
+                            <Text style={styles.filterChipText}>
+                                Precio: ${priceRange.min} - ${priceRange.max}
+                            </Text>
+                            {/* Botón para limpiar filtros */}
+                            <TouchableOpacity
+                                onPress={() => setPriceRange({ min: 0, max: 100 })}
+                                style={styles.filterChipClose}
+                            >
+                                <Icon name="close" size={14} color="#666" />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                )}
+
+                {/* Banner de error del carrito */}
+                {cartError && (
+                    <View style={styles.errorContainer}>
+                        <Icon name="error-outline" size={16} color="#e74c3c" />
+                        <Text style={styles.errorText}>{cartError}</Text>
+                        {/* Botón para cerrar el error */}
+                        <TouchableOpacity
+                            onPress={clearCartError}
+                            style={styles.closeButton}
+                        >
+                            <Icon name="close" size={16} color="#e74c3c" />
+                        </TouchableOpacity>
+                    </View>
+                )}
+
+                {/* Banner de error de favoritos */}
+                {isAuthenticated && favoritesError && (
+                    <View style={styles.errorContainer}>
+                        <Icon name="error-outline" size={16} color="#e74c3c" />
+                        <Text style={styles.errorText}>{favoritesError}</Text>
+                        {/* Botón para reintentar cargar favoritos */}
+                        <TouchableOpacity
+                            onPress={() => getFavorites()}
+                            style={styles.retryButton}
+                        >
+                            <Text style={styles.retryButtonText}>Reintentar</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+
+                {/* Banner de carga cuando se actualiza el carrito */}
+                {updating && (
+                    <View style={styles.loadingBanner}>
+                        <Icon name="shopping-cart" size={16} color="#4A4170" />
+                        <Text style={styles.loadingBannerText}>Actualizando carrito...</Text>
+                    </View>
+                )}
+
+                {/* Grid de productos */}
+                <View style={styles.productsContainer}>
+                    {loading ? (
                         <View style={styles.loadingContainer}>
                             <Text style={styles.loadingText}>Cargando productos...</Text>
                         </View>
-                    ) : (
+                    ) : filteredProducts.length === 0 ? (
                         <View style={styles.emptyContainer}>
                             <Icon name="inventory" size={48} color="#ccc" />
                             <Text style={styles.emptyText}>No se encontraron productos</Text>
                         </View>
-                    )
-                }
-            />
+                    ) : (
+                        <View style={styles.productsGrid}>
+                            {filteredProducts.map((product, index) => (
+                                <View
+                                    key={product._id}
+                                    style={[
+                                        styles.cardWrapper,
+                                        { marginRight: index % 2 === 0 ? elementGap : 0 }
+                                    ]}
+                                >
+                                    <ProductCard
+                                        product={product}
+                                        onPress={handleProductPress}
+                                        onAddToCart={handleAddToCart}
+                                        navigation={navigation}
+                                        isAddingToCart={addingToCart === product._id || updating}
+                                        isRemovingFromCart={removingFromCart === product._id}
+                                        productInCart={isInCart(product._id)}
+                                    />
+                                </View>
+                            ))}
+                        </View>
+                    )}
+                </View>
+
+                {/* Sección de productos personalizables */}
+                <PersonalizableSection navigation={navigation} />
+
+                {/* Espacio adicional para evitar que el contenido quede oculto detrás de la navegación */}
+                <View style={styles.bottomSpacer} />
+            </ScrollView>
 
             {/* Modal de filtro de precios */}
             <PriceFilterModal
@@ -593,7 +605,12 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: "#ffffff",
-        paddingTop: isSmallDevice ? 45 : 50, // Espaciado superior responsivo
+        paddingTop: isSmallDevice ? 45 : 50,
+    },
+
+    // ScrollView principal
+    mainScrollView: {
+        flex: 1,
     },
 
     // Estilos del header
@@ -876,16 +893,21 @@ const styles = StyleSheet.create({
     productsContainer: {
         paddingHorizontal: horizontalPadding,
         paddingTop: 5,
-        paddingBottom: isSmallDevice ? 90 : 100, // Espacio para la navegación inferior
     },
-    row: {
+    productsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
         justifyContent: 'space-between',
-        marginBottom: isSmallDevice ? 12 : 16,
-        paddingHorizontal: 2,
     },
     cardWrapper: {
         width: (screenWidth - (horizontalPadding * 2) - elementGap - 4) / 2,
         minHeight: isSmallDevice ? 180 : 200,
+        marginBottom: isSmallDevice ? 12 : 16,
+    },
+
+    // Espaciador inferior
+    bottomSpacer: {
+        height: isSmallDevice ? 100 : 120,
     },
 
     // Estilos de la navegación inferior

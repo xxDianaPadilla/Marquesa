@@ -81,8 +81,7 @@
   top: 100%;
   left: 0;
   right: 0;
-  z-index: 1002 !important;
-  /* Forzar z-index alto */
+  z-index: 1002 !important; /* REDUCIR de valores más altos */
   background: white;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
@@ -91,13 +90,17 @@
   max-height: 400px;
   overflow-y: auto;
   pointer-events: auto;
-  /* Asegurar que los eventos de mouse funcionen */
 }
 
 /* Asegurar que el dropdown aparezca sobre otros elementos en todas las pantallas */
 .search-container {
+  display: flex;
+  background-color: #fff;
+  border-radius: 9999px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   position: relative;
-  z-index: 1001 !important;
+  width: 100%;
+  z-index: 1001 !important; /* REDUCIR de valores más altos */
 }
 
 /* Estilos para elementos del dropdown con mejor interactividad */
@@ -111,7 +114,7 @@
   pointer-events: auto;
   /* Asegurar que los clics funcionen */
   position: relative;
-  z-index: 1003 !important;
+  z-index: auto;
 }
 
 .search-dropdown-item:hover {
@@ -208,7 +211,7 @@
 /* Asegurar que el header tenga un z-index apropiado */
 header {
   position: relative;
-  z-index: 1000;
+  z-index: 1000; /* ASEGURAR que sea menor que 999999 */
 }
 
 /* Mejoras específicas para el dropdown en desktop */

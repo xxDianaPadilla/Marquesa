@@ -11,9 +11,8 @@ const SearchDropdown = ({
 }) => {
     const navigate = useNavigate();
 
-    // Función para manejar clic en un producto específico - MEJORADA
+    // Función para manejar clic en un producto específico
     const handleProductClick = (product, event) => {
-        // Prevenir propagación y comportamiento por defecto
         if (event) {
             event.preventDefault();
             event.stopPropagation();
@@ -21,17 +20,14 @@ const SearchDropdown = ({
         
         console.log('SearchDropdown - Product clicked:', product._id);
         
-        // Llamar a la función de selección del padre
         if (onProductSelect) {
             onProductSelect(product);
         }
         
-        // Cerrar el dropdown
         if (onClose) {
             onClose();
         }
         
-        // Navegación directa con un pequeño delay para asegurar que se ejecute
         setTimeout(() => {
             console.log('SearchDropdown - Navigating to product:', product._id);
             navigate(`/ProductDetail/${product._id}`);
@@ -49,7 +45,6 @@ const SearchDropdown = ({
             onClose();
         }
         
-        // Navegar a página de resultados de búsqueda
         navigate(`/buscar?q=${encodeURIComponent(searchTerm)}`);
     };
 
@@ -60,12 +55,13 @@ const SearchDropdown = ({
 
     return (
         <div 
-            className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-96 overflow-y-auto"
+            className="search-dropdown-container absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-96 overflow-y-auto"
             style={{ 
-                zIndex: 10000,
+                // ✅ CORREGIDO: Z-index mucho menor que los modales
+                zIndex: 1002, // Reducido de 10000 a 1002
                 pointerEvents: 'auto'
             }}
-            onClick={(e) => e.stopPropagation()} // Prevenir que el clic se propague al contenedor padre
+            onClick={(e) => e.stopPropagation()}
         >
             {/* Estado de carga */}
             {isLoading && (
@@ -85,12 +81,13 @@ const SearchDropdown = ({
                         {searchResults.slice(0, 5).map((product) => (
                             <div
                                 key={product._id || product.id}
-                                className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
+                                className="search-dropdown-item p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
                                 onClick={(e) => handleProductClick(product, e)}
-                                onMouseDown={(e) => e.preventDefault()} // Prevenir que el mousedown interfiera
+                                onMouseDown={(e) => e.preventDefault()}
                                 style={{ 
                                     userSelect: 'none',
-                                    pointerEvents: 'auto'
+                                    pointerEvents: 'auto',
+                                    // ✅ NO agregar z-index adicional aquí
                                 }}
                             >
                                 <div className="flex items-center space-x-3">

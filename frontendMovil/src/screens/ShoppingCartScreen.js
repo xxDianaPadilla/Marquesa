@@ -25,7 +25,7 @@ import ShoppingCartCards from '../components/ShoppingCartCards';
 import { ConfirmationDialog } from '../components/CustomAlerts'; 
 import { useAlert } from '../hooks/useAlert'; 
 
-const ShoppingCart = ({ navigation }) => {
+const ShoppingCart = ({ navigation, route }) => {
   // Extraer funciones y estados del contexto de autenticación
   const { isAuthenticated, user } = useAuth();
   
@@ -52,6 +52,7 @@ const ShoppingCart = ({ navigation }) => {
   const [discountCode, setDiscountCode] = useState(''); // Código de descuento ingresado por el usuario
   const [applyingDiscount, setApplyingDiscount] = useState(false); // Estado de carga al aplicar descuento
   const [updatingItems, setUpdatingItems] = useState(new Set()); // Items que están siendo actualizados
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false); // Para controlar la doble carga
 
   // Hook personalizado para manejar alertas y confirmaciones
   const {
@@ -71,21 +72,69 @@ const ShoppingCart = ({ navigation }) => {
     }
   };
 
-  // ✅ Effect para cargar el carrito al montar el componente
   useEffect(() => {
-    if (isAuthenticated && user?.id && getActiveCart) {
-      getActiveCart();
-    }
-  }, [isAuthenticated, user?.id]); // ✅ Dependencias específicas y estables
+    const handleNavigationRefresh = async () => {
+      if (route.params?.refresh && isAuthenticated && user?.id && getActiveCart) {
+        console.log('Refrescando carrito por navegación con parámetros:', route.params);
+        
+        // Forzar recarga inmediata
+        await getActiveCart(true);
+        
+        // Limpiar parámetros de navegación para evitar recargas innecesarias
+        if (navigation.setParams) {
+          navigation.setParams({ refresh: undefined, timestamp: undefined });
+        }
+      }
+    };
 
-  // ✅ Effect para limpiar errores cuando el componente se desmonte
+    handleNavigationRefresh();
+  }, [route.params?.refresh, route.params?.timestamp, isAuthenticated, user?.id]);
+
+  useEffect(() => {
+    const performDoubleLoad = async () => {
+      if (isAuthenticated && user?.id && getActiveCart) {
+        console.log('Iniciando doble carga del carrito...');
+        
+        // Primera carga
+        console.log('Primera carga del carrito');
+        await getActiveCart(true);
+        
+        // Esperar un momento antes de la segunda carga
+        setTimeout(async () => {
+          console.log('Segunda carga del carrito (verificación de nuevos items)');
+          await getActiveCart(true);
+          setInitialLoadComplete(true);
+          console.log('Doble carga completada');
+        }, 1500); // Esperar 1.5 segundos antes de la segunda carga
+      }
+    };
+
+    // Solo hacer la doble carga si no se ha completado aún
+    if (!initialLoadComplete) {
+      performDoubleLoad();
+    }
+  }, [isAuthenticated, user?.id, initialLoadComplete]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', async () => {
+      console.log('📱 ShoppingCart recibió foco');
+      
+      if (isAuthenticated && user?.id && getActiveCart && initialLoadComplete) {
+        console.log('🔄 Refrescando carrito por foco de pantalla');
+        await getActiveCart(true);
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, isAuthenticated, user?.id, initialLoadComplete]);
+
   useEffect(() => {
     return () => {
       if (clearCartError) {
         clearCartError();
       }
     };
-  }, []); // ✅ Array vacío porque es cleanup
+  }, []); // Array vacío porque es cleanup
 
   // Effect para logging y debugging - Ver estadísticas del carrito
   useEffect(() => {
@@ -101,17 +150,26 @@ const ShoppingCart = ({ navigation }) => {
         quantity: item.quantity
       })));
     }
-  }, [cartItems.length]); // ✅ Solo depende de la longitud del array
+  }, [cartItems.length]);
 
   // Función para refrescar el carrito mediante pull-to-refresh
   const onRefresh = async () => {
     if (!isAuthenticated || !getActiveCart) return;
 
+    console.log('Pull-to-refresh activado');
     setRefreshing(true);
     try {
-      await getActiveCart(true); // true para forzar recarga
+      // Hacer doble refresh para asegurar datos actualizados
+      await getActiveCart(true);
+      
+      // Segunda verificación después de un breve delay
+      setTimeout(async () => {
+        await getActiveCart(true);
+        console.log('Pull-to-refresh completado con doble verificación');
+      }, 800);
+      
     } catch (error) {
-      console.error('Error al refrescar carrito:', error);
+      console.error('❌ Error al refrescar carrito:', error);
     } finally {
       setRefreshing(false);
     }
@@ -150,6 +208,11 @@ const ShoppingCart = ({ navigation }) => {
 
       if (result && result.success) {
         showToast(`Cantidad actualizada: ${newQuantity}`);
+        
+        // Recargar carrito después de actualización exitosa
+        setTimeout(() => {
+          getActiveCart(true);
+        }, 500);
       } else {
         Alert.alert('Error', result?.message || 'No se pudo actualizar la cantidad');
       }
@@ -196,6 +259,11 @@ const ShoppingCart = ({ navigation }) => {
 
           if (result && result.success) {
             showSuccessToast(`${itemName} eliminado del carrito`);
+            
+            // Recargar carrito después de eliminación exitosa
+            setTimeout(() => {
+              getActiveCart(true);
+            }, 500);
           } else {
             showErrorToast(result?.message || 'No se pudo eliminar el producto');
           }
@@ -286,7 +354,7 @@ const ShoppingCart = ({ navigation }) => {
       <View style={styles.container}>
         {/* Header con botón de retroceso */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => navigation.navigate("Home")} style={styles.backButton}>
             <Image source={backIcon} style={{ width: 24, height: 24, resizeMode: 'contain' }} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Tu carrito</Text>
@@ -317,7 +385,7 @@ const ShoppingCart = ({ navigation }) => {
       <View style={styles.container}>
         {/* Header con botón de retroceso */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => navigation.navigate("Home")} style={styles.backButton}>
             <Image source={backIcon} style={{ width: 24, height: 24, resizeMode: 'contain' }} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Tu carrito</Text>
@@ -345,7 +413,7 @@ const ShoppingCart = ({ navigation }) => {
     <View style={styles.container}>
       {/* Header con título y botón de navegación */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.navigate("Home")} style={styles.backButton}>
           <Image source={backIcon} style={{ width: 24, height: 24, resizeMode: 'contain' }} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Tu carrito</Text>
@@ -363,6 +431,14 @@ const ShoppingCart = ({ navigation }) => {
         </View>
       )}
 
+      {/* ✅ NUEVO: Indicador de estado de carga doble */}
+      {!initialLoadComplete && (
+        <View style={styles.doubleLoadIndicator}>
+          <ActivityIndicator size="small" color="#4A4170" />
+          <Text style={styles.doubleLoadText}>Verificando nuevos elementos...</Text>
+        </View>
+      )}
+
       {/* ScrollView principal con RefreshControl */}
       <ScrollView
         style={styles.scrollContainer}
@@ -375,6 +451,7 @@ const ShoppingCart = ({ navigation }) => {
             onRefresh={onRefresh}
             colors={['#4A4170']}
             tintColor="#4A4170"
+            title="Actualizando carrito..."
           />
         }
       >
@@ -387,7 +464,7 @@ const ShoppingCart = ({ navigation }) => {
         )}
 
         {/* Estado cuando el carrito está vacío */}
-        {!cartLoading && cartItems.length === 0 && (
+        {!cartLoading && cartItems.length === 0 && initialLoadComplete && (
           <View style={styles.emptyStateContainer}>
             <Icon name="shopping-cart" size={80} color="#ccc" />
             <Text style={styles.emptyStateTitle}>Tu carrito está vacío</Text>
@@ -566,6 +643,24 @@ const styles = StyleSheet.create({
     color: '#e74c3c',
     marginLeft: 8,
     fontFamily: 'Poppins-Regular',
+  },
+  doubleLoadIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f0f4ff',
+    padding: 8,
+    marginHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4A4170',
+  },
+  doubleLoadText: {
+    fontSize: 12,
+    color: '#4A4170',
+    marginLeft: 8,
+    fontFamily: 'Poppins-Medium',
   },
   // Contenedor del ScrollView
   scrollContainer: {

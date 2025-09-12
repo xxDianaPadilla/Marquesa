@@ -32,34 +32,6 @@ const ShoppingCartCards = ({
         }
     };
 
-    // Componente para mostrar detalles de personalización
-    const CustomizationDetails = ({ item }) => {
-        const details = getCustomizationDetails(item);
-
-        if (!details) return null;
-
-        return (
-            <View style={styles.customizationContainer}>
-                <Text style={styles.customizationTitle}>🎨 Personalización:</Text>
-                {details.extraComments && (
-                    <Text style={styles.customizationText}>• {details.extraComments}</Text>
-                )}
-                {details.designDetails && (
-                    <Text style={styles.customizationText}>• Diseño: {details.designDetails}</Text>
-                )}
-                {details.materialPreferences && (
-                    <Text style={styles.customizationText}>• Material: {details.materialPreferences}</Text>
-                )}
-                {details.colorPreferences && (
-                    <Text style={styles.customizationText}>• Color: {details.colorPreferences}</Text>
-                )}
-                {details.sizePreferences && (
-                    <Text style={styles.customizationText}>• Tamaño: {details.sizePreferences}</Text>
-                )}
-            </View>
-        );
-    };
-
     // Componente para mostrar imagen o emoji personalizado
     const ProductImageOrEmoji = ({ item, isCustom }) => {
         if (isCustom) {
@@ -142,9 +114,6 @@ const ShoppingCartCards = ({
                                     {item.description}
                                 </Text>
                             )}
-
-                            {/* Detalles de personalización */}
-                            {isCustom && <CustomizationDetails item={item} />}
 
                         </View>
 

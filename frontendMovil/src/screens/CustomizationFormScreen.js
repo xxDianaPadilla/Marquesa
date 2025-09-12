@@ -31,7 +31,6 @@ export default function CustomizationFormScreen() {
         selectedProducts = [],
         productType = '',
         totalPrice = 0,
-        onComplete
     } = route.params || {};
 
     const [referenceImage, setReferenceImage] = useState(null);
@@ -61,16 +60,6 @@ export default function CustomizationFormScreen() {
             );
         }
     }, [selectedProducts, navigation]);
-
-    useEffect(() => {
-        console.log('CustomizationFormScreen recibió:', {
-            selectedProducts,
-            productType,
-            totalPrice,
-            hasOnComplete: !!onComplete,
-            userInfo: user // Debug del usuario
-        });
-    }, [selectedProducts, productType, totalPrice, onComplete, user]);
 
     // Solicitar permisos de cámara y galería al cargar el componente
     useEffect(() => {
@@ -215,8 +204,6 @@ export default function CustomizationFormScreen() {
         );
     };
 
-    // Función para manejar la confirmación - MEJORADA CON VALIDACIONES
-    // Función para manejar la confirmación - MEJORADA CON NAVEGACIÓN A SHOPPING CART
     const handleConfirm = async () => {
         // Prevenir múltiples ejecuciones
         if (isLoading) {
@@ -271,7 +258,7 @@ export default function CustomizationFormScreen() {
                         text: 'Confirmar',
                         onPress: async () => {
                             try {
-                                console.log('=== PROCESANDO PERSONALIZACIÓN ===');
+                                console.log('=== PROCESANDO PERSONALIZACIÓN CON HOOK ===');
 
                                 const customizationParams = {
                                     user,
@@ -310,11 +297,36 @@ export default function CustomizationFormScreen() {
                                 setImagePreview(null);
                                 setComments('');
 
-                                // Llamar callback si existe
-                                if (onComplete) {
-                                    console.log('Ejecutando callback onComplete');
-                                    onComplete(customizationData);
-                                }
+                                // ✅ NUEVA FUNCIONALIDAD: Mostrar alerta de éxito con opciones
+                                Alert.alert(
+                                    '¡Personalización agregada!',
+                                    `Tu ${productType} personalizado se ha agregado al carrito exitosamente.`,
+                                    [
+                                        {
+                                            text: 'Seguir comprando',
+                                            onPress: () => {
+                                                console.log('Usuario eligió seguir comprando');
+                                                // Navegar al Home
+                                                navigation.reset({
+                                                    index: 0,
+                                                    routes: [{ name: 'Home' }],
+                                                });
+                                            }
+                                        },
+                                        {
+                                            text: 'Ver carrito',
+                                            onPress: () => {
+                                                console.log('Usuario eligió ir al carrito');
+                                                // Navegar al carrito con parámetro para forzar recarga
+                                                navigation.navigate('ShoppingCart', {
+                                                    refresh: true,
+                                                    timestamp: Date.now() // Forzar actualización
+                                                });
+                                            },
+                                            style: 'default'
+                                        }
+                                    ]
+                                );
 
                             } catch (error) {
                                 console.error('❌ ERROR EN EL PROCESO DE CONFIRMACIÓN:', error);
@@ -322,17 +334,25 @@ export default function CustomizationFormScreen() {
                                 // Mejorar mensajes de error específicos
                                 let errorMessage = 'Ocurrió un error al procesar tu personalización';
 
-                                if (error.message.includes('conexión')) {
-                                    errorMessage = 'Error de conexión. Verifica tu internet.';
-                                } else if (error.message.includes('validación')) {
+                                if (error.message.includes('conexión') || error.message.includes('Network')) {
+                                    errorMessage = 'Error de conexión. Verifica tu internet y vuelve a intentar.';
+                                } else if (error.message.includes('validación') || error.message.includes('inválid')) {
                                     errorMessage = error.message;
-                                } else if (error.message.includes('usuario')) {
+                                } else if (error.message.includes('usuario') || error.message.includes('sesión')) {
                                     errorMessage = 'Error de autenticación. Inicia sesión nuevamente.';
-                                } else if (error.message.includes('IDs inválidos')) {
+                                } else if (error.message.includes('IDs inválidos') || error.message.includes('identificador')) {
                                     errorMessage = 'Error con los productos seleccionados. Intenta seleccionar los productos nuevamente.';
+                                } else if (error.message.includes('servidor')) {
+                                    errorMessage = 'Error del servidor. Inténtalo de nuevo en unos momentos.';
                                 }
 
-                                Alert.alert('Error', errorMessage, [{ text: 'OK' }]);
+                                Alert.alert(
+                                    'Error al personalizar',
+                                    errorMessage,
+                                    [
+                                        { text: 'OK' }
+                                    ]
+                                );
                             }
                         }
                     }
@@ -341,7 +361,11 @@ export default function CustomizationFormScreen() {
 
         } catch (error) {
             console.error('❌ ERROR EN HANDLECONFIRM:', error);
-            Alert.alert('Error', 'Ocurrió un error inesperado', [{ text: 'OK' }]);
+            Alert.alert(
+                'Error inesperado',
+                'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.',
+                [{ text: 'OK' }]
+            );
         }
     };
 

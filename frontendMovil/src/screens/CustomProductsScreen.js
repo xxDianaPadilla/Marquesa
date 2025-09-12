@@ -238,7 +238,7 @@ export default function CustomProductsScreen({ route, navigation }) {
                 cancelText: "Continuar personalizando",
                 onConfirm: () => {
                     hideConfirmation();
-                    navigation.navigate('Cart');
+                    navigation.navigate('ShoppingCart');
                 },
                 onCancel: hideConfirmation
             });

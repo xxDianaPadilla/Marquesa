@@ -216,7 +216,14 @@ export default function CustomizationFormScreen() {
     };
 
     // Función para manejar la confirmación - MEJORADA CON VALIDACIONES
+    // Función para manejar la confirmación - MEJORADA CON NAVEGACIÓN A SHOPPING CART
     const handleConfirm = async () => {
+        // Prevenir múltiples ejecuciones
+        if (isLoading) {
+            console.log('Función ya en ejecución, ignorando...');
+            return;
+        }
+
         try {
             console.log('=== INICIANDO PROCESO DE CONFIRMACIÓN ===');
 
@@ -246,10 +253,18 @@ export default function CustomizationFormScreen() {
 
             console.log('Todas las validaciones pasaron');
 
+            // Validar que los productos tengan IDs válidos
+            const invalidProducts = selectedProducts.filter(product => !product._id || product._id.trim() === '');
+            if (invalidProducts.length > 0) {
+                console.error('Productos con IDs inválidos:', invalidProducts);
+                Alert.alert('Error', 'Algunos productos no tienen identificadores válidos. Intenta seleccionar los productos nuevamente.');
+                return;
+            }
+
             // Mostrar confirmación antes de procesar
             Alert.alert(
                 'Confirmar personalización',
-                `¿Confirmas tu personalización de ${productType}?\n\nTotal: $${totalPrice.toFixed(2)} USD\nProductos: ${selectedProducts.length}${referenceImage ? '\nCon imagen de referencia' : ''}`,
+                `¿Confirmas tu personalización de ${productType}?\n\nTotal: ${totalPrice.toFixed(2)} USD\nProductos: ${selectedProducts.length}${referenceImage ? '\nCon imagen de referencia' : ''}`,
                 [
                     { text: 'Cancelar', style: 'cancel' },
                     {
@@ -260,7 +275,10 @@ export default function CustomizationFormScreen() {
 
                                 const customizationParams = {
                                     user,
-                                    selectedProducts,
+                                    selectedProducts: selectedProducts.map(product => ({
+                                        ...product,
+                                        _id: product._id.trim(), // Limpiar espacios en blanco
+                                    })),
                                     productType,
                                     referenceImage,
                                     comments: comments.trim(),
@@ -287,31 +305,16 @@ export default function CustomizationFormScreen() {
 
                                 console.log('PERSONALIZACIÓN PROCESADA EXITOSAMENTE:', customizationData);
 
-                                // Mostrar mensaje de éxito
-                                Alert.alert(
-                                    'Personalización exitosa',
-                                    'Tu producto personalizado ha sido agregado al carrito',
-                                    [
-                                        {
-                                            text: 'OK',
-                                            onPress: () => {
-                                                // Llamar callback si existe
-                                                if (onComplete) {
-                                                    console.log('Ejecutando callback onComplete');
-                                                    onComplete(customizationData);
-                                                }
+                                // Limpiar formulario inmediatamente después del éxito
+                                setReferenceImage(null);
+                                setImagePreview(null);
+                                setComments('');
 
-                                                // Limpiar formulario
-                                                setReferenceImage(null);
-                                                setImagePreview(null);
-                                                setComments('');
-
-                                                // Navegar de regreso o a otra pantalla
-                                                navigation.navigate('Home');
-                                            }
-                                        }
-                                    ]
-                                );
+                                // Llamar callback si existe
+                                if (onComplete) {
+                                    console.log('Ejecutando callback onComplete');
+                                    onComplete(customizationData);
+                                }
 
                             } catch (error) {
                                 console.error('❌ ERROR EN EL PROCESO DE CONFIRMACIÓN:', error);
@@ -325,6 +328,8 @@ export default function CustomizationFormScreen() {
                                     errorMessage = error.message;
                                 } else if (error.message.includes('usuario')) {
                                     errorMessage = 'Error de autenticación. Inicia sesión nuevamente.';
+                                } else if (error.message.includes('IDs inválidos')) {
+                                    errorMessage = 'Error con los productos seleccionados. Intenta seleccionar los productos nuevamente.';
                                 }
 
                                 Alert.alert('Error', errorMessage, [{ text: 'OK' }]);

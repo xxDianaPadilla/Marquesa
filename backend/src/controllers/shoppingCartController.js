@@ -448,21 +448,81 @@ shoppingCartController.addItemToCartNew = async (req, res) => {
     try {
         const { clientId, itemId, quantity = 1, itemType = 'product' } = req.body;
 
+        // Logging detallado para debugging
+        console.log('=== ADD ITEM TO CART DEBUG ===');
+        console.log('Full request body:', JSON.stringify(req.body, null, 2));
+        console.log('clientId details:', {
+            value: clientId,
+            type: typeof clientId,
+            length: clientId?.length,
+            stringValue: String(clientId),
+            trimmed: String(clientId).trim()
+        });
+        console.log('itemId details:', {
+            value: itemId,
+            type: typeof itemId,
+            length: itemId?.length,
+            stringValue: String(itemId),
+            trimmed: String(itemId).trim()
+        });
+
         // Validaciones básicas
         if (!clientId || !itemId) {
+            console.log('❌ Validación básica falló: clientId o itemId faltantes');
             return res.status(400).json({
                 success: false,
                 message: "ClientId y itemId son requeridos"
             });
         }
 
-        // Validar ObjectIds
-        if (!isValidObjectId(clientId) || !isValidObjectId(itemId)) {
+        // Limpiar y normalizar IDs antes de validar
+        const cleanClientId = String(clientId).trim();
+        const cleanItemId = String(itemId).trim();
+
+        console.log('IDs limpiados:', {
+            originalClientId: clientId,
+            cleanClientId,
+            originalItemId: itemId,
+            cleanItemId
+        });
+
+        // Validar ObjectIds con IDs limpiados
+        const clientIdValid = mongoose.Types.ObjectId.isValid(cleanClientId);
+        const itemIdValid = mongoose.Types.ObjectId.isValid(cleanItemId);
+
+        console.log('Validación de ObjectIds:', {
+            clientIdValid,
+            itemIdValid,
+            cleanClientIdLength: cleanClientId.length,
+            cleanItemIdLength: cleanItemId.length
+        });
+
+        if (!clientIdValid || !itemIdValid) {
+            console.log('❌ Validación de ObjectId falló');
+            console.log('Cliente ID:', cleanClientId, 'válido:', clientIdValid);
+            console.log('Item ID:', cleanItemId, 'válido:', itemIdValid);
+
             return res.status(400).json({
                 success: false,
-                message: "IDs inválidos proporcionados"
+                message: "IDs inválidos proporcionados",
+                debug: {
+                    originalClientId: clientId,
+                    originalItemId: itemId,
+                    cleanClientId,
+                    cleanItemId,
+                    clientIdValid,
+                    itemIdValid,
+                    clientIdLength: cleanClientId.length,
+                    itemIdLength: cleanItemId.length
+                }
             });
         }
+
+        console.log('✅ Validaciones pasaron, continuando...');
+
+        // Usar los IDs limpiados para el resto del proceso
+        const processClientId = cleanClientId;
+        const processItemId = cleanItemId;
 
         // Validar quantity
         const qty = parseInt(quantity);
@@ -491,11 +551,20 @@ shoppingCartController.addItemToCartNew = async (req, res) => {
             if (itemType === 'product') {
                 // Para productos normales, usar el modelo de productos
                 const { default: productsModel } = await import('../models/products.js');
-                product = await productsModel.findById(itemId);
+                product = await productsModel.findById(processItemId);
             } else {
                 // Para productos personalizados, usar el modelo de CustomProducts
                 const { default: customProductsModel } = await import('../models/CustomProducts.js');
-                product = await customProductsModel.findById(itemId);
+                product = await customProductsModel.findById(processItemId);
+                console.log('Producto personalizado encontrado:', product ? 'SÍ' : 'NO');
+                if (product) {
+                    console.log('Producto personalizado details:', {
+                        id: product._id,
+                        clientId: product.clientId,
+                        totalPrice: product.totalPrice,
+                        productToPersonalize: product.productToPersonalize
+                    });
+                }
             }
         } catch (error) {
             console.error('Error loading model or finding product:', error);
@@ -507,16 +576,19 @@ shoppingCartController.addItemToCartNew = async (req, res) => {
         }
 
         if (!product) {
+            console.log('❌ Producto no encontrado');
             return res.status(404).json({
                 success: false,
                 message: itemType === 'product' ? "Producto no encontrado" : "Producto personalizado no encontrado",
                 debug: {
-                    itemId,
+                    processItemId,
                     itemType,
                     itemTypeRef
                 }
             });
         }
+
+        console.log('✅ Producto encontrado, continuando con el carrito...');
 
         // FIX: Calcular precio correcto según el tipo de producto
         let productPrice;
@@ -541,28 +613,32 @@ shoppingCartController.addItemToCartNew = async (req, res) => {
 
         const subtotal = productPrice * qty;
 
-        // CAMBIO CLAVE: Buscar solo el carrito ACTIVO del cliente
+        // CAMBIO CLAVE: Buscar solo el carrito ACTIVO del cliente usando el ID limpiado
         let cart = await shoppingCartModel.findOne({
-            clientId,
+            clientId: processClientId,
             status: 'Activo'  // Solo carritos activos
         });
 
         if (!cart) {
+            console.log('Creando nuevo carrito para cliente:', processClientId);
             // Crear un nuevo carrito ACTIVO
             cart = new shoppingCartModel({
-                clientId,
+                clientId: processClientId,
                 items: [],
                 total: 0,
                 status: 'Activo'  // Asegurar que el nuevo carrito sea activo
             });
+        } else {
+            console.log('Carrito existente encontrado:', cart._id);
         }
 
-        // Verificar si el item ya existe en el carrito
+        // Verificar si el item ya existe en el carrito usando IDs limpiados
         const existingItemIndex = cart.items.findIndex(item =>
-            item.itemId.toString() === itemId.toString() && item.itemType === itemType
+            item.itemId.toString() === processItemId.toString() && item.itemType === itemType
         );
 
         if (existingItemIndex !== -1) {
+            console.log('Item existente encontrado, actualizando cantidad...');
             // FIX: Actualizar cantidad usando productPrice en lugar de product.price
             const newQuantity = cart.items[existingItemIndex].quantity + qty;
 
@@ -576,10 +652,11 @@ shoppingCartController.addItemToCartNew = async (req, res) => {
             cart.items[existingItemIndex].quantity = newQuantity;
             cart.items[existingItemIndex].subtotal = productPrice * newQuantity; // FIX: Usar productPrice
         } else {
-            // Agregar nuevo item al carrito
+            console.log('Agregando nuevo item al carrito...');
+            // Agregar nuevo item al carrito usando IDs limpiados
             cart.items.push({
                 itemType,
-                itemId,
+                itemId: processItemId,
                 itemTypeRef,
                 quantity: qty,
                 subtotal // Ya calculado correctamente arriba
@@ -590,7 +667,9 @@ shoppingCartController.addItemToCartNew = async (req, res) => {
         cart.total = cart.items.reduce((total, item) => total + item.subtotal, 0);
 
         // Guardar los cambios
+        console.log('Guardando carrito...');
         await cart.save();
+        console.log('✅ Carrito guardado exitosamente');
 
         // Poblar el carrito para la respuesta
         await cart.populate('items.itemId');
@@ -601,12 +680,13 @@ shoppingCartController.addItemToCartNew = async (req, res) => {
         const cookieConfig = getCookieConfig();
         res.cookie("authToken", currentToken, cookieConfig);
 
+        console.log('✅ Respuesta exitosa enviada');
         res.status(200).json({
             success: true,
             message: "Producto agregado al carrito correctamente",
             shoppingCart: cart,
             addedItem: {
-                itemId,
+                itemId: processItemId,
                 itemType,
                 quantity: qty,
                 subtotal,
@@ -616,7 +696,7 @@ shoppingCartController.addItemToCartNew = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error al agregar item al carrito:', error);
+        console.error('❌ Error al agregar item al carrito:', error);
         res.status(500).json({
             success: false,
             message: "Error interno del servidor al agregar producto",

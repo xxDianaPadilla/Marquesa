@@ -19,7 +19,7 @@ const useCustomization = () => {
                 console.log('=== PROCESANDO IMAGEN PARA MÓVIL ===');
                 console.log('Tipo de referenceImage:', typeof referenceImage);
                 console.log('Propiedades de referenceImage:', Object.keys(referenceImage));
-                
+
                 // Si la imagen ya es base64 string
                 if (typeof referenceImage === 'string' && referenceImage.startsWith('data:image')) {
                     requestData.referenceImageBase64 = referenceImage;
@@ -88,22 +88,29 @@ const useCustomization = () => {
         } catch (error) {
             console.error('=== ERROR EN CATCH (MÓVIL) ===');
             console.error('Error creating custom product:', error);
-            
+
             // Mejorar el manejo de errores de red para móvil
             if (error.message === 'Network request failed') {
                 throw new Error('Error de conexión. Verifica tu conexión a internet.');
             }
-            
+
             throw error;
         }
     };
 
-    // Función para agregar item al carrito (sin cambios)
+    // Función para agregar item al carrito (CORREGIDA)
     const addItemToCart = async (userId, itemData) => {
         try {
             console.log('=== AGREGANDO AL CARRITO (MÓVIL) ===');
             console.log('userId:', userId);
             console.log('itemData recibido:', itemData);
+            console.log('itemData.itemId type:', typeof itemData.itemId);
+            console.log('itemData.itemId value:', itemData.itemId);
+
+            if (!itemData.itemId) {
+                console.error('itemId es undefined o null');
+                throw new Error('itemData.itemId es requerido');
+            }
 
             if (!userId) {
                 throw new Error('userId es requerido');
@@ -113,9 +120,13 @@ const useCustomization = () => {
                 throw new Error('itemData.itemId es requerido');
             }
 
+            const itemId = itemData.itemId.toString().trim();
+            console.log('itemId después de toString().trim():', itemId);
+            console.log('itemId length:', itemId.length);
+
             const requestPayload = {
                 clientId: userId,
-                itemId: itemData.itemId,
+                itemId: itemId, // ID validado y limpio
                 quantity: itemData.quantity || 1,
                 itemType: itemData.itemType || 'custom'
             };
@@ -132,10 +143,22 @@ const useCustomization = () => {
                 // credentials: 'include' // Comentar si causa problemas en móvil
             });
 
-            console.log('Response status:', response.status);
+            console.log('addToCart - Status:', response.status);
+            console.log('addToCart - URL:', response.url);
 
-            const data = await response.json();
-            console.log('Response data completa:', data);
+            // Leer la respuesta como texto primero para debug
+            const responseText = await response.text();
+            console.log('addToCart - Response text (first 200 chars):', responseText.substring(0, 200));
+
+            // Intentar parsear como JSON
+            let data;
+            try {
+                data = JSON.parse(responseText);
+                console.log('addToCart - JSON parseado exitosamente:', data);
+            } catch (jsonError) {
+                console.error('addToCart - Error parseando JSON:', jsonError);
+                throw new Error('Respuesta del servidor no válida');
+            }
 
             if (response.ok && data.success) {
                 console.log('✅ ÉXITO: Producto agregado al carrito');
@@ -146,16 +169,16 @@ const useCustomization = () => {
             }
         } catch (error) {
             console.error('❌ ERROR EN CATCH:', error);
-            
+
             if (error.message === 'Network request failed') {
                 throw new Error('Error de conexión. No se pudo agregar al carrito.');
             }
-            
+
             throw error;
         }
     };
 
-    // Función principal que maneja todo el proceso de personalización
+    // Función principal que maneja todo el proceso de personalización (CORREGIDA)
     const processCustomization = async (customizationParams) => {
         const {
             user,
@@ -182,16 +205,49 @@ const useCustomization = () => {
                 throw new Error('Debes seleccionar al menos un material');
             }
 
+            // VALIDAR IDS DE PRODUCTOS ANTES DE PROCESAR
+            console.log('Validando IDs de productos seleccionados...');
+            const invalidProducts = selectedProducts.filter(product => {
+                const id = product._id;
+                const isValid = id &&
+                    typeof id === 'string' &&
+                    id.trim().length > 0 &&
+                    id.match(/^[0-9a-fA-F]{24}$/);
+
+                if (!isValid) {
+                    console.error('Producto con ID inválido:', {
+                        product: product,
+                        id: id,
+                        type: typeof id,
+                        length: id ? id.length : 0
+                    });
+                }
+
+                return !isValid;
+            });
+
+            if (invalidProducts.length > 0) {
+                console.error('Se encontraron productos con IDs inválidos:', invalidProducts);
+                throw new Error('Algunos productos tienen identificadores inválidos. Por favor, selecciona los productos nuevamente.');
+            }
+
+            console.log('✅ Todos los IDs son válidos, continuando...');
+
             // Validar precio
             if (!totalPrice || totalPrice < 0) {
                 throw new Error('El precio total debe ser mayor a 0');
             }
 
-            // Preparar materiales seleccionados
-            const selectedMaterials = selectedProducts.map(product => ({
-                materialId: product._id,
-                quantity: product.quantity || 1
-            }));
+            // Preparar materiales seleccionados con IDs validados
+            const selectedMaterials = selectedProducts.map(product => {
+                const cleanId = product._id.trim();
+                console.log(`Procesando material: ${product.name} con ID: ${cleanId}`);
+
+                return {
+                    materialId: cleanId, // ID limpio y validado
+                    quantity: product.quantity || 1
+                };
+            });
 
             // Preparar datos del producto personalizado
             const customProductData = {
@@ -208,11 +264,18 @@ const useCustomization = () => {
 
             console.log('=== DATOS FINALES PARA ENVIAR (MÓVIL) ===');
             console.log('customProductData:', customProductData);
+            console.log('selectedMaterials details:', selectedMaterials);
 
             // Crear el producto personalizado
             const createdCustomProduct = await createCustomProduct(customProductData, referenceImage);
 
-            console.log('Producto personalizado creado:', createdCustomProduct);
+            console.log('✅ Producto personalizado creado exitosamente:', createdCustomProduct);
+
+            // VALIDAR QUE EL PRODUCTO CREADO TENGA ID VÁLIDO
+            if (!createdCustomProduct._id || !createdCustomProduct._id.match(/^[0-9a-fA-F]{24}$/)) {
+                console.error('Producto creado con ID inválido:', createdCustomProduct._id);
+                throw new Error('El producto personalizado se creó pero tiene un ID inválido');
+            }
 
             // Preparar datos para agregar al carrito
             const cartItemData = {
@@ -221,8 +284,12 @@ const useCustomization = () => {
                 quantity: 1
             };
 
+            console.log('Agregando producto personalizado al carrito:', cartItemData);
+
             // Agregar al carrito
             const updatedCart = await addItemToCart(user.id, cartItemData);
+
+            console.log('✅ Producto agregado al carrito exitosamente');
 
             // Retornar resultado
             return {
@@ -237,7 +304,7 @@ const useCustomization = () => {
             };
 
         } catch (error) {
-            console.error('Error en el proceso de personalización (móvil):', error);
+            console.error('❌ Error en el proceso de personalización (móvil):', error);
             throw error;
         } finally {
             setIsLoading(false);

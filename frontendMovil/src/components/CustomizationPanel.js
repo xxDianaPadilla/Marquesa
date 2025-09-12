@@ -6,23 +6,24 @@ import {
     ScrollView,
     StyleSheet,
     Dimensions,
-    Alert,
-    TextInput,
     Image,
     Animated,
     PanResponder,
     Keyboard
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { useAlert } from '../hooks/useAlert';
+import { ConfirmationDialog, CustomAlert } from './CustomAlerts';
 
 // Obtener dimensiones de la pantalla
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 // Constantes para el bottom sheet
-const BOTTOM_SHEET_MIN_HEIGHT = 140; 
-const BOTTOM_SHEET_MAX_HEIGHT = screenHeight * 0.75; 
-const BOTTOM_SHEET_SNAP_THRESHOLD = 50; 
+const BOTTOM_SHEET_MIN_HEIGHT = 140;
+const BOTTOM_SHEET_MAX_HEIGHT = screenHeight * 0.75;
+const BOTTOM_SHEET_SNAP_THRESHOLD = 50;
 
 export default function CustomizationPanel({
     selectedProducts = [],
@@ -33,10 +34,20 @@ export default function CustomizationPanel({
     const [comments, setComments] = useState('');
     const [showComments, setShowComments] = useState(false);
     const [keyboardHeight, setKeyboardHeight] = useState(0);
-    
+    const navigation = useNavigation();
+
+    // Hook para manejar alertas personalizadas
+    const {
+        alertState,
+        showConfirmation,
+        hideConfirmation,
+        showAlert,
+        hideAlert
+    } = useAlert();
+
     // Obtener insets para detectar la barra de navegación
     const insets = useSafeAreaInsets();
-    const bottomInset = insets.bottom; 
+    const bottomInset = insets.bottom;
 
     // Animaciones
     const translateY = useRef(new Animated.Value(BOTTOM_SHEET_MAX_HEIGHT - BOTTOM_SHEET_MIN_HEIGHT)).current;
@@ -81,7 +92,7 @@ export default function CustomizationPanel({
             },
             onPanResponderRelease: (_, gestureState) => {
                 const { dy, vy } = gestureState;
-                
+
                 if (Math.abs(vy) > 0.5) {
                     // Basado en velocidad
                     if (vy > 0) {
@@ -148,93 +159,103 @@ export default function CustomizationPanel({
         }, {});
     }, [selectedProducts]);
 
-    // Manejar eliminación de producto
+    // Manejar eliminación de producto - Usar alerta de confirmación personalizada
     const handleRemoveProduct = (productId) => {
-        Alert.alert(
-            "Remover producto",
-            "¿Estás seguro de que quieres remover este producto de tu personalización?",
-            [
-                { text: "Cancelar", style: "cancel" },
-                {
-                    text: "Remover",
-                    style: "destructive",
-                    onPress: () => onRemoveProduct(productId)
-                }
-            ]
-        );
+        showConfirmation({
+            title: "Remover producto",
+            message: "¿Estás seguro de que quieres remover este producto de tu personalización?",
+            confirmText: "Remover",
+            cancelText: "Cancelar",
+            isDangerous: true, // Marcamos como acción peligrosa para usar estilo rojo
+            onConfirm: () => {
+                onRemoveProduct(productId);
+                hideConfirmation();
+            },
+            onCancel: hideConfirmation
+        });
     };
 
-    // Manejar finalización de personalización
+    // Manejar finalización de personalización - Usar alerta personalizada para validación y confirmación
     const handleFinishCustomization = () => {
         if (selectedProducts.length === 0) {
-            Alert.alert(
-                "Sin productos",
-                "Debes seleccionar al menos un producto para personalizar"
-            );
+            showAlert({
+                title: "Sin productos",
+                message: "Debes seleccionar al menos un producto para personalizar",
+                type: 'warning',
+                onConfirm: hideAlert
+            });
             return;
         }
 
+        // Preparar los datos para enviar a la pantalla de finalización
         const customizationData = {
-            selectedProducts,
+            selectedProducts: selectedProducts.map(product => ({
+                _id: product._id,
+                name: product.name,
+                price: product.price || 0,
+                category: product.category || 'Sin categoría',
+                image: product.image || null
+            })),
             productType,
             totalPrice,
-            comments: comments.trim(),
             timestamp: new Date().toISOString()
         };
 
-        Alert.alert(
-            "Finalizar personalización",
-            `¿Confirmas tu personalización de ${productType}?\n\nTotal: $${totalPrice.toFixed(2)} USD\nProductos: ${selectedProducts.length}`,
-            [
-                { text: "Cancelar", style: "cancel" },
-                {
-                    text: "Confirmar",
-                    onPress: () => onFinishCustomization(customizationData)
+        console.log('Navegando con datos:', customizationData);
+
+        // Navegar a la pantalla de finalización
+        navigation.navigate('FinalizeCustomProducts', {
+            selectedProducts: customizationData.selectedProducts,
+            productType: customizationData.productType,
+            totalPrice: customizationData.totalPrice,
+            // Callback opcional para cuando se complete el proceso
+            onComplete: (finalData) => {
+                // Ejecutar callback original si existe
+                if (onFinishCustomization) {
+                    onFinishCustomization(finalData);
                 }
-            ]
-        );
+            }
+        });
     };
 
-    // Limpiar toda la selección
+    // Limpiar toda la selección - Usar alerta de confirmación personalizada
     const handleClearAll = () => {
         if (selectedProducts.length === 0) return;
 
-        Alert.alert(
-            "Limpiar selección",
-            "¿Estás seguro de que quieres remover todos los productos seleccionados?",
-            [
-                { text: "Cancelar", style: "cancel" },
-                {
-                    text: "Limpiar todo",
-                    style: "destructive",
-                    onPress: () => {
-                        selectedProducts.forEach(product => {
-                            onRemoveProduct(product._id);
-                        });
-                    }
-                }
-            ]
-        );
+        showConfirmation({
+            title: "Limpiar selección",
+            message: "¿Estás seguro de que quieres remover todos los productos seleccionados?",
+            confirmText: "Limpiar todo",
+            cancelText: "Cancelar",
+            isDangerous: true, // Marcamos como peligroso
+            onConfirm: () => {
+                selectedProducts.forEach(product => {
+                    onRemoveProduct(product._id);
+                });
+                hideConfirmation();
+            },
+            onCancel: hideConfirmation
+        });
     };
 
     return (
         <>
             {/* Fondo blanco que se extiende hasta la barra de navegación */}
             <View style={[styles.backgroundExtension, { height: bottomInset }]} />
-            
-            <Animated.View 
+
+            <Animated.View
                 style={[
                     styles.container,
                     {
                         transform: [{ translateY }],
-                        paddingBottom: keyboardHeight + bottomInset, 
+                        paddingBottom: keyboardHeight + bottomInset,
                     }
                 ]}
             >
                 {/* Handle para arrastrar */}
                 <View style={styles.handleContainer} {...panResponder.panHandlers}>
                     <View style={styles.handle} />
-                    
+
                     {/* Header compacto */}
                     <View style={styles.compactHeader}>
                         <View style={styles.headerLeft}>
@@ -246,7 +267,7 @@ export default function CustomizationPanel({
                                 </View>
                             )}
                         </View>
-                        
+
                         <View style={styles.headerRight}>
                             {selectedProducts.length > 0 && (
                                 <Text style={styles.compactPrice}>
@@ -257,10 +278,10 @@ export default function CustomizationPanel({
                                 onPress={isExpanded ? collapseBottomSheet : expandBottomSheet}
                                 style={styles.expandButton}
                             >
-                                <Icon 
-                                    name={isExpanded ? "keyboard-arrow-down" : "keyboard-arrow-up"} 
-                                    size={20} 
-                                    color="#666" 
+                                <Icon
+                                    name={isExpanded ? "keyboard-arrow-down" : "keyboard-arrow-up"}
+                                    size={20}
+                                    color="#666"
                                 />
                             </TouchableOpacity>
                         </View>
@@ -293,8 +314,8 @@ export default function CustomizationPanel({
                             </View>
                         ) : (
                             <View style={styles.productsPreview}>
-                                <ScrollView 
-                                    horizontal 
+                                <ScrollView
+                                    horizontal
                                     showsHorizontalScrollIndicator={false}
                                     contentContainerStyle={styles.productsPreviewContainer}
                                 >
@@ -356,7 +377,7 @@ export default function CustomizationPanel({
                         </View>
 
                         {/* Lista de productos seleccionados */}
-                        <ScrollView 
+                        <ScrollView
                             style={styles.productsList}
                             showsVerticalScrollIndicator={false}
                             nestedScrollEnabled={true}
@@ -448,6 +469,30 @@ export default function CustomizationPanel({
                     </View>
                 )}
             </Animated.View>
+
+            {/* Componentes de alertas personalizadas */}
+            <ConfirmationDialog
+                visible={alertState.confirmation.visible}
+                title={alertState.confirmation.title}
+                message={alertState.confirmation.message}
+                onConfirm={alertState.confirmation.onConfirm}
+                onCancel={alertState.confirmation.onCancel}
+                confirmText={alertState.confirmation.confirmText}
+                cancelText={alertState.confirmation.cancelText}
+                isDangerous={alertState.confirmation.isDangerous}
+            />
+
+            <CustomAlert
+                visible={alertState.basicAlert.visible}
+                title={alertState.basicAlert.title}
+                message={alertState.basicAlert.message}
+                type={alertState.basicAlert.type}
+                onConfirm={alertState.basicAlert.onConfirm}
+                onCancel={alertState.basicAlert.onCancel}
+                confirmText={alertState.basicAlert.confirmText}
+                cancelText={alertState.basicAlert.cancelText}
+                showCancel={alertState.basicAlert.showCancel}
+            />
         </>
     );
 }
@@ -759,39 +804,6 @@ const styles = StyleSheet.create({
         borderRadius: 4,
         backgroundColor: '#ffebee',
     },
-
-    // Sección de comentarios
-    commentsSection: {
-        marginTop: 12,
-        paddingTop: 12,
-        borderTopWidth: 1,
-        borderTopColor: '#f0f0f0',
-    },
-    commentsToggle: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 8,
-    },
-    commentsToggleText: {
-        flex: 1,
-        fontSize: 11,
-        fontFamily: 'Poppins-Medium',
-        color: '#666',
-        marginLeft: 8,
-    },
-    commentsInput: {
-        borderWidth: 1,
-        borderColor: '#e0e0e0',
-        borderRadius: 8,
-        padding: 10,
-        fontSize: 11,
-        fontFamily: 'Poppins-Regular',
-        color: '#333',
-        minHeight: 60,
-        maxHeight: 100,
-        marginTop: 8,
-    },
-
     // Resumen
     summary: {
         marginTop: 12,

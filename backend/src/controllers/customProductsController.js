@@ -164,38 +164,67 @@ customProductsController.getCustomProductsById = async (req, res) => {
     }
 };
 
-// Método para crear los custom products
+// Método para crear los custom products (ADAPTADO PARA WEB Y MÓVIL)
 customProductsController.createCustomProducts = async (req, res) => {
     try {
         console.log('=== DATOS RECIBIDOS EN EL BACKEND ===');
         console.log('req.body:', req.body);
         console.log('req.file:', req.file);
+        console.log('Content-Type:', req.headers['content-type']);
 
-        // Procesar los datos según si vienen como FormData o JSON
+        // Procesar los datos según el Content-Type
         let processedData = { ...req.body };
 
-        // Si selectedMaterials viene como string (FormData), parsearlo a JSON
-        if (typeof processedData.selectedMaterials === 'string') {
-            try {
-                processedData.selectedMaterials = JSON.parse(processedData.selectedMaterials);
-                console.log('selectedMaterials parsed from string:', processedData.selectedMaterials);
-            } catch (parseError) {
-                console.error('Error parsing selectedMaterials:', parseError);
-                return res.status(400).json({
-                    success: false,
-                    message: "Error en el formato de materiales seleccionados"
-                });
+        // CASO 1: FormData (web con imagen)
+        if (req.headers['content-type']?.includes('multipart/form-data')) {
+            console.log('=== PROCESANDO FORMDATA (WEB CON IMAGEN) ===');
+
+            // Si selectedMaterials viene como string (FormData), parsearlo a JSON
+            if (typeof processedData.selectedMaterials === 'string') {
+                try {
+                    processedData.selectedMaterials = JSON.parse(processedData.selectedMaterials);
+                    console.log('selectedMaterials parsed from FormData:', processedData.selectedMaterials);
+                } catch (parseError) {
+                    console.error('Error parsing selectedMaterials:', parseError);
+                    return res.status(400).json({
+                        success: false,
+                        message: "Error en el formato de materiales seleccionados"
+                    });
+                }
+            }
+
+            // Si totalPrice viene como string (FormData), convertirlo a número
+            if (typeof processedData.totalPrice === 'string') {
+                processedData.totalPrice = Number(processedData.totalPrice);
+                console.log('totalPrice converted from FormData:', processedData.totalPrice);
+            }
+        }
+        // CASO 2: JSON (web sin imagen o móvil)
+        else if (req.headers['content-type']?.includes('application/json')) {
+            console.log('=== PROCESANDO JSON (WEB SIN IMAGEN O MÓVIL) ===');
+
+            // Los datos ya vienen en formato correcto desde JSON
+            console.log('Datos JSON ya procesados:', processedData);
+        }
+        // CASO 3: Móvil con imagen (si usas otra forma de envío)
+        else {
+            console.log('=== PROCESANDO DATOS DE MÓVIL ===');
+
+            // Verificar si hay datos de imagen en base64 o URL
+            if (processedData.referenceImageBase64) {
+                console.log('Imagen en base64 detectada desde móvil');
             }
         }
 
-        // Si totalPrice viene como string (FormData), convertirlo a número
-        if (typeof processedData.totalPrice === 'string') {
-            processedData.totalPrice = Number(processedData.totalPrice);
-            console.log('totalPrice converted from string:', processedData.totalPrice);
-        }
-
         // Ahora extraer los datos procesados
-        const { clientId, productToPersonalize, selectedMaterials, extraComments, totalPrice } = processedData;
+        const {
+            clientId,
+            productToPersonalize,
+            selectedMaterials,
+            extraComments,
+            totalPrice,
+            referenceImageBase64  // Para móvil
+        } = processedData;
 
         console.log('=== DATOS PROCESADOS ===');
         console.log('clientId:', clientId, typeof clientId);
@@ -203,6 +232,7 @@ customProductsController.createCustomProducts = async (req, res) => {
         console.log('selectedMaterials:', selectedMaterials, Array.isArray(selectedMaterials));
         console.log('extraComments:', extraComments);
         console.log('totalPrice:', totalPrice, typeof totalPrice);
+        console.log('referenceImageBase64:', !!referenceImageBase64);
 
         // Crear objeto con datos procesados para validación
         const dataToValidate = {
@@ -226,10 +256,11 @@ customProductsController.createCustomProducts = async (req, res) => {
 
         let referenceImageURL = "";
 
-        // Si hay una imagen de referencia, subirla a Cloudinary
+        // MANEJO DE IMÁGENES UNIVERSAL
         if (req.file) {
+            // Imagen desde FormData (web)
             try {
-                console.log('Uploading image to Cloudinary:', req.file.path);
+                console.log('=== SUBIENDO IMAGEN DESDE FORMDATA (WEB) ===');
                 const result = await cloudinary.uploader.upload(req.file.path, {
                     folder: "custom-products/reference-images",
                     allowed_formats: ["jpg", "jpeg", "png", "webp"],
@@ -239,12 +270,33 @@ customProductsController.createCustomProducts = async (req, res) => {
                     ]
                 });
                 referenceImageURL = result.secure_url;
-                console.log('Image uploaded successfully:', referenceImageURL);
+                console.log('Imagen web subida exitosamente:', referenceImageURL);
             } catch (cloudinaryError) {
-                console.error('Error en Cloudinary:', cloudinaryError);
+                console.error('Error en Cloudinary (web):', cloudinaryError);
                 return res.status(502).json({
                     success: false,
                     message: "Error al procesar la imagen de referencia"
+                });
+            }
+        } else if (referenceImageBase64) {
+            // Imagen desde base64 (móvil)
+            try {
+                console.log('=== SUBIENDO IMAGEN DESDE BASE64 (MÓVIL) ===');
+                const result = await cloudinary.uploader.upload(referenceImageBase64, {
+                    folder: "custom-products/reference-images",
+                    allowed_formats: ["jpg", "jpeg", "png", "webp"],
+                    transformation: [
+                        { width: 1200, height: 1200, crop: "limit" },
+                        { quality: "auto" }
+                    ]
+                });
+                referenceImageURL = result.secure_url;
+                console.log('Imagen móvil subida exitosamente:', referenceImageURL);
+            } catch (cloudinaryError) {
+                console.error('Error en Cloudinary (móvil):', cloudinaryError);
+                return res.status(502).json({
+                    success: false,
+                    message: "Error al procesar la imagen de referencia desde móvil"
                 });
             }
         }

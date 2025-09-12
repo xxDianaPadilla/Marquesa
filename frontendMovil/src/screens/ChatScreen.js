@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { 
-    View, 
-    Text, 
-    StyleSheet, 
-    TouchableOpacity, 
-    ScrollView, 
-    SafeAreaView, 
-    Image, 
-    Platform, 
+import {
+    View,
+    Text,
+    StyleSheet,
+    TouchableOpacity,
+    ScrollView,
+    SafeAreaView,
+    Image,
+    Platform,
     Keyboard,
     TouchableWithoutFeedback,
     RefreshControl,
@@ -36,7 +36,7 @@ import { useAlert } from "../hooks/useAlert";
 const ChatScreen = ({ navigation, route }) => {
     const insets = useSafeAreaInsets();
     const { user } = useAuth();
-    
+
     // ✅ Hook de alertas personalizadas
     const {
         alertState,
@@ -48,7 +48,7 @@ const ChatScreen = ({ navigation, route }) => {
         showSuccessToast,
         showWarningToast
     } = useAlert();
-    
+
     // Hook principal del chat
     const {
         conversation,
@@ -95,7 +95,7 @@ const ChatScreen = ({ navigation, route }) => {
                 setTimeout(() => scrollToBottom(), 100);
             }
         );
-        
+
         const keyboardDidHideListener = Keyboard.addListener(
             'keyboardDidHide',
             () => {
@@ -116,10 +116,10 @@ const ChatScreen = ({ navigation, route }) => {
     useEffect(() => {
         if (messages && messages.length > 0) {
             const lastMessage = messages[messages.length - 1];
-            
+
             if (lastMessage._id !== lastMessageIdRef.current) {
                 lastMessageIdRef.current = lastMessage._id;
-                
+
                 if (lastMessage.senderId._id === user?.id || !showScrollToBottom) {
                     setTimeout(() => scrollToBottom(), 100);
                 }
@@ -168,9 +168,9 @@ const ChatScreen = ({ navigation, route }) => {
     const handleScroll = useCallback((event) => {
         const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
         const paddingToBottom = 100;
-        const isNearBottom = layoutMeasurement.height + contentOffset.y >= 
-                            contentSize.height - paddingToBottom;
-        
+        const isNearBottom = layoutMeasurement.height + contentOffset.y >=
+            contentSize.height - paddingToBottom;
+
         setShowScrollToBottom(!isNearBottom);
     }, []);
 
@@ -182,14 +182,12 @@ const ChatScreen = ({ navigation, route }) => {
         try {
             await refreshConversation();
             clearError();
-            showSuccessToast('Chat actualizado');
         } catch (error) {
             console.error('❌ Error refrescando chat:', error);
-            showErrorToast('Error al actualizar el chat');
         } finally {
             setRefreshing(false);
         }
-    }, [refreshConversation, clearError, showSuccessToast, showErrorToast]);
+    }, [refreshConversation, clearError]);
 
     /**
      * ✅ MANEJA EL ENVÍO DE MENSAJES CON ALERTAS PERSONALIZADAS
@@ -211,18 +209,18 @@ const ChatScreen = ({ navigation, route }) => {
             }
 
             const result = await sendMessage(messageText, imageUri);
-            
+
             // Ocultar loading
             hideLoading();
-            
+
             if (result.success) {
                 setTimeout(() => scrollToBottom(), 100);
-                
+
                 // Mostrar toast de éxito solo para imágenes
                 if (imageUri) {
                     showSuccessToast('Imagen enviada correctamente');
                 }
-                
+
                 return result;
             } else {
                 showErrorToast(result.message || 'Error al enviar mensaje');
@@ -261,26 +259,26 @@ const ChatScreen = ({ navigation, route }) => {
                 onConfirm: async () => {
                     try {
                         hideConfirmation();
-                        
+
                         // Agregar ID a conjunto de mensajes en proceso de eliminación
                         setDeletingMessages(prev => new Set([...prev, messageId]));
-                        
+
                         // Mostrar loading de eliminación
                         showLoading({
                             title: 'Eliminando mensaje',
                             message: 'Por favor espera...',
                             color: '#F44336'
                         });
-                        
+
                         console.log('🗑️ INICIO DELETE - MessageID:', messageId);
                         console.log('🗑️ Llamando deleteMessage del hook useChat...');
-                        
+
                         // Usar la función real del backend
                         const result = await deleteMessage(messageId);
-                        
+
                         hideLoading();
                         console.log('🗑️ RESULTADO deleteMessage:', result);
-                        
+
                     } catch (error) {
                         hideLoading();
                         console.error('❌ Error eliminando mensaje:', error);
@@ -301,8 +299,8 @@ const ChatScreen = ({ navigation, route }) => {
             });
         } else {
             // ✅ MOSTRAR OPCIONES DEL MENSAJE CON ALERTA PERSONALIZADA
-            const truncatedMessage = messageText.length > 50 
-                ? messageText.substring(0, 50) + '...' 
+            const truncatedMessage = messageText.length > 50
+                ? messageText.substring(0, 50) + '...'
                 : messageText;
 
             showConfirmation({
@@ -328,12 +326,12 @@ const ChatScreen = ({ navigation, route }) => {
      */
     const formatMessageDate = (timestamp) => {
         if (!timestamp) return '';
-        
+
         const messageDate = new Date(timestamp);
         const today = new Date();
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
-        
+
         if (messageDate.toDateString() === today.toDateString()) {
             return 'Hoy';
         } else if (messageDate.toDateString() === yesterday.toDateString()) {
@@ -351,13 +349,13 @@ const ChatScreen = ({ navigation, route }) => {
      */
     const groupMessagesByDate = useCallback(() => {
         if (!messages || messages.length === 0) return [];
-        
+
         const grouped = [];
         let currentDate = '';
-        
+
         messages.forEach((message, index) => {
             const messageDate = formatMessageDate(message.createdAt);
-            
+
             if (messageDate !== currentDate) {
                 currentDate = messageDate;
                 grouped.push({
@@ -366,14 +364,14 @@ const ChatScreen = ({ navigation, route }) => {
                     key: `date-${index}`
                 });
             }
-            
+
             grouped.push({
                 type: 'message',
                 data: message,
                 key: message._id || `message-${index}`
             });
         });
-        
+
         return grouped;
     }, [messages]);
 
@@ -390,7 +388,7 @@ const ChatScreen = ({ navigation, route }) => {
                 </View>
             );
         }
-        
+
         if (!isConnected) {
             return (
                 <View style={styles.connectionStatus}>
@@ -400,7 +398,7 @@ const ChatScreen = ({ navigation, route }) => {
                 </View>
             );
         }
-        
+
         return null;
     };
 
@@ -409,7 +407,7 @@ const ChatScreen = ({ navigation, route }) => {
      */
     const renderTypingIndicator = () => {
         if (typingUsers.length === 0) return null;
-        
+
         return (
             <View style={styles.typingContainer}>
                 <ChatBubbles
@@ -434,12 +432,12 @@ const ChatScreen = ({ navigation, route }) => {
                 </View>
             );
         }
-        
+
         if (item.type === 'message') {
             const message = item.data;
             const isOwnMessage = message.senderId._id === user?.id;
             const isDeleting = deletingMessages.has(message._id);
-            
+
             return (
                 <View style={isDeleting ? styles.deletingMessageContainer : null}>
                     {isDeleting && (
@@ -465,7 +463,7 @@ const ChatScreen = ({ navigation, route }) => {
                 </View>
             );
         }
-        
+
         return null;
     };
 
@@ -482,7 +480,7 @@ const ChatScreen = ({ navigation, route }) => {
     }
 
     // Calcular altura del input dinámicamente
-    const inputContainerBottom = isKeyboardVisible 
+    const inputContainerBottom = isKeyboardVisible
         ? keyboardHeight + (Platform.OS === 'ios' ? 10 : 50)
         : getTabBarHeight();
 
@@ -494,8 +492,8 @@ const ChatScreen = ({ navigation, route }) => {
                 <View style={styles.container}>
                     {/* Header del chat */}
                     <View style={styles.header}>
-                        <TouchableOpacity 
-                            style={styles.backButton} 
+                        <TouchableOpacity
+                            style={styles.backButton}
                             onPress={() => {
                                 stopTyping();
                                 navigation.goBack();
@@ -545,7 +543,7 @@ const ChatScreen = ({ navigation, route }) => {
                             {error && (
                                 <View style={styles.errorContainer}>
                                     <Text style={styles.errorText}>{error}</Text>
-                                    <TouchableOpacity 
+                                    <TouchableOpacity
                                         style={styles.retryButton}
                                         onPress={() => {
                                             clearError();
@@ -630,7 +628,7 @@ const ChatScreen = ({ navigation, route }) => {
             )}
 
             {/* ✅ ALERTAS PERSONALIZADAS */}
-            
+
             {/* Diálogo de confirmación personalizado */}
             <ConfirmationDialog
                 visible={alertState.confirmation.visible}

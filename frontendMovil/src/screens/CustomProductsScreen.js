@@ -7,7 +7,6 @@ import {
     Dimensions,
     ScrollView,
     FlatList,
-    Alert,
     ActivityIndicator,
     RefreshControl,
     SafeAreaView,
@@ -20,6 +19,12 @@ import { useCustomProductsByType } from "../hooks/useCustomProductsMaterials";
 import MaterialCard from "../components/MaterialCard";
 import CustomizationPanel from "../components/CustomizationPanel";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAlert } from "../hooks/useAlert";
+import { 
+    CustomAlert, 
+    ConfirmationDialog, 
+    ToastDialog 
+} from "../components/CustomAlerts";
 
 // Obtener dimensiones de la pantalla
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -46,6 +51,16 @@ export default function CustomProductsScreen({ route, navigation }) {
     const { isAuthenticated, userInfo } = useAuth();
     const { addToCart } = useCart();
 
+    // Hook de alertas personalizadas
+    const {
+        alertState,
+        showConfirmation,
+        hideConfirmation,
+        showSuccessToast,
+        showErrorToast,
+        showError
+    } = useAlert();
+
     // Estados locales
     const [activeCategory, setActiveCategory] = useState('todos');
     const [selectedProducts, setSelectedProducts] = useState([]);
@@ -65,22 +80,22 @@ export default function CustomProductsScreen({ route, navigation }) {
     const handleGoBack = useCallback(() => {
         // Si hay productos seleccionados, mostrar confirmación
         if (selectedProducts.length > 0) {
-            Alert.alert(
-                "Confirmar salida",
-                "¿Estás seguro de que quieres salir? Perderás tu personalización actual.",
-                [
-                    { text: "Cancelar", style: "cancel" },
-                    {
-                        text: "Salir",
-                        style: "destructive",
-                        onPress: () => navigation.goBack()
-                    }
-                ]
-            );
+            showConfirmation({
+                title: "Confirmar salida",
+                message: "¿Estás seguro de que quieres salir? Perderás tu personalización actual.",
+                confirmText: "Salir",
+                cancelText: "Cancelar",
+                isDangerous: true,
+                onConfirm: () => {
+                    hideConfirmation();
+                    navigation.goBack();
+                },
+                onCancel: hideConfirmation
+            });
         } else {
             navigation.goBack();
         }
-    }, [navigation, selectedProducts]);
+    }, [navigation, selectedProducts, showConfirmation, hideConfirmation]);
 
     // Función para refrescar datos
     const onRefresh = useCallback(async () => {
@@ -91,10 +106,11 @@ export default function CustomProductsScreen({ route, navigation }) {
             }
         } catch (error) {
             console.error('Error al refrescar:', error);
+            showErrorToast('Error al actualizar los datos');
         } finally {
             setRefreshing(false);
         }
-    }, [refetch]);
+    }, [refetch, showErrorToast]);
 
     // Configuración de categorías dinámicas
     const getCategoriesForProduct = () => {
@@ -123,14 +139,17 @@ export default function CustomProductsScreen({ route, navigation }) {
     // Maneja la adición de productos individuales al carrito 
     const handleAddToCart = async (product) => {
         if (!isAuthenticated) {
-            Alert.alert(
-                "Iniciar sesión",
-                "Debes iniciar sesión para agregar productos al carrito",
-                [
-                    { text: "Cancelar", style: "cancel" },
-                    { text: "Iniciar sesión", onPress: () => navigation.navigate('Login') }
-                ]
-            );
+            showConfirmation({
+                title: "Iniciar sesión",
+                message: "Debes iniciar sesión para agregar productos al carrito",
+                confirmText: "Iniciar sesión",
+                cancelText: "Cancelar",
+                onConfirm: () => {
+                    hideConfirmation();
+                    navigation.navigate('Login');
+                },
+                onCancel: hideConfirmation
+            });
             return;
         }
 
@@ -140,15 +159,9 @@ export default function CustomProductsScreen({ route, navigation }) {
                 type: 'individual',
                 productType: productType
             });
-            Alert.alert(
-                "Producto agregado",
-                `${product.name} se ha añadido al carrito`
-            );
+            showSuccessToast(`${product.name} se ha añadido al carrito`);
         } catch (error) {
-            Alert.alert(
-                "Error",
-                "No se pudo agregar el producto al carrito"
-            );
+            showErrorToast('No se pudo agregar el producto al carrito');
         }
     };
 
@@ -190,14 +203,17 @@ export default function CustomProductsScreen({ route, navigation }) {
     // Maneja la finalización de la personalización
     const handleFinishCustomization = useCallback(async (customizationData) => {
         if (!isAuthenticated) {
-            Alert.alert(
-                "Iniciar sesión",
-                "Debes iniciar sesión para completar tu personalización",
-                [
-                    { text: "Cancelar", style: "cancel" },
-                    { text: "Iniciar sesión", onPress: () => navigation.navigate('Login') }
-                ]
-            );
+            showConfirmation({
+                title: "Iniciar sesión",
+                message: "Debes iniciar sesión para completar tu personalización",
+                confirmText: "Iniciar sesión",
+                cancelText: "Cancelar",
+                onConfirm: () => {
+                    hideConfirmation();
+                    navigation.navigate('Login');
+                },
+                onCancel: hideConfirmation
+            });
             return;
         }
 
@@ -215,22 +231,22 @@ export default function CustomProductsScreen({ route, navigation }) {
             // Limpiar selección
             setSelectedProducts([]);
 
-            Alert.alert(
-                "¡Personalización completada!",
-                "Tu producto personalizado ha sido agregado al carrito",
-                [
-                    { text: "Ver carrito", onPress: () => navigation.navigate('Cart') },
-                    { text: "Continuar personalizando", style: "cancel" }
-                ]
-            );
+            showConfirmation({
+                title: "¡Personalización completada!",
+                message: "Tu producto personalizado ha sido agregado al carrito",
+                confirmText: "Ver carrito",
+                cancelText: "Continuar personalizando",
+                onConfirm: () => {
+                    hideConfirmation();
+                    navigation.navigate('Cart');
+                },
+                onCancel: hideConfirmation
+            });
         } catch (error) {
             console.error('Error al finalizar personalización:', error);
-            Alert.alert(
-                "Error",
-                "No se pudo completar tu personalización. Inténtalo de nuevo."
-            );
+            showError('No se pudo completar tu personalización. Inténtalo de nuevo.');
         }
-    }, [isAuthenticated, addToCart, navigation]);
+    }, [isAuthenticated, addToCart, navigation, showConfirmation, hideConfirmation, showError]);
 
     // Transformar datos de materiales
     const transformMaterialsToProducts = (materials) => {
@@ -431,6 +447,38 @@ export default function CustomProductsScreen({ route, navigation }) {
                 onRemoveProduct={handleRemoveProduct}
                 onFinishCustomization={handleFinishCustomization}
                 productType={productType}
+            />
+
+            {/* Custom Alert Components */}
+            <ConfirmationDialog
+                visible={alertState.confirmation.visible}
+                title={alertState.confirmation.title}
+                message={alertState.confirmation.message}
+                onConfirm={alertState.confirmation.onConfirm}
+                onCancel={alertState.confirmation.onCancel}
+                confirmText={alertState.confirmation.confirmText}
+                cancelText={alertState.confirmation.cancelText}
+                isDangerous={alertState.confirmation.isDangerous}
+            />
+
+            <CustomAlert
+                visible={alertState.basicAlert.visible}
+                title={alertState.basicAlert.title}
+                message={alertState.basicAlert.message}
+                onConfirm={alertState.basicAlert.onConfirm}
+                onCancel={alertState.basicAlert.onCancel}
+                confirmText={alertState.basicAlert.confirmText}
+                cancelText={alertState.basicAlert.cancelText}
+                showCancel={alertState.basicAlert.showCancel}
+                type={alertState.basicAlert.type}
+            />
+
+            <ToastDialog
+                visible={alertState.toast.visible}
+                message={alertState.toast.message}
+                type={alertState.toast.type}
+                duration={alertState.toast.duration}
+                onHide={() => {}}
             />
         </View>
     );

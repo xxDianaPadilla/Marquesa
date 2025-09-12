@@ -485,7 +485,6 @@ shoppingCartController.addItemToCartNew = async (req, res) => {
         const itemTypeRef = itemType === 'product' ? 'products' : 'CustomProducts';
 
         // Buscar el producto para obtener el precio
-        let productModel;
         let product;
 
         try {
@@ -510,14 +509,6 @@ shoppingCartController.addItemToCartNew = async (req, res) => {
         if (!product) {
             return res.status(404).json({
                 success: false,
-                message: "Producto no encontrado"
-            });
-        }
-
-        // Calcular subtotal
-        if (!product) {
-            return res.status(404).json({
-                success: false,
                 message: itemType === 'product' ? "Producto no encontrado" : "Producto personalizado no encontrado",
                 debug: {
                     itemId,
@@ -527,7 +518,7 @@ shoppingCartController.addItemToCartNew = async (req, res) => {
             });
         }
 
-        // Calcular subtotal - manejar diferentes estructuras de precio
+        // FIX: Calcular precio correcto según el tipo de producto
         let productPrice;
         if (itemType === 'product') {
             productPrice = product.price;
@@ -549,7 +540,6 @@ shoppingCartController.addItemToCartNew = async (req, res) => {
         }
 
         const subtotal = productPrice * qty;
-
 
         // CAMBIO CLAVE: Buscar solo el carrito ACTIVO del cliente
         let cart = await shoppingCartModel.findOne({
@@ -573,7 +563,7 @@ shoppingCartController.addItemToCartNew = async (req, res) => {
         );
 
         if (existingItemIndex !== -1) {
-            // Actualizar cantidad si el item ya existe
+            // FIX: Actualizar cantidad usando productPrice en lugar de product.price
             const newQuantity = cart.items[existingItemIndex].quantity + qty;
 
             if (newQuantity > 99) {
@@ -584,7 +574,7 @@ shoppingCartController.addItemToCartNew = async (req, res) => {
             }
 
             cart.items[existingItemIndex].quantity = newQuantity;
-            cart.items[existingItemIndex].subtotal = product.price * newQuantity;
+            cart.items[existingItemIndex].subtotal = productPrice * newQuantity; // FIX: Usar productPrice
         } else {
             // Agregar nuevo item al carrito
             cart.items.push({
@@ -592,12 +582,12 @@ shoppingCartController.addItemToCartNew = async (req, res) => {
                 itemId,
                 itemTypeRef,
                 quantity: qty,
-                subtotal
+                subtotal // Ya calculado correctamente arriba
             });
         }
 
-        // Recalcular el total del carrito
-        cart.total = calculateCartTotal(cart.items);
+        // FIX: Mejorar el cálculo del total del carrito
+        cart.total = cart.items.reduce((total, item) => total + item.subtotal, 0);
 
         // Guardar los cambios
         await cart.save();
@@ -619,7 +609,8 @@ shoppingCartController.addItemToCartNew = async (req, res) => {
                 itemId,
                 itemType,
                 quantity: qty,
-                subtotal
+                subtotal,
+                productPrice // Agregar para debugging
             },
             token: currentToken // También en el body para mayor compatibilidad
         });

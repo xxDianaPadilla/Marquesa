@@ -17,22 +17,31 @@ const useCustomization = () => {
             // Si hay imagen, convertirla a base64 para móvil
             if (referenceImage) {
                 console.log('=== PROCESANDO IMAGEN PARA MÓVIL ===');
+                console.log('Tipo de referenceImage:', typeof referenceImage);
+                console.log('Propiedades de referenceImage:', Object.keys(referenceImage));
                 
-                // Si la imagen ya es base64
+                // Si la imagen ya es base64 string
                 if (typeof referenceImage === 'string' && referenceImage.startsWith('data:image')) {
                     requestData.referenceImageBase64 = referenceImage;
                     console.log('Imagen base64 agregada directamente');
                 }
-                // Si la imagen es un objeto File o similar
-                else if (referenceImage.uri || referenceImage.path) {
-                    // Para React Native, usar la URI directamente
-                    requestData.referenceImageBase64 = referenceImage.uri || referenceImage.path;
-                    console.log('Imagen URI agregada:', requestData.referenceImageBase64);
-                }
-                // Si es un objeto con datos base64
+                // Si es un objeto con datos base64 (formato de React Native/Expo)
                 else if (referenceImage.base64) {
-                    requestData.referenceImageBase64 = `data:image/jpeg;base64,${referenceImage.base64}`;
-                    console.log('Imagen convertida a base64');
+                    // Asegurarse de que el base64 tenga el formato correcto
+                    const base64String = `data:image/jpeg;base64,${referenceImage.base64}`;
+                    requestData.referenceImageBase64 = base64String;
+                    console.log('Imagen convertida a base64 completa');
+                    console.log('Base64 length:', base64String.length);
+                }
+                // Si solo tenemos la URI (fallback, aunque no debería pasar)
+                else if (referenceImage.uri) {
+                    console.warn('ADVERTENCIA: Solo se encontró URI, se necesita base64');
+                    console.log('URI encontrada:', referenceImage.uri);
+                    // No agregar nada, porque la URI no servirá en el backend
+                }
+                else {
+                    console.error('ERROR: Formato de imagen no reconocido');
+                    console.log('referenceImage object:', referenceImage);
                 }
             }
 

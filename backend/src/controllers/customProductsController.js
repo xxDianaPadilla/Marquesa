@@ -178,7 +178,7 @@ customProductsController.createCustomProducts = async (req, res) => {
         // CASO 1: FormData (web con imagen)
         if (req.headers['content-type']?.includes('multipart/form-data')) {
             console.log('=== PROCESANDO FORMDATA (WEB CON IMAGEN) ===');
-
+            
             // Si selectedMaterials viene como string (FormData), parsearlo a JSON
             if (typeof processedData.selectedMaterials === 'string') {
                 try {
@@ -202,14 +202,14 @@ customProductsController.createCustomProducts = async (req, res) => {
         // CASO 2: JSON (web sin imagen o móvil)
         else if (req.headers['content-type']?.includes('application/json')) {
             console.log('=== PROCESANDO JSON (WEB SIN IMAGEN O MÓVIL) ===');
-
+            
             // Los datos ya vienen en formato correcto desde JSON
             console.log('Datos JSON ya procesados:', processedData);
         }
         // CASO 3: Móvil con imagen (si usas otra forma de envío)
         else {
             console.log('=== PROCESANDO DATOS DE MÓVIL ===');
-
+            
             // Verificar si hay datos de imagen en base64 o URL
             if (processedData.referenceImageBase64) {
                 console.log('Imagen en base64 detectada desde móvil');
@@ -217,11 +217,11 @@ customProductsController.createCustomProducts = async (req, res) => {
         }
 
         // Ahora extraer los datos procesados
-        const {
-            clientId,
-            productToPersonalize,
-            selectedMaterials,
-            extraComments,
+        const { 
+            clientId, 
+            productToPersonalize, 
+            selectedMaterials, 
+            extraComments, 
             totalPrice,
             referenceImageBase64  // Para móvil
         } = processedData;
@@ -282,21 +282,42 @@ customProductsController.createCustomProducts = async (req, res) => {
             // Imagen desde base64 (móvil)
             try {
                 console.log('=== SUBIENDO IMAGEN DESDE BASE64 (MÓVIL) ===');
-                const result = await cloudinary.uploader.upload(referenceImageBase64, {
+                console.log('Base64 data type:', typeof referenceImageBase64);
+                console.log('Base64 data length:', referenceImageBase64.length);
+                
+                // Verificar y formatear el base64 correctamente
+                let base64Data = referenceImageBase64;
+                
+                // Si no tiene el prefijo data:image, agregarlo
+                if (!base64Data.startsWith('data:image')) {
+                    base64Data = `data:image/jpeg;base64,${base64Data}`;
+                    console.log('Base64 prefix added');
+                }
+                
+                console.log('Uploading to Cloudinary with formatted base64');
+                
+                const result = await cloudinary.uploader.upload(base64Data, {
                     folder: "custom-products/reference-images",
                     allowed_formats: ["jpg", "jpeg", "png", "webp"],
                     transformation: [
                         { width: 1200, height: 1200, crop: "limit" },
                         { quality: "auto" }
-                    ]
+                    ],
+                    resource_type: "image"
                 });
                 referenceImageURL = result.secure_url;
                 console.log('Imagen móvil subida exitosamente:', referenceImageURL);
             } catch (cloudinaryError) {
                 console.error('Error en Cloudinary (móvil):', cloudinaryError);
+                console.error('Cloudinary error details:', {
+                    message: cloudinaryError.message,
+                    name: cloudinaryError.name,
+                    stack: cloudinaryError.stack
+                });
                 return res.status(502).json({
                     success: false,
-                    message: "Error al procesar la imagen de referencia desde móvil"
+                    message: "Error al procesar la imagen de referencia desde móvil",
+                    error: cloudinaryError.message
                 });
             }
         }

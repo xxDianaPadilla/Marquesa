@@ -111,7 +111,7 @@ export default function CustomizationFormScreen() {
                 allowsEditing: true,
                 aspect: [4, 3],
                 quality: 0.7, // Reducir calidad para evitar archivos muy grandes
-                base64: true,  // ✅ HABILITAMOS BASE64 para el backend
+                base64: true,
             });
 
             if (!result.canceled && result.assets[0]) {
@@ -121,10 +121,15 @@ export default function CustomizationFormScreen() {
                     width: asset.width,
                     height: asset.height,
                     size: asset.fileSize,
-                    hasBase64: !!asset.base64
+                    hasBase64: !!asset.base64,
+                    base64Length: asset.base64?.length || 0
                 });
 
-                // ✅ PREPARAR IMAGEN PARA BACKEND MÓVIL
+                if (!asset.base64) {
+                    Alert.alert('Error', 'No se pudo procesar la imagen. Inténtalo nuevamente.');
+                    return;
+                }
+
                 const imageForBackend = {
                     uri: asset.uri,
                     base64: asset.base64,
@@ -135,6 +140,8 @@ export default function CustomizationFormScreen() {
 
                 setReferenceImage(imageForBackend);
                 setImagePreview(asset.uri);
+
+                console.log('Imagen preparada correctamente para backend');
             }
         } catch (error) {
             console.error('Error picking image from camera:', error);
@@ -150,7 +157,7 @@ export default function CustomizationFormScreen() {
                 allowsEditing: true,
                 aspect: [4, 3],
                 quality: 0.7, // Reducir calidad para evitar archivos muy grandes
-                base64: true,  // ✅ HABILITAMOS BASE64 para el backend
+                base64: true,
             });
 
             if (!result.canceled && result.assets[0]) {
@@ -160,10 +167,15 @@ export default function CustomizationFormScreen() {
                     width: asset.width,
                     height: asset.height,
                     size: asset.fileSize,
-                    hasBase64: !!asset.base64
+                    hasBase64: !!asset.base64,
+                    base64Length: asset.base64?.length || 0
                 });
 
-                // ✅ PREPARAR IMAGEN PARA BACKEND MÓVIL
+                if (!asset.base64) {
+                    Alert.alert('Error', 'No se pudo procesar la imagen. Inténtalo nuevamente.');
+                    return;
+                }
+
                 const imageForBackend = {
                     uri: asset.uri,
                     base64: asset.base64,
@@ -174,6 +186,8 @@ export default function CustomizationFormScreen() {
 
                 setReferenceImage(imageForBackend);
                 setImagePreview(asset.uri);
+
+                console.log('Imagen preparada correctamente para backend');
             }
         } catch (error) {
             console.error('Error picking image from library:', error);
@@ -205,36 +219,32 @@ export default function CustomizationFormScreen() {
     const handleConfirm = async () => {
         try {
             console.log('=== INICIANDO PROCESO DE CONFIRMACIÓN ===');
-            
-            // ✅ VALIDACIÓN MEJORADA DEL USUARIO
+
             if (!user || !user.id) {
                 console.error('Usuario no autenticado:', user);
                 Alert.alert('Error', 'Debes iniciar sesión para continuar');
                 return;
             }
 
-            // ✅ VALIDACIÓN DE PRODUCTOS
             if (!selectedProducts || selectedProducts.length === 0) {
                 console.error('No hay productos seleccionados:', selectedProducts);
                 Alert.alert('Error', 'Debes seleccionar al menos un producto para personalizar');
                 return;
             }
 
-            // ✅ VALIDACIÓN DE PRECIO
             if (!totalPrice || totalPrice <= 0) {
                 console.error('Precio inválido:', totalPrice);
                 Alert.alert('Error', 'El precio total debe ser mayor a 0');
                 return;
             }
 
-            // ✅ VALIDACIÓN DE TIPO DE PRODUCTO
             if (!productType || productType.trim() === '') {
                 console.error('Tipo de producto inválido:', productType);
                 Alert.alert('Error', 'Tipo de producto requerido');
                 return;
             }
 
-            console.log('✅ Todas las validaciones pasaron');
+            console.log('Todas las validaciones pasaron');
 
             // Mostrar confirmación antes de procesar
             Alert.alert(
@@ -248,12 +258,11 @@ export default function CustomizationFormScreen() {
                             try {
                                 console.log('=== PROCESANDO PERSONALIZACIÓN ===');
 
-                                // ✅ PREPARAR PARÁMETROS CON LOGGING DETALLADO
                                 const customizationParams = {
                                     user,
                                     selectedProducts,
                                     productType,
-                                    referenceImage, // Ya está en formato correcto
+                                    referenceImage,
                                     comments: comments.trim(),
                                     totalPrice
                                 };
@@ -267,7 +276,6 @@ export default function CustomizationFormScreen() {
                                     commentsLength: comments.trim().length
                                 });
 
-                                // Debug detallado de selectedProducts
                                 console.log('Selected products detail:', selectedProducts.map(p => ({
                                     id: p._id,
                                     name: p.name,
@@ -275,10 +283,9 @@ export default function CustomizationFormScreen() {
                                     quantity: p.quantity
                                 })));
 
-                                // ✅ PROCESAR LA PERSONALIZACIÓN
                                 const customizationData = await processCustomization(customizationParams);
 
-                                console.log('✅ PERSONALIZACIÓN PROCESADA EXITOSAMENTE:', customizationData);
+                                console.log('PERSONALIZACIÓN PROCESADA EXITOSAMENTE:', customizationData);
 
                                 // Mostrar mensaje de éxito
                                 Alert.alert(
@@ -308,10 +315,10 @@ export default function CustomizationFormScreen() {
 
                             } catch (error) {
                                 console.error('❌ ERROR EN EL PROCESO DE CONFIRMACIÓN:', error);
-                                
+
                                 // Mejorar mensajes de error específicos
                                 let errorMessage = 'Ocurrió un error al procesar tu personalización';
-                                
+
                                 if (error.message.includes('conexión')) {
                                     errorMessage = 'Error de conexión. Verifica tu internet.';
                                 } else if (error.message.includes('validación')) {
@@ -357,17 +364,6 @@ export default function CustomizationFormScreen() {
         );
     };
 
-    // ✅ FUNCIÓN PARA DEBUG - remover en producción
-    const debugCurrentState = () => {
-        console.log('=== DEBUG CURRENT STATE ===');
-        console.log('User:', user);
-        console.log('Selected Products:', selectedProducts.length);
-        console.log('Product Type:', productType);
-        console.log('Total Price:', totalPrice);
-        console.log('Reference Image:', !!referenceImage);
-        console.log('Comments:', comments.length + ' caracteres');
-    };
-
     return (
         <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
             <KeyboardAvoidingView
@@ -388,14 +384,6 @@ export default function CustomizationFormScreen() {
                         <Text style={styles.title}>Finalizar Personalización</Text>
                         <Text style={styles.subtitle}>¿Te gusta cómo luce tu {productType}?</Text>
                     </View>
-
-                    {/* ✅ BOTÓN DE DEBUG - remover en producción */}
-                    <TouchableOpacity
-                        onPress={debugCurrentState}
-                        style={styles.debugButton}
-                    >
-                        <Icon name="bug-report" size={16} color="#666" />
-                    </TouchableOpacity>
                 </View>
 
                 <ScrollView
@@ -563,10 +551,6 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontFamily: 'Poppins-Regular',
         color: '#666',
-    },
-    // ✅ DEBUG BUTTON - remover en producción
-    debugButton: {
-        padding: 8,
     },
 
     // Content

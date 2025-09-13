@@ -31,8 +31,9 @@ const Header = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
 
-  // Referencias para manejo del dropdown de búsqueda
-  const searchContainerRef = useRef(null);
+  // Referencias separadas para desktop y móvil
+  const searchContainerDesktopRef = useRef(null);
+  const searchContainerMobileRef = useRef(null);
   const searchInputRef = useRef(null);
   const searchTimeoutRef = useRef(null);
 
@@ -188,10 +189,21 @@ const Header = () => {
     setShowSearchDropdown(false);
   }, []);
 
+  // Determinar qué referencia usar según el tamaño de pantalla
+  const getCurrentSearchContainer = useCallback(() => {
+    // En móvil, usar la referencia móvil si el menú está abierto
+    if (window.innerWidth < 768 && isMenuOpen) {
+      return searchContainerMobileRef;
+    }
+    // En desktop o móvil con menú cerrado, usar desktop
+    return searchContainerDesktopRef;
+  }, [isMenuOpen]);
+
   // Effect para manejar clics fuera del área de búsqueda - MEJORADO
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+      const currentContainer = getCurrentSearchContainer();
+      if (currentContainer.current && !currentContainer.current.contains(event.target)) {
         // Agregar un pequeño delay para permitir que los clics en el dropdown se procesen primero
         setTimeout(() => {
           setShowSearchDropdown(false);
@@ -206,7 +218,7 @@ const Header = () => {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showSearchDropdown]);
+  }, [showSearchDropdown, getCurrentSearchContainer]);
 
   // Limpiar timeout al desmontar componente
   useEffect(() => {
@@ -285,7 +297,7 @@ const Header = () => {
             </div>
 
             <div className="col-span-6 flex justify-center">
-              <div className="search-container max-w-lg relative" ref={searchContainerRef}>
+              <div className="search-container max-w-lg relative" ref={searchContainerDesktopRef}>
                 <form onSubmit={handleSearchSubmit}>
                   <input
                     ref={searchInputRef}
@@ -301,15 +313,15 @@ const Header = () => {
                   </button>
                 </form>
 
-                {/* Dropdown de resultados de búsqueda */}
+                {/* Dropdown de resultados de búsqueda para desktop */}
                 <SearchDropdown
                   searchResults={searchResults}
-                  isVisible={showSearchDropdown}
+                  isVisible={showSearchDropdown && !isMenuOpen}
                   onClose={closeSearchDropdown}
                   onProductSelect={handleProductSelect}
                   searchTerm={searchTerm}
                   isLoading={isSearching}
-                  searchContainerRef={searchContainerRef}
+                  searchContainerRef={searchContainerDesktopRef}
                 />
               </div>
             </div>
@@ -361,7 +373,7 @@ const Header = () => {
           <div className={`mobile-menu md:hidden ${isMenuOpen ? 'open' : ''}`}>
             <div className="px-6 space-y-4">
               {/* Buscador en menú móvil */}
-              <div className="search-container relative" ref={searchContainerRef}>
+              <div className="search-container relative" ref={searchContainerMobileRef}>
                 <form onSubmit={handleSearchSubmit}>
                   <input
                     type="text"
@@ -379,12 +391,12 @@ const Header = () => {
                 {/* Dropdown de resultados de búsqueda para móvil */}
                 <SearchDropdown
                   searchResults={searchResults}
-                  isVisible={showSearchDropdown}
+                  isVisible={showSearchDropdown && isMenuOpen}
                   onClose={closeSearchDropdown}
                   onProductSelect={handleProductSelect}
                   searchTerm={searchTerm}
                   isLoading={isSearching}
-                  searchContainerRef={searchContainerRef}
+                  searchContainerRef={searchContainerMobileRef}
                 />
               </div>
 

@@ -16,13 +16,27 @@ const SearchDropdown = ({
 
     // Calcular posición del dropdown basado en el input de búsqueda
     useEffect(() => {
-        if (isVisible && searchContainerRef?.current) {
-            const rect = searchContainerRef.current.getBoundingClientRect();
-            setDropdownPosition({
-                top: rect.bottom + window.scrollY + 4, // 4px de margen
-                left: rect.left + window.scrollX,
-                width: rect.width
-            });
+        const updatePosition = () => {
+            if (isVisible && searchContainerRef?.current) {
+                const rect = searchContainerRef.current.getBoundingClientRect();
+                setDropdownPosition({
+                    top: rect.bottom + window.scrollY + 4, // 4px de margen
+                    left: rect.left + window.scrollX,
+                    width: rect.width
+                });
+            }
+        };
+
+        updatePosition();
+
+        // Actualizar posición en resize y scroll
+        if (isVisible) {
+            window.addEventListener('resize', updatePosition);
+            window.addEventListener('scroll', updatePosition);
+            return () => {
+                window.removeEventListener('resize', updatePosition);
+                window.removeEventListener('scroll', updatePosition);
+            };
         }
     }, [isVisible, searchContainerRef, searchTerm]);
 

@@ -1,13 +1,13 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const SearchDropdown = ({ 
-    searchResults, 
-    isVisible, 
-    onClose, 
-    onProductSelect, 
+const SearchDropdown = ({
+    searchResults,
+    isVisible,
+    onClose,
+    onProductSelect,
     searchTerm,
-    isLoading 
+    isLoading
 }) => {
     const navigate = useNavigate();
 
@@ -17,17 +17,17 @@ const SearchDropdown = ({
             event.preventDefault();
             event.stopPropagation();
         }
-        
+
         console.log('SearchDropdown - Product clicked:', product._id);
-        
+
         if (onProductSelect) {
             onProductSelect(product);
         }
-        
+
         if (onClose) {
             onClose();
         }
-        
+
         setTimeout(() => {
             console.log('SearchDropdown - Navigating to product:', product._id);
             navigate(`/ProductDetail/${product._id}`);
@@ -40,11 +40,11 @@ const SearchDropdown = ({
             event.preventDefault();
             event.stopPropagation();
         }
-        
+
         if (onClose) {
             onClose();
         }
-        
+
         navigate(`/buscar?q=${encodeURIComponent(searchTerm)}`);
     };
 
@@ -54,11 +54,11 @@ const SearchDropdown = ({
     }
 
     return (
-        <div 
+        <div
             className="search-dropdown-container absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-96 overflow-y-auto"
-            style={{ 
-                // Z-index bajo, consistente con la clase CSS .search-dropdown
-                zIndex: 2,
+            style={{
+                // Z-index alto para estar sobre contenido como imágenes
+                zIndex: 1000,
                 pointerEvents: 'auto'
             }}
             onClick={(e) => e.stopPropagation()}
@@ -84,9 +84,11 @@ const SearchDropdown = ({
                                 className="search-dropdown-item p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
                                 onClick={(e) => handleProductClick(product, e)}
                                 onMouseDown={(e) => e.preventDefault()}
-                                style={{ 
+                                style={{
                                     userSelect: 'none',
-                                    pointerEvents: 'auto'
+                                    pointerEvents: 'auto',
+                                    position: 'relative',
+                                    zIndex: 1001
                                 }}
                             >
                                 <div className="flex items-center space-x-3">
@@ -102,7 +104,7 @@ const SearchDropdown = ({
                                             draggable={false}
                                         />
                                     </div>
-                                    
+
                                     {/* Información del producto */}
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium text-gray-900 truncate">
@@ -112,7 +114,7 @@ const SearchDropdown = ({
                                             {product.category || 'Sin categoría'}
                                         </p>
                                     </div>
-                                    
+
                                     {/* Precio del producto */}
                                     <div className="flex-shrink-0">
                                         <p className="text-sm font-semibold text-pink-600">

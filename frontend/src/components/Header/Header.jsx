@@ -309,6 +309,7 @@ const Header = () => {
                   onProductSelect={handleProductSelect}
                   searchTerm={searchTerm}
                   isLoading={isSearching}
+                  searchContainerRef={searchContainerRef}
                 />
               </div>
             </div>
@@ -383,7 +384,7 @@ const Header = () => {
                   onProductSelect={handleProductSelect}
                   searchTerm={searchTerm}
                   isLoading={isSearching}
-                  searchContainerRef={searchContainerRef} 
+                  searchContainerRef={searchContainerRef}
                 />
               </div>
 

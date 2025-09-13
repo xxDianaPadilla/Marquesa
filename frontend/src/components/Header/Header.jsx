@@ -24,18 +24,18 @@ const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   // Estado para controlar el modal de autenticación
   const [showAuthModal, setShowAuthModal] = useState(false);
-  
+
   // Estados para la funcionalidad de búsqueda
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
-  
+
   // Referencias para manejo del dropdown de búsqueda
   const searchContainerRef = useRef(null);
   const searchInputRef = useRef(null);
   const searchTimeoutRef = useRef(null);
-  const headerRef = useRef(null); // Nueva referencia para el header
+  const headerRef = useRef(null); // Referencia para el header
 
   // URL base del API
   const API_BASE_URL = 'https://marquesa.onrender.com/api';
@@ -49,33 +49,56 @@ const Header = () => {
     '688175e79579a7cde1657ac6': 'Tarjetas'
   };
 
-  // NUEVA FUNCIÓN: Aplicar clase de fondo al header cuando hay modales
-  const applyHeaderBackgroundClass = useCallback(() => {
+  // FUNCIÓN MEJORADA: Agregar clase al body cuando hay modal
+  const addModalClassToBody = useCallback(() => {
+    document.body.classList.add('modal-active');
+    document.body.classList.add('modal-overlay-active');
+
+    // También aplicar al header directamente como backup
     if (headerRef.current) {
       headerRef.current.classList.add('header-behind-modal');
     }
+
+    console.log('Modal classes added to body and header');
   }, []);
 
-  // NUEVA FUNCIÓN: Remover clase de fondo del header
-  const removeHeaderBackgroundClass = useCallback(() => {
+  // FUNCIÓN MEJORADA: Remover clase del body cuando se cierra modal
+  const removeModalClassFromBody = useCallback(() => {
+    document.body.classList.remove('modal-active');
+    document.body.classList.remove('modal-overlay-active');
+
+    // También remover del header
     if (headerRef.current) {
       headerRef.current.classList.remove('header-behind-modal');
     }
+
+    console.log('Modal classes removed from body and header');
   }, []);
 
-  // EFECTO: Manejar clase del header según estado de modales
+  // EFECTO MEJORADO: Manejar clases según estado de modales
   useEffect(() => {
     if (showAuthModal) {
-      applyHeaderBackgroundClass();
+      addModalClassToBody();
     } else {
-      removeHeaderBackgroundClass();
+      removeModalClassFromBody();
     }
 
     // Limpiar al desmontar
     return () => {
-      removeHeaderBackgroundClass();
+      removeModalClassFromBody();
     };
-  }, [showAuthModal, applyHeaderBackgroundClass, removeHeaderBackgroundClass]);
+  }, [showAuthModal, addModalClassToBody, removeModalClassFromBody]);
+
+  // EFECTO ADICIONAL: Limpiar clases al desmontar el componente
+  useEffect(() => {
+    return () => {
+      // Asegurar que se limpien todas las clases al desmontar
+      document.body.classList.remove('modal-active', 'modal-overlay-active');
+      if (headerRef.current) {
+        headerRef.current.classList.remove('header-behind-modal');
+      }
+    };
+  }, []);
 
   // Función para realizar búsqueda de productos
   const searchProducts = useCallback(async (term) => {
@@ -117,10 +140,10 @@ const Header = () => {
       const filteredProducts = productsData.filter(product => {
         const productName = (product.name || '').toLowerCase();
         const searchLower = term.toLowerCase();
-        
+
         // Buscar por nombre del producto
         const nameMatch = productName.includes(searchLower);
-        
+
         // Buscar por categoría
         let categoryMatch = false;
         if (typeof product.categoryId === 'object' && product.categoryId?.name) {
@@ -198,10 +221,10 @@ const Header = () => {
   // Función para manejar selección de producto desde el dropdown
   const handleProductSelect = useCallback((product) => {
     console.log('Header - Product selected:', product);
-    
+
     // Cerrar el dropdown primero
     setShowSearchDropdown(false);
-    
+
     // Usar setTimeout para asegurar que la navegación ocurre después del cierre del dropdown
     setTimeout(() => {
       console.log('Header - Navigating to product:', product._id);
@@ -257,20 +280,23 @@ const Header = () => {
       navigate('/profile');
     } else {
       // Si no está autenticado, mostrar modal
+      console.log('Opening auth modal...');
       setShowAuthModal(true);
     }
   };
 
   // Función para manejar el clic en "Iniciar Sesión" del modal
   const handleLoginRedirect = () => {
+    console.log('Login redirect clicked...');
     setShowAuthModal(false);
     navigate('/login');
   };
 
-  // FUNCIÓN MODIFICADA: Cerrar el modal y remover clase del header
+  // FUNCIÓN MEJORADA: Cerrar el modal
   const closeAuthModal = () => {
+    console.log('Closing auth modal...');
     setShowAuthModal(false);
-    // La clase se removera automaticamente por el useEffect
+    // Las clases se removerán automáticamente por el useEffect
   };
 
   //Navegación para favoritos
@@ -301,8 +327,8 @@ const Header = () => {
 
   return (
     <>
-      {/* HEADER MODIFICADO: Agregar referencia */}
-      <header 
+      {/* HEADER CON REFERENCIA */}
+      <header
         ref={headerRef}
         className="w-full border-b border-gray-300 py-4 px-6 relative"
       >
@@ -331,7 +357,7 @@ const Header = () => {
                     <img src={iconSearch} alt="Buscar" className="w-5 h-5" />
                   </button>
                 </form>
-                
+
                 {/* Dropdown de resultados de búsqueda */}
                 <SearchDropdown
                   searchResults={searchResults}
@@ -405,7 +431,7 @@ const Header = () => {
                     <img src={iconSearch} alt="Buscar" className="w-4 h-4" />
                   </button>
                 </form>
-                
+
                 {/* Dropdown de resultados de búsqueda para móvil */}
                 <SearchDropdown
                   searchResults={searchResults}
@@ -462,9 +488,9 @@ const Header = () => {
 
       {/* Modal de Autenticación - Z-INDEX SUPREMO */}
       {showAuthModal && (
-        <div 
-          className="fixed inset-0 w-full h-full flex items-center justify-center bg-black bg-opacity-50"
-          style={{ 
+        <div
+          className="fixed inset-0 w-full h-full flex items-center justify-center"
+          style={{
             zIndex: 999999, // Z-index supremo para el modal
             position: 'fixed',
             top: 0,
@@ -472,12 +498,13 @@ const Header = () => {
             right: 0,
             bottom: 0,
             margin: 0,
-            padding: 0
+            padding: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)'
           }}
           onClick={closeAuthModal}
         >
           {/* Contenido del modal */}
-          <div 
+          <div
             className="relative bg-white rounded-lg shadow-xl p-6 mx-4 max-w-sm w-full z-10"
             onClick={(e) => e.stopPropagation()}
           >

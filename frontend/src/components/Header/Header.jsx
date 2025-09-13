@@ -383,6 +383,7 @@ const Header = () => {
                   onProductSelect={handleProductSelect}
                   searchTerm={searchTerm}
                   isLoading={isSearching}
+                  searchContainerRef={searchContainerRef} 
                 />
               </div>
 

@@ -35,6 +35,7 @@ const Header = () => {
   const searchContainerRef = useRef(null);
   const searchInputRef = useRef(null);
   const searchTimeoutRef = useRef(null);
+  const headerRef = useRef(null); // Nueva referencia para el header
 
   // URL base del API
   const API_BASE_URL = 'https://marquesa.onrender.com/api';
@@ -47,6 +48,34 @@ const Header = () => {
     '688176179579a7cde1657ace': 'Giftboxes',
     '688175e79579a7cde1657ac6': 'Tarjetas'
   };
+
+  // NUEVA FUNCIÓN: Aplicar clase de fondo al header cuando hay modales
+  const applyHeaderBackgroundClass = useCallback(() => {
+    if (headerRef.current) {
+      headerRef.current.classList.add('header-behind-modal');
+    }
+  }, []);
+
+  // NUEVA FUNCIÓN: Remover clase de fondo del header
+  const removeHeaderBackgroundClass = useCallback(() => {
+    if (headerRef.current) {
+      headerRef.current.classList.remove('header-behind-modal');
+    }
+  }, []);
+
+  // EFECTO: Manejar clase del header según estado de modales
+  useEffect(() => {
+    if (showAuthModal) {
+      applyHeaderBackgroundClass();
+    } else {
+      removeHeaderBackgroundClass();
+    }
+
+    // Limpiar al desmontar
+    return () => {
+      removeHeaderBackgroundClass();
+    };
+  }, [showAuthModal, applyHeaderBackgroundClass, removeHeaderBackgroundClass]);
 
   // Función para realizar búsqueda de productos
   const searchProducts = useCallback(async (term) => {
@@ -166,15 +195,12 @@ const Header = () => {
     }
   };
 
-  // Función para manejar selección de producto desde el dropdown - MEJORADA
+  // Función para manejar selección de producto desde el dropdown
   const handleProductSelect = useCallback((product) => {
     console.log('Header - Product selected:', product);
     
     // Cerrar el dropdown primero
     setShowSearchDropdown(false);
-    
-    // Limpiar el término de búsqueda si es necesario
-    // setSearchTerm('');
     
     // Usar setTimeout para asegurar que la navegación ocurre después del cierre del dropdown
     setTimeout(() => {
@@ -188,7 +214,7 @@ const Header = () => {
     setShowSearchDropdown(false);
   }, []);
 
-  // Effect para manejar clics fuera del área de búsqueda - MEJORADO
+  // Effect para manejar clics fuera del área de búsqueda
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
@@ -241,9 +267,10 @@ const Header = () => {
     navigate('/login');
   };
 
-  // Función para cerrar el modal
+  // FUNCIÓN MODIFICADA: Cerrar el modal y remover clase del header
   const closeAuthModal = () => {
     setShowAuthModal(false);
+    // La clase se removera automaticamente por el useEffect
   };
 
   //Navegación para favoritos
@@ -274,7 +301,11 @@ const Header = () => {
 
   return (
     <>
-      <header className="w-full border-b border-gray-300 py-4 px-6 relative">
+      {/* HEADER MODIFICADO: Agregar referencia */}
+      <header 
+        ref={headerRef}
+        className="w-full border-b border-gray-300 py-4 px-6 relative"
+      >
         <div className="w-full max-w-screen-xl mx-auto">
 
           {/* Diseño para pantallas grandes (Desktop) */}
@@ -429,12 +460,12 @@ const Header = () => {
         </div>
       </header>
 
-      {/* Modal de Autenticación con z-index alto para estar sobre todo */}
+      {/* Modal de Autenticación - Z-INDEX SUPREMO */}
       {showAuthModal && (
         <div 
           className="fixed inset-0 w-full h-full flex items-center justify-center bg-black bg-opacity-50"
           style={{ 
-            zIndex: 999999, // Mantener z-index alto SOLO para modales críticos
+            zIndex: 999999, // Z-index supremo para el modal
             position: 'fixed',
             top: 0,
             left: 0,

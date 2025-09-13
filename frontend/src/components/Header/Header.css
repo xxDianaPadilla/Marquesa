@@ -89,13 +89,13 @@
   cursor: default;
 }
 
-/* Dropdown de búsqueda con z-index muy bajo */
+/* Dropdown de búsqueda con z-index ALTO para que esté siempre visible */
 .search-dropdown {
   position: absolute;
   top: 100%;
   left: 0;
   right: 0;
-  z-index: 2 !important; /* REDUCIDO de 1002 a 2 */
+  z-index: 9999 !important; /* Z-INDEX ALTO para dropdown de resultados */
   background: white;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
@@ -104,6 +104,11 @@
   max-height: 400px;
   overflow-y: auto;
   pointer-events: auto;
+}
+
+/* Contenedor específico del dropdown con z-index alto */
+.search-dropdown-container {
+  z-index: 9999 !important; /* Z-INDEX ALTO para contenedor de resultados */
 }
 
 /* Ocultar dropdown cuando el header está en background */
@@ -307,12 +312,16 @@ header {
   }
 
   .search-dropdown {
-    z-index: 2 !important; /* REDUCIDO */
+    z-index: 9999 !important; /* ALTO para dropdown */
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
   }
 
+  .search-dropdown-container {
+    z-index: 9999 !important; /* ALTO para contenedor */
+  }
+
   .search-dropdown-item {
-    z-index: auto !important; /* REDUCIDO */
+    z-index: auto !important;
   }
 }
 
@@ -334,10 +343,14 @@ header {
     height: 20px;
   }
 
-  /* Dropdown móvil con z-index bajo */
+  /* Dropdown móvil con z-index ALTO */
   .search-dropdown {
     max-height: 300px;
-    z-index: 2 !important; /* REDUCIDO de 9999 a 2 */
+    z-index: 9999 !important; /* ALTO para móvil también */
+  }
+
+  .search-dropdown-container {
+    z-index: 9999 !important; /* ALTO para contenedor móvil */
   }
 }
 

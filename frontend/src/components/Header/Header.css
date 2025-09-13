@@ -21,7 +21,7 @@
   margin-left: 32px;
 }
 
-/* Search bar - Mejorado para ocupar todo el ancho */
+/* Search bar - Z-index reducido para que no interfiera */
 .search-container {
   display: flex;
   background-color: #fff;
@@ -29,7 +29,7 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   position: relative;
   width: 100%;
-  z-index: 1001 !important;
+  z-index: 1 !important; /* REDUCIDO de 1001 a 1 */
 }
 
 .search-container form {
@@ -41,7 +41,6 @@
 .search-input {
   flex: 1;
   width: 100%;
-  /* Asegurar que ocupe todo el ancho disponible */
   padding: 10px 50px 10px 15px;
   border: 1px solid #e5e7eb;
   border-radius: 9999px;
@@ -51,7 +50,14 @@
   position: relative;
   z-index: 1;
   box-sizing: border-box;
-  /* Incluir padding en el ancho total */
+  /* Desactivar interactividad cuando está en background */
+  pointer-events: auto;
+}
+
+/* Estado cuando el header está en background */
+.header-background .search-input {
+  pointer-events: none; /* Desactivar clics */
+  opacity: 0.7; /* Reducir opacidad */
 }
 
 .search-input:focus {
@@ -73,15 +79,23 @@
   cursor: pointer;
   transition: background-color 0.2s ease;
   z-index: 2;
+  pointer-events: auto;
 }
 
-/* Estilos mejorados para el dropdown de búsqueda */
+/* Estado cuando el header está en background */
+.header-background .search-button {
+  pointer-events: none; /* Desactivar clics */
+  opacity: 0.7; /* Reducir opacidad */
+  cursor: default;
+}
+
+/* Dropdown de búsqueda con z-index muy bajo */
 .search-dropdown {
   position: absolute;
   top: 100%;
   left: 0;
   right: 0;
-  z-index: 1002 !important; /* REDUCIR de valores más altos */
+  z-index: 2 !important; /* REDUCIDO de 1002 a 2 */
   background: white;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
@@ -92,27 +106,19 @@
   pointer-events: auto;
 }
 
-/* Asegurar que el dropdown aparezca sobre otros elementos en todas las pantallas */
-.search-container {
-  display: flex;
-  background-color: #fff;
-  border-radius: 9999px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  position: relative;
-  width: 100%;
-  z-index: 1001 !important; /* REDUCIR de valores más altos */
+/* Ocultar dropdown cuando el header está en background */
+.header-background .search-dropdown {
+  display: none !important;
 }
 
-/* Estilos para elementos del dropdown con mejor interactividad */
+/* Elementos del dropdown */
 .search-dropdown-item {
   padding: 12px;
   border-bottom: 1px solid #f3f4f6;
   cursor: pointer;
   transition: background-color 0.2s ease;
   user-select: none;
-  /* Prevenir selección de texto */
   pointer-events: auto;
-  /* Asegurar que los clics funcionen */
   position: relative;
   z-index: auto;
 }
@@ -123,7 +129,6 @@
 
 .search-dropdown-item:active {
   background-color: #f3f4f6;
-  /* Feedback visual en el clic */
 }
 
 .search-dropdown-item:last-child {
@@ -161,10 +166,22 @@
   opacity: 0.7;
   transition: opacity 0.2s;
   cursor: pointer;
+  pointer-events: auto;
 }
 
 .icon-style:hover {
   opacity: 1;
+}
+
+/* Estado cuando el header está en background */
+.header-background .icon-style {
+  pointer-events: none; /* Desactivar clics */
+  opacity: 0.5; /* Reducir más la opacidad */
+  cursor: default;
+}
+
+.header-background .icon-style:hover {
+  opacity: 0.5; /* Mantener opacidad baja en hover */
 }
 
 /* Mobile menu styles */
@@ -175,11 +192,17 @@
   overflow: hidden;
   transition: max-height 0.3s ease, padding 0.3s ease;
   border-top: 1px solid #e5e7eb;
+  z-index: 3;
 }
 
 .mobile-menu.open {
   max-height: 300px;
   padding: 16px 0;
+}
+
+/* Ocultar menú móvil cuando está en background */
+.header-background .mobile-menu {
+  display: none !important;
 }
 
 .hamburger-button {
@@ -192,10 +215,22 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  pointer-events: auto;
 }
 
 .hamburger-button:hover {
   background-color: #f3f4f6;
+}
+
+/* Estado cuando el header está en background */
+.header-background .hamburger-button {
+  pointer-events: none;
+  opacity: 0.5;
+  cursor: default;
+}
+
+.header-background .hamburger-button:hover {
+  background-color: transparent;
 }
 
 .mobile-overlay {
@@ -208,26 +243,76 @@
   z-index: 40;
 }
 
-/* Asegurar que el header tenga un z-index apropiado */
+/* Header con z-index muy bajo - Aplicable a elementos con Tailwind */
 header {
   position: relative;
-  z-index: 1000; /* ASEGURAR que sea menor que 999999 */
+  z-index: 0 !important; /* REDUCIDO de 1000 a 0 */
+}
+
+/* Clase especial para cuando el header está en background */
+.header-background {
+  z-index: -1 !important; /* Z-index negativo para estar completamente atrás */
+  pointer-events: none !important; /* Desactivar toda interactividad */
+}
+
+/* Desactivar interactividad de elementos específicos cuando está en background */
+.header-background .icon-style,
+.header-background img[alt="Favoritos"],
+.header-background img[alt="Carrito"],
+.header-background img[alt="Perfil"],
+.header-background img[alt="Buscar"] {
+  pointer-events: none !important;
+  opacity: 0.5 !important;
+  cursor: default !important;
+}
+
+.header-background .hamburger-button,
+.header-background button {
+  pointer-events: none !important;
+  opacity: 0.5 !important;
+  cursor: default !important;
+}
+
+/* Desactivar buscador cuando está en background */
+.header-background input[type="text"] {
+  pointer-events: none !important;
+  opacity: 0.7 !important;
+}
+
+/* Ocultar dropdown y menú móvil cuando está en background */
+.header-background .search-dropdown-container,
+.header-background .mobile-menu {
+  display: none !important;
+}
+
+/* Permitir interactividad solo cuando se especifique */
+.header-background.interactive {
+  pointer-events: auto !important;
+  z-index: 0 !important;
+}
+
+.header-background.interactive .icon-style,
+.header-background.interactive img,
+.header-background.interactive button,
+.header-background.interactive input {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  cursor: pointer !important;
 }
 
 /* Mejoras específicas para el dropdown en desktop */
 @media (min-width: 768px) {
   .search-container {
-    z-index: 1001 !important;
+    z-index: 1 !important; /* REDUCIDO */
   }
 
   .search-dropdown {
-    z-index: 1002 !important;
+    z-index: 2 !important; /* REDUCIDO */
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-    /* Sombra más prominente en desktop */
   }
 
   .search-dropdown-item {
-    z-index: 1003 !important;
+    z-index: auto !important; /* REDUCIDO */
   }
 }
 
@@ -249,10 +334,10 @@ header {
     height: 20px;
   }
 
-  /* Ajustar dropdown en móvil */
+  /* Dropdown móvil con z-index bajo */
   .search-dropdown {
     max-height: 300px;
-    z-index: 9999 !important;
+    z-index: 2 !important; /* REDUCIDO de 9999 a 2 */
   }
 }
 

@@ -285,7 +285,7 @@ const Header = () => {
             </div>
 
             <div className="col-span-6 flex justify-center">
-              <div className="search-container max-w-lg relative" ref={searchContainerRef} style={{ zIndex: 9999 }}>
+              <div className="search-container max-w-lg relative" ref={searchContainerRef}>
                 <form onSubmit={handleSearchSubmit}>
                   <input
                     ref={searchInputRef}
@@ -360,7 +360,7 @@ const Header = () => {
           <div className={`mobile-menu md:hidden ${isMenuOpen ? 'open' : ''}`}>
             <div className="px-6 space-y-4">
               {/* Buscador en menú móvil */}
-              <div className="search-container relative" ref={searchContainerRef} style={{ zIndex: 9999 }}>
+              <div className="search-container relative" ref={searchContainerRef}>
                 <form onSubmit={handleSearchSubmit}>
                   <input
                     type="text"
@@ -429,13 +429,12 @@ const Header = () => {
         </div>
       </header>
 
-      {/* Modal de Autenticación con overlay completo que cubre TODO */}
+      {/* Modal de Autenticación con z-index alto para estar sobre todo */}
       {showAuthModal && (
         <div 
-          className="fixed inset-0 w-full h-full flex items-center justify-center"
+          className="fixed inset-0 w-full h-full flex items-center justify-center bg-black bg-opacity-50"
           style={{ 
-            zIndex: 999999, // Z-index extremadamente alto
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 999999, // Mantener z-index alto SOLO para modales críticos
             position: 'fixed',
             top: 0,
             left: 0,

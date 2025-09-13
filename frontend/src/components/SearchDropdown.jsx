@@ -57,8 +57,8 @@ const SearchDropdown = ({
         <div 
             className="search-dropdown-container absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-96 overflow-y-auto"
             style={{ 
-                // ✅ CORREGIDO: Z-index mucho menor que los modales
-                zIndex: 1002, // Reducido de 10000 a 1002
+                // Z-index bajo, consistente con la clase CSS .search-dropdown
+                zIndex: 2,
                 pointerEvents: 'auto'
             }}
             onClick={(e) => e.stopPropagation()}
@@ -86,8 +86,7 @@ const SearchDropdown = ({
                                 onMouseDown={(e) => e.preventDefault()}
                                 style={{ 
                                     userSelect: 'none',
-                                    pointerEvents: 'auto',
-                                    // ✅ NO agregar z-index adicional aquí
+                                    pointerEvents: 'auto'
                                 }}
                             >
                                 <div className="flex items-center space-x-3">

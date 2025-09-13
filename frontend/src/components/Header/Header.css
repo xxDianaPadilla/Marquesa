@@ -21,42 +21,7 @@
   margin-left: 32px;
 }
 
-/* Header con z-index normal */
-header {
-  position: relative;
-  z-index: 1000 !important;
-  background: white;
-  /* NUEVA REGLA: Transición suave para cambios de estado */
-  transition: all 0.3s ease !important;
-}
-
-/* SOLUCIÓN PRINCIPAL: Header cuando hay modal activo */
-.header-behind-modal {
-  z-index: -999 !important;
-  opacity: 0 !important; /* Cambiado de 0.1 a 0 para ocultarlo completamente */
-  pointer-events: none !important;
-  visibility: hidden !important; /* Agregado para asegurar que se oculte */
-  position: relative !important;
-  transform: translateY(-100%) !important; /* Mover completamente fuera de vista */
-  transition: all 0.3s ease !important;
-}
-
-/* SOLUCIÓN ALTERNATIVA: Clase global para cuando hay modales */
-body.modal-active header {
-  z-index: -999 !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-  visibility: hidden !important;
-  transform: translateY(-100%) !important;
-  transition: all 0.3s ease !important;
-}
-
-/* SOLUCIÓN DE EMERGENCIA: Ocultar header cuando hay overlay de modal */
-body.modal-overlay-active header {
-  display: none !important;
-}
-
-/* Search bar con z-index relativo al header */
+/* Search bar - Z-index reducido para que no interfiera */
 .search-container {
   display: flex;
   background-color: #fff;
@@ -64,7 +29,7 @@ body.modal-overlay-active header {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   position: relative;
   width: 100%;
-  z-index: 10 !important;
+  z-index: 1 !important; /* REDUCIDO de 1001 a 1 */
 }
 
 .search-container form {
@@ -85,14 +50,14 @@ body.modal-overlay-active header {
   position: relative;
   z-index: 1;
   box-sizing: border-box;
+  /* Desactivar interactividad cuando está en background */
   pointer-events: auto;
 }
 
 /* Estado cuando el header está en background */
-.header-behind-modal .search-input,
-body.modal-active .search-input {
-  pointer-events: none !important;
-  opacity: 0 !important;
+.header-background .search-input {
+  pointer-events: none; /* Desactivar clics */
+  opacity: 0.7; /* Reducir opacidad */
 }
 
 .search-input:focus {
@@ -118,20 +83,19 @@ body.modal-active .search-input {
 }
 
 /* Estado cuando el header está en background */
-.header-behind-modal .search-button,
-body.modal-active .search-button {
-  pointer-events: none !important;
-  opacity: 0 !important;
-  cursor: default !important;
+.header-background .search-button {
+  pointer-events: none; /* Desactivar clics */
+  opacity: 0.7; /* Reducir opacidad */
+  cursor: default;
 }
 
-/* Dropdown de búsqueda con z-index SUPREMO */
+/* Dropdown de búsqueda con z-index muy bajo */
 .search-dropdown {
   position: absolute;
   top: 100%;
   left: 0;
   right: 0;
-  z-index: 99999 !important;
+  z-index: 2 !important; /* REDUCIDO de 1002 a 2 */
   background: white;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
@@ -140,23 +104,10 @@ body.modal-active .search-button {
   max-height: 400px;
   overflow-y: auto;
   pointer-events: auto;
-  transform: translateZ(0);
-  will-change: transform;
-  isolation: isolate;
-}
-
-/* Contenedor específico del dropdown con z-index supremo */
-.search-dropdown-container {
-  z-index: 99999 !important;
-  position: absolute;
-  transform: translateZ(0);
-  will-change: transform;
-  isolation: isolate;
 }
 
 /* Ocultar dropdown cuando el header está en background */
-.header-behind-modal .search-dropdown,
-body.modal-active .search-dropdown {
+.header-background .search-dropdown {
   display: none !important;
 }
 
@@ -223,11 +174,14 @@ body.modal-active .search-dropdown {
 }
 
 /* Estado cuando el header está en background */
-.header-behind-modal .icon-style,
-body.modal-active .icon-style {
-  pointer-events: none !important;
-  opacity: 0 !important;
-  cursor: default !important;
+.header-background .icon-style {
+  pointer-events: none; /* Desactivar clics */
+  opacity: 0.5; /* Reducir más la opacidad */
+  cursor: default;
+}
+
+.header-background .icon-style:hover {
+  opacity: 0.5; /* Mantener opacidad baja en hover */
 }
 
 /* Mobile menu styles */
@@ -238,7 +192,7 @@ body.modal-active .icon-style {
   overflow: hidden;
   transition: max-height 0.3s ease, padding 0.3s ease;
   border-top: 1px solid #e5e7eb;
-  z-index: 100;
+  z-index: 3;
 }
 
 .mobile-menu.open {
@@ -247,8 +201,7 @@ body.modal-active .icon-style {
 }
 
 /* Ocultar menú móvil cuando está en background */
-.header-behind-modal .mobile-menu,
-body.modal-active .mobile-menu {
+.header-background .mobile-menu {
   display: none !important;
 }
 
@@ -270,11 +223,14 @@ body.modal-active .mobile-menu {
 }
 
 /* Estado cuando el header está en background */
-.header-behind-modal .hamburger-button,
-body.modal-active .hamburger-button {
-  pointer-events: none !important;
-  opacity: 0 !important;
-  cursor: default !important;
+.header-background .hamburger-button {
+  pointer-events: none;
+  opacity: 0.5;
+  cursor: default;
+}
+
+.header-background .hamburger-button:hover {
+  background-color: transparent;
 }
 
 .mobile-overlay {
@@ -287,112 +243,76 @@ body.modal-active .hamburger-button {
   z-index: 40;
 }
 
-/* Clase especial para cuando el header está en background - MEJORADA */
+/* Header con z-index muy bajo - Aplicable a elementos con Tailwind */
+header {
+  position: relative;
+  z-index: 0 !important; /* REDUCIDO de 1000 a 0 */
+}
+
+/* Clase especial para cuando el header está en background */
 .header-background {
-  z-index: -999 !important;
-  pointer-events: none !important;
-  opacity: 0 !important;
-  visibility: hidden !important;
-  transform: translateY(-100%) !important;
-  transition: all 0.3s ease !important;
-}
-
-/* Clase para ocultar completamente el header cuando hay modales - MEJORADA */
-.header-behind-modal {
-  z-index: -999 !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-  visibility: hidden !important;
-  transform: translateY(-100%) !important;
-  transition: all 0.3s ease !important;
-  position: relative !important;
-}
-
-/* NUEVA REGLA: Ocultar todos los elementos del header cuando hay modal */
-.header-behind-modal *,
-body.modal-active header * {
-  opacity: 0 !important;
-  pointer-events: none !important;
-  visibility: hidden !important;
+  z-index: -1 !important; /* Z-index negativo para estar completamente atrás */
+  pointer-events: none !important; /* Desactivar toda interactividad */
 }
 
 /* Desactivar interactividad de elementos específicos cuando está en background */
-.header-behind-modal .icon-style,
-.header-behind-modal img[alt="Favoritos"],
-.header-behind-modal img[alt="Carrito"],
-.header-behind-modal img[alt="Perfil"],
-.header-behind-modal img[alt="Buscar"],
-body.modal-active .icon-style,
-body.modal-active img[alt="Favoritos"],
-body.modal-active img[alt="Carrito"],
-body.modal-active img[alt="Perfil"],
-body.modal-active img[alt="Buscar"] {
+.header-background .icon-style,
+.header-background img[alt="Favoritos"],
+.header-background img[alt="Carrito"],
+.header-background img[alt="Perfil"],
+.header-background img[alt="Buscar"] {
   pointer-events: none !important;
-  opacity: 0 !important;
+  opacity: 0.5 !important;
   cursor: default !important;
-  visibility: hidden !important;
 }
 
-.header-behind-modal .hamburger-button,
-.header-behind-modal button,
-body.modal-active .hamburger-button,
-body.modal-active button {
+.header-background .hamburger-button,
+.header-background button {
   pointer-events: none !important;
-  opacity: 0 !important;
+  opacity: 0.5 !important;
   cursor: default !important;
-  visibility: hidden !important;
 }
 
 /* Desactivar buscador cuando está en background */
-.header-behind-modal input[type="text"],
-body.modal-active input[type="text"] {
+.header-background input[type="text"] {
   pointer-events: none !important;
-  opacity: 0 !important;
-  visibility: hidden !important;
+  opacity: 0.7 !important;
 }
 
 /* Ocultar dropdown y menú móvil cuando está en background */
-.header-behind-modal .search-dropdown-container,
-.header-behind-modal .mobile-menu,
-body.modal-active .search-dropdown-container,
-body.modal-active .mobile-menu {
+.header-background .search-dropdown-container,
+.header-background .mobile-menu {
   display: none !important;
-  visibility: hidden !important;
 }
 
-/* NUEVA CLASE PARA FORZAR DROPDOWN AL FRENTE */
-.search-dropdown-portal {
-  position: fixed !important;
-  z-index: 999999 !important;
-  pointer-events: auto;
-  transform: translateZ(0);
-  will-change: transform;
-  isolation: isolate;
+/* Permitir interactividad solo cuando se especifique */
+.header-background.interactive {
+  pointer-events: auto !important;
+  z-index: 0 !important;
+}
+
+.header-background.interactive .icon-style,
+.header-background.interactive img,
+.header-background.interactive button,
+.header-background.interactive input {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  cursor: pointer !important;
 }
 
 /* Mejoras específicas para el dropdown en desktop */
 @media (min-width: 768px) {
   .search-container {
-    z-index: 10 !important;
+    z-index: 1 !important; /* REDUCIDO */
   }
 
   .search-dropdown {
-    z-index: 99999 !important;
+    z-index: 2 !important; /* REDUCIDO */
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-    transform: translateZ(0);
-    will-change: transform;
-    isolation: isolate;
-  }
-
-  .search-dropdown-container {
-    z-index: 99999 !important;
-    transform: translateZ(0);
-    will-change: transform;
-    isolation: isolate;
   }
 
   .search-dropdown-item {
-    z-index: auto !important;
+    z-index: auto !important; /* REDUCIDO */
   }
 }
 
@@ -414,28 +334,10 @@ body.modal-active .mobile-menu {
     height: 20px;
   }
 
-  /* Dropdown móvil con z-index SUPREMO */
+  /* Dropdown móvil con z-index bajo */
   .search-dropdown {
     max-height: 300px;
-    z-index: 999999 !important;
-    transform: translateZ(0);
-    will-change: transform;
-    isolation: isolate;
-  }
-
-  .search-dropdown-container {
-    z-index: 999999 !important;
-    transform: translateZ(0);
-    will-change: transform;
-    isolation: isolate;
-  }
-
-  /* Ocultar header en móvil cuando hay modal */
-  .header-behind-modal,
-  body.modal-active header {
-    transform: translateY(-100%) !important;
-    opacity: 0 !important;
-    visibility: hidden !important;
+    z-index: 2 !important; /* REDUCIDO de 9999 a 2 */
   }
 }
 

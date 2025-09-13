@@ -35,7 +35,6 @@ const Header = () => {
   const searchContainerRef = useRef(null);
   const searchInputRef = useRef(null);
   const searchTimeoutRef = useRef(null);
-  const headerRef = useRef(null); // Referencia para el header
 
   // URL base del API
   const API_BASE_URL = 'https://marquesa.onrender.com/api';
@@ -48,57 +47,6 @@ const Header = () => {
     '688176179579a7cde1657ace': 'Giftboxes',
     '688175e79579a7cde1657ac6': 'Tarjetas'
   };
-
-  // FUNCIÓN MEJORADA: Agregar clase al body cuando hay modal
-  const addModalClassToBody = useCallback(() => {
-    document.body.classList.add('modal-active');
-    document.body.classList.add('modal-overlay-active');
-
-    // También aplicar al header directamente como backup
-    if (headerRef.current) {
-      headerRef.current.classList.add('header-behind-modal');
-    }
-
-    console.log('Modal classes added to body and header');
-  }, []);
-
-  // FUNCIÓN MEJORADA: Remover clase del body cuando se cierra modal
-  const removeModalClassFromBody = useCallback(() => {
-    document.body.classList.remove('modal-active');
-    document.body.classList.remove('modal-overlay-active');
-
-    // También remover del header
-    if (headerRef.current) {
-      headerRef.current.classList.remove('header-behind-modal');
-    }
-
-    console.log('Modal classes removed from body and header');
-  }, []);
-
-  // EFECTO MEJORADO: Manejar clases según estado de modales
-  useEffect(() => {
-    if (showAuthModal) {
-      addModalClassToBody();
-    } else {
-      removeModalClassFromBody();
-    }
-
-    // Limpiar al desmontar
-    return () => {
-      removeModalClassFromBody();
-    };
-  }, [showAuthModal, addModalClassToBody, removeModalClassFromBody]);
-
-  // EFECTO ADICIONAL: Limpiar clases al desmontar el componente
-  useEffect(() => {
-    return () => {
-      // Asegurar que se limpien todas las clases al desmontar
-      document.body.classList.remove('modal-active', 'modal-overlay-active');
-      if (headerRef.current) {
-        headerRef.current.classList.remove('header-behind-modal');
-      }
-    };
-  }, []);
 
   // Función para realizar búsqueda de productos
   const searchProducts = useCallback(async (term) => {
@@ -218,12 +166,15 @@ const Header = () => {
     }
   };
 
-  // Función para manejar selección de producto desde el dropdown
+  // Función para manejar selección de producto desde el dropdown - MEJORADA
   const handleProductSelect = useCallback((product) => {
     console.log('Header - Product selected:', product);
 
     // Cerrar el dropdown primero
     setShowSearchDropdown(false);
+
+    // Limpiar el término de búsqueda si es necesario
+    // setSearchTerm('');
 
     // Usar setTimeout para asegurar que la navegación ocurre después del cierre del dropdown
     setTimeout(() => {
@@ -237,7 +188,7 @@ const Header = () => {
     setShowSearchDropdown(false);
   }, []);
 
-  // Effect para manejar clics fuera del área de búsqueda
+  // Effect para manejar clics fuera del área de búsqueda - MEJORADO
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
@@ -280,23 +231,19 @@ const Header = () => {
       navigate('/profile');
     } else {
       // Si no está autenticado, mostrar modal
-      console.log('Opening auth modal...');
       setShowAuthModal(true);
     }
   };
 
   // Función para manejar el clic en "Iniciar Sesión" del modal
   const handleLoginRedirect = () => {
-    console.log('Login redirect clicked...');
     setShowAuthModal(false);
     navigate('/login');
   };
 
-  // FUNCIÓN MEJORADA: Cerrar el modal
+  // Función para cerrar el modal
   const closeAuthModal = () => {
-    console.log('Closing auth modal...');
     setShowAuthModal(false);
-    // Las clases se removerán automáticamente por el useEffect
   };
 
   //Navegación para favoritos
@@ -327,11 +274,7 @@ const Header = () => {
 
   return (
     <>
-      {/* HEADER CON REFERENCIA */}
-      <header
-        ref={headerRef}
-        className="w-full border-b border-gray-300 py-4 px-6 relative"
-      >
+      <header className="w-full border-b border-gray-300 py-4 px-6 relative">
         <div className="w-full max-w-screen-xl mx-auto">
 
           {/* Diseño para pantallas grandes (Desktop) */}
@@ -486,12 +429,12 @@ const Header = () => {
         </div>
       </header>
 
-      {/* Modal de Autenticación - Z-INDEX SUPREMO */}
+      {/* Modal de Autenticación con z-index alto para estar sobre todo */}
       {showAuthModal && (
         <div
           className="fixed inset-0 w-full h-full flex items-center justify-center"
           style={{
-            zIndex: 999999, // Z-index supremo para el modal
+            zIndex: 999999, // Mantener z-index alto SOLO para modales críticos
             position: 'fixed',
             top: 0,
             left: 0,

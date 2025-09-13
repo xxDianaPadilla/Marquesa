@@ -267,6 +267,16 @@ header {
 .header-background {
   z-index: -1 !important;
   pointer-events: none !important;
+  opacity: 0.3 !important; /* Hacer el header más transparente */
+  transition: opacity 0.3s ease, z-index 0s; /* Transición suave */
+}
+
+/* Clase para ocultar completamente el header cuando hay modales */
+.header-behind-modal {
+  z-index: -999 !important;
+  opacity: 0.1 !important;
+  pointer-events: none !important;
+  transition: opacity 0.3s ease, z-index 0s;
 }
 
 /* Desactivar interactividad de elementos específicos cuando está en background */

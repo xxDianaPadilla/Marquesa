@@ -18,7 +18,7 @@ import './Header.css';
 
 const Header = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, loading } = useAuth(); // Obtener estado de autenticación
+  const { isAuthenticated, loading } = useAuth();
 
   // Estado para controlar si el menú móvil está abierto o cerrado
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -31,6 +31,9 @@ const Header = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   
+  // NUEVO: Estado para detectar modales activos
+  const [hasActiveModal, setHasActiveModal] = useState(false);
+
   // Referencias para manejo del dropdown de búsqueda
   const searchContainerRef = useRef(null);
   const searchInputRef = useRef(null);
@@ -47,6 +50,104 @@ const Header = () => {
     '688176179579a7cde1657ace': 'Giftboxes',
     '688175e79579a7cde1657ac6': 'Tarjetas'
   };
+
+  // NUEVO: Effect para detectar modales activos
+  useEffect(() => {
+    const detectModals = () => {
+      // Lista de selectores para detectar diferentes tipos de modales
+      const modalSelectors = [
+        // Modales genéricos
+        '.modal',
+        '.modal-overlay',
+        '.overlay',
+        // Elementos con posición fixed que cubren toda la pantalla (típico de modales)
+        '.fixed.inset-0',
+        '.fixed.top-0.left-0.right-0.bottom-0',
+        // Modales específicos por z-index alto
+        '[style*="z-index: 50"]',
+        '[style*="z-index: 999"]',
+        '.z-50',
+        '.z-40',
+        // SweetAlert y librerías similares
+        '.swal2-container',
+        '.swal2-overlay',
+        // React Modal
+        '.ReactModal__Overlay',
+        // Elementos con role de modal
+        '[role="dialog"]',
+        '[aria-modal="true"]',
+        // Elementos con clases comunes de backdrop/overlay
+        '.backdrop',
+        '.modal-backdrop',
+        // Elementos con background oscuro semi-transparente (típico de overlays)
+        '[style*="background-color: rgba(0, 0, 0"]',
+        '[style*="background: rgba(0, 0, 0"]'
+      ];
+
+      let modalFound = false;
+
+      // Verificar cada selector
+      for (const selector of modalSelectors) {
+        try {
+          const elements = document.querySelectorAll(selector);
+          if (elements.length > 0) {
+            // Verificar si algún elemento está realmente visible
+            for (const element of elements) {
+              const styles = window.getComputedStyle(element);
+              const rect = element.getBoundingClientRect();
+              
+              // Verificar si el elemento está visible y tiene tamaño
+              if (
+                styles.display !== 'none' && 
+                styles.visibility !== 'hidden' && 
+                styles.opacity !== '0' &&
+                rect.width > 0 &&
+                rect.height > 0
+              ) {
+                modalFound = true;
+                break;
+              }
+            }
+          }
+          if (modalFound) break;
+        } catch (error) {
+          // Ignorar errores de selectores no válidos
+          continue;
+        }
+      }
+
+      // También verificar el modal propio del header
+      if (showAuthModal) {
+        modalFound = true;
+      }
+
+      setHasActiveModal(modalFound);
+    };
+
+    // Detectar inmediatamente
+    detectModals();
+
+    // Observer para cambios en el DOM
+    const observer = new MutationObserver(() => {
+      // Usar setTimeout para evitar múltiples llamadas
+      setTimeout(detectModals, 100);
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'style', 'aria-modal', 'role']
+    });
+
+    // También verificar periódicamente como respaldo
+    const interval = setInterval(detectModals, 1000);
+
+    return () => {
+      observer.disconnect();
+      clearInterval(interval);
+    };
+  }, [showAuthModal]); // Incluir showAuthModal como dependencia
 
   // Función para realizar búsqueda de productos
   const searchProducts = useCallback(async (term) => {
@@ -88,10 +189,10 @@ const Header = () => {
       const filteredProducts = productsData.filter(product => {
         const productName = (product.name || '').toLowerCase();
         const searchLower = term.toLowerCase();
-        
+
         // Buscar por nombre del producto
         const nameMatch = productName.includes(searchLower);
-        
+
         // Buscar por categoría
         let categoryMatch = false;
         if (typeof product.categoryId === 'object' && product.categoryId?.name) {
@@ -154,7 +255,7 @@ const Header = () => {
     // Configurar nuevo timeout para debounce
     searchTimeoutRef.current = setTimeout(() => {
       searchProducts(value);
-    }, 300); // Esperar 300ms después de que el usuario deje de escribir
+    }, 300);
   }, [searchProducts]);
 
   // Función para manejar envío del formulario de búsqueda (Enter)
@@ -169,13 +270,10 @@ const Header = () => {
   // Función para manejar selección de producto desde el dropdown - MEJORADA
   const handleProductSelect = useCallback((product) => {
     console.log('Header - Product selected:', product);
-    
+
     // Cerrar el dropdown primero
     setShowSearchDropdown(false);
-    
-    // Limpiar el término de búsqueda si es necesario
-    // setSearchTerm('');
-    
+
     // Usar setTimeout para asegurar que la navegación ocurre después del cierre del dropdown
     setTimeout(() => {
       console.log('Header - Navigating to product:', product._id);
@@ -192,7 +290,6 @@ const Header = () => {
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
-        // Agregar un pequeño delay para permitir que los clics en el dropdown se procesen primero
         setTimeout(() => {
           setShowSearchDropdown(false);
         }, 150);
@@ -221,16 +318,13 @@ const Header = () => {
   const handleProfileClick = (e) => {
     e.preventDefault();
 
-    // Si está cargando, no hacer nada
     if (loading) {
       return;
     }
 
-    // Si el usuario está autenticado, ir al perfil
     if (isAuthenticated) {
       navigate('/profile');
     } else {
-      // Si no está autenticado, mostrar modal
       setShowAuthModal(true);
     }
   };
@@ -246,13 +340,13 @@ const Header = () => {
     setShowAuthModal(false);
   };
 
-  //Navegación para favoritos
+  // Navegación para favoritos
   const handleSavesClick = (e) => {
     e.preventDefault();
     navigate('/saves');
   };
 
-  //Navegación para inicio
+  // Navegación para inicio
   const handleCategoryProductsClick = (e) => {
     e.preventDefault();
     navigate('/');
@@ -272,9 +366,20 @@ const Header = () => {
     setIsMenuOpen(false);
   };
 
+  // NUEVO: Determinar la clase CSS del header basada en si hay modales activos
+  const getHeaderClasses = () => {
+    let classes = "w-full border-b border-gray-300 py-4 px-6 relative";
+    
+    if (hasActiveModal) {
+      classes += " header-behind-modal";
+    }
+    
+    return classes;
+  };
+
   return (
     <>
-      <header className="w-full border-b border-gray-300 py-4 px-6 relative">
+      <header className={getHeaderClasses()}>
         <div className="w-full max-w-screen-xl mx-auto">
 
           {/* Diseño para pantallas grandes (Desktop) */}
@@ -300,7 +405,7 @@ const Header = () => {
                     <img src={iconSearch} alt="Buscar" className="w-5 h-5" />
                   </button>
                 </form>
-                
+
                 {/* Dropdown de resultados de búsqueda */}
                 <SearchDropdown
                   searchResults={searchResults}
@@ -374,7 +479,7 @@ const Header = () => {
                     <img src={iconSearch} alt="Buscar" className="w-4 h-4" />
                   </button>
                 </form>
-                
+
                 {/* Dropdown de resultados de búsqueda para móvil */}
                 <SearchDropdown
                   searchResults={searchResults}
@@ -429,24 +534,25 @@ const Header = () => {
         </div>
       </header>
 
-      {/* Modal de Autenticación con z-index alto para estar sobre todo */}
+      {/* Modal de Autenticación */}
       {showAuthModal && (
-        <div 
-          className="fixed inset-0 w-full h-full flex items-center justify-center bg-black bg-opacity-50"
-          style={{ 
-            zIndex: 999999, // Mantener z-index alto SOLO para modales críticos
+        <div
+          className="fixed inset-0 w-full h-full flex items-center justify-center"
+          style={{
+            zIndex: 999999,
             position: 'fixed',
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
             margin: 0,
-            padding: 0
+            padding: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)'
           }}
           onClick={closeAuthModal}
         >
           {/* Contenido del modal */}
-          <div 
+          <div
             className="relative bg-white rounded-lg shadow-xl p-6 mx-4 max-w-sm w-full z-10"
             onClick={(e) => e.stopPropagation()}
           >

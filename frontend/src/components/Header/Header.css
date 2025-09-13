@@ -21,7 +21,14 @@
   margin-left: 32px;
 }
 
-/* Search bar - Z-index reducido para que no interfiera */
+/* Header con z-index alto - CAMBIADO */
+header {
+  position: relative;
+  z-index: 1000 !important; /* AUMENTADO para estar sobre otros elementos */
+  background: white; /* Asegurar fondo blanco */
+}
+
+/* Search bar con z-index relativo al header */
 .search-container {
   display: flex;
   background-color: #fff;
@@ -29,7 +36,7 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   position: relative;
   width: 100%;
-  z-index: 1 !important; /* REDUCIDO de 1001 a 1 */
+  z-index: 10 !important; /* Relativo al header */
 }
 
 .search-container form {
@@ -50,14 +57,13 @@
   position: relative;
   z-index: 1;
   box-sizing: border-box;
-  /* Desactivar interactividad cuando está en background */
   pointer-events: auto;
 }
 
 /* Estado cuando el header está en background */
 .header-background .search-input {
-  pointer-events: none; /* Desactivar clics */
-  opacity: 0.7; /* Reducir opacidad */
+  pointer-events: none;
+  opacity: 0.7;
 }
 
 .search-input:focus {
@@ -84,18 +90,18 @@
 
 /* Estado cuando el header está en background */
 .header-background .search-button {
-  pointer-events: none; /* Desactivar clics */
-  opacity: 0.7; /* Reducir opacidad */
+  pointer-events: none;
+  opacity: 0.7;
   cursor: default;
 }
 
-/* Dropdown de búsqueda con z-index ALTO para que esté siempre visible */
+/* Dropdown de búsqueda con z-index SUPREMO - SOLUCIÓN PRINCIPAL */
 .search-dropdown {
   position: absolute;
   top: 100%;
   left: 0;
   right: 0;
-  z-index: 9999 !important; /* Z-INDEX ALTO para dropdown de resultados */
+  z-index: 99999 !important; /* Z-INDEX SUPREMO */
   background: white;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
@@ -104,11 +110,20 @@
   max-height: 400px;
   overflow-y: auto;
   pointer-events: auto;
+  /* NUEVAS PROPIEDADES PARA FORZAR CONTEXTO DE APILAMIENTO */
+  transform: translateZ(0); /* Crear nuevo contexto de apilamiento */
+  will-change: transform; /* Optimización */
+  isolation: isolate; /* Aislar contexto de apilamiento */
 }
 
-/* Contenedor específico del dropdown con z-index alto */
+/* Contenedor específico del dropdown con z-index supremo */
 .search-dropdown-container {
-  z-index: 9999 !important; /* Z-INDEX ALTO para contenedor de resultados */
+  z-index: 99999 !important; /* Z-INDEX SUPREMO */
+  /* NUEVAS PROPIEDADES PARA FORZAR CONTEXTO */
+  position: absolute;
+  transform: translateZ(0);
+  will-change: transform;
+  isolation: isolate;
 }
 
 /* Ocultar dropdown cuando el header está en background */
@@ -180,13 +195,13 @@
 
 /* Estado cuando el header está en background */
 .header-background .icon-style {
-  pointer-events: none; /* Desactivar clics */
-  opacity: 0.5; /* Reducir más la opacidad */
+  pointer-events: none;
+  opacity: 0.5;
   cursor: default;
 }
 
 .header-background .icon-style:hover {
-  opacity: 0.5; /* Mantener opacidad baja en hover */
+  opacity: 0.5;
 }
 
 /* Mobile menu styles */
@@ -197,7 +212,7 @@
   overflow: hidden;
   transition: max-height 0.3s ease, padding 0.3s ease;
   border-top: 1px solid #e5e7eb;
-  z-index: 3;
+  z-index: 100; /* Alto pero relativo al header */
 }
 
 .mobile-menu.open {
@@ -248,16 +263,10 @@
   z-index: 40;
 }
 
-/* Header con z-index muy bajo - Aplicable a elementos con Tailwind */
-header {
-  position: relative;
-  z-index: 0 !important; /* REDUCIDO de 1000 a 0 */
-}
-
 /* Clase especial para cuando el header está en background */
 .header-background {
-  z-index: -1 !important; /* Z-index negativo para estar completamente atrás */
-  pointer-events: none !important; /* Desactivar toda interactividad */
+  z-index: -1 !important;
+  pointer-events: none !important;
 }
 
 /* Desactivar interactividad de elementos específicos cuando está en background */
@@ -293,7 +302,7 @@ header {
 /* Permitir interactividad solo cuando se especifique */
 .header-background.interactive {
   pointer-events: auto !important;
-  z-index: 0 !important;
+  z-index: 1000 !important;
 }
 
 .header-background.interactive .icon-style,
@@ -305,19 +314,36 @@ header {
   cursor: pointer !important;
 }
 
+/* NUEVA CLASE PARA FORZAR DROPDOWN AL FRENTE */
+.search-dropdown-portal {
+  position: fixed !important;
+  z-index: 999999 !important;
+  pointer-events: auto;
+  transform: translateZ(0);
+  will-change: transform;
+  isolation: isolate;
+}
+
 /* Mejoras específicas para el dropdown en desktop */
 @media (min-width: 768px) {
   .search-container {
-    z-index: 1 !important; /* REDUCIDO */
+    z-index: 10 !important;
   }
 
   .search-dropdown {
-    z-index: 9999 !important; /* ALTO para dropdown */
+    z-index: 99999 !important;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    /* NUEVAS PROPIEDADES PARA DESKTOP */
+    transform: translateZ(0);
+    will-change: transform;
+    isolation: isolate;
   }
 
   .search-dropdown-container {
-    z-index: 9999 !important; /* ALTO para contenedor */
+    z-index: 99999 !important;
+    transform: translateZ(0);
+    will-change: transform;
+    isolation: isolate;
   }
 
   .search-dropdown-item {
@@ -343,14 +369,20 @@ header {
     height: 20px;
   }
 
-  /* Dropdown móvil con z-index MUY ALTO */
+  /* Dropdown móvil con z-index SUPREMO */
   .search-dropdown {
     max-height: 300px;
-    z-index: 999999 !important; /* MUY ALTO para móvil también */
+    z-index: 999999 !important;
+    transform: translateZ(0);
+    will-change: transform;
+    isolation: isolate;
   }
 
   .search-dropdown-container {
-    z-index: 999999 !important; /* MUY ALTO para contenedor móvil */
+    z-index: 999999 !important;
+    transform: translateZ(0);
+    will-change: transform;
+    isolation: isolate;
   }
 }
 

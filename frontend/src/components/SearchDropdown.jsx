@@ -55,10 +55,10 @@ const SearchDropdown = ({
 
     return (
         <div
-            className="search-dropdown-container absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-96 overflow-y-auto"
+            className="search-dropdown-container fixed left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-96 overflow-y-auto"
             style={{
-                // Z-index alto para estar sobre contenido como imágenes
-                zIndex: 1000,
+                top: '70px', // ajusta según altura del header
+                zIndex: 9999, // mucho más alto que todo
                 pointerEvents: 'auto'
             }}
             onClick={(e) => e.stopPropagation()}

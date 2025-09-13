@@ -57,9 +57,10 @@ const SearchDropdown = ({
         <div 
             className="search-dropdown-container absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-96 overflow-y-auto"
             style={{ 
-                // Z-index bajo, consistente con la clase CSS .search-dropdown
-                zIndex: 2,
-                pointerEvents: 'auto'
+                // Z-index MUY ALTO para asegurar que esté por encima de todo
+                zIndex: 999999,
+                pointerEvents: 'auto',
+                position: 'absolute'
             }}
             onClick={(e) => e.stopPropagation()}
         >
@@ -86,7 +87,9 @@ const SearchDropdown = ({
                                 onMouseDown={(e) => e.preventDefault()}
                                 style={{ 
                                     userSelect: 'none',
-                                    pointerEvents: 'auto'
+                                    pointerEvents: 'auto',
+                                    position: 'relative',
+                                    zIndex: 'auto'
                                 }}
                             >
                                 <div className="flex items-center space-x-3">

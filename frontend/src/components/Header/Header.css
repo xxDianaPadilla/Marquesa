@@ -343,14 +343,14 @@ header {
     height: 20px;
   }
 
-  /* Dropdown móvil con z-index ALTO */
+  /* Dropdown móvil con z-index MUY ALTO */
   .search-dropdown {
     max-height: 300px;
-    z-index: 9999 !important; /* ALTO para móvil también */
+    z-index: 999999 !important; /* MUY ALTO para móvil también */
   }
 
   .search-dropdown-container {
-    z-index: 9999 !important; /* ALTO para contenedor móvil */
+    z-index: 999999 !important; /* MUY ALTO para contenedor móvil */
   }
 }
 

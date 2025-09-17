@@ -55,7 +55,7 @@ export default function WelcomeScreen({ navigation }) {
 
                 {/* Texto de pregunta con enlace - usando el componente QuestionText */}
                 <QuestionText
-                    questionText="¿No tienes una cuenta aún?"
+                    questionText="¿No tienes una cuenta?"
                     linkText="Regístrate"
                     onPress={handleRegisterPress}
                     style={styles.loginTextSpacing} // Estilo adicional para espaciado

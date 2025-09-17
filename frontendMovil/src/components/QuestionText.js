@@ -59,6 +59,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontFamily: 'Poppins-SemiBold', // Fuente más pesada para destacar el enlace
         color: '#3C3550', // Color más oscuro para diferenciarlo de la pregunta
-        top: 7, // Ajuste vertical para alinear con el texto de la pregunta
+        top: 8, // Ajuste vertical para alinear con el texto de la pregunta
     },
 });

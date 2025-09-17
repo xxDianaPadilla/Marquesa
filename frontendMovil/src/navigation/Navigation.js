@@ -28,6 +28,7 @@ import OrdersScreen from "../screens/OrdersScreen";
 import MediaScreen from "../screens/MediaScreen";
 import CustomProductsScreen from "../screens/CustomProductsScreen";
 import CustomizationFormScreen from "../screens/CustomizationFormScreen";
+import PaymentProcessScreen from "../screens/PaymentProcessScreen";
 
 // Componente principal de navegación de toda la aplicación
 export default function Navigation() {
@@ -155,6 +156,16 @@ export default function Navigation() {
                         <Stack.Screen
                             name="FinalizeCustomProducts"             // Nombre de la ruta
                             component={CustomizationFormScreen}  // Componente a renderizar
+                        />
+
+                        {/* Pantalla de proceso de pago */}
+                        <Stack.Screen
+                            name="PaymentProcess"
+                            component={PaymentProcessScreen}
+                            options={{
+                                headerShown: false,
+                                gestureEnabled: false
+                            }}
                         />
 
                         {/* Pantalla de búsqueda */}

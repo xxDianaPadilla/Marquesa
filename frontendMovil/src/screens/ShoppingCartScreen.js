@@ -434,18 +434,18 @@ const ShoppingCart = ({ navigation, route }) => {
 
     if (getCartStats) {
       const stats = getCartStats();
-      console.log('Procediendo al checkout con descuento:', {
+      console.log('Procediendo al proceso de pago con descuento:', {
         ...checkoutData,
         stats: stats
       });
 
-      navigation.navigate('Checkout', {
+      navigation.navigate('PaymentProcess', {
         ...checkoutData,
         stats: stats
       });
     } else {
       console.log('Procediendo al checkout con descuento:', checkoutData);
-      navigation.navigate('Checkout', checkoutData);
+      navigation.navigate('PaymentProcess', checkoutData);
     }
   };
 

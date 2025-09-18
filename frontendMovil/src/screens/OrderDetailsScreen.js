@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,9 @@ import {
   SafeAreaView,
   StatusBar,
   Image,
+  Modal,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import backIcon from '../images/backIcon.png';
@@ -16,41 +19,148 @@ const OrderDetailsScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   
-  // Obtener los datos del pedido pasados desde OrdersScreen
-  const { orderData, customerData, productsData } = route.params || {};
-  
-  // Datos por defecto en caso de que no se pasen parámetros
-  const order = orderData || {
-    _id: '1234',
-    formattedDate: '06/05/2025',
-    status: 'Pagado',
-    trackingStatusLabel: 'En proceso',
-    deliveryDate: '2025-05-09T00:00:00.000Z',
-    cancellableUntil: '2025-05-04T00:00:00.000Z'
+  // Estados para manejo de datos
+  const [orderData, setOrderData] = useState(null);
+  const [customerData, setCustomerData] = useState(null);
+  const [productsData, setProductsData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [cancellationInfo, setCancellationInfo] = useState(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  // Obtener datos del pedido de los parámetros de navegación
+  const { orderId } = route.params || {};
+
+  // Función para obtener detalles del pedido
+  const getOrderDetails = async (saleId) => {
+    try {
+      setLoading(true);
+      
+      const response = await fetch(`https://marquesa.onrender.com/api/sales/${saleId}/details`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+      }});
+
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setOrderData(data.data.order);
+          setCustomerData(data.data.customer);
+          setProductsData(data.data.products);
+          
+          // Obtener información de cancelación
+          await getCancellationEligibility(saleId);
+        } else {
+          setError('Error al cargar los detalles del pedido');
+        }
+      } else {
+        const errorData = await response.json();
+        setError(errorData.message || 'Error de conexión con el servidor');
+      }
+    } catch (error) {
+      console.error('Error al obtener detalles del pedido:', error);
+      setError('Error al cargar los detalles del pedido');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const products = productsData || [
-    {
-      name: 'Ramo de flores secas lavanda',
-      price: 10.00,
-      quantity: 1,
-      image: { image: 'https://via.placeholder.com/50' }
-    },
-    {
-      name: 'Cuadro sencillo de hogar',
-      price: 34.00,
-      quantity: 1,
-      image: { image: 'https://via.placeholder.com/50' }
+  // Función para verificar elegibilidad de cancelación
+  const getCancellationEligibility = async (saleId) => {
+    try {
+      const response = await fetch(`https://marquesa.onrender.com/api/sales/${saleId}/cancellationEligibility`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setCancellationInfo(data.data);
+        }
+      }
+    } catch (error) {
+      console.error('Error al obtener información de cancelación:', error);
     }
-  ];
+  };
+
+  // Función para cancelar pedido
+  const handleConfirmCancel = async () => {
+    try {
+      setCancelLoading(true);
+      
+      const response = await fetch(`https://marquesa.onrender.com/api/sales/${orderData._id}/cancel`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        Alert.alert('Éxito', 'Pedido cancelado exitosamente');
+        setOrderData(prev => ({
+          ...prev,
+          status: 'Cancelado',
+          trackingStatus: 'Cancelado'
+        }));
+        setCancellationInfo(prev => ({
+          ...prev,
+          isCancellable: false
+        }));
+        setShowConfirmModal(false);
+      } else {
+        Alert.alert('Error', data.message || 'Error al cancelar el pedido');
+      }
+    } catch (error) {
+      console.error('Error al cancelar pedido:', error);
+      Alert.alert('Error', 'Error al cancelar el pedido');
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
+  // Effect para cargar datos cuando se monta el componente
+  useEffect(() => {
+    if (route.params && route.params.orderData) {
+      // Si se pasan datos directamente desde navegación
+      const { orderData: order, customerData: customer, productsData: products } = route.params;
+      setOrderData(order);
+      setCustomerData(customer);
+      setProductsData(products || []);
+      
+      if (order._id) {
+        getCancellationEligibility(order._id);
+      }
+    } else if (orderId) {
+      // Si solo se pasa el ID, cargar desde API
+      getOrderDetails(orderId);
+    } else {
+      setError('No se encontraron datos del pedido');
+    }
+  }, [route.params, orderId]);
 
   const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
     const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES');
+    return date.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
   };
 
   const getStatusSteps = () => {
-    const status = order.trackingStatusLabel;
+    const status = orderData?.trackingStatus || 'Agendado';
     return {
       aprobado: true,
       enProceso: status === 'En proceso' || status === 'Entregado',
@@ -58,11 +168,179 @@ const OrderDetailsScreen = () => {
     };
   };
 
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'Agendado':
+        return '#F59E0B';
+      case 'En proceso':
+        return '#3B82F6';
+      case 'Entregado':
+        return '#10B981';
+      case 'Cancelado':
+        return '#EF4444';
+      default:
+        return '#6B7280';
+    }
+  };
+
+  const getCancellableDate = (createdAt) => {
+    if (!createdAt) return 'N/A';
+    const date = new Date(createdAt);
+    date.setDate(date.getDate() + 3);
+    return formatDate(date);
+  };
+
+  // Componente para mostrar imágenes de productos
+  const ProductImage = ({ src, style }) => {
+    const [imageError, setImageError] = useState(false);
+    const [imageLoading, setImageLoading] = useState(true);
+
+    const isValidImageSrc = (source) => {
+      if (!source) return null;
+      
+      if (typeof source === 'string') {
+        return source.trim();
+      }
+      
+      if (typeof source === 'object' && source !== null) {
+        return source.image || source.url || source.src;
+      }
+      
+      return null;
+    };
+
+    const validSrc = isValidImageSrc(src);
+
+    if (!validSrc || imageError) {
+      return (
+        <View style={[style, styles.imagePlaceholder]}>
+          <Text style={styles.imagePlaceholderText}>📦</Text>
+        </View>
+      );
+    }
+
+    if (imageLoading) {
+      return (
+        <View style={[style, styles.imagePlaceholder]}>
+          <ActivityIndicator size="small" color="#E8ACD2" />
+        </View>
+      );
+    }
+
+    return (
+      <Image
+        source={{ uri: validSrc }}
+        style={style}
+        onError={() => setImageError(true)}
+        onLoad={() => setImageLoading(false)}
+      />
+    );
+  };
+
+  // Modal de confirmación
+  const ConfirmationModal = () => (
+    <Modal
+      visible={showConfirmModal}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={() => !cancelLoading && setShowConfirmModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <View style={styles.modalIconContainer}>
+              <Text style={styles.modalIcon}>⚠️</Text>
+            </View>
+            <Text style={styles.modalTitle}>Cancelar pedido</Text>
+          </View>
+          
+          <Text style={styles.modalMessage}>
+            ¿Estás seguro de que deseas cancelar este pedido? Esta acción no se puede deshacer.
+          </Text>
+          
+          {cancellationInfo?.remainingHours > 0 && (
+            <View style={styles.modalWarning}>
+              <Text style={styles.modalWarningText}>
+                🕒 Tienes hasta {cancellationInfo.remainingHours} horas para cancelar este pedido
+              </Text>
+            </View>
+          )}
+          
+          <View style={styles.modalButtons}>
+            <TouchableOpacity
+              style={styles.modalKeepButton}
+              onPress={() => setShowConfirmModal(false)}
+              disabled={cancelLoading}
+            >
+              <Text style={styles.modalKeepText}>Mantener pedido</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.modalCancelButton}
+              onPress={handleConfirmCancel}
+              disabled={cancelLoading}
+            >
+              {cancelLoading ? (
+                <View style={styles.modalLoadingContainer}>
+                  <ActivityIndicator size="small" color="#fff" />
+                  <Text style={styles.modalCancelText}>Cancelando...</Text>
+                </View>
+              ) : (
+                <Text style={styles.modalCancelText}>Sí, cancelar pedido</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+          
+          <Text style={styles.modalFooter}>
+            Esta acción no se puede deshacer una vez confirmada
+          </Text>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  // Renderizar estado de carga
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#E8ACD2" />
+          <Text style={styles.loadingText}>Cargando detalles del pedido...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Renderizar estado de error
+  if (error || !orderData) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorIcon}>❌</Text>
+          <Text style={styles.errorText}>{error || 'No se encontraron datos del pedido'}</Text>
+          <TouchableOpacity 
+            style={styles.backToProfileButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.backToProfileText}>Volver</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   const steps = getStatusSteps();
+  const showCancelButton = cancellationInfo?.isCancellable && 
+                          orderData.trackingStatus !== 'Entregado' && 
+                          orderData.trackingStatus !== 'Cancelado';
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      
+      <ConfirmationModal />
       
       {/* Header */}
       <View style={styles.header}>
@@ -74,13 +352,23 @@ const OrderDetailsScreen = () => {
         </TouchableOpacity>
         
         <View style={styles.headerInfo}>
-          <Text style={styles.headerTitle}>Detalles del pedido #{order._id?.slice(-4) || '1234'}</Text>
-          <Text style={styles.headerDate}>Realizado el {order.formattedDate}</Text>
+          <Text style={styles.headerTitle}>
+            Detalles del pedido #{orderData._id?.slice(-6) || 'N/A'}
+          </Text>
+          <Text style={styles.headerDate}>
+            Realizado el {formatDate(orderData.createdAt)}
+          </Text>
         </View>
         
-        <TouchableOpacity style={styles.cancelButton}>
-          <Text style={styles.cancelText}>Cancelar pedido</Text>
-        </TouchableOpacity>
+        {showCancelButton && (
+          <TouchableOpacity 
+            style={styles.cancelButton}
+            onPress={() => setShowConfirmModal(true)}
+            disabled={cancelLoading}
+          >
+            <Text style={styles.cancelText}>Cancelar pedido</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -89,7 +377,7 @@ const OrderDetailsScreen = () => {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Estado del Pedido</Text>
           <Text style={styles.estimatedDate}>
-            Fecha estimada de entrega: {formatDate(order.deliveryDate)}
+            Fecha estimada de entrega: {formatDate(orderData.deliveryDate)}
           </Text>
           
           <View style={styles.progressContainer}>
@@ -134,27 +422,90 @@ const OrderDetailsScreen = () => {
           </View>
           
           <Text style={styles.cancellableText}>
-            🗓️ Cancelable hasta {formatDate(order.cancellableUntil)}
+            🗓️ Cancelable hasta: {getCancellableDate(orderData.createdAt)}
           </Text>
+          
+          {/* Información de cancelación */}
+          {cancellationInfo && (
+            <View style={styles.cancellationInfo}>
+              <Text style={styles.cancellationInfoTitle}>Información de cancelación:</Text>
+              <Text style={[
+                styles.cancellationStatus,
+                { color: cancellationInfo.isCancellable ? '#10B981' : '#EF4444' }
+              ]}>
+                Estado: {cancellationInfo.isCancellable ? 'Cancelable' : 'No cancelable'}
+              </Text>
+              {cancellationInfo.isCancellable && cancellationInfo.remainingHours > 0 && (
+                <Text style={styles.remainingTime}>
+                  Tiempo restante: {cancellationInfo.remainingHours} horas
+                </Text>
+              )}
+            </View>
+          )}
         </View>
 
         {/* Información del pedido */}
-        <TouchableOpacity style={styles.infoCard}>
+        <View style={styles.infoCard}>
           <Text style={styles.cardTitle}>Información del pedido</Text>
-          <Text style={styles.chevron}>›</Text>
-        </TouchableOpacity>
+          
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Total:</Text>
+            <Text style={styles.infoValue}>
+              ${orderData.shoppingCart?.total?.toFixed(2) || '0.00'}
+            </Text>
+          </View>
+          
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Método de pago:</Text>
+            <Text style={styles.infoValue}>
+              {orderData.paymentType || 'No especificado'}
+            </Text>
+          </View>
+          
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Estado:</Text>
+            <View style={[
+              styles.statusBadge,
+              { backgroundColor: getStatusColor(orderData.trackingStatus) + '20' }
+            ]}>
+              <Text style={[
+                styles.statusBadgeText,
+                { color: getStatusColor(orderData.trackingStatus) }
+              ]}>
+                {orderData.trackingStatus}
+              </Text>
+            </View>
+          </View>
+        </View>
 
         {/* Ubicación en tiempo real */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Ubicación en tiempo real</Text>
-          <Text style={styles.subtitle}>Sigue la ubicación de tu pedido en el mapa</Text>
+          <Text style={styles.cardTitle}>Información de envío</Text>
+          <Text style={styles.subtitle}>Dirección de entrega</Text>
           
-          <View style={styles.mapContainer}>
-            <View style={styles.mapPlaceholder}>
-              <View style={styles.mapDot} />
+          <View style={styles.addressContainer}>
+            <Text style={styles.addressIcon}>📍</Text>
+            <View style={styles.addressInfo}>
+              <Text style={styles.addressText}>
+                {orderData.deliveryAddress || 'Dirección no disponible'}
+              </Text>
+              {orderData.deliveryPoint && (
+                <Text style={styles.referenceText}>
+                  Punto de referencia: {orderData.deliveryPoint}
+                </Text>
+              )}
             </View>
-            <View style={styles.mapOverlay}>
-              <Text style={styles.mapText}>Tu pedido está en camino</Text>
+          </View>
+          
+          <View style={styles.contactContainer}>
+            <Text style={styles.contactIcon}>👤</Text>
+            <View style={styles.contactInfo}>
+              <Text style={styles.contactName}>
+                {customerData?.fullName || orderData.receiverName || 'Nombre no disponible'}
+              </Text>
+              <Text style={styles.contactPhone}>
+                {customerData?.phone || orderData.receiverPhone || 'Teléfono no disponible'}
+              </Text>
             </View>
           </View>
         </View>
@@ -167,7 +518,9 @@ const OrderDetailsScreen = () => {
             <View style={styles.trackingDot} />
             <View style={styles.trackingContent}>
               <Text style={styles.trackingTitle}>Pedido recibido</Text>
-              <Text style={styles.trackingDate}>Pedido el {order.formattedDate}</Text>
+              <Text style={styles.trackingDate}>
+                Pedido el {formatDate(orderData.createdAt)}
+              </Text>
             </View>
           </View>
           
@@ -180,25 +533,69 @@ const OrderDetailsScreen = () => {
               </View>
             </View>
           )}
+          
+          {steps.entregado && (
+            <View style={styles.trackingItem}>
+              <View style={styles.trackingDot} />
+              <View style={styles.trackingContent}>
+                <Text style={styles.trackingTitle}>Pedido entregado</Text>
+                <Text style={styles.trackingDate}>
+                  {formatDate(orderData.updatedAt)}
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Productos */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Productos</Text>
           
-          {products.map((product, index) => (
-            <View key={index} style={styles.productItem}>
-              <Image 
-                source={{ uri: product.image?.image || 'https://via.placeholder.com/50' }} 
-                style={styles.productImage} 
-              />
-              <View style={styles.productInfo}>
-                <Text style={styles.productName}>{product.name}</Text>
-                <Text style={styles.productQuantity}>Cantidad: {product.quantity}</Text>
-              </View>
-              <Text style={styles.productPrice}>${product.price?.toFixed(2)}$</Text>
+          {productsData && productsData.length > 0 ? (
+            productsData.map((item, index) => {
+              const isPersonalized = item.collection === 'CustomProducts' ||
+                                    (item.isPersonalized && item.collection !== 'Products') ||
+                                    item.type === 'personalizado';
+              
+              return (
+                <View key={index} style={styles.productItem}>
+                  <ProductImage 
+                    src={item.referenceImage || item.image}
+                    style={styles.productImage}
+                  />
+                  <View style={styles.productInfo}>
+                    <Text style={styles.productName}>
+                      {item.name || item.productToPersonalize || 'Producto sin nombre'}
+                    </Text>
+                    <Text style={styles.productDescription}>
+                      {item.description || item.extraComments || 'Sin descripción'}
+                    </Text>
+                    {item.quantity && (
+                      <Text style={styles.productQuantity}>
+                        Cantidad: {item.quantity}
+                      </Text>
+                    )}
+                    {isPersonalized && item.extraComments && (
+                      <Text style={styles.personalizationText}>
+                        Personalización: {item.extraComments}
+                      </Text>
+                    )}
+                  </View>
+                  <Text style={styles.productPrice}>
+                    ${(item.subtotal?.toFixed(2) || 
+                       item.price?.toFixed(2) || 
+                       item.totalPrice?.toFixed(2) || 
+                       '0.00')}
+                  </Text>
+                </View>
+              );
+            })
+          ) : (
+            <View style={styles.noProductsContainer}>
+              <Text style={styles.noProductsIcon}>📦</Text>
+              <Text style={styles.noProductsText}>No se encontraron productos</Text>
             </View>
-          ))}
+          )}
         </View>
         
       </ScrollView>
@@ -210,6 +607,46 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 14,
+    color: '#6c757d',
+    fontFamily: 'Poppins-Regular',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  errorIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#EF4444',
+    textAlign: 'center',
+    marginBottom: 24,
+    fontFamily: 'Poppins-Regular',
+  },
+  backToProfileButton: {
+    backgroundColor: '#E8ACD2',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  backToProfileText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: 'Poppins-Medium',
   },
   header: {
     flexDirection: 'row',
@@ -280,9 +717,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -354,46 +788,106 @@ const styles = StyleSheet.create({
     color: '#6c757d',
     fontFamily: 'Poppins-Regular',
   },
+  cancellationInfo: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e9ecef',
+  },
+  cancellationInfoTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#212529',
+    marginBottom: 4,
+    fontFamily: 'Poppins-SemiBold',
+  },
+  cancellationStatus: {
+    fontSize: 12,
+    fontFamily: 'Poppins-Regular',
+  },
+  remainingTime: {
+    fontSize: 12,
+    color: '#F59E0B',
+    fontFamily: 'Poppins-Regular',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  infoLabel: {
+    fontSize: 14,
+    color: '#6c757d',
+    fontFamily: 'Poppins-Regular',
+  },
+  infoValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#212529',
+    fontFamily: 'Poppins-SemiBold',
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '500',
+    fontFamily: 'Poppins-Medium',
+  },
   subtitle: {
     fontSize: 12,
     color: '#6c757d',
     marginBottom: 16,
     fontFamily: 'Poppins-Regular',
   },
-  chevron: {
-    fontSize: 20,
-    color: '#6c757d',
+  addressContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 16,
   },
-  mapContainer: {
-    position: 'relative',
-    height: 120,
-    backgroundColor: '#f1f3f4',
-    borderRadius: 8,
-    overflow: 'hidden',
+  addressIcon: {
+    fontSize: 16,
+    marginRight: 8,
+    marginTop: 2,
   },
-  mapPlaceholder: {
+  addressInfo: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  mapDot: {
-    width: 8,
-    height: 8,
-    backgroundColor: '#E8ACD2',
-    borderRadius: 4,
+  addressText: {
+    fontSize: 14,
+    color: '#212529',
+    fontFamily: 'Poppins-Regular',
   },
-  mapOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    padding: 12,
-  },
-  mapText: {
-    color: '#fff',
+  referenceText: {
     fontSize: 12,
-    textAlign: 'center',
+    color: '#6c757d',
+    marginTop: 4,
+    fontFamily: 'Poppins-Regular',
+  },
+  contactContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  contactIcon: {
+    fontSize: 16,
+    marginRight: 8,
+    marginTop: 2,
+  },
+  contactInfo: {
+    flex: 1,
+  },
+  contactName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#212529',
+    fontFamily: 'Poppins-Medium',
+  },
+  contactPhone: {
+    fontSize: 12,
+    color: '#6c757d',
     fontFamily: 'Poppins-Regular',
   },
   trackingItem: {
@@ -437,6 +931,18 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginRight: 12,
   },
+  imagePlaceholder: {
+    backgroundColor: '#f1f3f4',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+    borderStyle: 'dashed',
+  },
+  imagePlaceholderText: {
+    fontSize: 20,
+    color: '#6c757d',
+  },
   productInfo: {
     flex: 1,
   },
@@ -447,9 +953,22 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     fontFamily: 'Poppins-Medium',
   },
+  productDescription: {
+    fontSize: 12,
+    color: '#6c757d',
+    marginBottom: 2,
+    fontFamily: 'Poppins-Regular',
+  },
   productQuantity: {
     fontSize: 12,
     color: '#6c757d',
+    fontFamily: 'Poppins-Regular',
+  },
+  personalizationText: {
+    fontSize: 11,
+    color: '#8B5CF6',
+    marginTop: 4,
+    fontStyle: 'italic',
     fontFamily: 'Poppins-Regular',
   },
   productPrice: {
@@ -458,6 +977,136 @@ const styles = StyleSheet.create({
     color: '#212529',
     fontFamily: 'Poppins-SemiBold',
   },
+  noProductsContainer: {
+    alignItems: 'center',
+    paddingVertical: 24,
+  },
+  noProductsIcon: {
+    fontSize: 48,
+    marginBottom: 8,
+  },
+  noProductsText: {
+    fontSize: 14,
+    color: '#6c757d',
+    fontFamily: 'Poppins-Regular',
+  },
+  // Estilos del Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e9ecef',
+  },
+  modalIconContainer: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#FEE2E2',
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  modalIcon: {
+    fontSize: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#212529',
+    fontFamily: 'Poppins-SemiBold',
+  },
+  modalMessage: {
+    fontSize: 14,
+    color: '#6c757d',
+    lineHeight: 20,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    fontFamily: 'Poppins-Regular',
+  },
+  modalWarning: {
+    backgroundColor: '#FEF3C7',
+    marginHorizontal: 24,
+    marginTop: 16,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  modalWarningText: {
+    fontSize: 12,
+    color: '#92400E',
+    fontWeight: '500',
+    fontFamily: 'Poppins-Medium',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 16,
+    gap: 12,
+  },
+  modalKeepButton: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalKeepText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6c757d',
+    fontFamily: 'Poppins-Medium',
+  },
+  modalCancelButton: {
+    flex: 1,
+    backgroundColor: '#EF4444',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#fff',
+    fontFamily: 'Poppins-Medium',
+  },
+  modalLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  modalFooter: {
+    fontSize: 11,
+    color: '#6c757d',
+    textAlign: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+    fontFamily: 'Poppins-Regular',
+  }
 });
-
-export default OrderDetailsScreen;
+export default OrderDetailsScreen; 

@@ -16,52 +16,52 @@ const useRegister = () => {
     // Función para validar formato de email según el backend
     const validateEmail = (email) => {
         if (!email || typeof email !== 'string') {
-            return false;
+            return { isValid: false, error: 'Email es requerido' };
         }
         
         const trimmedEmail = email.trim().toLowerCase();
         
         if (trimmedEmail.length === 0) {
-            return false;
+            return { isValid: false, error: 'Email no puede estar vacío' };
+        }
+        
+        if (trimmedEmail.length > 254) {
+            return { isValid: false, error: 'Email demasiado largo' };
         }
         
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(trimmedEmail)) {
-            return false;
+            return { isValid: false, error: 'Formato de email no válido' };
         }
         
-        if (trimmedEmail.length > 254) {
-            return false;
-        }
-        
-        return true;
+        return { isValid: true, error: null };
     };
 
     // Función para validar formato de teléfono según el backend
     const validatePhone = (phone) => {
         if (!phone || typeof phone !== 'string') {
-            return false;
+            return { isValid: false, error: 'Teléfono es requerido' };
         }
         
         const trimmedPhone = phone.trim();
         
         if (trimmedPhone.length === 0) {
-            return false;
+            return { isValid: false, error: 'Teléfono no puede estar vacío' };
         }
         
         // Validar formato de teléfono (permite números, espacios, guiones y paréntesis)
         const phoneRegex = /^[\d\s\-\(\)\+]+$/;
         if (!phoneRegex.test(trimmedPhone)) {
-            return false;
+            return { isValid: false, error: 'Formato de teléfono no válido' };
         }
         
         // Extraer solo números para validar longitud
         const numbersOnly = trimmedPhone.replace(/\D/g, '');
         if (numbersOnly.length < 8 || numbersOnly.length > 15) {
-            return false;
+            return { isValid: false, error: 'Teléfono debe tener entre 8 y 15 dígitos' };
         }
         
-        return true;
+        return { isValid: true, error: null };
     };
 
     // Función para formatear teléfono automáticamente mientras el usuario escribe
@@ -92,15 +92,15 @@ const useRegister = () => {
     // Función para validar contraseña según el backend
     const validatePassword = (password) => {
         if (!password || typeof password !== 'string') {
-            return false;
+            return { isValid: false, error: 'Contraseña es requerida' };
         }
         
         if (password.length < 8) {
-            return false;
+            return { isValid: false, error: 'Contraseña debe tener al menos 8 caracteres' };
         }
         
         if (password.length > 128) {
-            return false;
+            return { isValid: false, error: 'Contraseña demasiado larga' };
         }
         
         // Validar complejidad
@@ -109,262 +109,297 @@ const useRegister = () => {
         const hasNumbers = /\d/.test(password);
         
         if (!hasUppercase || !hasLowercase || !hasNumbers) {
-            return false;
+            return { isValid: false, error: 'Contraseña debe contener al menos una mayúscula, una minúscula y un número' };
         }
         
-        return true;
+        return { isValid: true, error: null };
     };
 
-    // Función para validar fecha de nacimiento según el backend (cambiada a 12 años)
-    const validateBirthDate = (dateString) => {
-        if (!dateString) {
-            return false;
+    // Función para validar fecha de nacimiento según el backend (12 años mínimo, 120 máximo)
+const validateBirthDate = (dateString) => {
+    if (!dateString) {
+        return { isValid: false, error: 'Fecha de nacimiento es requerida' };
+    }
+    
+    try {
+        // Parsear fecha en formato DD/MM/YYYY
+        const [day, month, year] = dateString.split('/').map(num => parseInt(num, 10));
+        
+        // Crear fecha con el día correcto
+        const date = new Date(year, month - 1, day); // month - 1 porque los meses en JS van de 0-11
+        
+        // Verificar que los componentes de la fecha sean válidos
+        if (
+            date.getDate() !== day || 
+            date.getMonth() !== month - 1 || 
+            date.getFullYear() !== year ||
+            isNaN(date.getTime())
+        ) {
+            return { isValid: false, error: 'Fecha de nacimiento no válida' };
         }
         
-        try {
-            // Parsear fecha en formato DD/MM/YYYY
-            const [day, month, year] = dateString.split('/');
-            const date = new Date(year, month - 1, day);
-            
-            // Verificar que sea una fecha válida
-            if (isNaN(date.getTime())) {
-                return false;
-            }
-            
-            // Verificar que no sea en el futuro
-            if (date > new Date()) {
-                return false;
-            }
-            
-            // Verificar edad mínima (12 años según lo solicitado)
-            const minAge = 12;
-            const minDate = new Date();
-            minDate.setFullYear(minDate.getFullYear() - minAge);
-            
-            if (date > minDate) {
-                return false;
-            }
-            
-            // Verificar edad máxima (120 años)
-            const maxAge = 120;
-            const maxDate = new Date();
-            maxDate.setFullYear(maxDate.getFullYear() - maxAge);
-            
-            if (date < maxDate) {
-                return false;
-            }
-            
-            return true;
-        } catch (error) {
-            return false;
+        // Verificar que no sea en el futuro
+        const today = new Date();
+        if (date > today) {
+            return { isValid: false, error: 'Fecha de nacimiento no puede ser en el futuro' };
         }
-    };
+        
+        // Verificar edad mínima (12 años)
+        const minAge = 12;
+        const minDate = new Date();
+        minDate.setFullYear(minDate.getFullYear() - minAge);
+        
+        // Calcular edad
+        const age = today.getFullYear() - date.getFullYear();
+        const monthDiff = today.getMonth() - date.getMonth();
+        const dayDiff = today.getDate() - date.getDate();
+        
+        // Ajustar edad si aún no ha cumplido años este año
+        const adjustedAge = monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age;
+        
+        if (adjustedAge < minAge) {
+            return { isValid: false, error: `Debe tener al menos ${minAge} años` };
+        }
+        
+        // Verificar edad máxima (120 años)
+        if (adjustedAge > 120) {
+            return { isValid: false, error: 'Fecha de nacimiento no válida' };
+        }
+        
+        return { isValid: true, error: null };
+    } catch (error) {
+        console.error('Error validando fecha:', error);
+        return { isValid: false, error: 'Fecha de nacimiento no válida' };
+    }
+};
 
     // Función para validar nombre completo según el backend
     const validateFullName = (fullName) => {
         if (!fullName || typeof fullName !== 'string') {
-            return false;
+            return { isValid: false, error: 'Nombre completo es requerido' };
         }
         
         const trimmedName = fullName.trim();
         
         if (trimmedName.length === 0) {
-            return false;
+            return { isValid: false, error: 'Nombre completo no puede estar vacío' };
         }
         
         // El backend requiere al menos 2 caracteres, pero el modelo requiere 10
         if (trimmedName.length < 10) {
-            return false;
+            return { isValid: false, error: 'Nombre completo debe tener al menos 10 caracteres para asegurar nombre y apellido' };
         }
         
         if (trimmedName.length > 100) {
-            return false;
+            return { isValid: false, error: 'Nombre completo demasiado largo' };
         }
         
         // Validar que solo contenga letras, espacios y algunos caracteres especiales
         const nameRegex = /^[a-zA-ZàáâäèéêëìíîïòóôöùúûüÀÁÂÄÈÉÊËÌÍÎÏÒÓÔÖÙÚÛÜñÑ\s\-\.\']+$/;
         if (!nameRegex.test(trimmedName)) {
-            return false;
+            return { isValid: false, error: 'Nombre completo contiene caracteres no válidos' };
         }
         
-        return true;
+        return { isValid: true, error: null };
     };
 
     // Función para validar dirección según el backend
     const validateAddress = (address) => {
         if (!address || typeof address !== 'string') {
-            return false;
+            return { isValid: false, error: 'Dirección es requerida' };
         }
         
         const trimmedAddress = address.trim();
         
         if (trimmedAddress.length === 0) {
-            return false;
+            return { isValid: false, error: 'Dirección no puede estar vacía' };
         }
         
         // El modelo requiere al menos 10 caracteres
         if (trimmedAddress.length < 10) {
-            return false;
+            return { isValid: false, error: 'Dirección debe tener al menos 10 caracteres para dirección completa' };
         }
         
         if (trimmedAddress.length > 200) {
-            return false;
+            return { isValid: false, error: 'Dirección demasiado larga' };
         }
         
-        return true;
+        return { isValid: true, error: null };
     };
 
-    // Función principal para validar todos los campos del formulario con mensajes específicos del backend
-    const validateForm = (formData) => {
+    // Función para validar todos los campos usando las funciones individuales
+    const validateAllFields = (formData) => {
         const errors = {};
 
-        // Validar nombre completo con validación específica del backend
-        if (!formData.nombre || typeof formData.nombre !== 'string') {
-            errors.nombre = 'Nombre completo es requerido';
-        } else {
-            const trimmedName = formData.nombre.trim();
-            
-            if (trimmedName.length === 0) {
-                errors.nombre = 'Nombre completo no puede estar vacío';
-            } else if (trimmedName.length < 10) {
-                errors.nombre = 'Nombre completo debe tener al menos 10 caracteres para asegurar nombre y apellido';
-            } else if (trimmedName.length > 100) {
-                errors.nombre = 'Nombre completo demasiado largo';
-            } else {
-                const nameRegex = /^[a-zA-ZàáâäèéêëìíîïòóôöùúûüÀÁÂÄÈÉÊËÌÍÎÏÒÓÔÖÙÚÛÜñÑ\s\-\.\']+$/;
-                if (!nameRegex.test(trimmedName)) {
-                    errors.nombre = 'Nombre completo contiene caracteres no válidos';
-                }
-            }
+        // Validar nombre completo
+        const nameValidation = validateFullName(formData.nombre);
+        if (!nameValidation.isValid) {
+            errors.nombre = nameValidation.error;
         }
 
-        // Validar teléfono con validación específica del backend
-        if (!formData.telefono || typeof formData.telefono !== 'string') {
-            errors.telefono = 'Teléfono es requerido';
-        } else {
-            const trimmedPhone = formData.telefono.trim();
-            
-            if (trimmedPhone.length === 0) {
-                errors.telefono = 'Teléfono no puede estar vacío';
-            } else {
-                const phoneRegex = /^[\d\s\-\(\)\+]+$/;
-                if (!phoneRegex.test(trimmedPhone)) {
-                    errors.telefono = 'Formato de teléfono no válido';
-                } else {
-                    const numbersOnly = trimmedPhone.replace(/\D/g, '');
-                    if (numbersOnly.length < 8 || numbersOnly.length > 15) {
-                        errors.telefono = 'Teléfono debe tener entre 8 y 15 dígitos';
-                    }
-                }
-            }
+        // Validar teléfono
+        const phoneValidation = validatePhone(formData.telefono);
+        if (!phoneValidation.isValid) {
+            errors.telefono = phoneValidation.error;
         }
 
-        // Validar email con validación específica del backend
-        if (!formData.correo || typeof formData.correo !== 'string') {
-            errors.correo = 'Email es requerido';
-        } else {
-            const trimmedEmail = formData.correo.trim().toLowerCase();
-            
-            if (trimmedEmail.length === 0) {
-                errors.correo = 'Email no puede estar vacío';
-            } else if (trimmedEmail.length > 254) {
-                errors.correo = 'Email demasiado largo';
-            } else {
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (!emailRegex.test(trimmedEmail)) {
-                    errors.correo = 'Formato de email no válido';
-                }
-            }
+        // Validar email
+        const emailValidation = validateEmail(formData.correo);
+        if (!emailValidation.isValid) {
+            errors.correo = emailValidation.error;
         }
 
-        // Validar fecha de nacimiento con validación específica del backend
-        if (!formData.fechaNacimiento) {
-            errors.fechaNacimiento = 'Fecha de nacimiento es requerida';
-        } else {
-            try {
-                const [day, month, year] = formData.fechaNacimiento.split('/');
-                const date = new Date(year, month - 1, day);
-                
-                if (isNaN(date.getTime())) {
-                    errors.fechaNacimiento = 'Fecha de nacimiento no válida';
-                } else if (date > new Date()) {
-                    errors.fechaNacimiento = 'Fecha de nacimiento no puede ser en el futuro';
-                } else {
-                    // Verificar edad mínima (12 años)
-                    const minAge = 12;
-                    const minDate = new Date();
-                    minDate.setFullYear(minDate.getFullYear() - minAge);
-                    
-                    if (date > minDate) {
-                        errors.fechaNacimiento = `Debe tener al menos ${minAge} años`;
-                    } else {
-                        // Verificar edad máxima (120 años)
-                        const maxAge = 120;
-                        const maxDate = new Date();
-                        maxDate.setFullYear(maxDate.getFullYear() - maxAge);
-                        
-                        if (date < maxDate) {
-                            errors.fechaNacimiento = 'Fecha de nacimiento no válida';
-                        }
-                    }
-                }
-            } catch (error) {
-                errors.fechaNacimiento = 'Fecha de nacimiento no válida';
-            }
+        // Validar fecha de nacimiento
+        const birthDateValidation = validateBirthDate(formData.fechaNacimiento);
+        if (!birthDateValidation.isValid) {
+            errors.fechaNacimiento = birthDateValidation.error;
         }
 
-        // Validar dirección con validación específica del backend
-        if (!formData.direccion || typeof formData.direccion !== 'string') {
-            errors.direccion = 'Dirección es requerida';
-        } else {
-            const trimmedAddress = formData.direccion.trim();
-            
-            if (trimmedAddress.length === 0) {
-                errors.direccion = 'Dirección no puede estar vacía';
-            } else if (trimmedAddress.length < 10) {
-                errors.direccion = 'Dirección debe tener al menos 10 caracteres para dirección completa';
-            } else if (trimmedAddress.length > 200) {
-                errors.direccion = 'Dirección demasiado larga';
-            }
+        // Validar dirección
+        const addressValidation = validateAddress(formData.direccion);
+        if (!addressValidation.isValid) {
+            errors.direccion = addressValidation.error;
         }
 
-        // Validar contraseña con validación específica del backend
-        if (!formData.contrasena || typeof formData.contrasena !== 'string') {
-            errors.contrasena = 'Contraseña es requerida';
-        } else {
-            if (formData.contrasena.length < 8) {
-                errors.contrasena = 'Contraseña debe tener al menos 8 caracteres';
-            } else if (formData.contrasena.length > 128) {
-                errors.contrasena = 'Contraseña demasiado larga';
-            } else {
-                const hasUppercase = /[A-Z]/.test(formData.contrasena);
-                const hasLowercase = /[a-z]/.test(formData.contrasena);
-                const hasNumbers = /\d/.test(formData.contrasena);
-                
-                if (!hasUppercase || !hasLowercase || !hasNumbers) {
-                    errors.contrasena = 'Contraseña debe contener al menos una mayúscula, una minúscula y un número';
-                }
-            }
+        // Validar contraseña
+        const passwordValidation = validatePassword(formData.contrasena);
+        if (!passwordValidation.isValid) {
+            errors.contrasena = passwordValidation.error;
         }
 
         return errors;
     };
 
-    // Función principal para procesar el registro
-    const handleRegister = async (formData) => {
+    // Función para verificar si el email existe en el backend
+    const checkEmailExists = async (email) => {
         try {
-            setIsRegistering(true);
+            console.log('Verificando si el email existe:', email);
+            
+            const response = await fetch('https://marquesa.onrender.com/api/emailVerification/request', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: email.trim().toLowerCase(),
+                    fullName: null // Solo para verificar existencia
+                })
+            });
+
+            const data = await response.json();
+            console.log('Respuesta de verificación de email:', data);
+
+            // Si el correo ya está registrado
+            if (!data.success && data.message && data.message.includes('ya está registrado')) {
+                return { 
+                    exists: true, 
+                    message: 'Este correo electrónico ya está registrado' 
+                };
+            }
+
+            // Si no está registrado, está disponible
+            return { exists: false, message: null };
+
+        } catch (error) {
+            console.error('Error verificando email:', error);
+            return { 
+                exists: false, 
+                message: null,
+                error: 'Error de conexión al verificar el email'
+            };
+        }
+    };
+
+    // Función principal para manejar el proceso de registro por pasos
+    const handleRegisterProcess = async (formData) => {
+        try {
+            console.log('=== INICIANDO PROCESO DE REGISTRO ===');
+            
+            // PASO 1: Validar todos los campos localmente
+            console.log('Paso 1: Validando campos localmente...');
+            setFieldErrors({}); // Limpiar errores previos
+            setGeneralError('');
+            
+            const validationErrors = validateAllFields(formData);
+            
+            if (Object.keys(validationErrors).length > 0) {
+                console.log('Errores de validación encontrados:', validationErrors);
+                setFieldErrors(validationErrors);
+                return { 
+                    success: false, 
+                    step: 'validation',
+                    errors: validationErrors,
+                    message: 'Por favor corrige los errores en el formulario' 
+                };
+            }
+            
+            console.log('Paso 1 completado: Todos los campos son válidos');
+            
+            // PASO 2: Verificar si el email existe
+            console.log('Paso 2: Verificando disponibilidad del email...');
+            const emailCheck = await checkEmailExists(formData.correo);
+            
+            if (emailCheck.error) {
+                setGeneralError(emailCheck.error);
+                return { 
+                    success: false, 
+                    step: 'email_check',
+                    message: emailCheck.error 
+                };
+            }
+            
+            if (emailCheck.exists) {
+                console.log('Email ya existe, mostrando error');
+                setGeneralError(emailCheck.message);
+                return { 
+                    success: false, 
+                    step: 'email_exists',
+                    message: emailCheck.message 
+                };
+            }
+            
+            console.log('Paso 2 completado: Email disponible');
+            
+            // PASO 3: Todo está bien, proceder con verificación
+            console.log('Pasos completados exitosamente, procediendo a verificación de email');
+            return { 
+                success: true, 
+                step: 'ready_for_verification',
+                message: 'Validación completada, procediendo a verificación de email' 
+            };
+
+        } catch (error) {
+            console.error('Error en proceso de registro:', error);
+            const errorMessage = error.message || 'Error inesperado en el proceso de registro';
+            setGeneralError(errorMessage);
+            return { 
+                success: false, 
+                step: 'error',
+                message: errorMessage 
+            };
+        }
+    };
+
+    // Función principal para procesar el registro (mantenida para compatibilidad)
+    const handleRegister = async (formData, onlyValidate = false) => {
+        try {
+            if (!onlyValidate) {
+                setIsRegistering(true);
+            }
             setGeneralError('');
             setFieldErrors({});
 
-            // Validar formulario
-            const errors = validateForm(formData);
-            if (Object.keys(errors).length > 0) {
-                setFieldErrors(errors);
-                return { success: false, errors };
+            // Si solo es validación local, usar la nueva función
+            if (onlyValidate) {
+                const validationErrors = validateAllFields(formData);
+                if (Object.keys(validationErrors).length > 0) {
+                    setFieldErrors(validationErrors);
+                    return { success: false, errors: validationErrors };
+                }
+                return { success: true };
             }
 
-            // Formatear datos para enviar al backend
+            // Para registro completo, formatear datos y llamar al backend
             const registerData = {
                 fullName: formData.nombre.trim(),
                 phone: formatPhone(formData.telefono),
@@ -386,10 +421,14 @@ const useRegister = () => {
 
         } catch (error) {
             const errorMessage = error.message || 'Error de conexión. Inténtalo nuevamente.';
-            setGeneralError(errorMessage);
+            if (!onlyValidate) {
+                setGeneralError(errorMessage);
+            }
             return { success: false, message: errorMessage };
         } finally {
-            setIsRegistering(false);
+            if (!onlyValidate) {
+                setIsRegistering(false);
+            }
         }
     };
 
@@ -409,16 +448,32 @@ const useRegister = () => {
     };
 
     return {
+        // Estados
         isRegistering,
         fieldErrors,
         generalError,
+        
+        // Funciones principales
         handleRegister,
+        handleRegisterProcess, // Nueva función principal
+        
+        // Funciones de limpieza
         clearErrors,
         clearFieldError,
-        validatePhone,
+        
+        // Funciones de formateo
         formatPhone,
         formatPhoneInput,
-        validateEmail
+        
+        // Funciones de validación individual (ahora todas se usan)
+        validateEmail,
+        validatePhone,
+        validatePassword,
+        validateBirthDate,
+        validateFullName,
+        validateAddress,
+        validateAllFields,
+        checkEmailExists
     };
 };
 

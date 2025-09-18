@@ -1,5 +1,8 @@
 import React from "react";
-import { Modal, View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput } from "react-native";
+import { Modal, View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput, Dimensions } from "react-native";
+
+// Obtener dimensiones de la pantalla para responsive design
+const { width: screenWidth } = Dimensions.get('window');
 
 // Componente de alerta personalizable con iconos y tipos diferentes
 // Props:
@@ -53,7 +56,7 @@ export const CustomAlert = ({
             {/* Overlay semitransparente de fondo */}
             <View style={styles.alertOverlay}>
                 {/* Contenedor principal de la alerta */}
-                <View style={styles.alertContainer}>
+                <View style={[styles.alertContainer, { maxWidth: Math.min(320, screenWidth - 40) }]}>
                     {/* Contenedor del icono con color dinámico */}
                     <View style={[styles.iconContainer, { backgroundColor: getIconColor() }]}>
                         <Text style={styles.iconText}>{getIcon()}</Text>
@@ -115,9 +118,12 @@ export const LoadingDialog = ({
             {/* Overlay semitransparente de fondo */}
             <View style={styles.alertOverlay}>
                 {/* Contenedor del diálogo de carga */}
-                <View style={styles.loadingContainer}>
-                    {/* Spinner de carga */}
-                    <ActivityIndicator size="large" color={color} style={styles.loadingSpinner} />
+                <View style={[styles.loadingContainer, { maxWidth: Math.min(280, screenWidth - 40) }]}>
+                    {/* Contenedor del spinner con posición relativa para centrado */}
+                    <View style={styles.spinnerWrapper}>
+                        {/* Spinner de carga */}
+                        <ActivityIndicator size="large" color={color} />
+                    </View>
                     {/* Título del diálogo de carga */}
                     <Text style={styles.loadingTitle}>{title}</Text>
                     {/* Mensaje del diálogo de carga */}
@@ -158,7 +164,7 @@ export const ConfirmationDialog = ({
             {/* Overlay semitransparente de fondo */}
             <View style={styles.alertOverlay}>
                 {/* Contenedor principal del diálogo */}
-                <View style={styles.alertContainer}>
+                <View style={[styles.alertContainer, { maxWidth: Math.min(320, screenWidth - 40) }]}>
                     {/* Icono de pregunta con color dinámico según si es peligroso */}
                     <View style={[styles.iconContainer, { backgroundColor: isDangerous ? '#F44336' : '#FF9800' }]}>
                         <Text style={styles.iconText}>?</Text>
@@ -236,7 +242,7 @@ export const InputDialog = ({
             {/* Overlay semitransparente de fondo */}
             <View style={styles.alertOverlay}>
                 {/* Contenedor principal del diálogo */}
-                <View style={styles.alertContainer}>
+                <View style={[styles.alertContainer, { maxWidth: Math.min(320, screenWidth - 40) }]}>
                     {/* Icono de lápiz/edición */}
                     <View style={[styles.iconContainer, { backgroundColor: '#2196F3' }]}>
                         <Text style={styles.iconText}>✎</Text>
@@ -377,7 +383,6 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 8,
         elevation: 8, // Sombra en Android
-        maxWidth: 320,
         width: '100%',
     },
     // Contenedor circular del icono
@@ -463,10 +468,12 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 8,
         elevation: 8,
-        minWidth: 200,
+        width: '100%',
     },
-    // Spinner de carga
-    loadingSpinner: {
+    // Contenedor del spinner para centrado perfecto
+    spinnerWrapper: {
+        alignItems: 'center',
+        justifyContent: 'center',
         marginBottom: 15,
     },
     // Título del diálogo de carga
@@ -545,3 +552,5 @@ const styles = StyleSheet.create({
         flex: 1, // Tomar el espacio restante
     },
 });
+
+export default { CustomAlert, LoadingDialog, ConfirmationDialog, InputDialog, ToastDialog };

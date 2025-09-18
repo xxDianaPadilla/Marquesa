@@ -792,7 +792,8 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
-    marginTop: 15,
+    marginTop: 20,
+    fontFamily: 'Poppins-SemiBold',
   },
   errorBanner: {
     flexDirection: 'row',

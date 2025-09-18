@@ -289,7 +289,7 @@ const FavoritesScreen = ({ navigation }) => {
           <Icon name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          Favoritos {favorites.length > 0 && `(${favorites.length})`}
+          Favoritos 
         </Text>
         <TouchableOpacity
           style={styles.refreshButton}
@@ -400,7 +400,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: '#FFFFFF',
-    marginTop: 25, // Espaciado para área segura
+    marginTop: 30, // Espaciado para área segura
   },
   
   // Separador decorativo color rosa
@@ -425,6 +425,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
+    fontFamily: 'Poppins-SemiBold',
   },
   
   // Espacio derecho para balance visual

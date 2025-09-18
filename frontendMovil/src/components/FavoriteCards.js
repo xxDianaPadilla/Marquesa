@@ -71,8 +71,8 @@ const FavoriteCards = ({
       {/* Contenedor de la imagen con elementos superpuestos */}
       <View style={styles.imageContainer}>
         {/* Imagen del producto */}
-        <Image 
-          source={getProductImage(item)} 
+        <Image
+          source={getProductImage(item)}
           style={styles.favoriteImage}
           resizeMode="cover"
         />
@@ -167,12 +167,14 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#fff',
     marginBottom: 2,
+    fontFamily: 'Poppins-SemiBold',
   },
   // Precio del producto con color rosa claro
   favoritePrice: {
     fontSize: 12,
     fontWeight: '600',
     color: '#f5c7e6ff',
+    fontFamily: 'Poppins-SemiBold',
   },
   // Botón de corazón flotante en la esquina superior derecha
   heartIcon: {

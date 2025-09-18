@@ -38,7 +38,7 @@ const HomePage = () => {
         </svg>
       ),
       title: "Calidad Garantizada",
-      description: "Todos nuestros productos son cuidadosamente seleccionados y elaborados con los mejores materiales."
+      description: "Todos nuestros productos contienen diversos materiales de calidad utilizando la renovación en los materiales orgánicos y siguiendo nuestro estilo en la transformación para crear cada uno de los detalles únicos."
     },
     {
       icon: (
@@ -48,7 +48,7 @@ const HomePage = () => {
         </svg>
       ),
       title: "Diseños únicos",
-      description: "Adaptamos nuestros productos a tus necesidades y preferencias para crear algo único."
+      description: "Cada producto que se realiza es único en su diseño utilizando diversos materiales adaptados a las necesidades de nuestros clientes"
     },
     {
       icon: (
@@ -57,7 +57,7 @@ const HomePage = () => {
         </svg>
       ),
       title: "Amplia Variedad",
-      description: "Ofrecemos una extensa gama de productos para todas las ocasiones y gustos."
+      description: "Contamos con una diversidad de productos que cumplen con las necesidades y requerimientos de nuestros clientes"
     }
   ];
 
@@ -202,7 +202,8 @@ const HomePage = () => {
               className="text-gray-600 mx-auto text-sm sm:text-base lg:text-lg max-w-xs sm:max-w-2xl lg:max-w-4xl"
               style={{ fontFamily: "Poppins" }}
             >
-              Nos distinguimos por nuestra calidad, atención al detalle y servicio personalizado.
+              Somos una marca que nos distinguimos por crear detalles únicos y personalizados,
+              teniendo atención a cada uno de los detalles
             </p>
           </div>
 

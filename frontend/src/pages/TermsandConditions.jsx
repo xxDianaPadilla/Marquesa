@@ -25,7 +25,7 @@ const TermsandConditions = () => {
 
                         <h1
                             className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-clip-text text-transparent mb-6"
-                            style={{ 
+                            style={{
                                 fontFamily: 'Poppins, sans-serif',
                                 backgroundImage: 'linear-gradient(to right, #FF6A5F, #FDB4B7)'
                             }}
@@ -49,14 +49,14 @@ const TermsandConditions = () => {
                                 className="text-lg sm:text-xl leading-relaxed text-center"
                                 style={{ fontFamily: 'Poppins, sans-serif', color: '#999999' }}
                             >
-                                Al utilizar los servicios de La MarquesaSV, aceptas los siguientes términos:
+                                Al utilizar los servicios de Marquesa, aceptas los siguientes términos:
                             </p>
                         </div>
                     </div>
 
                     {/* Contenido de términos en tarjetas elegantes */}
                     <div className="space-y-8">
-                        
+
                         {/* 1. Pedidos */}
                         <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl p-8 sm:p-10 lg:p-12 hover:shadow-2xl transition-all duration-300" style={{ borderColor: '#FADDDD', borderWidth: '1px' }}>
                             <div className="flex items-start space-x-6">
@@ -73,8 +73,11 @@ const TermsandConditions = () => {
                                                 <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
                                             </svg>
                                             <p className="text-base sm:text-lg leading-relaxed" style={{ fontFamily: 'Poppins, sans-serif', color: '#999999' }}>
-                                                Todos los pedidos deben realizarse a través de nuestros canales oficiales
-                                                (redes sociales, sitio web o WhatsApp). El pago debe completarse antes de la elaboración del arreglo floral.
+                                                Todos los pedidos deben realizarse a través de nuestros canales oficiales ( redes sociales,
+                                                sitio web, whatsapp y email). El pago en los productos personalizados o una cantidad mayor de 6 productos de
+                                                cualquiera de nuestros catálogo, se debe efectuar un 50% de anticipo y contra entrega al
+                                                efectuar el complementos del pago. Agenda de pedidos: Los pedidos se pueden realizar en base a disponibilidad de fechas y
+                                                horas de entrega
                                             </p>
                                         </div>
                                     </div>
@@ -173,7 +176,7 @@ const TermsandConditions = () => {
                                                 <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
                                             </svg>
                                             <p className="text-base sm:text-lg leading-relaxed" style={{ fontFamily: 'Poppins, sans-serif', color: '#999999' }}>
-                                                Todo el contenido visual, logotipos y fotografías pertenecen a La MarquesaSV y no puede ser usado sin autorización previa.
+                                                Todo el contenido visual, logotipos y fotografías pertenecen a Marquesa y no puede ser usado sin autorización previa.
                                             </p>
                                         </div>
                                     </div>

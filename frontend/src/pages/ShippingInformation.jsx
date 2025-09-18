@@ -50,7 +50,7 @@ const ShippingInformation = () => {
                                 className="text-lg sm:text-xl leading-relaxed text-center"
                                 style={{ fontFamily: 'Poppins, sans-serif', color: '#999999' }}
                             >
-                                En La MarquesaSV ofrecemos servicio de entrega a domicilio en determinadas zonas de El Salvador. A continuación, los detalles clave:
+                                En Marquesa ofrecemos servicio de entrega a domicilio en determinadas zonas de El Salvador. A continuación, los detalles clave:
                             </p>
                         </div>
                     </div>

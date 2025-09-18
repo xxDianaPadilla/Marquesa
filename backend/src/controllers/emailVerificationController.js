@@ -100,7 +100,60 @@ const validateFullName = (fullName) => {
     return { isValid: true, value: trimmedName };
 };
 
-// Función helper para validar datos de usuario
+// Función para validar fecha de nacimiento (CORREGIDA)
+const validateBirthDate = (dateString) => {
+    if (!dateString) {
+        return { isValid: false, error: 'Fecha de nacimiento es requerida' };
+    }
+    
+    try {
+        // Parsear fecha en formato DD/MM/YYYY
+        const [day, month, year] = dateString.split('/').map(num => parseInt(num, 10));
+        const date = new Date(year, month - 1, day);
+
+        // Validar que sea una fecha válida
+        if (
+            isNaN(date.getTime()) ||
+            date.getDate() !== day ||
+            date.getMonth() !== month - 1 ||
+            date.getFullYear() !== year
+        ) {
+            return { isValid: false, error: 'Fecha de nacimiento no válida' };
+        }
+
+        // Verificar que no sea en el futuro
+        const today = new Date();
+        if (date > today) {
+            return { isValid: false, error: 'Fecha de nacimiento no puede ser en el futuro' };
+        }
+
+        // Calcular edad correctamente
+        let age = today.getFullYear() - date.getFullYear();
+        const monthDiff = today.getMonth() - date.getMonth();
+        
+        // Si no ha llegado el mes de cumpleaños, o si es el mes pero no ha llegado el día, restar 1 año
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < date.getDate())) {
+            age--;
+        }
+
+        // Verificar edad mínima (12 años)
+        if (age < 12) {
+            return { isValid: false, error: 'Debe tener al menos 12 años' };
+        }
+
+        // Verificar edad máxima (120 años)
+        if (age > 120) {
+            return { isValid: false, error: 'Fecha de nacimiento no válida' };
+        }
+
+        return { isValid: true, value: date.toISOString() };
+    } catch (error) {
+        console.error('Error validando fecha:', error);
+        return { isValid: false, error: 'Fecha de nacimiento no válida' };
+    }
+};
+
+// Función helper para validar datos de usuario (CORREGIDA)
 const validateUserData = (userData) => {
     if (!userData || typeof userData !== 'object') {
         return { isValid: false, error: "Datos de usuario son requeridos" };
@@ -126,17 +179,10 @@ const validateUserData = (userData) => {
         return { isValid: false, error: "Teléfono debe tener al menos 8 caracteres" };
     }
 
-    // Validar fecha de nacimiento
-    const birthDate = new Date(userData.birthDate);
-    if (isNaN(birthDate.getTime())) {
-        return { isValid: false, error: "Fecha de nacimiento no válida" };
-    }
-
-    // Validar que sea mayor de edad (18 años)
-    const today = new Date();
-    const age = today.getFullYear() - birthDate.getFullYear();
-    if (age < 13) {
-        return { isValid: false, error: "Debe ser mayor de 13 años para registrarse" };
+    // CORRECCIÓN: Usar la función de validación correcta para fecha de nacimiento
+    const birthDateValidation = validateBirthDate(userData.birthDate);
+    if (!birthDateValidation.isValid) {
+        return { isValid: false, error: birthDateValidation.error };
     }
 
     // Validar dirección
@@ -497,12 +543,15 @@ emailVerificationController.verifyEmailAndRegister = async (req, res) => {
             });
         }
 
+        // CORRECCIÓN: Usar la fecha procesada correctamente
+        const birthDateValidation = validateBirthDate(userData.birthDate);
+        
         // Crear nuevo cliente
         try {
             const newClient = new clientsModel({
                 fullName: userData.fullName.trim(),
                 phone: userData.phone.trim(),
-                birthDate: userData.birthDate,
+                birthDate: birthDateValidation.value, // Usar la fecha ISO procesada
                 email: emailKey,
                 password: hashedPassword,
                 address: userData.address.trim(),

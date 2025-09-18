@@ -10,13 +10,24 @@ import eyeOffIcon from "../images/eyeOffIcon.png";
 // Importación de componentes personalizados
 import PinkInputs from "../components/PinkInputs";
 import PinkButton from "../components/PinkButton";
+import PasswordRequirements from "../components/PasswordRequirements";
+
+// Importación de componentes personalizados para alertas y carga
+import { CustomAlert, LoadingDialog } from "../components/CustomDialogs";
+
+// Importación del hook personalizado para recuperación de contraseña
+import usePasswordReset from "../hooks/usePasswordReset";
 
 /**
  * Pantalla para cambiar/crear nueva contraseña
  * Permite al usuario establecer una nueva contraseña con confirmación
  * @param {object} navigation - Objeto de navegación de React Navigation
+ * @param {object} route - Objeto de ruta que contiene parámetros (email, verificationCode)
  */
-const ChangePasswordScreen = ({ navigation }) => {
+const ChangePasswordScreen = ({ navigation, route }) => {
+    // Obtener email y código de verificación desde los parámetros de navegación
+    const { email, verificationCode } = route.params || {};
+
     // Estados para manejar los valores de los campos de contraseña
     const [newPassword, setNewPassword] = useState(""); // Contraseña nueva
     const [confirmPassword, setConfirmPassword] = useState(""); // Confirmación de contraseña
@@ -25,26 +36,148 @@ const ChangePasswordScreen = ({ navigation }) => {
     const [showNewPassword, setShowNewPassword] = useState(false); // Mostrar/ocultar nueva contraseña
     const [showConfirmPassword, setShowConfirmPassword] = useState(false); // Mostrar/ocultar confirmación
 
+    // Estados para controlar las alertas personalizadas
+    const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+    const [showErrorAlert, setShowErrorAlert] = useState(false);
+    const [alertMessage, setAlertMessage] = useState('');
+
+    // Hook personalizado para recuperación de contraseña
+    const {
+        isUpdatingPassword,
+        updatePassword,
+        clearError
+    } = usePasswordReset();
+
+    // Estado local para controlar cuando mostrar la alerta de carga
+    const [isProcessing, setIsProcessing] = useState(false);
+
+    /**
+     * Función para validar contraseña según los requisitos del sistema
+     * @param {string} password - Contraseña a validar
+     * @returns {object} - Objeto con isValid y error
+     */
+    const validatePassword = (password) => {
+        if (!password || typeof password !== 'string') {
+            return { isValid: false, error: "Contraseña es requerida" };
+        }
+        
+        if (password.length < 8) {
+            return { isValid: false, error: "Contraseña debe tener al menos 8 caracteres" };
+        }
+        
+        if (password.length > 128) {
+            return { isValid: false, error: "Contraseña demasiado larga" };
+        }
+        
+        // Validar complejidad de contraseña
+        const hasUppercase = /[A-Z]/.test(password);
+        const hasLowercase = /[a-z]/.test(password);
+        const hasNumbers = /\d/.test(password);
+        
+        if (!hasUppercase || !hasLowercase || !hasNumbers) {
+            return {
+                isValid: false,
+                error: "Contraseña debe contener al menos una mayúscula, una minúscula y un número"
+            };
+        }
+        
+        return { isValid: true };
+    };
+
     /**
      * Maneja el evento de retroceso
      * Navega de vuelta a la pantalla de código de recuperación
      */
     const handleBack = () => {
         console.log("Back pressed");
-        navigation.navigate("RecoveryCode");
+        navigation.navigate("RecoveryCode", { email });
     };
 
     /**
      * Maneja el evento de continuar
-     * Procesa las contraseñas y navega a la pantalla de login
-     * TODO: Agregar validación de contraseñas antes de navegar
+     * Procesa las contraseñas, valida y envía al backend
      */
-    const handleContinue = () => {
+    const handleContinue = async () => {
         console.log("Continue pressed");
-        // Aquí se podría agregar lógica de validación:
-        // - Verificar que las contraseñas coincidan
-        // - Validar que cumple con los requisitos de seguridad
+        
+        // Limpiar errores previos
+        clearError();
+
+        // Validar que las contraseñas no estén vacías
+        if (!newPassword.trim()) {
+            setAlertMessage("Por favor ingresa una contraseña");
+            setShowErrorAlert(true);
+            return;
+        }
+
+        if (!confirmPassword.trim()) {
+            setAlertMessage("Por favor confirma tu contraseña");
+            setShowErrorAlert(true);
+            return;
+        }
+
+        // Validar que las contraseñas coincidan
+        if (newPassword !== confirmPassword) {
+            setAlertMessage("Las contraseñas no coinciden");
+            setShowErrorAlert(true);
+            return;
+        }
+
+        // Validar que la contraseña cumpla los requisitos
+        const passwordValidation = validatePassword(newPassword);
+        if (!passwordValidation.isValid) {
+            setAlertMessage(passwordValidation.error);
+            setShowErrorAlert(true);
+            return;
+        }
+
+        // Verificar que tenemos los datos necesarios
+        if (!email || !verificationCode) {
+            setAlertMessage("Error: faltan datos de verificación. Inicia el proceso nuevamente.");
+            setShowErrorAlert(true);
+            return;
+        }
+
+        // Iniciar estado de procesamiento
+        setIsProcessing(true);
+
+        try {
+            // Enviar nueva contraseña al backend
+            const result = await updatePassword(email, verificationCode, newPassword);
+
+            if (result.success) {
+                // Mostrar alerta de éxito
+                setAlertMessage("Contraseña actualizada correctamente");
+                setShowSuccessAlert(true);
+            } else {
+                // Mostrar alerta de error
+                setAlertMessage(result.message || "Error al actualizar la contraseña");
+                setShowErrorAlert(true);
+            }
+        } catch (error) {
+            // Manejar errores de conexión
+            setAlertMessage("Error de conexión. Verifica tu internet e inténtalo nuevamente.");
+            setShowErrorAlert(true);
+        } finally {
+            // Detener estado de procesamiento
+            setIsProcessing(false);
+        }
+    };
+
+    /**
+     * Función para manejar la confirmación de éxito
+     */
+    const handleSuccessConfirm = () => {
+        setShowSuccessAlert(false);
+        // Navegar al login después del éxito
         navigation.navigate("Login");
+    };
+
+    /**
+     * Función para cerrar alerta de error
+     */
+    const handleErrorConfirm = () => {
+        setShowErrorAlert(false);
     };
 
     /**
@@ -71,7 +204,11 @@ const ChangePasswordScreen = ({ navigation }) => {
             <View style={styles.content}>
                 {/* Header con botón de retroceso */}
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+                    <TouchableOpacity 
+                        onPress={handleBack} 
+                        style={styles.backButton}
+                        disabled={isProcessing} // Deshabilitar durante la carga
+                    >
                         <Image source={backIcon} style={styles.backIcon} />
                     </TouchableOpacity>
                 </View>
@@ -80,7 +217,7 @@ const ChangePasswordScreen = ({ navigation }) => {
                 <View style={styles.titleSection}>
                     <Text style={styles.title}>Crea una nueva contraseña</Text>
                     <Text style={styles.description}>
-                        Crea una contraseña que contenga al menos 12 dígitos. Debes incluir caracteres especiales, mayúsculas y minúsculas.
+                        Crea una contraseña que contenga al menos 8 caracteres. Debes incluir caracteres especiales, mayúsculas y minúsculas.
                     </Text>
                 </View>
 
@@ -97,7 +234,11 @@ const ChangePasswordScreen = ({ navigation }) => {
                         eyeIcon={eyeIcon} // Icono para mostrar contraseña
                         eyeOffIcon={eyeOffIcon} // Icono para ocultar contraseña
                         style={styles.inputSpacing}
+                        editable={!isProcessing} // Deshabilitar durante la carga
                     />
+
+                    {/* Componente de requisitos de contraseña */}
+                    <PasswordRequirements password={newPassword} />
 
                     {/* Campo para confirmar la contraseña */}
                     <PinkInputs
@@ -110,18 +251,48 @@ const ChangePasswordScreen = ({ navigation }) => {
                         eyeIcon={eyeIcon} // Icono para mostrar contraseña
                         eyeOffIcon={eyeOffIcon} // Icono para ocultar contraseña
                         style={styles.inputSpacing}
+                        editable={!isProcessing} // Deshabilitar durante la carga
                     />
                 </View>
 
                 {/* Contenedor del botón de continuar */}
                 <View style={styles.buttonContainer}>
                     <PinkButton
-                        title="Continuar"
+                        title={isProcessing ? "Actualizando..." : "Continuar"}
                         onPress={handleContinue}
                         style={styles.continueButton}
+                        disabled={isProcessing} // Deshabilitar durante la carga
                     />
                 </View>
             </View>
+
+            {/* Diálogo de carga */}
+            <LoadingDialog
+                visible={isProcessing}
+                title="Actualizando contraseña..."
+                message="Guardando tu nueva contraseña..."
+                color="#FDB4B7"
+            />
+
+            {/* Alerta de éxito personalizada */}
+            <CustomAlert
+                visible={showSuccessAlert}
+                type="success"
+                title="¡Éxito!"
+                message={alertMessage}
+                confirmText="Continuar"
+                onConfirm={handleSuccessConfirm}
+            />
+
+            {/* Alerta de error personalizada */}
+            <CustomAlert
+                visible={showErrorAlert}
+                type="error"
+                title="Error"
+                message={alertMessage}
+                confirmText="Entendido"
+                onConfirm={handleErrorConfirm}
+            />
         </SafeAreaView>
     );
 };

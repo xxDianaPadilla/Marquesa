@@ -7,16 +7,70 @@ import PinkInputs from "../components/PinkInputs";
 import PinkButton from "../components/PinkButton";
 import emailIcon from "../images/emailIcon.png";
 
+// Importación de componentes personalizados para alertas y carga
+import { CustomAlert, LoadingDialog } from "../components/CustomDialogs";
+
+// Importación del hook personalizado para recuperación de contraseña
+import usePasswordReset from "../hooks/usePasswordReset";
+
 // Componente para la pantalla de recuperación de contraseña
 const RecoveryPasswordScreen = ({ navigation }) => {
     // Estado para almacenar el email ingresado por el usuario
     const [email, setEmail] = useState("");
 
+    // Estados para controlar las alertas personalizadas
+    const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+    const [showErrorAlert, setShowErrorAlert] = useState(false);
+    const [alertMessage, setAlertMessage] = useState('');
+
+    // Hook personalizado para recuperación de contraseña
+    const {
+        isRequesting,
+        error,
+        requestPasswordReset,
+        validateEmail,
+        clearError
+    } = usePasswordReset();
+
     // Función para proceder con la recuperación de contraseña
-    const handleContinue = () => {
+    const handleContinue = async () => {
         console.log("Email para recuperación: ", email);
-        // Navegar a la pantalla de código de verificación
-        navigation.navigate('RecoveryCode');
+        
+        // Limpiar errores previos
+        clearError();
+        
+        // Validar email localmente antes de enviar
+        const emailValidation = validateEmail(email);
+        if (!emailValidation.isValid) {
+            setAlertMessage(emailValidation.error);
+            setShowErrorAlert(true);
+            return;
+        }
+
+        // Solicitar código de recuperación
+        const result = await requestPasswordReset(email);
+        
+        if (result.success) {
+            // Mostrar alerta de éxito
+            setAlertMessage('Código de recuperación enviado a tu correo. Tienes 5 minutos para usarlo.');
+            setShowSuccessAlert(true);
+        } else {
+            // Mostrar alerta de error
+            setAlertMessage(result.message);
+            setShowErrorAlert(true);
+        }
+    };
+
+    // Función para manejar la confirmación de éxito
+    const handleSuccessConfirm = () => {
+        setShowSuccessAlert(false);
+        // Navegar a la pantalla de código de verificación pasando el email
+        navigation.navigate('RecoveryCode', { email });
+    };
+
+    // Función para cerrar alerta de error
+    const handleErrorConfirm = () => {
+        setShowErrorAlert(false);
     };
 
     // Función para regresar a la pantalla de login
@@ -37,6 +91,7 @@ const RecoveryPasswordScreen = ({ navigation }) => {
                     style={styles.backButton}
                     onPress={handleGoBack}
                     activeOpacity={0.7} // Efecto visual al presionar
+                    disabled={isRequesting} // Deshabilitar durante la carga
                 >
                     <Image source={backIcon} style={styles.backIcon} />
                 </TouchableOpacity>
@@ -65,6 +120,7 @@ const RecoveryPasswordScreen = ({ navigation }) => {
                         autoCapitalize="none" // Evitar capitalización automática
                         icon={emailIcon} // Icono visual del email
                         style={styles.emailInput}
+                        editable={!isRequesting} // Deshabilitar durante la carga
                     />
                 </View>
 
@@ -76,12 +132,41 @@ const RecoveryPasswordScreen = ({ navigation }) => {
                 {/* Contenedor del botón principal */}
                 <View style={styles.buttonContainer}>
                     <PinkButton
-                        title="Continuar"
+                        title={isRequesting ? "Enviando..." : "Continuar"}
                         onPress={handleContinue}
                         style={styles.continueButton}
+                        disabled={isRequesting} // Deshabilitar durante la carga
                     />
                 </View>
             </View>
+
+            {/* Diálogo de carga */}
+            <LoadingDialog
+                visible={isRequesting}
+                title="Enviando código..."
+                message="Validando correo y enviando código de recuperación..."
+                color="#FDB4B7"
+            />
+
+            {/* Alerta de éxito personalizada */}
+            <CustomAlert
+                visible={showSuccessAlert}
+                type="success"
+                title="Código Enviado"
+                message={alertMessage}
+                confirmText="Continuar"
+                onConfirm={handleSuccessConfirm}
+            />
+
+            {/* Alerta de error personalizada */}
+            <CustomAlert
+                visible={showErrorAlert}
+                type="error"
+                title="Error"
+                message={alertMessage}
+                confirmText="Entendido"
+                onConfirm={handleErrorConfirm}
+            />
         </SafeAreaView>
     );
 };

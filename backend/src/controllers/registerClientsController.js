@@ -159,43 +159,61 @@ const validatePhone = (phone) => {
     return { isValid: true, value: trimmedPhone };
 };
 
-// Función helper para validar fecha de nacimiento
-const validateBirthDate = (birthDate) => {
-    if (!birthDate) {
-        return { isValid: false, error: "Fecha de nacimiento es requerida" };
+// Función para validar fecha de nacimiento según el backend (12 años mínimo, 120 máximo)
+const validateBirthDate = (dateString) => {
+    if (!dateString) {
+        return { isValid: false, error: 'Fecha de nacimiento es requerida' };
     }
     
-    const date = new Date(birthDate);
-    
-    // Verificar que sea una fecha válida
-    if (isNaN(date.getTime())) {
-        return { isValid: false, error: "Fecha de nacimiento no válida" };
+    try {
+        // Parsear fecha en formato DD/MM/YYYY
+        const [day, month, year] = dateString.split('/').map(num => parseInt(num, 10));
+        const date = new Date(year, month - 1, day);
+
+        // Validar que sea una fecha válida
+        if (
+            isNaN(date.getTime()) ||
+            date.getDate() !== day ||
+            date.getMonth() !== month - 1 ||
+            date.getFullYear() !== year
+        ) {
+            return { isValid: false, error: 'Fecha de nacimiento no válida' };
+        }
+
+        // Verificar que no sea en el futuro
+        const today = new Date();
+        if (date > today) {
+            return { isValid: false, error: 'Fecha de nacimiento no puede ser en el futuro' };
+        }
+
+        // Calcular edad correctamente
+        let age = today.getFullYear() - date.getFullYear();
+        const monthDiff = today.getMonth() - date.getMonth();
+        
+        // Si no ha llegado el mes de cumpleaños, o si es el mes pero no ha llegado el día, restar 1 año
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < date.getDate())) {
+            age--;
+        }
+
+        // Verificar edad mínima (12 años)
+        if (age < 12) {
+            return { isValid: false, error: 'Debe tener al menos 12 años' };
+        }
+
+        // Verificar edad máxima (120 años)
+        if (age > 120) {
+            return { isValid: false, error: 'Fecha de nacimiento no válida' };
+        }
+
+        // Si pasa todas las validaciones, convertir a formato ISO para MongoDB
+        return { 
+            isValid: true, 
+            value: date.toISOString() // Importante: convertir a ISO string para MongoDB
+        };
+    } catch (error) {
+        console.error('Error validando fecha:', error);
+        return { isValid: false, error: 'Fecha de nacimiento no válida' };
     }
-    
-    // Verificar que no sea en el futuro
-    if (date > new Date()) {
-        return { isValid: false, error: "Fecha de nacimiento no puede ser en el futuro" };
-    }
-    
-    // Verificar edad mínima (13 años)
-    const minAge = 13;
-    const minDate = new Date();
-    minDate.setFullYear(minDate.getFullYear() - minAge);
-    
-    if (date > minDate) {
-        return { isValid: false, error: `Debe tener al menos ${minAge} años` };
-    }
-    
-    // Verificar edad máxima (120 años)
-    const maxAge = 120;
-    const maxDate = new Date();
-    maxDate.setFullYear(maxDate.getFullYear() - maxAge);
-    
-    if (date < maxDate) {
-        return { isValid: false, error: "Fecha de nacimiento no válida" };
-    }
-    
-    return { isValid: true, value: date };
 };
 
 // Función helper para validar dirección

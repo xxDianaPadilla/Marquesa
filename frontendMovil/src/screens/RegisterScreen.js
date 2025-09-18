@@ -28,17 +28,20 @@ import QuestionText from "../components/QuestionText";
 import ValidationMessage from "../components/ValidationMessage";
 import { CustomAlert, LoadingDialog } from "../components/CustomDialogs";
 
+// Importación del modal de verificación de email
+import EmailVerificationModalMobile from "../components/EmailVerification/EmailVerificationModalMobile";
+
 // Importación de hooks personalizados
 import useRegister from "../hooks/useRegister";
 import { useAuth } from "../context/AuthContext";
 
 const RegisterScreen = ({ navigation }) => {
-    // Hook personalizado para el registro
+    // Hook personalizado para el registro con la nueva función
     const {
         isRegistering,
         fieldErrors,
         generalError,
-        handleRegister,
+        handleRegisterProcess, // NUEVA función que maneja el proceso por pasos
         clearFieldError,
         formatPhoneInput
     } = useRegister();
@@ -64,6 +67,12 @@ const RegisterScreen = ({ navigation }) => {
     const [showErrorAlert, setShowErrorAlert] = useState(false);
     const [alertMessage, setAlertMessage] = useState('');
 
+    // Estados para el modal de verificación de email
+    const [showEmailVerification, setShowEmailVerification] = useState(false);
+
+    // Estado para controlar el proceso de validación
+    const [isValidating, setIsValidating] = useState(false);
+
     // Función para manejar los cambios en los campos del formulario
     const handleInputChange = (field, value) => {
         let processedValue = value;
@@ -84,7 +93,7 @@ const RegisterScreen = ({ navigation }) => {
         }
     };
 
-    // Función para procesar el registro del usuario
+    // NUEVA función para manejar el proceso de registro por pasos
     const handleRegisterSubmit = async () => {
         // Validar que se acepten los términos y condiciones
         if (!acceptedTerms) {
@@ -94,23 +103,66 @@ const RegisterScreen = ({ navigation }) => {
         }
 
         try {
-            // Intentar registrar al usuario
-            const result = await handleRegister(formData);
-            
+            setIsValidating(true);
+            console.log('Iniciando proceso de registro por pasos...');
+
+            // Ejecutar el proceso de registro por pasos
+            const result = await handleRegisterProcess(formData);
+
+            console.log('Resultado del proceso:', result);
+
             if (result.success) {
-                // Mostrar alerta de éxito personalizada
-                setAlertMessage('Tu cuenta ha sido creada exitosamente. Ahora serás dirigido al inicio.');
-                setShowSuccessAlert(true);
+                // Si todo está bien, mostrar modal de verificación de email
+                if (result.step === 'ready_for_verification') {
+                    console.log('Mostrando modal de verificación de email');
+                    setShowEmailVerification(true);
+                }
             } else {
-                // Mostrar error específico
-                setAlertMessage(result.message || 'No se pudo completar el registro');
-                setShowErrorAlert(true);
+                // Manejar diferentes tipos de errores
+                switch (result.step) {
+                    case 'validation':
+                        // Los errores de validación ya se establecieron en fieldErrors
+                        console.log('Errores de validación mostrados en campos');
+                        break;
+                    
+                    case 'email_exists':
+                    case 'email_check':
+                    case 'error':
+                    default:
+                        // Mostrar error general
+                        setAlertMessage(result.message);
+                        setShowErrorAlert(true);
+                        break;
+                }
             }
         } catch (error) {
             console.error('Error en registro:', error);
             setAlertMessage('Error inesperado durante el registro');
             setShowErrorAlert(true);
+        } finally {
+            setIsValidating(false);
         }
+    };
+
+    // Función que se ejecuta cuando la verificación de email es exitosa
+    const handleEmailVerificationSuccess = () => {
+        setShowEmailVerification(false);
+        
+        // Mostrar alerta de éxito
+        setAlertMessage('Tu correo ha sido verificado y tu cuenta ha sido creada exitosamente. Ahora serás dirigido al inicio.');
+        setShowSuccessAlert(true);
+    };
+
+    // Función para manejar errores del modal de verificación de email
+    const handleEmailVerificationError = (errorMessage) => {
+        console.log('Error de verificación de email:', errorMessage);
+        setAlertMessage(errorMessage);
+        setShowErrorAlert(true);
+    };
+
+    // Función para cerrar el modal de verificación de email
+    const handleEmailVerificationClose = () => {
+        setShowEmailVerification(false);
     };
 
     // Función para manejar la confirmación de registro exitoso
@@ -196,7 +248,7 @@ const RegisterScreen = ({ navigation }) => {
                                 onChangeText={(value) => handleInputChange('nombre', value)}
                                 icon={userIcon}
                                 style={[styles.inputSpacing, fieldErrors.nombre && styles.inputError]}
-                                editable={!isRegistering}
+                                editable={!isRegistering && !isValidating}
                             />
                             <ValidationMessage 
                                 message={fieldErrors.nombre}
@@ -213,7 +265,7 @@ const RegisterScreen = ({ navigation }) => {
                                 icon={phoneIcon}
                                 keyboardType="phone-pad"
                                 style={[styles.inputSpacing, fieldErrors.telefono && styles.inputError]}
-                                editable={!isRegistering}
+                                editable={!isRegistering && !isValidating}
                                 maxLength={9} // 8 números + 1 guión
                             />
                             <ValidationMessage 
@@ -232,7 +284,7 @@ const RegisterScreen = ({ navigation }) => {
                                 keyboardType="email-address"
                                 autoCapitalize="none"
                                 style={[styles.inputSpacing, fieldErrors.correo && styles.inputError]}
-                                editable={!isRegistering}
+                                editable={!isRegistering && !isValidating}
                             />
                             <ValidationMessage 
                                 message={fieldErrors.correo}
@@ -250,7 +302,7 @@ const RegisterScreen = ({ navigation }) => {
                                 style={[styles.inputSpacing, fieldErrors.fechaNacimiento && styles.inputError]}
                                 isDateInput={true}
                                 dateFormat="DD/MM/YYYY"
-                                editable={!isRegistering}
+                                editable={!isRegistering && !isValidating}
                             />
                             <ValidationMessage 
                                 message={fieldErrors.fechaNacimiento}
@@ -266,7 +318,7 @@ const RegisterScreen = ({ navigation }) => {
                                 onChangeText={(value) => handleInputChange('direccion', value)}
                                 icon={locationIcon}
                                 style={[styles.inputSpacing, fieldErrors.direccion && styles.inputError]}
-                                editable={!isRegistering}
+                                editable={!isRegistering && !isValidating}
                             />
                             <ValidationMessage 
                                 message={fieldErrors.direccion}
@@ -283,7 +335,7 @@ const RegisterScreen = ({ navigation }) => {
                                 icon={lockIcon}
                                 secureTextEntry={true}
                                 style={[styles.inputSpacing, fieldErrors.contrasena && styles.inputError]}
-                                editable={!isRegistering}
+                                editable={!isRegistering && !isValidating}
                             />
                             <ValidationMessage 
                                 message={fieldErrors.contrasena}
@@ -297,7 +349,7 @@ const RegisterScreen = ({ navigation }) => {
                             <TouchableOpacity
                                 style={styles.checkbox}
                                 onPress={() => setAcceptedTerms(!acceptedTerms)}
-                                disabled={isRegistering}
+                                disabled={isRegistering || isValidating}
                             >
                                 <View style={[
                                     styles.checkboxSquare,
@@ -315,9 +367,9 @@ const RegisterScreen = ({ navigation }) => {
 
                         {/* Botón de registro */}
                         <PinkButton
-                            title={isRegistering ? "Registrando..." : "Registrarse"}
+                            title={isValidating ? "Validando..." : isRegistering ? "Registrando..." : "Registrarse"}
                             onPress={handleRegisterSubmit}
-                            disabled={!acceptedTerms || isRegistering}
+                            disabled={!acceptedTerms || isRegistering || isValidating}
                             style={styles.registerButton}
                         />
 
@@ -331,6 +383,32 @@ const RegisterScreen = ({ navigation }) => {
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            {/* Modal de verificación de email */}
+            <EmailVerificationModalMobile
+                isVisible={showEmailVerification}
+                onClose={handleEmailVerificationClose}
+                email={formData.correo}
+                fullName={formData.nombre}
+                userData={{
+                    fullName: formData.nombre.trim(),
+                    phone: formData.telefono,
+                    email: formData.correo.trim().toLowerCase(),
+                    birthDate: formData.fechaNacimiento,
+                    address: formData.direccion.trim(),
+                    password: formData.contrasena
+                }}
+                onSuccess={handleEmailVerificationSuccess}
+                onError={handleEmailVerificationError}
+            />
+
+            {/* Diálogo de carga durante la validación */}
+            <LoadingDialog
+                visible={isValidating}
+                title="Validando..."
+                message="Verificando los datos del formulario..."
+                color="#FDB4B7"
+            />
 
             {/* Diálogo de carga durante el registro */}
             <LoadingDialog
@@ -363,7 +441,7 @@ const RegisterScreen = ({ navigation }) => {
     );
 };
 
-// Definición de estilos para todos los componentes
+// Los estilos permanecen iguales...
 const styles = StyleSheet.create({
     // Contenedor principal de la pantalla
     container: {

@@ -35,10 +35,10 @@ const OrdersScreen = () => {
             // Preparar los datos necesarios para la pantalla de detalles
             const orderDetailsData = await prepareOrderDetailsData(pedido);
             // Navegar a la pantalla de detalles con los datos preparados
-            navigation.navigate('OrderDetails', orderDetailsData);
+            navigation.navigate('OrderDetailsScreen', orderDetailsData);
         } catch (error) {
             // En caso de error, navegar sin datos (pantalla manejará el error)
-            navigation.navigate('OrderDetails');
+            navigation.navigate('OrderDetailsScreen');
         }
     }, [prepareOrderDetailsData, navigation]);
 

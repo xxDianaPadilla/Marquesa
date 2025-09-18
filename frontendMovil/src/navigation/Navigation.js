@@ -25,6 +25,7 @@ import ProductDetailScreen from "../screens/ProductDetailScreen";
 import ChangePasswordScreen from "../screens/ChangePasswordScreen";
 import EditProfileScreen from "../screens/EditProfileScreen";
 import OrdersScreen from "../screens/OrdersScreen";
+import OrderDetailsScreen from "../screens/OrderDetailsScreen"; 
 import MediaScreen from "../screens/MediaScreen";
 import CustomProductsScreen from "../screens/CustomProductsScreen";
 import CustomizationFormScreen from "../screens/CustomizationFormScreen";
@@ -138,6 +139,12 @@ export default function Navigation() {
                         <Stack.Screen
                             name="Orders"             // Nombre de la ruta
                             component={OrdersScreen}  // Componente a renderizar
+                        />
+
+                        {/* Pantalla de detalles del pedido */}
+                        <Stack.Screen
+                            name="OrderDetailsScreen"             // Nombre de la ruta
+                            component={OrderDetailsScreen}        // Componente a renderizar
                         />
 
                         {/* Pantalla de multimedia */}

@@ -37,7 +37,7 @@ const PrivacyPolicies = () => {
                 <div className="grid sm:grid-cols-2 gap-4">
                     {[
                         "Nombre completo",
-                        "Dirección de entrega", 
+                        "Dirección de entrega",
                         "Teléfono de contacto",
                         "Correo electrónico",
                         "Datos de facturación y pago (cuando aplica)"
@@ -105,7 +105,7 @@ const PrivacyPolicies = () => {
         },
         {
             id: 4,
-            title: "Compartición con terceros",
+            title: "Compartir información con terceros",
             description: (
                 <div className="rounded-2xl p-6" style={{ backgroundColor: '#FDB4B7', borderLeftColor: '#FF6A5F', borderLeftWidth: '4px' }}>
                     <div className="flex items-start space-x-4">
@@ -135,10 +135,10 @@ const PrivacyPolicies = () => {
                             <p className="text-base sm:text-lg leading-relaxed mb-2" style={{ fontFamily: 'Poppins, sans-serif', color: '#999999' }}>
                                 Tienes derecho a <strong>acceder, corregir o eliminar</strong> tus datos personales escribiéndonos a:
                             </p>
-                            <a 
-                                href="mailto:marquesasv@gmail.com" 
+                            <a
+                                href="mailto:marquesasv@gmail.com"
                                 className="inline-flex items-center space-x-2 hover:opacity-80 font-semibold px-4 py-2 rounded-xl transition-colors duration-200"
-                                style={{ 
+                                style={{
                                     fontFamily: 'Poppins, sans-serif',
                                     backgroundColor: '#FADDDD',
                                     color: '#3C3550'
@@ -170,9 +170,9 @@ const PrivacyPolicies = () => {
                 <main className="py-12">
                     <Container>
                         {/* Título principal usando componente reutilizable */}
-                        <PageTitle 
+                        <PageTitle
                             title="Políticas de Privacidad"
-                            subtitle="En La MarquesaSV, respetamos tu privacidad y nos comprometemos a proteger la información personal que compartes con nosotros. Esta Política de Privacidad describe cómo recopilamos, utilizamos y protegemos tus datos."
+                            subtitle="En Marquesa, respetamos tu privacidad y estamos comprometidos en proteger la información personal de nuestros clientes, para nosotros es importante mantener la confidencialidad que nuestros clientes nos han depositado. Esta Política de privacidad describe cómo se ha recopilado la información y que los datos proporcionados sean de uso exclusivo para fines comerciales entre marquesa y nuestros clientes."
                         />
 
                         {/* Contenido de políticas en tarjetas elegantes usando InfoCard */}

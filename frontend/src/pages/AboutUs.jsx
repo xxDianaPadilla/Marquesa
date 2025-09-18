@@ -40,9 +40,9 @@ const AboutUs = () => {
             title: "Nuestra Esencia",
             description: (
                 <p className="text-base sm:text-lg leading-relaxed" style={{ fontFamily: 'Poppins, sans-serif', color: '#999999' }}>
-                    En La Marquesa, creemos que cada detalle cuenta y que las flores son el lenguaje perfecto para expresar emociones. 
-                    Somos una tienda de arreglos florales ubicada en El Salvador, especializada en crear diseños únicos, personalizados y
-                    llenos de significado para cada ocasión especial.
+                    En marquesa creemos en los detalles únicos, porque somos una tienda especializada en los
+                    detalles personalizados, estamos ubicados en San Salvador. Nuestros diversos arreglos
+                    tienen un significado especial para cada cliente.
                 </p>
             ),
             backgroundColor: '#BEF7FF',
@@ -59,9 +59,12 @@ const AboutUs = () => {
             title: "Nuestro Estilo",
             description: (
                 <p className="text-base sm:text-lg leading-relaxed" style={{ fontFamily: 'Poppins, sans-serif', color: '#999999' }}>
-                    Nos caracterizamos por un estilo visual elegante y minimalista, reflejado en cada uno de nuestros productos, empaques y comunicación.
-                    Nuestro logotipo, inspirado en pequeños botones de flor y detalles de regalo, representa la esencia de lo que somos: 
-                    creadores de momentos especiales que florecen con amor y dedicación.
+                    Algo que nos caracteriza es la variedad de productos con los que contamos y que nuestros
+                    arreglos son personalizados por los clientes. Cuidamos cada detalle al entregar un arreglo,
+                    desde el empaque; buscamos tener una comunicación constante con nuestros clientes para
+                    cumplir sus necesidades. El logotipo es parte de nuestra esencia que está inspirado en
+                    pequeños botones de flor y detalles de regalo; nos representa siendo creadores de
+                    momentos especiales que florecen con amor y dedicación.
                 </p>
             ),
             backgroundColor: '#F2C6C2',
@@ -78,8 +81,9 @@ const AboutUs = () => {
             title: "Nuestra Identidad",
             description: (
                 <p className="text-base sm:text-lg leading-relaxed" style={{ fontFamily: 'Poppins, sans-serif', color: '#999999' }}>
-                    Utilizamos una paleta de colores suaves y delicados, combinando tonos pastel como el rosa, azul y blanco, con acentos modernos en negro y gris. 
-                    Esta identidad se extiende a nuestras redes sociales, donde compartimos de forma cercana y creativa el arte que ponemos en cada arreglo.
+                    Utilizamos una paleta de colores pasteles para nuestra marca, dónde se puede observar en
+                    nuestras redes sociales, y nos permite tener una cercanía con nuestro clientes, mostrando
+                    la elaboración de los productos y la creatividad.
                 </p>
             ),
             backgroundColor: '#FADDDD',
@@ -97,11 +101,13 @@ const AboutUs = () => {
             description: (
                 <div className="space-y-4">
                     <p className="text-base sm:text-lg leading-relaxed" style={{ fontFamily: 'Poppins, sans-serif', color: '#999999' }}>
-                        Ya sea para cumpleaños, aniversarios, bodas, condolencias o simplemente para alegrar el día de alguien especial, nuestros arreglos buscan 
-                        transmitir emociones auténticas. Más que flores, entregamos sentimientos, historias y recuerdos imborrables.
+                        Para la diferente ocasión que se nos solicite, cumpleaños, aniversarios, bodas o
+                        condolencias o simplemente para alegrar el día a alguien especial, nuestros arreglos
+                        buscan transmitir emociones, más que ser detalles únicos, entregamos sentimientos
+                        historias y recuerdos inmemorables.
                     </p>
                     <p className="text-base sm:text-lg leading-relaxed" style={{ fontFamily: 'Poppins, sans-serif', color: '#999999' }}>
-                        Déjanos ser parte de tus momentos más importantes, llevando belleza, color y vida a cada uno de ellos.
+                        Marquesa - dedicado a realizar detalles únicos.
                     </p>
                 </div>
             ),
@@ -121,7 +127,7 @@ const AboutUs = () => {
                 <main className="py-12">
                     <Container>
                         {/* Título principal usando componente reutilizable */}
-                        <PageTitle 
+                        <PageTitle
                             title="Sobre Nosotros"
                             subtitle="En La MarquesaSV, respetamos cada detalle y nos comprometemos a crear momentos especiales únicos. Conoce más sobre nuestra historia, valores y compromiso con la excelencia."
                         />

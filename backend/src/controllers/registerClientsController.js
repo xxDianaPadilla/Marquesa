@@ -186,19 +186,22 @@ const validateBirthDate = (dateString) => {
             return { isValid: false, error: 'Fecha de nacimiento no puede ser en el futuro' };
         }
 
-        // Calcular edad
-        const age = today.getFullYear() - date.getFullYear();
-        const m = today.getMonth() - date.getMonth();
-        const d = today.getDate() - date.getDate();
-        const adjustedAge = (m < 0 || (m === 0 && d < 0)) ? age - 1 : age;
+        // Calcular edad correctamente
+        let age = today.getFullYear() - date.getFullYear();
+        const monthDiff = today.getMonth() - date.getMonth();
+        
+        // Si no ha llegado el mes de cumpleaños, o si es el mes pero no ha llegado el día, restar 1 año
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < date.getDate())) {
+            age--;
+        }
 
         // Verificar edad mínima (12 años)
-        if (adjustedAge < 12) {
+        if (age < 12) {
             return { isValid: false, error: 'Debe tener al menos 12 años' };
         }
 
         // Verificar edad máxima (120 años)
-        if (adjustedAge > 120) {
+        if (age > 120) {
             return { isValid: false, error: 'Fecha de nacimiento no válida' };
         }
 

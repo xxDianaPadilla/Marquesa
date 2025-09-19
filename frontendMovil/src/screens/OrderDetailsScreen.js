@@ -18,7 +18,7 @@ import backIcon from '../images/backIcon.png';
 const OrderDetailsScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  
+
   // Estados para manejo de datos
   const [orderData, setOrderData] = useState(null);
   const [customerData, setCustomerData] = useState(null);
@@ -36,14 +36,14 @@ const OrderDetailsScreen = () => {
   const getOrderDetails = async (saleId) => {
     try {
       setLoading(true);
-      
+
       const response = await fetch(`https://marquesa.onrender.com/api/sales/${saleId}/details`, {
         method: 'GET',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-      }});
-
+        }
+      });
 
       if (response.ok) {
         const data = await response.json();
@@ -51,7 +51,7 @@ const OrderDetailsScreen = () => {
           setOrderData(data.data.order);
           setCustomerData(data.data.customer);
           setProductsData(data.data.products);
-          
+
           // Obtener información de cancelación
           await getCancellationEligibility(saleId);
         } else {
@@ -95,7 +95,7 @@ const OrderDetailsScreen = () => {
   const handleConfirmCancel = async () => {
     try {
       setCancelLoading(true);
-      
+
       const response = await fetch(`https://marquesa.onrender.com/api/sales/${orderData._id}/cancel`, {
         method: 'PUT',
         credentials: 'include',
@@ -137,7 +137,7 @@ const OrderDetailsScreen = () => {
       setOrderData(order);
       setCustomerData(customer);
       setProductsData(products || []);
-      
+
       if (order._id) {
         getCancellationEligibility(order._id);
       }
@@ -190,49 +190,128 @@ const OrderDetailsScreen = () => {
     return formatDate(date);
   };
 
-  // Componente para mostrar imágenes de productos
-  const ProductImage = ({ src, style }) => {
-    const [imageError, setImageError] = useState(false);
-    const [imageLoading, setImageLoading] = useState(true);
+  // Función mejorada para extraer URL de imagen basada en la lógica web
+  const getImageUrl = (item) => {
+    console.log('=== Analizando item completo ===', JSON.stringify(item, null, 2));
 
-    const isValidImageSrc = (source) => {
-      if (!source) return null;
+    // Lista de posibles ubicaciones de imagen en orden de prioridad
+    const imagePaths = [
+      // Caso 1: referenceImage como string
+      item.referenceImage,
       
-      if (typeof source === 'string') {
-        return source.trim();
+      // Caso 2: referenceImage como objeto con image
+      item.referenceImage?.image,
+      
+      // Caso 3: image como objeto anidado (tu estructura actual)
+      item.image?.image,
+      
+      // Caso 4: image como string directo
+      item.image,
+      
+      // Caso 5: images array, primer elemento con image
+      item.images?.[0]?.image,
+      
+      // Caso 6: images array, primer elemento como string
+      item.images?.[0],
+      
+      // Caso 7: productImage (por si acaso)
+      item.productImage,
+      
+      // Caso 8: imageUrl (alternativo)
+      item.imageUrl,
+    ];
+
+    // Buscar la primera URL válida
+    for (const path of imagePaths) {
+      if (path && typeof path === 'string' && path.trim() !== '') {
+        // Verificar que sea una URL válida
+        if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+          console.log('✅ URL encontrada:', path);
+          return path;
+        }
       }
-      
-      if (typeof source === 'object' && source !== null) {
-        return source.image || source.url || source.src;
-      }
-      
-      return null;
-    };
-
-    const validSrc = isValidImageSrc(src);
-
-    if (!validSrc || imageError) {
-      return (
-        <View style={[style, styles.imagePlaceholder]}>
-          <Text style={styles.imagePlaceholderText}>📦</Text>
-        </View>
-      );
     }
 
-    if (imageLoading) {
-      return (
-        <View style={[style, styles.imagePlaceholder]}>
-          <ActivityIndicator size="small" color="#E8ACD2" />
-        </View>
-      );
+    console.log('❌ No se encontró URL válida');
+    return null;
+  };
+
+  // Función mejorada para detectar productos personalizados basada en la lógica web
+  const isProductPersonalized = (item) => {
+    console.log('Detectando personalización para:', item.name || 'Sin nombre');
+    
+    // Lógica de detección basada en tu aplicación web
+    const isPersonalized = 
+      // Por colección
+      item.collection === 'CustomProducts' ||
+      
+      // Por flags específicos
+      (item.isPersonalized && item.collection !== 'Products') ||
+      item.type === 'personalizado' ||
+      item.customized === true ||
+      item.itemType === 'custom' ||
+      
+      // Por presencia de campos específicos de personalización
+      (item.productToPersonalize && item.extraComments) ||
+      (item.extraComments && item.totalPrice) ||
+      
+      // Por estructura de datos específica de productos personalizados
+      (item.referenceImage && !item.image) ||
+      
+      // Detección por nombres específicos que indican personalización
+      (item.name && (
+        item.name.toLowerCase().includes('personalizado') ||
+        item.name.toLowerCase().includes('personalizar') ||
+        item.name.toLowerCase().includes('custom')
+      ));
+
+    console.log('¿Es personalizado?', isPersonalized);
+    console.log('Criterios evaluados:', {
+      collection: item.collection,
+      isPersonalized: item.isPersonalized,
+      type: item.type,
+      hasProductToPersonalize: !!item.productToPersonalize,
+      hasExtraComments: !!item.extraComments,
+      hasTotalPrice: !!item.totalPrice,
+      hasReferenceImageOnly: !!(item.referenceImage && !item.image)
+    });
+
+    return isPersonalized;
+  };
+
+  // Componente ProductImage con lógica mejorada basada en la aplicación web
+  const ProductImage = ({ src, style, item }) => {
+    const isPersonalized = isProductPersonalized(item);
+    
+    // Si no hay URL válida
+    if (!src || (typeof src !== 'string') || 
+        (!src.startsWith('http://') && !src.startsWith('https://') && !src.startsWith('data:'))) {
+      
+      // Si es un producto personalizado, mostrar emoji de paleta
+      if (isPersonalized) {
+        return (
+          <View style={[style, styles.personalizedPlaceholder]}>
+            <Text style={styles.personalizedEmoji}>🎨</Text>
+          </View>
+        );
+      }
+      
+      // Si no es personalizado, espacio transparente
+      return <View style={[style, { backgroundColor: 'transparent' }]} />;
     }
 
+    // Mostrar imagen directamente
     return (
       <Image
-        source={{ uri: validSrc }}
+        source={{ uri: src }}
         style={style}
-        onError={() => setImageError(true)}
-        onLoad={() => setImageLoading(false)}
+        resizeMode="cover"
+        onError={() => {
+          console.log('❌ Error renderizando imagen:', src);
+        }}
+        onLoad={() => {
+          console.log('✅ Imagen cargada exitosamente:', src);
+        }}
       />
     );
   };
@@ -253,11 +332,11 @@ const OrderDetailsScreen = () => {
             </View>
             <Text style={styles.modalTitle}>Cancelar pedido</Text>
           </View>
-          
+
           <Text style={styles.modalMessage}>
             ¿Estás seguro de que deseas cancelar este pedido? Esta acción no se puede deshacer.
           </Text>
-          
+
           {cancellationInfo?.remainingHours > 0 && (
             <View style={styles.modalWarning}>
               <Text style={styles.modalWarningText}>
@@ -265,7 +344,7 @@ const OrderDetailsScreen = () => {
               </Text>
             </View>
           )}
-          
+
           <View style={styles.modalButtons}>
             <TouchableOpacity
               style={styles.modalKeepButton}
@@ -274,7 +353,7 @@ const OrderDetailsScreen = () => {
             >
               <Text style={styles.modalKeepText}>Mantener pedido</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={styles.modalCancelButton}
               onPress={handleConfirmCancel}
@@ -290,7 +369,7 @@ const OrderDetailsScreen = () => {
               )}
             </TouchableOpacity>
           </View>
-          
+
           <Text style={styles.modalFooter}>
             Esta acción no se puede deshacer una vez confirmada
           </Text>
@@ -320,7 +399,7 @@ const OrderDetailsScreen = () => {
         <View style={styles.errorContainer}>
           <Text style={styles.errorIcon}>❌</Text>
           <Text style={styles.errorText}>{error || 'No se encontraron datos del pedido'}</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.backToProfileButton}
             onPress={() => navigation.goBack()}
           >
@@ -332,25 +411,25 @@ const OrderDetailsScreen = () => {
   }
 
   const steps = getStatusSteps();
-  const showCancelButton = cancellationInfo?.isCancellable && 
-                          orderData.trackingStatus !== 'Entregado' && 
-                          orderData.trackingStatus !== 'Cancelado';
+  const showCancelButton = cancellationInfo?.isCancellable &&
+    orderData.trackingStatus !== 'Entregado' &&
+    orderData.trackingStatus !== 'Cancelado';
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      
+
       <ConfirmationModal />
-      
+
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
           <Image source={backIcon} style={styles.backIcon} />
         </TouchableOpacity>
-        
+
         <View style={styles.headerInfo}>
           <Text style={styles.headerTitle}>
             Detalles del pedido #{orderData._id?.slice(-6) || 'N/A'}
@@ -359,9 +438,9 @@ const OrderDetailsScreen = () => {
             Realizado el {formatDate(orderData.createdAt)}
           </Text>
         </View>
-        
+
         {showCancelButton && (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.cancelButton}
             onPress={() => setShowConfirmModal(true)}
             disabled={cancelLoading}
@@ -372,59 +451,59 @@ const OrderDetailsScreen = () => {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        
+
         {/* Estado del Pedido */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Estado del Pedido</Text>
           <Text style={styles.estimatedDate}>
             Fecha estimada de entrega: {formatDate(orderData.deliveryDate)}
           </Text>
-          
+
           <View style={styles.progressContainer}>
             {/* Barra de progreso */}
             <View style={styles.progressBarContainer}>
               <View style={styles.progressBar}>
-                <View 
+                <View
                   style={[
-                    styles.progressFill, 
+                    styles.progressFill,
                     { width: steps.entregado ? '100%' : steps.enProceso ? '66%' : '33%' }
-                  ]} 
+                  ]}
                 />
               </View>
             </View>
-            
+
             {/* Estados */}
             <View style={styles.statusContainer}>
               <View style={styles.statusItem}>
                 <View style={[
-                  styles.statusDot, 
+                  styles.statusDot,
                   steps.aprobado ? styles.statusCompleted : styles.statusPending
                 ]} />
                 <Text style={styles.statusText}>Agendado</Text>
               </View>
-              
+
               <View style={styles.statusItem}>
                 <View style={[
-                  styles.statusDot, 
+                  styles.statusDot,
                   steps.enProceso ? styles.statusCompleted : styles.statusPending
                 ]} />
                 <Text style={styles.statusText}>En proceso</Text>
               </View>
-              
+
               <View style={styles.statusItem}>
                 <View style={[
-                  styles.statusDot, 
+                  styles.statusDot,
                   steps.entregado ? styles.statusCompleted : styles.statusPending
                 ]} />
                 <Text style={styles.statusText}>Entregado</Text>
               </View>
             </View>
           </View>
-          
+
           <Text style={styles.cancellableText}>
-            🗓️ Cancelable hasta: {getCancellableDate(orderData.createdAt)}
+            Cancelable hasta: {getCancellableDate(orderData.createdAt)}
           </Text>
-          
+
           {/* Información de cancelación */}
           {cancellationInfo && (
             <View style={styles.cancellationInfo}>
@@ -447,21 +526,21 @@ const OrderDetailsScreen = () => {
         {/* Información del pedido */}
         <View style={styles.infoCard}>
           <Text style={styles.cardTitle}>Información del pedido</Text>
-          
+
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Total:</Text>
             <Text style={styles.infoValue}>
               ${orderData.shoppingCart?.total?.toFixed(2) || '0.00'}
             </Text>
           </View>
-          
+
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Método de pago:</Text>
             <Text style={styles.infoValue}>
               {orderData.paymentType || 'No especificado'}
             </Text>
           </View>
-          
+
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Estado:</Text>
             <View style={[
@@ -482,7 +561,7 @@ const OrderDetailsScreen = () => {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Información de envío</Text>
           <Text style={styles.subtitle}>Dirección de entrega</Text>
-          
+
           <View style={styles.addressContainer}>
             <Text style={styles.addressIcon}>📍</Text>
             <View style={styles.addressInfo}>
@@ -496,7 +575,7 @@ const OrderDetailsScreen = () => {
               )}
             </View>
           </View>
-          
+
           <View style={styles.contactContainer}>
             <Text style={styles.contactIcon}>👤</Text>
             <View style={styles.contactInfo}>
@@ -513,7 +592,7 @@ const OrderDetailsScreen = () => {
         {/* Historial de seguimiento */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Historial de seguimiento</Text>
-          
+
           <View style={styles.trackingItem}>
             <View style={styles.trackingDot} />
             <View style={styles.trackingContent}>
@@ -523,7 +602,7 @@ const OrderDetailsScreen = () => {
               </Text>
             </View>
           </View>
-          
+
           {steps.enProceso && (
             <View style={styles.trackingItem}>
               <View style={styles.trackingDot} />
@@ -533,7 +612,7 @@ const OrderDetailsScreen = () => {
               </View>
             </View>
           )}
-          
+
           {steps.entregado && (
             <View style={styles.trackingItem}>
               <View style={styles.trackingDot} />
@@ -550,18 +629,21 @@ const OrderDetailsScreen = () => {
         {/* Productos */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Productos</Text>
-          
+
           {productsData && productsData.length > 0 ? (
             productsData.map((item, index) => {
-              const isPersonalized = item.collection === 'CustomProducts' ||
-                                    (item.isPersonalized && item.collection !== 'Products') ||
-                                    item.type === 'personalizado';
+              console.log(`=== PRODUCTO ${index} ===`);
+              console.log('Item completo:', JSON.stringify(item, null, 2));
               
+              const imageUrl = getImageUrl(item);
+              console.log('URL final extraída:', imageUrl);
+
               return (
                 <View key={index} style={styles.productItem}>
-                  <ProductImage 
-                    src={item.referenceImage || item.image}
+                  <ProductImage
+                    src={imageUrl}
                     style={styles.productImage}
+                    item={item}
                   />
                   <View style={styles.productInfo}>
                     <Text style={styles.productName}>
@@ -575,17 +657,17 @@ const OrderDetailsScreen = () => {
                         Cantidad: {item.quantity}
                       </Text>
                     )}
-                    {isPersonalized && item.extraComments && (
+                    {isProductPersonalized(item) && item.extraComments && (
                       <Text style={styles.personalizationText}>
                         Personalización: {item.extraComments}
                       </Text>
                     )}
                   </View>
                   <Text style={styles.productPrice}>
-                    ${(item.subtotal?.toFixed(2) || 
-                       item.price?.toFixed(2) || 
-                       item.totalPrice?.toFixed(2) || 
-                       '0.00')}
+                    ${(item.subtotal?.toFixed(2) ||
+                      item.price?.toFixed(2) ||
+                      item.totalPrice?.toFixed(2) ||
+                      '0.00')}
                   </Text>
                 </View>
               );
@@ -597,7 +679,7 @@ const OrderDetailsScreen = () => {
             </View>
           )}
         </View>
-        
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -606,7 +688,7 @@ const OrderDetailsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#ffffff',
   },
   loadingContainer: {
     flex: 1,
@@ -657,6 +739,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e9ecef',
+    top: 40,
   },
   backButton: {
     padding: 8,
@@ -665,6 +748,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     tintColor: '#374151',
+    top: -10,
   },
   headerInfo: {
     flex: 1,
@@ -697,12 +781,14 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 16,
+    top: 40,
+    marginBottom: 100,
   },
   card: {
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -931,17 +1017,18 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginRight: 12,
   },
-  imagePlaceholder: {
-    backgroundColor: '#f1f3f4',
+  personalizedPlaceholder: {
+    backgroundColor: '#f8f9fa',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#e9ecef',
+    borderColor: '#E8ACD2',
     borderStyle: 'dashed',
+    borderRadius: 8,
   },
-  imagePlaceholderText: {
+  personalizedEmoji: {
     fontSize: 20,
-    color: '#6c757d',
+    color: '#E8ACD2',
   },
   productInfo: {
     flex: 1,
@@ -1107,6 +1194,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 16,
     fontFamily: 'Poppins-Regular',
-  }
+  },
 });
-export default OrderDetailsScreen; 
+
+export default OrderDetailsScreen;

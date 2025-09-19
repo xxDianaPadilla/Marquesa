@@ -22,7 +22,7 @@ export const useCart = () => {
 export const CartProvider = ({ children }) => {
     // Desestructurar datos necesarios del contexto de autenticación
     const { user, isAuthenticated, userInfo, getBestAvailableToken, authReady } = useAuth();
-    
+
     // Estados principales del carrito
     const [cart, setCart] = useState(null);
     // Lista de items del carrito
@@ -147,20 +147,20 @@ export const CartProvider = ({ children }) => {
         } else if (item.itemType === 'custom') {
             // PRODUCTOS PERSONALIZADOS 
             const customProduct = item.itemId || {};
-            
+
             // Obtener información del producto personalizado
             const productName = customProduct.productToPersonalize || 'Producto personalizado';
             const extraComments = customProduct.extraComments || '';
             const totalPrice = customProduct.totalPrice || 0;
             const referenceImage = customProduct.referenceImage;
-            
+
             // Construir descripción más detallada para productos personalizados
             let description = 'Producto personalizado';
             // Usar comentarios extra como descripción si están disponibles
             if (extraComments) {
                 description = extraComments;
             }
-            
+
             // Crear array para detalles de personalización
             const personalizationDetails = [];
             // Agregar tipo de personalización si existe
@@ -183,7 +183,7 @@ export const CartProvider = ({ children }) => {
             if (customProduct.sizePreferences) {
                 personalizationDetails.push(`Tamaño: ${customProduct.sizePreferences}`);
             }
-            
+
             // Agregar detalles de personalización a la descripción si existen
             if (personalizationDetails.length > 0) {
                 description = `${description}\n• ${personalizationDetails.join('\n• ')}`;
@@ -239,7 +239,7 @@ export const CartProvider = ({ children }) => {
     const handleNetworkError = useCallback((error) => {
         // Log del error de red
         console.error('Cart Network Error:', error);
-        
+
         // Determinar mensaje de error específico según el tipo
         if (error.message === 'TIMEOUT') {
             return 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
@@ -248,7 +248,7 @@ export const CartProvider = ({ children }) => {
         } else if (error.message?.includes('network')) {
             return 'Error de red. Verifica tu conexión a internet.';
         }
-        
+
         // Mensaje de error genérico
         return 'Error de conexión con el servidor';
     }, []);
@@ -275,10 +275,10 @@ export const CartProvider = ({ children }) => {
             const data = JSON.parse(responseText);
             // Log de confirmación de parseo exitoso
             console.log(`${operationName} - JSON parseado exitosamente:`, data);
-            
+
             // Guardar token si viene en la respuesta
             await handleTokenResponse(data);
-            
+
             return data;
 
         } catch (parseError) {
@@ -312,7 +312,7 @@ export const CartProvider = ({ children }) => {
                     hasUserId: !!user?.id,
                     authReady
                 });
-                
+
                 // Limpiar estados del carrito
                 setCart(null);
                 setCartItems([]);
@@ -376,7 +376,7 @@ export const CartProvider = ({ children }) => {
                             if (cart.items && Array.isArray(cart.items) && cart.items.length > 0) {
                                 // Log del procesamiento de items
                                 console.log(`Procesando ${cart.items.length} items del carrito...`);
-                                
+
                                 // Transformar cada item del carrito
                                 const transformedItems = cart.items.map((item, index) => {
                                     // Log del item que se está procesando
@@ -385,7 +385,7 @@ export const CartProvider = ({ children }) => {
                                         hasItemId: !!item.itemId,
                                         itemIdKeys: item.itemId ? Object.keys(item.itemId) : 'N/A'
                                     });
-                                    
+
                                     // Transformar item y retornarlo
                                     return transformCartItem(item);
                                 }).filter(item => item.id); // Filtrar items sin ID válido
@@ -402,17 +402,17 @@ export const CartProvider = ({ children }) => {
                                 setCartItems(transformedItems);
                                 setCartItemsCount(transformedItems.length);
                                 setCartTotal(cart.total || 0);
-                                
+
                                 // Calcular subtotal considerando todos los tipos de productos
                                 const calculatedSubtotal = transformedItems.reduce((sum, item) => {
                                     const itemPrice = item.price || 0;
                                     const itemQuantity = item.quantity || 1;
                                     return sum + (itemPrice * itemQuantity);
                                 }, 0);
-                                
+
                                 // Establecer subtotal calculado
                                 setSubtotal(calculatedSubtotal);
-                                
+
                                 // Log de carrito cargado exitosamente
                                 console.log(`Carrito cargado: ${transformedItems.length} items, subtotal: ${calculatedSubtotal}`);
                             } else {
@@ -482,13 +482,13 @@ export const CartProvider = ({ children }) => {
         }
     }, [
         // Dependencias mínimas y estables
-        isAuthenticated, 
-        user?.id, 
-        authReady, 
-        getAuthHeaders, 
-        parseResponse, 
-        fetchWithTimeout, 
-        transformCartItem, 
+        isAuthenticated,
+        user?.id,
+        authReady,
+        getAuthHeaders,
+        parseResponse,
+        fetchWithTimeout,
+        transformCartItem,
         handleNetworkError
     ]);
 
@@ -497,9 +497,9 @@ export const CartProvider = ({ children }) => {
         try {
             // Verificar que el usuario esté autenticado
             if (!isAuthenticated || !user?.id) {
-                return { 
-                    success: false, 
-                    message: 'Debes iniciar sesión para agregar productos al carrito' 
+                return {
+                    success: false,
+                    message: 'Debes iniciar sesión para agregar productos al carrito'
                 };
             }
 
@@ -513,9 +513,9 @@ export const CartProvider = ({ children }) => {
                 productId = productOrId._id || productOrId.id;
             } else {
                 // Producto inválido
-                return { 
-                    success: false, 
-                    message: 'Producto inválido' 
+                return {
+                    success: false,
+                    message: 'Producto inválido'
                 };
             }
 
@@ -525,7 +525,7 @@ export const CartProvider = ({ children }) => {
 
             // Obtener headers de autenticación
             const headers = await getAuthHeaders();
-            
+
             // Crear cuerpo de request adaptado para productos personalizados
             let requestBody = {
                 clientId: user.id,
@@ -561,16 +561,16 @@ export const CartProvider = ({ children }) => {
             if (response.ok && data.success) {
                 // Recargar carrito después de agregar item
                 await getActiveCart(true);
-                
+
                 // Determinar mensaje según tipo de producto
-                const message = itemType === 'custom' 
+                const message = itemType === 'custom'
                     ? 'Producto personalizado agregado al carrito'
                     : data.message || 'Producto agregado al carrito';
-                
+
                 // Log de éxito
                 console.log('Producto agregado exitosamente al carrito');
-                return { 
-                    success: true, 
+                return {
+                    success: true,
                     message: message
                 };
             } else {
@@ -615,7 +615,7 @@ export const CartProvider = ({ children }) => {
 
             // Obtener headers de autenticación
             const headers = await getAuthHeaders();
-            
+
             // Log de actualización de cantidad
             console.log('Actualizando cantidad:', { itemId, newQuantity });
 
@@ -657,7 +657,7 @@ export const CartProvider = ({ children }) => {
                 // Recalcular subtotal total
                 setSubtotal(prevSubtotal => {
                     // Encontrar el item actual
-                    const currentItem = cartItems.find(item => 
+                    const currentItem = cartItems.find(item =>
                         item.id === itemId || item._originalItem?.itemId === itemId
                     );
                     // Recalcular subtotal si se encuentra el item
@@ -671,9 +671,9 @@ export const CartProvider = ({ children }) => {
 
                 // Recargar carrito para sincronización
                 await getActiveCart(true);
-                
-                return { 
-                    success: true, 
+
+                return {
+                    success: true,
                     message: data.message || 'Cantidad actualizada'
                 };
             } else {
@@ -725,7 +725,7 @@ export const CartProvider = ({ children }) => {
 
             // Obtener headers de autenticación
             const headers = await getAuthHeaders();
-            
+
             // Log del item que se va a remover
             console.log('Removiendo del carrito:', itemId);
 
@@ -777,9 +777,9 @@ export const CartProvider = ({ children }) => {
 
                 // Recargar carrito para sincronización
                 await getActiveCart(true);
-                
-                return { 
-                    success: true, 
+
+                return {
+                    success: true,
                     message: data.message || 'Producto removido del carrito'
                 };
             } else {
@@ -804,13 +804,13 @@ export const CartProvider = ({ children }) => {
             setUpdating(false);
         }
     }, [
-        isAuthenticated, 
-        user?.id, 
-        getBestAvailableToken, 
-        getAuthHeaders, 
-        parseResponse, 
-        fetchWithTimeout, 
-        handleNetworkError, 
+        isAuthenticated,
+        user?.id,
+        getBestAvailableToken,
+        getAuthHeaders,
+        parseResponse,
+        fetchWithTimeout,
+        handleNetworkError,
         getActiveCart
     ]);
 
@@ -828,7 +828,7 @@ export const CartProvider = ({ children }) => {
     const getCustomizationDetails = useCallback((item) => {
         // Verificar si es producto personalizado
         if (!isCustomProduct(item)) return null;
-        
+
         // Retornar detalles de personalización del item o del item original
         return item.customizationDetails || {
             productToPersonalize: item._originalItem?.itemId?.productToPersonalize,
@@ -920,11 +920,11 @@ export const CartProvider = ({ children }) => {
             if (isAuthenticated && user?.id && userInfo && authReady) {
                 // Crear clave única para el usuario
                 const userKey = `${user.id}-${authReady}`;
-                
+
                 // Verificar si ya se inicializó para este usuario
                 if (hasInitializedForUser.current !== userKey) {
                     console.log('Usuario completamente autenticado, cargando carrito...');
-                    
+
                     try {
                         // Cargar carrito forzando reload
                         await getActiveCart(true);
@@ -959,6 +959,128 @@ export const CartProvider = ({ children }) => {
         handleAuthChange();
     }, [isAuthenticated, user?.id, userInfo, authReady]); // Solo las dependencias esenciales
 
+    const clearCartAfterPurchase = useCallback(async (shoppingCartId) => {
+        try {
+            // Verificar que el usuario esté autenticado
+            if (!isAuthenticated || !user?.id) {
+                console.error('Usuario no autenticado para limpiar carrito');
+                setCartError('Usuario no autenticado');
+                return {
+                    success: false,
+                    message: 'Usuario no autenticado para limpiar carrito'
+                };
+            }
+
+            // Verificar que se proporcione el ID del carrito
+            if (!shoppingCartId) {
+                console.error('ID del carrito es requerido para limpiar');
+                setCartError('ID del carrito no válido');
+                return {
+                    success: false,
+                    message: 'ID del carrito es requerido'
+                };
+            }
+
+            // Limpiar errores previos
+            setCartError(null);
+            setUpdating(true);
+
+            console.log('Limpiando carrito después de compra:', {
+                cartId: shoppingCartId,
+                userId: user.id
+            });
+
+            // Obtener headers de autenticación usando la función existente
+            const headers = await getAuthHeaders();
+
+            // Construir URL del endpoint
+            const url = `${API_BASE_URL}/shoppingCart/${shoppingCartId}/clearAfterPurchase`;
+
+            // Realizar petición con timeout usando la función existente
+            const response = await fetchWithTimeout(url, {
+                method: 'POST',
+                credentials: 'include',
+                headers,
+                body: JSON.stringify({
+                    userId: user.id
+                })
+            });
+
+            // Parsear respuesta usando la función existente
+            const data = await parseResponse(response, 'clearCartAfterPurchase');
+
+            // Verificar si la respuesta es exitosa
+            if (response.ok && data) {
+                console.log('Respuesta del servidor al limpiar carrito:', data);
+
+                // Manejar token si viene en la respuesta
+                await handleTokenResponse(data);
+
+                // Limpiar el estado local del carrito inmediatamente
+                setCart(null);
+                setCartItems([]);
+                setCartItemsCount(0);
+                setCartTotal(0);
+                setSubtotal(0);
+
+                // Limpiar descuentos aplicados
+                setAppliedDiscount(null);
+                setDiscountAmount(0);
+
+                // Resetear flag de inicialización para forzar recarga
+                hasInitializedForUser.current = false;
+
+                console.log('Carrito limpiado exitosamente después de la compra:', {
+                    completedCart: data.completedCartId,
+                    newCart: data.activeCart,
+                    cleared: data.cleared
+                });
+
+                // Recargar carrito usando la función existente
+                try {
+                    await getActiveCart(true);
+                } catch (reloadError) {
+                    console.warn('Error al recargar carrito después de limpiar:', reloadError);
+                    // No fallar la operación completa si solo falla la recarga
+                }
+
+                return {
+                    success: true,
+                    message: data.message || 'Carrito limpiado exitosamente',
+                    completedCartId: data.completedCartId,
+                    activeCart: data.activeCart,
+                    cleared: data.cleared
+                };
+            } else {
+                // Error del servidor
+                throw new Error(data.message || 'Error al limpiar carrito');
+            }
+        } catch (error) {
+            console.error('Error al limpiar carrito después de compra:', error);
+
+            // Usar la función existente para manejar errores de red
+            const errorMessage = handleNetworkError(error);
+            setCartError(errorMessage);
+
+            return {
+                success: false,
+                message: errorMessage
+            };
+        } finally {
+            // Desactivar estado de actualización
+            setUpdating(false);
+        }
+    }, [
+        isAuthenticated,
+        user?.id,
+        getAuthHeaders,
+        fetchWithTimeout,
+        parseResponse,
+        handleTokenResponse,
+        handleNetworkError,
+        getActiveCart
+    ]);
+
     // Objeto de contexto con todas las funciones necesarias
     const contextValue = {
         // Estado del carrito
@@ -970,7 +1092,7 @@ export const CartProvider = ({ children }) => {
         cartTotal,
         subtotal,
         updating,
-        
+
         // Estados de descuentos
         appliedDiscount,
         discountAmount,
@@ -981,6 +1103,7 @@ export const CartProvider = ({ children }) => {
         updateItemQuantity,
         removeFromCart,
         clearCartError,
+        clearCartAfterPurchase,
 
         // Funciones helper para ProductCard
         isInCart,

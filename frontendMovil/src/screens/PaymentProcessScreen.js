@@ -13,7 +13,6 @@ import {
     Modal,
     BackHandler,
     Dimensions,
-    Keyboard,
     Animated
 } from 'react-native';
 
@@ -25,6 +24,8 @@ import { useCart } from "../context/CartContext";
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import backIcon from '../images/backIcon.png';
 import ShippingInfoMobile from '../components/ShippingInfo';
+import PaymentMethodStep from '../components/PaymentMethodStep';
+import OrderReviewStep from '../components/OrderReviewStep';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -155,7 +156,7 @@ const PaymentOrderSummaryModal = ({
                                     <Text style={styles.itemsSectionTitle}>
                                         Productos ({cartItems.length} {cartItems.length === 1 ? 'artículo' : 'artículos'})
                                     </Text>
-                                    
+
                                     <View style={styles.itemsList}>
                                         {cartItems.map((item, index) => (
                                             <View key={item.id || index} style={styles.itemCard}>
@@ -436,14 +437,33 @@ const PaymentProcessScreen = ({ navigation, route }) => {
     };
 
     const handleShippingInfoUpdate = (shippingData) => {
+        // Procesar la fecha antes de guardarla
+        let processedShippingData = { ...shippingData };
+
+        if (shippingData.deliveryDate) {
+            // Si viene como string, asegurar que sea válida
+            if (typeof shippingData.deliveryDate === 'string') {
+                const dateTest = new Date(shippingData.deliveryDate);
+                if (!isNaN(dateTest.getTime())) {
+                    processedShippingData.deliveryDate = shippingData.deliveryDate;
+                } else {
+                    console.warn('Fecha inválida recibida:', shippingData.deliveryDate);
+                    processedShippingData.deliveryDate = null;
+                }
+            } else if (shippingData.deliveryDate instanceof Date) {
+                // Si es Date, convertir a string ISO
+                processedShippingData.deliveryDate = shippingData.deliveryDate.toISOString().split('T')[0];
+            }
+        }
+
         setOrderData(prev => ({
             ...prev,
             shippingInfo: {
                 ...prev.shippingInfo,
-                ...shippingData
+                ...processedShippingData
             }
         }));
-        console.log('Información de envío actualizada:', shippingData);
+        console.log('Información de envío actualizada:', processedShippingData);
     };
 
     const handlePaymentInfoUpdate = (paymentData) => {
@@ -471,15 +491,32 @@ const PaymentProcessScreen = ({ navigation, route }) => {
             formData.append('deliveryDate', saleData.deliveryDate);
             formData.append('ShoppingCartId', saleData.ShoppingCartId);
 
-            // Agregar imagen de comprobante si existe
-            if (saleData.paymentProofImage) {
-                formData.append('paymentProofImage', saleData.paymentProofImage);
+            // CORREGIDO: Manejar imagen de comprobante para React Native
+            if (saleData.paymentProofImage && saleData.paymentProofImage.uri) {
+                // Crear el objeto de archivo compatible con FormData en React Native
+                const imageFile = {
+                    uri: saleData.paymentProofImage.uri,
+                    type: saleData.paymentProofImage.mimeType || 'image/jpeg',
+                    name: saleData.paymentProofImage.fileName || 'payment_proof.jpg'
+                };
+
+                formData.append('paymentProofImage', imageFile);
+                console.log('Imagen agregada a FormData:', {
+                    uri: imageFile.uri,
+                    type: imageFile.type,
+                    name: imageFile.name
+                });
             }
+
+            console.log('Enviando FormData al servidor...');
 
             const response = await fetch('https://marquesa.onrender.com/api/sales', {
                 method: 'POST',
                 credentials: 'include',
-                body: formData
+                body: formData,
+                headers: {
+                    'Accept': 'application/json',
+                }
             });
 
             const data = await response.json();
@@ -607,10 +644,18 @@ const PaymentProcessScreen = ({ navigation, route }) => {
             getActiveCart(true);
         }
 
-        // Navegar a Home y resetear stack
+        // Navegar de vuelta al TabNavigator y específicamente al tab Home
         navigation.reset({
             index: 0,
-            routes: [{ name: 'Home' }],
+            routes: [
+                {
+                    name: 'TabNavigator', // Nombre correcto según tu Navigation.js
+                    state: {
+                        routes: [{ name: 'Home' }],
+                        index: 0,
+                    }
+                }
+            ],
         });
     };
 
@@ -623,7 +668,15 @@ const PaymentProcessScreen = ({ navigation, route }) => {
                         onNext={handleNextStep}
                         onShippingInfoUpdate={handleShippingInfoUpdate}
                         userInfo={user}
-                        initialData={orderData.shippingInfo}
+                        initialData={{
+                            ...orderData.shippingInfo,
+                            // Asegurar que deliveryDate sea Date si existe
+                            deliveryDate: orderData.shippingInfo.deliveryDate
+                                ? (typeof orderData.shippingInfo.deliveryDate === 'string'
+                                    ? new Date(orderData.shippingInfo.deliveryDate)
+                                    : orderData.shippingInfo.deliveryDate)
+                                : null
+                        }}
                     />
                 );
             case 2:
@@ -728,73 +781,6 @@ const PaymentProcessScreen = ({ navigation, route }) => {
                 />
             </View>
         </KeyboardAvoidingView>
-    );
-};
-
-// Componentes de steps (simplificados, sin cambios principales)
-const PaymentMethodStep = ({ onNext, onBack, onPaymentInfoUpdate, initialData }) => {
-    return (
-        <View style={styles.stepContainer}>
-            <Text style={styles.stepTitle}>Método de Pago</Text>
-            <Text style={styles.stepDescription}>
-                Selecciona tu método de pago preferido
-            </Text>
-
-            <View style={styles.placeholderForm}>
-                <Text style={styles.placeholderText}>
-                    Selección de método de pago
-                </Text>
-                <Text style={styles.placeholderSubtext}>
-                    (Implementar opciones de pago y subida de comprobante)
-                </Text>
-            </View>
-
-            <View style={styles.stepButtons}>
-                <TouchableOpacity style={styles.backButtonStep} onPress={onBack}>
-                    <Text style={styles.backButtonText}>Regresar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.nextButton} onPress={onNext}>
-                    <Text style={styles.nextButtonText}>Revisar Pedido</Text>
-                </TouchableOpacity>
-            </View>
-        </View>
-    );
-};
-
-const OrderReviewStep = ({ onBack, onConfirm, orderData, isProcessing }) => {
-    return (
-        <View style={styles.stepContainer}>
-            <Text style={styles.stepTitle}>Revisar Pedido</Text>
-            <Text style={styles.stepDescription}>
-                Verifica que toda la información sea correcta antes de confirmar
-            </Text>
-
-            <View style={styles.placeholderForm}>
-                <Text style={styles.placeholderText}>
-                    Resumen completo del pedido
-                </Text>
-                <Text style={styles.placeholderSubtext}>
-                    (Mostrar información de envío, pago y productos)
-                </Text>
-            </View>
-
-            <View style={styles.stepButtons}>
-                <TouchableOpacity style={styles.backButtonStep} onPress={onBack}>
-                    <Text style={styles.backButtonText}>Regresar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.confirmButton, isProcessing && styles.buttonDisabled]}
-                    onPress={onConfirm}
-                    disabled={isProcessing}
-                >
-                    {isProcessing ? (
-                        <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                        <Text style={styles.confirmButtonText}>Confirmar Pedido</Text>
-                    )}
-                </TouchableOpacity>
-            </View>
-        </View>
     );
 };
 
@@ -1182,22 +1168,6 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         fontFamily: 'Poppins-Medium',
     },
-
-    // Step Container Styles
-    stepContainer: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: '#f0f0f0',
-        elevation: 1,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        shadowOffset: { width: 0, height: 1 },
-        flex: 1,
-        minHeight: 200,
-    },
     stepTitle: {
         fontSize: SCREEN_WIDTH < 400 ? 18 : 20,
         fontWeight: '600',
@@ -1205,101 +1175,6 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         fontFamily: 'Poppins-SemiBold',
     },
-    stepDescription: {
-        fontSize: SCREEN_WIDTH < 400 ? 13 : 14,
-        color: '#666',
-        marginBottom: 20,
-        fontFamily: 'Poppins-Regular',
-        lineHeight: SCREEN_WIDTH < 400 ? 18 : 20,
-    },
-    placeholderForm: {
-        backgroundColor: '#f8f9fa',
-        borderRadius: 8,
-        padding: SCREEN_WIDTH < 400 ? 16 : 20,
-        alignItems: 'center',
-        marginBottom: 20,
-        borderWidth: 2,
-        borderColor: '#e9ecef',
-        borderStyle: 'dashed',
-        minHeight: SCREEN_WIDTH < 400 ? 60 : 80,
-        justifyContent: 'center',
-        flex: 1,
-    },
-    placeholderText: {
-        fontSize: SCREEN_WIDTH < 400 ? 14 : 16,
-        fontWeight: '500',
-        color: '#495057',
-        textAlign: 'center',
-        marginBottom: 8,
-        fontFamily: 'Poppins-Medium',
-    },
-    placeholderSubtext: {
-        fontSize: SCREEN_WIDTH < 400 ? 11 : 12,
-        color: '#6c757d',
-        textAlign: 'center',
-        fontFamily: 'Poppins-Regular',
-        lineHeight: 16,
-    },
-    stepButtons: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        gap: 12,
-        marginTop: 16,
-        paddingTop: 16,
-        borderTopWidth: 1,
-        borderTopColor: '#f0f0f0',
-    },
-    nextButton: {
-        flex: 1,
-        backgroundColor: '#FDB4B7',
-        borderRadius: 8,
-        paddingVertical: SCREEN_WIDTH < 400 ? 12 : 14,
-        alignItems: 'center',
-        minHeight: 48,
-        justifyContent: 'center',
-    },
-    nextButtonText: {
-        color: '#fff',
-        fontSize: SCREEN_WIDTH < 400 ? 14 : 16,
-        fontWeight: '600',
-        fontFamily: 'Poppins-SemiBold',
-    },
-    backButtonStep: {
-        flex: 1,
-        backgroundColor: 'transparent',
-        borderRadius: 8,
-        paddingVertical: SCREEN_WIDTH < 400 ? 12 : 14,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#ddd',
-        minHeight: 48,
-        justifyContent: 'center',
-    },
-    backButtonText: {
-        color: '#666',
-        fontSize: SCREEN_WIDTH < 400 ? 14 : 16,
-        fontWeight: '500',
-        fontFamily: 'Poppins-Medium',
-    },
-    confirmButton: {
-        flex: 1,
-        backgroundColor: '#10b981',
-        borderRadius: 8,
-        paddingVertical: SCREEN_WIDTH < 400 ? 12 : 14,
-        alignItems: 'center',
-        minHeight: 48,
-        justifyContent: 'center',
-    },
-    confirmButtonText: {
-        color: '#fff',
-        fontSize: SCREEN_WIDTH < 400 ? 14 : 16,
-        fontWeight: '600',
-        fontFamily: 'Poppins-SemiBold',
-    },
-    buttonDisabled: {
-        opacity: 0.6,
-    },
-
     // Success Modal Styles
     modalOverlay: {
         flex: 1,

@@ -8,7 +8,6 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     Alert,
-    KeyboardAvoidingView,
     Platform,
     Keyboard,
     Dimensions,
@@ -26,7 +25,7 @@ const ShippingInfoMobile = ({
 }) => {
     // Obtener información del usuario desde el contexto
     const { userInfo } = useAuth();
-    
+
     // Estado del formulario
     const [formData, setFormData] = useState({
         receiverName: initialData.receiverName || '',
@@ -39,10 +38,17 @@ const ShippingInfoMobile = ({
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
-    
+
     // NUEVO: Estados para manejar el teclado
     const [keyboardHeight, setKeyboardHeight] = useState(0);
     const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+    const formatDateToLocalISO = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
 
     // NUEVO: Effect para manejar eventos del teclado
     useEffect(() => {
@@ -53,7 +59,7 @@ const ShippingInfoMobile = ({
                 setIsKeyboardVisible(true);
             }
         );
-        
+
         const keyboardWillHideListener = Keyboard.addListener(
             Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
             () => {
@@ -242,7 +248,7 @@ const ShippingInfoMobile = ({
                 receiverPhone: formData.receiverPhone.trim(),
                 deliveryAddress: formData.deliveryAddress.trim(),
                 deliveryPoint: formData.deliveryPoint.trim(),
-                deliveryDate: formData.deliveryDate.toISOString().split('T')[0]
+                deliveryDate: formatDateToLocalISO(formData.deliveryDate)
             });
 
             // Avanzar al siguiente paso
@@ -263,7 +269,23 @@ const ShippingInfoMobile = ({
     // Formatear fecha para mostrar
     const formatDateDisplay = (date) => {
         if (!date) return 'Seleccionar fecha';
-        return date.toLocaleDateString('es-ES', {
+
+        // Si es un string (fecha ISO), convertirlo a Date
+        let dateObj;
+        if (typeof date === 'string') {
+            dateObj = new Date(date);
+        } else if (date instanceof Date) {
+            dateObj = date;
+        } else {
+            return 'Seleccionar fecha';
+        }
+
+        // Verificar que la fecha sea válida
+        if (isNaN(dateObj.getTime())) {
+            return 'Seleccionar fecha';
+        }
+
+        return dateObj.toLocaleDateString('es-ES', {
             weekday: 'long',
             year: 'numeric',
             month: 'long',
@@ -296,14 +318,14 @@ const ShippingInfoMobile = ({
     // NUEVO: Calcular el contenido principal ajustado para el teclado
     const getContentContainerStyle = () => {
         const baseStyle = styles.scrollContent;
-        
+
         if (isKeyboardVisible && Platform.OS === 'android') {
             return {
                 ...baseStyle,
                 paddingBottom: Math.max(baseStyle.paddingBottom || 16, keyboardHeight + 60)
             };
         }
-        
+
         return baseStyle;
     };
 
@@ -315,7 +337,7 @@ const ShippingInfoMobile = ({
                 maxHeight: SCREEN_HEIGHT - keyboardHeight - 200 // Ajustar según necesidad
             };
         }
-        
+
         return styles.scrollContainer;
     };
 

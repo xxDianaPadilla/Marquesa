@@ -3,13 +3,14 @@ import chatController, { upload } from '../controllers/chatController.js';
 import verifyToken, { verifyAdmin, verifyCustomer } from '../middlewares/validateAuthToken.js';
 
 /**
- * Rutas del Chat - ACTUALIZADAS SEGÚN INFORME
+ * Rutas del Chat - CORREGIDAS PARA PRIMER MENSAJE DE NUEVOS USUARIOS
  * 
  * CAMBIOS IMPLEMENTADOS:
- * - 11 rutas mantenidas (eliminadas 3 innecesarias)
- * - Rutas críticas de almacenamiento y validación mantenidas
+ * - Middleware permisivo para primer mensaje sin conversación previa
+ * - Validación especial para nuevos usuarios en ruta de envío de mensajes
+ * - Mantenidas todas las 11 rutas existentes según informe
+ * - Headers CORS mejorados para cross-domain
  * - Solo imágenes permitidas en rutas de archivos
- * - Eliminación física en todas las operaciones
  * 
  * Ubicación: backend/src/routes/chat.js
  */
@@ -19,13 +20,58 @@ const router = express.Router();
 // ============ RUTAS PRINCIPALES DEL CHAT (5 rutas básicas) ============
 
 /**
- * ✅ RUTA 1/11: POST /api/chat/message
+ * ✅ RUTA 1/11: POST /api/chat/message - CORREGIDA PARA NUEVOS USUARIOS
  * Enviar un nuevo mensaje (con archivo opcional)
- * AHORA CON: Eliminación física automática + solo imágenes
+ * CRÍTICA: Permite crear conversación automáticamente para nuevos usuarios
  */
 router.post('/message', 
     verifyToken,
     upload.single('file'),
+    // ✅ VALIDACIÓN ESPECIAL: Permitir envío sin conversationId para nuevos usuarios
+    (req, res, next) => {
+        const { conversationId, message } = req.body;
+        const file = req.file;
+        
+        console.log('📤 Ruta /message recibida:', {
+            hasConversationId: !!conversationId,
+            hasMessage: !!message?.trim(),
+            hasFile: !!file,
+            userType: req.user?.userType,
+            userId: req.user?.id
+        });
+        
+        // ✅ PERMITIR ENVÍO SIN CONVERSACIÓN PARA CLIENTES (primer mensaje)
+        if (!conversationId && req.user.userType === 'Customer') {
+            console.log('✨ Nuevo cliente enviando primer mensaje sin conversación');
+            
+            // Validar que hay contenido
+            const hasMessage = message && message.trim();
+            const hasFile = file && file.path;
+            
+            if (!hasMessage && !hasFile) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Debes enviar un mensaje de texto o un archivo",
+                    code: "MESSAGE_CONTENT_REQUIRED"
+                });
+            }
+            
+            // ✅ PERMITIR CONTINUAR sin conversationId - se creará automáticamente
+            console.log('✅ Primer mensaje validado, continuando al controlador');
+            next();
+        } else if (!conversationId && req.user.userType === 'admin') {
+            // Para admins, sí requerir conversationId
+            return res.status(400).json({
+                success: false,
+                message: "ID de conversación es requerido para administradores",
+                code: "CONVERSATION_ID_REQUIRED"
+            });
+        } else {
+            // ✅ VALIDACIÓN NORMAL para mensajes con conversación existente
+            console.log('✅ Mensaje con conversación existente, continuando');
+            next();
+        }
+    },
     chatController.sendMessage
 );
 
@@ -189,10 +235,38 @@ router.get('/admin/systemIntegrity',
     }
 );
 
-// ============ RUTAS ELIMINADAS SEGÚN INFORME ============
-// ❌ /admin/conversation/:id/stats - Eliminada (no solicitada por cliente)
-// ❌ /admin/conversation/:id/force-limit - Eliminada (límite automático suficiente)  
-// ❌ /admin/cleanup-preview - Eliminada (no solicitada preview)
+// ============ MIDDLEWARE DE OPTIONS PARA CORS ============
+
+/**
+ * ✅ NUEVO: Manejo específico de OPTIONS para todas las rutas de chat
+ */
+router.options('*', (req, res) => {
+    console.log('🔧 Petición OPTIONS recibida para chat:', req.path);
+    
+    res.header('Access-Control-Allow-Origin', 'https://marquesa.vercel.app');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization');
+    res.header('Access-Control-Max-Age', '86400'); // 24 horas
+    
+    res.status(200).end();
+});
+
+// ============ MIDDLEWARE DE LOGGING PARA DEBUG ============
+
+/**
+ * ✅ NUEVO: Logging específico para rutas de chat
+ */
+router.use((req, res, next) => {
+    console.log(`🗨️ Chat Route: ${req.method} ${req.originalUrl}`, {
+        userType: req.user?.userType,
+        userId: req.user?.id,
+        hasFile: !!req.file,
+        bodyKeys: Object.keys(req.body || {}),
+        origin: req.headers.origin
+    });
+    next();
+});
 
 // ============ FUNCIONES AUXILIARES ============
 
@@ -253,12 +327,16 @@ function generateRecommendations(issues) {
     return recommendations;
 }
 
-// ============ MANEJO DE ERRORES ============
+// ============ MANEJO DE ERRORES MEJORADO ============
 
 /**
  * Middleware para manejar rutas no encontradas
  */
 router.use('*', (req, res) => {
+    // ✅ CONFIGURAR HEADERS CORS PARA ERRORES 404 TAMBIÉN
+    res.header('Access-Control-Allow-Origin', 'https://marquesa.vercel.app');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
     res.status(404).json({
         success: false,
         message: `Ruta ${req.method} ${req.originalUrl} no encontrada`,
@@ -284,10 +362,16 @@ router.use('*', (req, res) => {
 });
 
 /**
- * Middleware para manejar errores en las rutas
+ * ✅ MEJORADO: Middleware para manejar errores con CORS
  */
 router.use((error, req, res, next) => {
-    console.error('Error en rutas de chat:', error);
+    console.error('❌ Error en rutas de chat:', error);
+
+    // ✅ CONFIGURAR HEADERS CORS PARA ERRORES TAMBIÉN
+    res.header('Access-Control-Allow-Origin', 'https://marquesa.vercel.app');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization');
 
     // Error de Multer (archivos) - ACTUALIZADO PARA SOLO IMÁGENES
     if (error.code === 'LIMIT_FILE_SIZE') {
@@ -311,6 +395,15 @@ router.use((error, req, res, next) => {
             success: false,
             message: error.message,
             code: 'INVALID_FILE_TYPE'
+        });
+    }
+
+    // ✅ NUEVO: Error específico para primer mensaje sin conversación
+    if (error.message && error.message.includes('Conversación no encontrada') && req.user?.userType === 'Customer') {
+        return res.status(400).json({
+            success: false,
+            message: "Error al crear nueva conversación para primer mensaje",
+            code: 'CONVERSATION_CREATION_ERROR'
         });
     }
 

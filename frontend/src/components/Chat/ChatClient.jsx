@@ -8,20 +8,21 @@ import FilePreview from './FilePreview';
 import MediaRenderer from './MediaRenderer';
 import TypingIndicator from './TypingIndicator';
 import ChatStatus from './ChatStatus';
+import MiniLogo from '../../assets/marquesaMiniLogo.png';
 
 /**
- * Componente de Chat para Clientes - CORREGIDO PARA PRIMERA CONVERSACIÓN
+ * Componente de Chat para Clientes - CORRECCIÓN CRÍTICA PARA PRIMER MENSAJE
  * 
  * CAMBIOS IMPLEMENTADOS:
- * - Manejo correcto cuando no hay conversación activa (primer mensaje)
- * - El primer mensaje crea automáticamente la conversación
- * - Mejor UX para usuarios que chatean por primera vez
- * - Actualización automática de la interfaz al enviar primer mensaje
+ * - Espera a que Socket.IO esté realmente listo antes de permitir envío
+ * - Mejor indicadores visuales del estado de conexión
+ * - Manejo mejorado de primer mensaje con feedback visual
+ * - Sincronización garantizada con Socket.IO
  * 
  * Ubicación: frontend/src/components/Chat/ChatClient.jsx
  */
 
-// ✅ Error Boundary como clase separada
+// ✅ Error Boundary (sin cambios)
 class ChatErrorBoundary extends React.Component {
     constructor(props) {
         super(props);
@@ -72,7 +73,6 @@ class ChatErrorBoundary extends React.Component {
                                 Recargar Página
                             </button>
                         </div>
-                        {/* Debug info en desarrollo */}
                         {process.env.NODE_ENV === 'development' && this.state.error && (
                             <details className="mt-3">
                                 <summary className="text-xs text-red-600 cursor-pointer">Ver detalles del error</summary>
@@ -90,8 +90,8 @@ class ChatErrorBoundary extends React.Component {
     }
 }
 
-// ✅ Componente de Loading
-const ChatLoading = () => (
+// ✅ COMPONENTE DE LOADING MEJORADO
+const ChatLoading = ({ isSocketReady, socketConnected }) => (
     <div className="fixed bottom-4 md:bottom-6 right-4 md:right-6 z-50">
         <div className="bg-white rounded-lg shadow-xl w-[90vw] max-w-sm h-[70vh] md:h-96 flex flex-col border border-gray-200">
             <div className="bg-[#E8ACD2] p-3 md:p-4 rounded-t-lg flex items-center justify-between">
@@ -106,9 +106,18 @@ const ChatLoading = () => (
             <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#E8ACD2] mx-auto mb-2"></div>
+                    {/* ✅ INDICADOR MEJORADO DEL ESTADO */}
                     <p className="text-gray-500 text-sm" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                        Inicializando chat...
+                        {!socketConnected ? 'Conectando al servidor...' : 
+                         !isSocketReady ? 'Preparando chat...' : 
+                         'Inicializando...'}
                     </p>
+                    {/* ✅ INDICADOR VISUAL DEL PROGRESO */}
+                    <div className="mt-2 flex justify-center space-x-1">
+                        <div className={`w-2 h-2 rounded-full ${socketConnected ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                        <div className={`w-2 h-2 rounded-full ${isSocketReady ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                        <div className="w-2 h-2 rounded-full bg-gray-300"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -117,7 +126,7 @@ const ChatLoading = () => (
 
 // ✅ Componente principal del chat
 const ChatClient = ({ isOpen, onClose }) => {
-    // ✅ Hook con manejo de errores
+    // ✅ Hook con estado de Socket.IO listo
     const {
         activeConversation,
         messages,
@@ -127,12 +136,12 @@ const ChatClient = ({ isOpen, onClose }) => {
         error,
         isConnected,
         authLoading,
+        isSocketReady, // ✅ NUEVO: Estado crítico de Socket.IO
         sendMessage,
         deleteMessage,
         clearError,
         messagesEndRef,
         typingUsers,
-        // Estados para modal de eliminación
         showDeleteModal,
         messageToDelete,
         isDeleting,
@@ -145,43 +154,61 @@ const ChatClient = ({ isOpen, onClose }) => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
     const [isInitialized, setIsInitialized] = useState(false);
-    // ✅ NUEVO: Estado para manejar cuando no hay conversación (primer mensaje)
     const [isFirstMessage, setIsFirstMessage] = useState(false);
+    // ✅ NUEVO: Estado para mostrar indicador de espera de Socket.IO
+    const [isWaitingForSocket, setIsWaitingForSocket] = useState(false);
 
-    // Referencia para el input de archivos
     const fileInputRef = useRef(null);
 
-    // ✅ Efecto para manejar inicialización
+    // ✅ EFECTO DE INICIALIZACIÓN MEJORADO
     useEffect(() => {
+        console.log('🔄 ChatClient - Estados de inicialización:', {
+            authLoading,
+            loading,
+            isSocketReady,
+            isConnected,
+            activeConversation: !!activeConversation
+        });
+
         if (!authLoading && !loading) {
             setIsInitialized(true);
-            // ✅ DETECTAR SI ES LA PRIMERA VEZ: No hay conversación activa
             setIsFirstMessage(!activeConversation);
         }
-    }, [authLoading, loading, activeConversation]);
+    }, [authLoading, loading, activeConversation, isSocketReady]);
 
-    // ✅ NUEVO: Efecto para actualizar estado de primer mensaje
+    // ✅ EFECTO PARA DETECTAR PRIMER MENSAJE
     useEffect(() => {
         setIsFirstMessage(!activeConversation);
     }, [activeConversation]);
 
-    // ✅ No renderizar si no está abierto
+    // ✅ EFECTO PARA MANEJAR INDICADOR DE ESPERA
+    useEffect(() => {
+        if (isFirstMessage && !isSocketReady && isConnected) {
+            setIsWaitingForSocket(true);
+        } else {
+            setIsWaitingForSocket(false);
+        }
+    }, [isFirstMessage, isSocketReady, isConnected]);
+
     if (!isOpen) return null;
 
-    // ✅ Mostrar loading durante inicialización
+    // ✅ LOADING MEJORADO CON ESTADOS DE SOCKET.IO
     if (authLoading || (loading && !isInitialized)) {
-        return <ChatLoading />;
+        return <ChatLoading isSocketReady={isSocketReady} socketConnected={isConnected} />;
     }
 
-    // ✅ FUNCIONES MEJORADAS: Manejo de envío de primer mensaje
+    // ✅ FUNCIONES DE ENVÍO MEJORADAS
     const handleSendMessage = async (messageText, file = null) => {
-        // ✅ CAMBIO: Permitir envío sin conversación activa (primer mensaje)
         if (!messageText?.trim() && !file && !selectedFile) return;
 
         const fileToSend = file || selectedFile;
-
-        // ✅ NUEVO: Para primer mensaje, pasar null como conversationId
         const conversationId = activeConversation?.conversationId || null;
+
+        // ✅ VERIFICACIÓN CRÍTICA: Socket.IO listo para primer mensaje
+        if (isFirstMessage && !isSocketReady) {
+            console.log('⚠️ Primer mensaje pero Socket.IO no listo, mostrando indicador...');
+            setIsWaitingForSocket(true);
+        }
 
         const success = await sendMessage(conversationId, messageText, fileToSend);
 
@@ -189,14 +216,16 @@ const ChatClient = ({ isOpen, onClose }) => {
             setNewMessage('');
             setSelectedFile(null);
             setPreviewUrl(null);
+            setIsWaitingForSocket(false);
             if (fileInputRef.current) {
                 fileInputRef.current.value = '';
             }
 
-            // ✅ NUEVO: Si era el primer mensaje, actualizar estado
             if (isFirstMessage) {
                 setIsFirstMessage(false);
             }
+        } else {
+            setIsWaitingForSocket(false);
         }
     };
 
@@ -232,9 +261,16 @@ const ChatClient = ({ isOpen, onClose }) => {
     };
 
     const handleMessageAction = (action, message) => {
+        console.log('🔧 Acción de mensaje:', { action, messageId: message._id, senderType: message.senderType });
+        
         if (action === 'delete') {
+            // ✅ VERIFICAR QUE ES UN MENSAJE PROPIO
             if (message.senderType === 'Customer') {
+                console.log('🗑️ Abriendo modal de eliminación para mensaje propio');
                 openDeleteModal(message);
+            } else {
+                console.log('⚠️ Intento de eliminar mensaje que no es propio');
+                setError('Solo puedes eliminar tus propios mensajes');
             }
         }
     };
@@ -253,7 +289,6 @@ const ChatClient = ({ isOpen, onClose }) => {
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
 
-        // ✅ CORRECCIÓN CRÍTICA: Comparar solo fechas, no horas
         const messageDateOnly = messageDate.toDateString();
         const todayOnly = today.toDateString();
         const yesterdayOnly = yesterday.toDateString();
@@ -270,7 +305,6 @@ const ChatClient = ({ isOpen, onClose }) => {
         }
     };
 
-    // ✅ Cálculos seguros
     const safeMessages = messages || [];
     const messageCount = safeMessages.filter(msg => !msg.isDeleted).length;
     const isNearLimit = messageCount >= 70;
@@ -280,12 +314,12 @@ const ChatClient = ({ isOpen, onClose }) => {
         <ChatErrorBoundary>
             <div className="fixed bottom-4 md:bottom-6 right-4 md:right-6 z-50">
                 <div className="bg-white rounded-lg shadow-xl w-[90vw] max-w-sm h-[70vh] md:h-96 flex flex-col border border-gray-200">
-                    {/* Header del chat */}
+                    {/* Header del chat mejorado */}
                     <div className="bg-[#E8ACD2] p-3 md:p-4 rounded-t-lg flex items-center justify-between flex-shrink-0">
                         <div className="flex items-center space-x-2 md:space-x-3 min-w-0 flex-1">
-                            <div className="w-6 md:w-8 h-6 md:h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center flex-shrink-0">
+                            <div className="w-6 md:w-8 h-6 md:h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center flex-shrink-0 relative">
                                 <img
-                                    src="/assets/marquesaMiniLogo.png"
+                                    src={MiniLogo}
                                     alt="Marquesa"
                                     className="w-full h-full rounded-full object-cover"
                                     onError={(e) => {
@@ -301,9 +335,6 @@ const ChatClient = ({ isOpen, onClose }) => {
                                 <h3 className="text-white font-semibold text-xs md:text-sm truncate" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                     Atención al cliente
                                 </h3>
-                                <p className="text-white text-opacity-80 text-xs truncate" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                    {loading ? 'Conectando...' : isConnected ? 'En línea' : 'Desconectado'}
-                                </p>
                             </div>
                         </div>
 
@@ -316,6 +347,20 @@ const ChatClient = ({ isOpen, onClose }) => {
                             </svg>
                         </button>
                     </div>
+
+                    {/* ✅ INDICADOR DE ESPERA DE SOCKET.IO */}
+                    {isWaitingForSocket && (
+                        <div className="px-2 py-1 text-xs bg-blue-50 text-blue-700 border-b">
+                            <div className="flex items-center space-x-1">
+                                <svg className="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                <span style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                    Preparando chat para tu primer mensaje...
+                                </span>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Estado de conexión */}
                     {!isConnected && (
@@ -341,14 +386,13 @@ const ChatClient = ({ isOpen, onClose }) => {
 
                     {/* Área de mensajes */}
                     <div className="flex-1 overflow-y-auto p-3 md:p-4 bg-gray-50 space-y-3 min-h-0">
-                        {/* ✅ MENSAJE DE BIENVENIDA MEJORADO: Diferente para primer mensaje */}
+                        {/* ✅ MENSAJE DE BIENVENIDA MEJORADO */}
                         <div className="flex justify-start">
                             <div className="bg-white rounded-lg px-3 py-2 max-w-[85%] shadow-sm">
                                 <div className="flex items-center space-x-2 mb-1">
                                     <div className="w-4 h-4 rounded-full bg-[#E8ACD2] flex items-center justify-center">
-                                        {/* ✅ CORRECCIÓN: Logo fijo del sistema para mensajes de bienvenida */}
                                         <img
-                                            src="/assets/marquesaMiniLogo.png"
+                                            src={MiniLogo}
                                             alt="Marquesa"
                                             className="w-full h-full rounded-full object-cover"
                                             onError={(e) => {
@@ -358,7 +402,6 @@ const ChatClient = ({ isOpen, onClose }) => {
                                         />
                                         <span className="text-xs text-white hidden">M</span>
                                     </div>
-                                    {/* ✅ CORRECCIÓN: Nombre fijo del sistema */}
                                     <span className="text-xs text-gray-600 font-medium">Atención al Cliente</span>
                                 </div>
                                 <p className="text-xs md:text-sm text-gray-800" style={{ fontFamily: 'Poppins, sans-serif' }}>
@@ -373,13 +416,11 @@ const ChatClient = ({ isOpen, onClose }) => {
                             </div>
                         </div>
 
-                        {/* ✅ MENSAJES DEL CHAT: Solo mostrar si hay conversación activa */}
+                        {/* ✅ MENSAJES DEL CHAT */}
                         {!isFirstMessage && (() => {
-                            // ✅ FIX: Filtrar mensajes válidos una sola vez
                             const validMessages = safeMessages.filter(message => !message.isDeleted);
 
                             return validMessages.map((message, index) => {
-                                // ✅ FIX: Comparar con el mensaje anterior en la lista filtrada
                                 const showDate = index === 0 ||
                                     formatDate(message.createdAt) !== formatDate(validMessages[index - 1].createdAt);
 
@@ -402,13 +443,15 @@ const ChatClient = ({ isOpen, onClose }) => {
                                             formatTime={formatTime}
                                             compact={true}
                                             activeConversation={activeConversation}
+                                            // ✅ PERMITIR ELIMINACIÓN DE MENSAJES PROPIOS
+                                            canDelete={message.senderType === 'Customer'}
                                         />
                                     </div>
                                 );
                             });
                         })()}
 
-                        {/* ✅ MENSAJE DE AYUDA: Solo para primer mensaje */}
+                        {/* ✅ MENSAJE DE AYUDA MEJORADO */}
                         {isFirstMessage && (
                             <div className="text-center py-4">
                                 <div className="inline-flex items-center space-x-2 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg text-xs">
@@ -416,7 +459,10 @@ const ChatClient = ({ isOpen, onClose }) => {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                     <span style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                        Escribe tu mensaje abajo para iniciar la conversación
+                                        {!isSocketReady 
+                                            ? 'Conectando al chat, espera un momento...'
+                                            : 'Escribe tu mensaje abajo para iniciar la conversación'
+                                        }
                                     </span>
                                 </div>
                             </div>
@@ -446,16 +492,20 @@ const ChatClient = ({ isOpen, onClose }) => {
                         />
                     )}
 
-                    {/* ✅ INPUT MEJORADO: Funciona sin conversación activa */}
+                    {/* ✅ INPUT MEJORADO CON VALIDACIÓN DE SOCKET.IO */}
                     <div className="p-2 md:p-3 border-t border-gray-200 bg-white flex-shrink-0">
                         <form onSubmit={handleFormSubmit} className="flex items-end space-x-2">
                             {/* Botón de archivo */}
                             <button
                                 type="button"
                                 onClick={() => fileInputRef.current?.click()}
-                                className="flex-shrink-0 p-1 text-gray-500 hover:text-[#E8ACD2] transition-colors"
-                                title="Adjuntar archivo"
-                            // ✅ CAMBIO: No deshabilitar para primer mensaje
+                                disabled={isFirstMessage && !isSocketReady}
+                                className={`flex-shrink-0 p-1 transition-colors ${
+                                    isFirstMessage && !isSocketReady 
+                                        ? 'text-gray-300 cursor-not-allowed' 
+                                        : 'text-gray-500 hover:text-[#E8ACD2]'
+                                }`}
+                                title={isFirstMessage && !isSocketReady ? 'Conectando...' : 'Adjuntar archivo'}
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
@@ -475,21 +525,40 @@ const ChatClient = ({ isOpen, onClose }) => {
                                 value={newMessage || ''}
                                 onChange={(e) => setNewMessage(e.target.value)}
                                 onKeyPress={handleKeyPress}
-                                placeholder={isFirstMessage ? "Escribe tu primer mensaje..." : "Escribe un mensaje..."}
-                                className="flex-1 border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[#E8ACD2] focus:border-transparent"
+                                placeholder={
+                                    isFirstMessage && !isSocketReady 
+                                        ? "Conectando al chat..." 
+                                        : isFirstMessage 
+                                            ? "Escribe tu primer mensaje..." 
+                                            : "Escribe un mensaje..."
+                                }
+                                disabled={isFirstMessage && !isSocketReady}
+                                className={`flex-1 border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[#E8ACD2] focus:border-transparent ${
+                                    isFirstMessage && !isSocketReady ? 'bg-gray-100 cursor-not-allowed' : ''
+                                }`}
                                 style={{ fontFamily: 'Poppins, sans-serif' }}
-                            // ✅ CAMBIO: No deshabilitar para primer mensaje
                             />
 
                             <button
                                 type="submit"
-                                disabled={(!newMessage?.trim() && !selectedFile)}
-                                className="flex-shrink-0 px-2 py-1 bg-[#E8ACD2] text-white rounded-lg hover:bg-[#E096C8] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                disabled={(!newMessage?.trim() && !selectedFile) || (isFirstMessage && !isSocketReady)}
+                                className={`flex-shrink-0 px-2 py-1 rounded-lg transition-colors ${
+                                    (!newMessage?.trim() && !selectedFile) || (isFirstMessage && !isSocketReady)
+                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                        : 'bg-[#E8ACD2] text-white hover:bg-[#E096C8]'
+                                }`}
                                 style={{ fontFamily: 'Poppins, sans-serif' }}
+                                title={isFirstMessage && !isSocketReady ? 'Conectando al chat...' : 'Enviar mensaje'}
                             >
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                </svg>
+                                {isWaitingForSocket ? (
+                                    <svg className="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                ) : (
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                    </svg>
+                                )}
                             </button>
                         </form>
                     </div>
@@ -512,7 +581,8 @@ const ChatClient = ({ isOpen, onClose }) => {
                         <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
                             <div className="bg-white rounded-lg p-4 max-w-xs mx-4">
                                 <h3 className="text-lg font-semibold text-red-600 mb-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                    {error.includes('cuenta ha sido eliminada') ? 'Cuenta Eliminada' : 'Error'}
+                                    {error.includes('cuenta ha sido eliminada') ? 'Cuenta Eliminada' : 
+                                     error.includes('Conectando') ? 'Conectando' : 'Error'}
                                 </h3>
                                 <p className="text-gray-700 mb-3 text-sm" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                     {error}
@@ -524,10 +594,15 @@ const ChatClient = ({ isOpen, onClose }) => {
                                             onClose();
                                         }
                                     }}
-                                    className="w-full px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+                                    className={`w-full px-3 py-2 rounded-lg transition-colors text-sm ${
+                                        error.includes('Conectando') 
+                                            ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                            : 'bg-red-600 hover:bg-red-700 text-white'
+                                    }`}
                                     style={{ fontFamily: 'Poppins, sans-serif' }}
                                 >
-                                    {error.includes('cuenta ha sido eliminada') ? 'Entendido' : 'Cerrar'}
+                                    {error.includes('cuenta ha sido eliminada') ? 'Entendido' : 
+                                     error.includes('Conectando') ? 'Esperar' : 'Cerrar'}
                                 </button>
                             </div>
                         </div>

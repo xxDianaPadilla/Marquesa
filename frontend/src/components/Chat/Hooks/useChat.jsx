@@ -3,13 +3,13 @@ import { useAuth } from "../../../context/AuthContext";
 import { useSocket } from "./useSocket";
 
 /**
- * Hook useChat - CORRECCIÓN FINAL PARA MENSAJES CRUZADOS
+ * Hook useChat - CORRECCIÓN CRÍTICA PARA PRIMER MENSAJE
  *
  * PROBLEMAS CRÍTICOS SOLUCIONADOS:
- * - Mensajes aparecen en conversaciones incorrectas
- * - Mensajes de nuevos clientes no aparecen
- * - Eventos Socket.IO mal filtrados
- * - Targeting específico por conversación
+ * - Sincronización entre Socket.IO y envío del primer mensaje
+ * - Espera a que Socket.IO esté realmente listo antes de enviar
+ * - Mejor manejo de eventos para primer mensaje
+ * - Inicialización secuencial garantizada
  *
  * Ubicación: frontend/src/components/Chat/Hooks/useChat.jsx
  */
@@ -41,8 +41,8 @@ export const useChat = () => {
     const activeConversationRef = useRef(null);
     const fileInputRef = useRef(null);
     const retryTimeoutRef = useRef(null);
-    // ✅ NUEVA REFERENCIA: Para filtrar eventos por conversación activa
     const lastProcessedEventRef = useRef(new Map());
+    const firstMessageSentRef = useRef(false);
 
     // ============ HOOKS CORREGIDOS ============
     const {
@@ -55,6 +55,7 @@ export const useChat = () => {
 
     const {
         isConnected: socketConnected,
+        isSocketReady,
         joinConversation,
         leaveConversation,
         startTyping,
@@ -70,7 +71,6 @@ export const useChat = () => {
         reconnect: reconnectSocket
     } = useSocket();
 
-    // ✅ CORRECCIÓN: URL de API
     const API_BASE = "https://marquesa.onrender.com/api/chat";
 
     useEffect(() => {
@@ -149,7 +149,7 @@ export const useChat = () => {
     const validateImageFile = useCallback((file) => {
         if (!file) return { isValid: true };
         const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-        const maxSize = 10 * 1024 * 1024; // 10MB
+        const maxSize = 10 * 1024 * 1024;
         if (!allowedTypes.includes(file.type)) {
             return { isValid: false, error: 'Solo se permiten archivos de imagen (JPG, PNG, GIF, WebP)' };
         }
@@ -202,13 +202,12 @@ export const useChat = () => {
 
                 return updatedConversations;
             } else if (updates.clientId) {
-                // ✅ CORRECCIÓN CRÍTICA: Solo agregar nueva conversación si somos admin
                 if (user?.userType === 'admin') {
                     console.log(`✨ Nueva conversación detectada para admin: ${conversationId}`);
                     const newConversation = {
                         conversationId,
                         status: 'active',
-                        unreadCountAdmin: 1, // ✅ NUEVO MENSAJE = 1 NO LEÍDO
+                        unreadCountAdmin: 1,
                         unreadCountClient: 0,
                         ...updates
                     };
@@ -478,15 +477,17 @@ export const useChat = () => {
         await markAsRead(conversation.conversationId);
     }, [getMessages, markAsRead, leaveConversation, joinConversation, validateAuthenticatedUser]);
 
-    // ============ FUNCIÓN sendMessage CON MENSAJE TEMPORAL ============
+    // ============ FUNCIÓN sendMessage CON ESPERA DE SOCKET.IO ============
     const sendMessage = useCallback(async (conversationId, message, file = null) => {
-        console.log('📤 === INICIO sendMessage CON MENSAJE TEMPORAL ===', {
+        console.log('📤 === INICIO sendMessage CON ESPERA SOCKET.IO ===', {
             conversationId,
             hasMessage: !!message?.trim(),
             hasFile: !!file,
             userType: user?.userType,
             userId: user?.id,
-            hasActiveConversation: !!activeConversationRef.current
+            hasActiveConversation: !!activeConversationRef.current,
+            isSocketReady,
+            socketConnected
         });
 
         if (!message?.trim() && !file) {
@@ -513,12 +514,45 @@ export const useChat = () => {
             typingTimeoutRef.current = null;
         }
 
-        // ✅ SOLUCIÓN: MENSAJE TEMPORAL PARA PRIMER MENSAJE
         const isFirstMessage = !activeConversationRef.current && user?.userType === 'Customer';
+        
+        if (isFirstMessage) {
+            console.log('🎯 === PRIMER MENSAJE DETECTADO ===');
+            console.log('🔍 Estado Socket.IO:', {
+                socketConnected,
+                isSocketReady,
+                shouldWait: !isSocketReady
+            });
+
+            if (!isSocketReady) {
+                console.log('⏳ Socket.IO no está listo, ESPERANDO...');
+                setError('Conectando al chat, espera un momento...');
+                
+                let attempts = 0;
+                const maxAttempts = 50;
+                
+                while (!isSocketReady && attempts < maxAttempts) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    attempts++;
+                    
+                    if (attempts % 10 === 0) {
+                        console.log(`⏳ Esperando Socket.IO... Intento ${attempts}/${maxAttempts}`);
+                    }
+                }
+                
+                if (!isSocketReady) {
+                    console.warn('⚠️ Socket.IO no se conectó a tiempo, enviando de todas formas...');
+                    setError('Conexión lenta detectada. El mensaje se enviará pero puede tardar en aparecer.');
+                } else {
+                    console.log('✅ Socket.IO finalmente listo, continuando...');
+                    setError(null);
+                }
+            }
+        }
+
         let temporalMessageId = null;
 
         if (isFirstMessage) {
-            // ✅ CREAR MENSAJE TEMPORAL INMEDIATAMENTE
             temporalMessageId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
             const temporalMessage = {
@@ -538,16 +572,15 @@ export const useChat = () => {
                     filename: file.name,
                     size: file.size
                 } : null,
-                status: 'sending', // ✅ Estado especial para mensaje temporal
+                status: 'sending',
                 isRead: false,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
-                isTemporary: true // ✅ Marcar como temporal
+                isTemporary: true
             };
 
             console.log('✨ AGREGANDO MENSAJE TEMPORAL:', temporalMessageId);
 
-            // ✅ CREAR CONVERSACIÓN TEMPORAL SI NO EXISTE
             if (!activeConversationRef.current) {
                 const tempConversation = {
                     conversationId: 'temp_conversation',
@@ -564,10 +597,7 @@ export const useChat = () => {
                 setActiveConversation(tempConversation);
             }
 
-            // ✅ AGREGAR MENSAJE TEMPORAL A LA UI
             setMessages(prev => [...prev, temporalMessage]);
-
-            // ✅ SCROLL INMEDIATO
             setTimeout(() => scrollToBottom(), 100);
         }
 
@@ -605,7 +635,6 @@ export const useChat = () => {
             });
 
             if (data === null) {
-                // ✅ REMOVER MENSAJE TEMPORAL SI FALLA
                 if (temporalMessageId) {
                     console.log('❌ Removiendo mensaje temporal por error');
                     setMessages(prev => prev.filter(msg => msg._id !== temporalMessageId));
@@ -613,27 +642,23 @@ export const useChat = () => {
                 return false;
             }
 
-            // ✅ CONFIGURAR REEMPLAZO DEL MENSAJE TEMPORAL
             if (isFirstMessage && temporalMessageId) {
-                console.log('⏱️ Configurando reemplazo de mensaje temporal en 3 segundos...');
-
-                // ✅ UNIRSE A SOCKET.IO INMEDIATAMENTE
-                if (data.conversationId) {
+                console.log('⚡ PROCESAMIENTO INMEDIATO DE PRIMER MENSAJE');
+                
+                if (data.conversationId && isSocketReady) {
+                    console.log('🔗 Uniéndose inmediatamente a conversación:', data.conversationId);
                     joinConversation(data.conversationId);
                 }
 
-                // ✅ CONFIGURAR TIMEOUT PARA REEMPLAZAR MENSAJE TEMPORAL
                 setTimeout(() => {
                     console.log('🔄 Reemplazando mensaje temporal...');
 
                     setMessages(prev => {
-                        // Remover mensaje temporal
                         const withoutTemporal = prev.filter(msg => msg._id !== temporalMessageId);
-
-                        // Verificar si el mensaje real ya llegó via Socket.IO
+                        
                         const realMessageExists = withoutTemporal.find(msg =>
                             msg._id === data.message?._id ||
-                            (msg.message === message?.trim() && !msg.isTemporary)
+                            (msg.message === message?.trim() && !msg.isTemporary && msg.senderType === 'Customer')
                         );
 
                         if (realMessageExists) {
@@ -641,7 +666,6 @@ export const useChat = () => {
                             return withoutTemporal;
                         } else {
                             console.log('⚠️ Mensaje real no llegó, creando versión final');
-                            // Si el mensaje real no llegó, crear versión final del temporal
                             const finalMessage = {
                                 ...prev.find(msg => msg._id === temporalMessageId),
                                 _id: data.message?._id || temporalMessageId + '_final',
@@ -653,7 +677,6 @@ export const useChat = () => {
                         }
                     });
 
-                    // ✅ ACTUALIZAR CONVERSACIÓN REAL
                     if (data.conversationId && data.conversationId !== 'temp_conversation') {
                         const realConversation = {
                             conversationId: data.conversationId,
@@ -670,11 +693,12 @@ export const useChat = () => {
                         setActiveConversation(realConversation);
                     }
 
-                    console.log('✅ Proceso de reemplazo completado');
-                }, 3000); // ✅ 3 segundos como solicitaste
+                    console.log('✅ Reemplazo de primer mensaje completado');
+                }, 2000);
 
-            } else if (data.conversationId) {
-                // ✅ PARA MENSAJES SIGUIENTES (no primer mensaje)
+                firstMessageSentRef.current = true;
+
+            } else if (data.conversationId && isSocketReady) {
                 joinConversation(data.conversationId);
             }
 
@@ -684,7 +708,6 @@ export const useChat = () => {
         } catch (error) {
             console.error('❌ Error en sendMessage:', error);
 
-            // ✅ REMOVER MENSAJE TEMPORAL SI HAY ERROR
             if (temporalMessageId) {
                 console.log('❌ Removiendo mensaje temporal por error de red');
                 setMessages(prev => prev.filter(msg => msg._id !== temporalMessageId));
@@ -693,7 +716,7 @@ export const useChat = () => {
             setError('Error al enviar mensaje: ' + error.message);
             return false;
         }
-    }, [user, apiRequest, apiRequestFormData, stopTyping, validateAuthenticatedUser, validateImageFile, joinConversation, scrollToBottom]);
+    }, [user, apiRequest, apiRequestFormData, stopTyping, validateAuthenticatedUser, validateImageFile, joinConversation, scrollToBottom, isSocketReady, socketConnected]);
 
     const deleteMessage = useCallback(async (messageId) => {
         if (!messageId || !validateAuthenticatedUser()) {
@@ -705,9 +728,33 @@ export const useChat = () => {
             const messageToDelete = messages.find(msg => msg._id === messageId);
             const conversationId = messageToDelete?.conversationId || activeConversationRef.current?.conversationId;
 
+            // ✅ VERIFICAR PERMISOS DE ELIMINACIÓN
+            if (!messageToDelete) {
+                setError('Mensaje no encontrado');
+                return false;
+            }
+
+            // ✅ SOLO EL REMITENTE O ADMIN PUEDEN ELIMINAR
+            const canDelete = user?.userType === 'admin' || 
+                            (user?.userType === 'Customer' && messageToDelete.senderType === 'Customer' && 
+                             (messageToDelete.senderId?._id === user.id || messageToDelete.senderId === user.id));
+
+            if (!canDelete) {
+                setError('No tienes permisos para eliminar este mensaje');
+                return false;
+            }
+
+            console.log('🗑️ Eliminando mensaje:', {
+                messageId,
+                conversationId,
+                senderType: messageToDelete.senderType,
+                userType: user?.userType
+            });
+
             const data = await apiRequest(`/message/${messageId}`, { method: 'DELETE' });
             if (data === null) return false;
 
+            // ✅ ACTUALIZAR ESTADO LOCAL INMEDIATAMENTE
             setMessages(prev => {
                 const updatedMessages = prev.filter(msg => msg._id !== messageId);
 
@@ -715,6 +762,7 @@ export const useChat = () => {
                     const { lastMessage, lastMessageAt } = calculateLastMessage(conversationId, updatedMessages);
                     updateConversationInList(conversationId, { lastMessage, lastMessageAt });
 
+                    // ✅ SI ES EL ÚLTIMO MENSAJE DE UN CLIENTE, RESETEAR CONTADORES
                     if (user?.userType === 'Customer' && updatedMessages.filter(m => m.conversationId === conversationId).length === 0) {
                         updateConversationInList(conversationId, {
                             unreadCountAdmin: 0,
@@ -727,14 +775,16 @@ export const useChat = () => {
                 return updatedMessages;
             });
 
+            console.log('✅ Mensaje eliminado exitosamente');
             return true;
         } catch (error) {
+            console.error('❌ Error eliminando mensaje:', error);
             setError('Error al eliminar mensaje: ' + error.message);
             return false;
         } finally {
             setIsDeleting(false);
         }
-    }, [apiRequest, messages, calculateLastMessage, updateConversationInList, validateAuthenticatedUser, user?.userType]);
+    }, [apiRequest, messages, calculateLastMessage, updateConversationInList, validateAuthenticatedUser, user?.userType, user?.id]);
 
     // ============ FUNCIONES DE MANEJO DE ARCHIVOS ============
     const handleFileSelect = useCallback((e) => {
@@ -820,10 +870,24 @@ export const useChat = () => {
         setIsDeleting(false);
     }, []);
 
-    // ============ INICIALIZACIÓN CORREGIDA ============
+    // ============ INICIALIZACIÓN CORREGIDA CON ESPERA SOCKET.IO ============
     const initializeChat = useCallback(async () => {
+        console.log('🚀 === INICIO initializeChat MEJORADO ===', {
+            authLoading,
+            isInitialized: isInitializedRef.current,
+            userType: user?.userType,
+            isSocketReady,
+            socketConnected
+        });
+
         if (authLoading || !validateAuthenticatedUser() || isInitializedRef.current) {
             return;
+        }
+
+        // ✅ ESPERAR A QUE SOCKET.IO ESTÉ LISTO PARA CLIENTES
+        if (user?.userType === 'Customer' && !isSocketReady) {
+            console.log('⏳ Cliente esperando Socket.IO listo...');
+            return; // Salir temprano, se reiniciará cuando isSocketReady sea true
         }
 
         isInitializedRef.current = true;
@@ -832,8 +896,10 @@ export const useChat = () => {
             setIsConnected(true);
 
             if (user.userType === 'admin') {
+                console.log('👨‍💼 Inicializando chat para admin...');
                 await getAllConversations(false);
             } else if (user.userType === 'Customer') {
+                console.log('👤 Inicializando chat para cliente con Socket.IO listo...');
                 const conversation = await getOrCreateConversation(false);
                 if (conversation) {
                     await selectConversation(conversation);
@@ -844,14 +910,14 @@ export const useChat = () => {
             setError('Error al inicializar el chat: ' + error.message);
             isInitializedRef.current = false;
         }
-    }, [authLoading, user, getAllConversations, getOrCreateConversation, selectConversation, validateAuthenticatedUser]);
+    }, [authLoading, user, isSocketReady, socketConnected, getAllConversations, getOrCreateConversation, selectConversation, validateAuthenticatedUser]);
 
-    // ============ CONFIGURACIÓN SOCKET.IO CRÍTICA CORREGIDA - CÓDIGO COMPLETO ============
+    // ============ CONFIGURACIÓN SOCKET.IO CRÍTICA CORREGIDA ============
 
     useEffect(() => {
         if (!socketConnected || !isAuthenticated || !validateAuthenticatedUser()) return;
 
-        console.log('⚙️ Configurando listeners de Socket.IO CORREGIDOS...');
+        console.log('⚙️ Configurando listeners Socket.IO CON SOCKET READY:', { socketConnected, isSocketReady });
 
         const unsubscribeNewMessage = onNewMessage((data) => {
             console.log('📨 Evento nuevo mensaje recibido:', {
@@ -861,10 +927,11 @@ export const useChat = () => {
                 senderId: data.message.senderId,
                 activeConversationId: activeConversationRef.current?.conversationId,
                 userType: user?.userType,
-                currentUserId: user?.id
+                currentUserId: user?.id,
+                isSocketReady
             });
 
-            // ✅ CORRECCIÓN CRÍTICA: Filtro más estricto de eventos
+            // ✅ FILTRO DE EVENTOS DUPLICADOS
             const eventKey = `new_message_${data.message._id}`;
             if (lastProcessedEventRef.current.has(eventKey)) {
                 console.log('⚠️ Evento duplicado detectado, ignorando...');
@@ -900,7 +967,6 @@ export const useChat = () => {
 
                     // ✅ REEMPLAZAR MENSAJE TEMPORAL SI EXISTE
                     setMessages(prev => {
-                        // Buscar mensaje temporal con contenido similar
                         const temporalMessageIndex = prev.findIndex(msg =>
                             msg.isTemporary &&
                             msg.senderId?._id === user.id &&
@@ -914,7 +980,6 @@ export const useChat = () => {
                             console.log('🔄 REEMPLAZANDO MENSAJE TEMPORAL con mensaje real');
                             const newMessages = [...prev];
 
-                            // ✅ REEMPLAZAR mensaje temporal con el real
                             newMessages[temporalMessageIndex] = {
                                 ...data.message,
                                 isTemporary: false,
@@ -923,7 +988,6 @@ export const useChat = () => {
 
                             return newMessages;
                         } else {
-                            // ✅ NO HAY TEMPORAL, verificar si ya existe el mensaje real
                             const exists = prev.find(msg => msg._id === data.message._id);
                             if (exists) {
                                 console.log('⚠️ Mensaje real ya existe, ignorando...');
@@ -956,10 +1020,7 @@ export const useChat = () => {
                         joinConversation(data.conversationId);
                     }
 
-                    // ✅ SCROLL AL FINAL
                     setTimeout(() => scrollToBottom(), 100);
-
-                    // ✅ SALIR TEMPRANO
                     return;
 
                 } else if (!isForActiveConversation) {
@@ -968,13 +1029,13 @@ export const useChat = () => {
                 }
             }
 
-            // ✅ LÓGICA PARA ADMIN (sin cambios)
+            // ✅ LÓGICA PARA ADMIN
             if (user?.userType === 'admin' && !isAdminAndClientMessage && !isForActiveConversation) {
                 console.log('⚠️ Mensaje de admin no es para conversación activa, ignorando...');
                 return;
             }
 
-            // ✅ AGREGAR MENSAJE PARA CONVERSACIÓN ACTIVA (admin y otros casos)
+            // ✅ AGREGAR MENSAJE PARA CONVERSACIÓN ACTIVA
             if (isForActiveConversation) {
                 setMessages(prev => {
                     const exists = prev.find(msg => msg._id === data.message._id);
@@ -1026,7 +1087,6 @@ export const useChat = () => {
             }
             lastProcessedEventRef.current.set(eventKey, Date.now());
 
-            // ✅ CORRECCIÓN CRÍTICA: Solo procesar eliminación si es para conversación activa
             const isForActiveConversation = activeConversationRef.current?.conversationId === data.conversationId;
 
             if (user?.userType === 'Customer' && !isForActiveConversation) {
@@ -1075,7 +1135,6 @@ export const useChat = () => {
             }
             lastProcessedEventRef.current.set(eventKey, Date.now());
 
-            // ✅ CORRECCIÓN CRÍTICA: Solo admin debe procesar actualizaciones de conversaciones
             if (user?.userType === 'admin') {
                 updateConversationInList(data.conversationId, data);
 
@@ -1090,7 +1149,6 @@ export const useChat = () => {
         });
 
         const unsubscribeConversationClosed = onConversationClosed((data) => {
-            // ✅ Solo procesar si es nuestra conversación activa
             if (activeConversationRef.current?.conversationId === data.conversationId) {
                 updateConversationInList(data.conversationId, { status: 'closed' });
                 setError('La conversación ha sido cerrada por el administrador');
@@ -1098,7 +1156,6 @@ export const useChat = () => {
         });
 
         const unsubscribeMessagesRead = onMessagesRead((data) => {
-            // ✅ Solo procesar si es para nuestra conversación activa
             if (activeConversationRef.current?.conversationId === data.conversationId) {
                 setMessages(prev => prev.map(msg => ({
                     ...msg,
@@ -1117,7 +1174,6 @@ export const useChat = () => {
         });
 
         const unsubscribeUserTyping = onUserTyping((data) => {
-            // ✅ Solo procesar typing de otros usuarios en nuestra conversación activa
             if (data.userId !== user?.id && activeConversationRef.current?.conversationId === data.conversationId) {
                 setTypingUsers(prev => {
                     const newSet = new Set(prev);
@@ -1147,7 +1203,7 @@ export const useChat = () => {
                     lastProcessedEventRef.current.delete(key);
                 }
             }
-        }, 60000); // Cada minuto
+        }, 60000);
 
         return () => {
             console.log('🧹 Limpiando listeners de Socket.IO...');
@@ -1162,6 +1218,7 @@ export const useChat = () => {
         };
     }, [
         socketConnected,
+        isSocketReady, // ✅ NUEVA DEPENDENCIA CRÍTICA
         isAuthenticated,
         user?.id,
         user?.userType,
@@ -1176,15 +1233,40 @@ export const useChat = () => {
         scrollToBottom,
         updateConversationInList,
         validateAuthenticatedUser,
-        calculateLastMessage
+        calculateLastMessage,
+        joinConversation
     ]);
 
-    // ============ EFECTOS DE INICIALIZACIÓN ============
+    // ============ EFECTO DE INICIALIZACIÓN CRÍTICO ============
     useEffect(() => {
+        console.log('🔄 Efecto initializeChat:', {
+            authLoading,
+            isAuthenticated,
+            hasUser: !!user,
+            userId: user?.id,
+            userType: user?.userType,
+            isInitialized: isInitializedRef.current,
+            isSocketReady
+        });
+
         if (!authLoading && isAuthenticated && user && user.id && user.userType && !isInitializedRef.current) {
             initializeChat();
         }
-    }, [authLoading, isAuthenticated, user?.id, user?.userType, initializeChat]);
+    }, [authLoading, isAuthenticated, user?.id, user?.userType, isSocketReady, initializeChat]); // ✅ DEPENDENCIA CRÍTICA
+
+    // ============ EFECTO PARA RE-INICIALIZAR CUANDO SOCKET.IO ESTÉ LISTO ============
+    useEffect(() => {
+        // ✅ CRÍTICO: Re-inicializar chat cuando Socket.IO esté listo para clientes
+        if (user?.userType === 'Customer' && 
+            isAuthenticated && 
+            !authLoading && 
+            isSocketReady && 
+            !isInitializedRef.current) {
+            
+            console.log('🎯 Socket.IO listo para cliente, inicializando chat...');
+            initializeChat();
+        }
+    }, [user?.userType, isAuthenticated, authLoading, isSocketReady, initializeChat]);
 
     // ============ LIMPIEZA DE EFECTOS ============
     useEffect(() => {
@@ -1214,7 +1296,7 @@ export const useChat = () => {
         previewUrl,
         loading,
         error,
-        isConnected: isConnected && socketConnected && !authLoading && !!user,
+        isConnected: isConnected && socketConnected && isSocketReady && !authLoading && !!user, // ✅ CORREGIDO CON isSocketReady
         unreadCount,
         hasMoreMessages,
         loadingMessages,
@@ -1229,6 +1311,7 @@ export const useChat = () => {
         authLoading,
         isAuthenticated,
         hasUser: !!user,
+        isSocketReady, // ✅ NUEVO: Exposer estado de Socket.IO listo
 
         // Setters
         setNewMessage: handleMessageChange,

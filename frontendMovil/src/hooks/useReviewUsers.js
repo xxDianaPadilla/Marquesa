@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"; // Importamos react
+import { useState, useEffect } from "react";
 
 // Hook para reseñas de usuarios
 const useReviewsUsers = (productId, alertHelpers = null) => {
@@ -111,20 +111,53 @@ const useReviewsUsers = (productId, alertHelpers = null) => {
         }
     };
 
-    // Crear una nueva reseña
+    // Crear una nueva reseña - CORREGIDO para coincidir con el backend
     const submitReview = async (reviewData) => {
         try {
             setSubmitting(true);
+            
+            console.log('Datos de reseña recibidos en hook:', reviewData);
+            console.log('Estado completo de reviewData:', JSON.stringify(reviewData, null, 2));
+
+            // Validaciones básicas en el frontend con debugging mejorado
+            if (!reviewData.clientId) {
+                console.error('clientId faltante. reviewData completo:', reviewData);
+                throw new Error('ID de cliente requerido. Verifica que el usuario esté autenticado correctamente.');
+            }
+            if (!reviewData.productId) {
+                throw new Error('ID de producto requerido');
+            }
+            if (!reviewData.rating || reviewData.rating < 1 || reviewData.rating > 5) {
+                throw new Error('Calificación debe estar entre 1 y 5');
+            }
+            if (!reviewData.message || reviewData.message.trim() === '') {
+                throw new Error('Mensaje de reseña requerido');
+            }
+
+            // Formatear los datos según lo que espera el backend y el schema
+            const formattedData = {
+                clientId: reviewData.clientId,
+                products: [{
+                    itemType: "product",        // Tipo de item según el schema
+                    itemId: reviewData.productId,  // ID del producto
+                    itemTypeRef: "products"     // Referencia a la colección "products"
+                }], // El backend espera un array de objetos con itemType, itemId e itemTypeRef
+                rating: parseInt(reviewData.rating),
+                message: reviewData.message.trim()
+            };
+
+            console.log('Datos formateados para enviar:', formattedData);
 
             const response = await fetch('https://marquesa.onrender.com/api/reviews', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(reviewData)
+                body: JSON.stringify(formattedData)
             });
 
             const data = await response.json();
+            console.log('Respuesta del servidor:', data);
 
             if (!response.ok) {
                 throw new Error(data.message || 'Error al enviar la reseña');
@@ -138,6 +171,8 @@ const useReviewsUsers = (productId, alertHelpers = null) => {
                 await fetchProductReviews(productId);
 
                 return { success: true, data: data.data };
+            } else {
+                throw new Error(data.message || 'Error desconocido al enviar la reseña');
             }
         } catch (error) {
             console.error('Error al enviar reseña:', error);

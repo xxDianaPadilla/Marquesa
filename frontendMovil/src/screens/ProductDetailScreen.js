@@ -10,7 +10,9 @@ import {
     ActivityIndicator,
     TextInput,
     Platform,
-    ToastAndroid
+    ToastAndroid,
+    KeyboardAvoidingView,
+    Keyboard
 } from "react-native";
 import backIcon from '../images/backIcon.png';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -37,6 +39,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
     const [reviewText, setReviewText] = useState(''); // Texto de la reseña que está escribiendo el usuario
     const [reviewRating, setReviewRating] = useState(0); // Calificación seleccionada para la reseña (1-5 estrellas)
     const [isSubmittingReview, setIsSubmittingReview] = useState(false); // Estado de carga al enviar reseña
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
 
     // Hook personalizado para manejar alertas y notificaciones
     const {
@@ -88,14 +91,25 @@ const ProductDetailScreen = ({ route, navigation }) => {
     const { product, loading: productLoading, error: productError } = useDataBaseProductsDetail(productId);
     const { reviews, loading: reviewsLoading, submitting: reviewSubmitting, submitReview, fetchProductReviews } = useReviewsUsers(productId, alertHelpers);
 
-    // Función para mostrar mensajes toast multiplataforma
-    const showToast = (message) => {
-        if (Platform.OS === 'android') {
-            ToastAndroid.show(message, ToastAndroid.SHORT);
-        } else {
-            Alert.alert('Información', message);
-        }
-    };
+    useEffect(() => {
+        const keyboardDidShowListener = Keyboard.addListener(
+            'keyboardDidShow',
+            (e) => {
+                setKeyboardHeight(e.endCoordinates.height);
+            }
+        );
+        const keyboardDidHideListener = Keyboard.addListener(
+            'keyboardDidHide',
+            () => {
+                setKeyboardHeight(0);
+            }
+        );
+
+        return () => {
+            keyboardDidHideListener.remove();
+            keyboardDidShowListener.remove();
+        };
+    }, []);
 
     // Limpiar errores del carrito al desmontar el componente
     useEffect(() => {
@@ -214,11 +228,6 @@ const ProductDetailScreen = ({ route, navigation }) => {
         }
     };
 
-    // Función antigua mantenida por compatibilidad (puede ser removida si no se usa en otros lugares)
-    const handleAddToCart = async () => {
-        return handleToggleCart();
-    };
-
     // Manejar el envío de una nueva reseña
     const handleSubmitReview = async () => {
         try {
@@ -238,6 +247,15 @@ const ProductDetailScreen = ({ route, navigation }) => {
                 return;
             }
 
+            // Verificar que userInfo esté disponible y tenga un ID
+            if (!userInfo || (!userInfo._id && !userInfo.id)) {
+                console.error('userInfo no disponible:', userInfo);
+                console.log('Estado completo del usuario:', { user, userInfo, isAuthenticated });
+
+                showError('No se pudo obtener la información del usuario. Intenta cerrar sesión e iniciar sesión nuevamente.', 'Error de usuario');
+                return;
+            }
+
             // Validar que se haya seleccionado una calificación
             if (reviewRating === 0) {
                 showError('Por favor selecciona una calificación', 'Calificación requerida');
@@ -252,13 +270,26 @@ const ProductDetailScreen = ({ route, navigation }) => {
 
             setIsSubmittingReview(true);
 
+            // Obtener el ID del cliente (preferir _id, después id)
+            const clientId = userInfo._id || userInfo.id;
+
+            console.log('Datos antes de enviar reseña:', {
+                product: product?._id,
+                clientId,
+                userInfo: userInfo,
+                rating: reviewRating,
+                message: reviewText.trim()
+            });
+
             // Preparar datos de la reseña
             const reviewData = {
                 productId: product._id,
-                clientId: userInfo._id,
+                clientId: clientId,
                 rating: reviewRating,
                 message: reviewText.trim()
             };
+
+            console.log('reviewData final:', reviewData);
 
             // Enviar la reseña
             const result = await submitReview(reviewData);
@@ -271,6 +302,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
             }
 
         } catch (error) {
+            console.error('Error en handleSubmitReview:', error);
             showError('Error al enviar la reseña', 'Error');
         } finally {
             setIsSubmittingReview(false);
@@ -334,8 +366,11 @@ const ProductDetailScreen = ({ route, navigation }) => {
     }
 
     return (
-        <View style={styles.container}>
-            {/* Header con navegación y favoritos */}
+        <KeyboardAvoidingView
+            style={styles.container}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+        >
             <View style={styles.header}>
                 {/* Botón para regresar */}
                 <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
@@ -360,7 +395,12 @@ const ProductDetailScreen = ({ route, navigation }) => {
             </View>
 
             {/* Contenido principal con scroll */}
-            <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+            <ScrollView
+                style={styles.scrollContainer}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.scrollContentContainer}
+                keyboardShouldPersistTaps="handled" // Importante: permite tocar elementos mientras el teclado está visible
+            >
                 {/* Contenedor de imagen del producto */}
                 <View style={styles.imageContainer}>
                     <Image
@@ -480,7 +520,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
 
                         {/* Formulario para escribir reseña (solo usuarios autenticados) */}
                         {isAuthenticated && (
-                            <View style={styles.writeReviewContainer}>
+                            <View style={[styles.writeReviewContainer, keyboardHeight > 0 && styles.writeReviewContainerWithKeyboard]}>
                                 {/* Campo de texto para la reseña */}
                                 <View style={styles.reviewInputContainer}>
                                     <TextInput
@@ -490,6 +530,9 @@ const ProductDetailScreen = ({ route, navigation }) => {
                                         value={reviewText}
                                         onChangeText={setReviewText}
                                         maxLength={500}
+                                        blurOnSubmit={false}
+                                        returnKeyType="default"
+                                        textAlignVertical="top"
                                     />
 
                                     {/* Botón para enviar reseña */}
@@ -523,6 +566,11 @@ const ProductDetailScreen = ({ route, navigation }) => {
                             <ReviewCards reviews={reviews.comments} />
                         )}
                     </View>
+
+                    <View style={[
+                        styles.bottomSpacer,
+                        keyboardHeight > 0 && { height: keyboardHeight + 20 }
+                    ]} />
                 </View>
             </ScrollView>
 
@@ -560,7 +608,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
                 duration={alertState.toast.duration}
                 onHide={hideToast}
             />
-        </View>
+        </KeyboardAvoidingView>
     );
 };
 
@@ -778,14 +826,14 @@ const styles = StyleSheet.create({
     // Estilo base para el botón de toggle carrito
     toggleCartButton: {
         flexDirection: 'row',
-        paddingVertical: 14, 
+        paddingVertical: 14,
         paddingHorizontal: 20,
         borderRadius: 25,
         justifyContent: 'center',
         alignItems: 'center',
         gap: 8,
-        width: '100%', 
-        maxWidth: 300, 
+        width: '100%',
+        maxWidth: 300,
         alignSelf: 'center',
     },
     // Botón principal para agregar al carrito
@@ -828,9 +876,12 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         marginRight: 8,
         maxHeight: 100,
+        minHeight: 60,
         fontSize: 14,
         fontFamily: 'Poppins-Regular',
         textAlignVertical: 'top', // Alinear texto arriba en multiline
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
     },
     // Botón para enviar reseña
     sendButton: {
@@ -907,6 +958,15 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#fff',
         fontFamily: 'Poppins-SemiBold',
+    },
+    scrollContentContainer: {
+        flexGrow: 1,
+    },
+    writeReviewContainerWithKeyboard: {
+        marginBottom: 10,
+    },
+    bottomSpacer: {
+        height: 20,
     },
 });
 

@@ -8,7 +8,6 @@ import {
     Dimensions,
     Image,
     TextInput,
-    Alert,
     ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
@@ -20,6 +19,14 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../context/AuthContext';
 import useCustomization from '../hooks/useCustomization';
+import { useAlert } from '../hooks/useAlert';
+import { 
+    CustomAlert, 
+    LoadingDialog, 
+    ConfirmationDialog, 
+    InputDialog, 
+    ToastDialog 
+} from '../components/CustomAlerts';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -45,18 +52,25 @@ export default function CustomizationFormScreen() {
     // Usar el hook personalizado para manejar las operaciones de customización
     const { isLoading, processCustomization } = useCustomization();
 
+    // Hook personalizado para manejar alertas
+    const {
+        alertState,
+        showAlert,
+        hideAlert,
+        showConfirmation,
+        hideConfirmation,
+        showError,
+        showWarning,
+        showInfo,
+        showSuccess
+    } = useAlert();
+
     useEffect(() => {
         if (!selectedProducts || selectedProducts.length === 0) {
             console.warn('No se recibieron productos seleccionados');
-            Alert.alert(
-                'Error',
+            showError(
                 'No se encontraron productos seleccionados',
-                [
-                    {
-                        text: 'Volver',
-                        onPress: () => navigation.goBack()
-                    }
-                ]
+                'Error'
             );
         }
     }, [selectedProducts, navigation]);
@@ -68,10 +82,9 @@ export default function CustomizationFormScreen() {
             const { status: mediaStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
             if (cameraStatus !== 'granted' || mediaStatus !== 'granted') {
-                Alert.alert(
-                    'Permisos requeridos',
+                showWarning(
                     'Necesitamos permisos de cámara y galería para subir imágenes de referencia.',
-                    [{ text: 'OK' }]
+                    'Permisos requeridos'
                 );
             }
         };
@@ -81,15 +94,21 @@ export default function CustomizationFormScreen() {
 
     // Función para mostrar opciones de selección de imagen
     const showImagePicker = () => {
-        Alert.alert(
-            'Seleccionar imagen',
-            '¿Cómo quieres agregar la imagen de referencia?',
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                { text: 'Cámara', onPress: pickImageFromCamera },
-                { text: 'Galería', onPress: pickImageFromLibrary }
-            ]
-        );
+        showConfirmation({
+            title: 'Seleccionar imagen',
+            message: '¿Cómo quieres agregar la imagen de referencia?',
+            confirmText: 'Cámara',
+            cancelText: 'Galería',
+            showCancel: true,
+            onConfirm: () => {
+                hideConfirmation();
+                pickImageFromCamera();
+            },
+            onCancel: () => {
+                hideConfirmation();
+                pickImageFromLibrary();
+            }
+        });
     };
 
     // Función para tomar foto con la cámara - CORREGIDA PARA BACKEND
@@ -99,7 +118,7 @@ export default function CustomizationFormScreen() {
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsEditing: true,
                 aspect: [4, 3],
-                quality: 0.7, // Reducir calidad para evitar archivos muy grandes
+                quality: 0.7,
                 base64: true,
             });
 
@@ -115,7 +134,7 @@ export default function CustomizationFormScreen() {
                 });
 
                 if (!asset.base64) {
-                    Alert.alert('Error', 'No se pudo procesar la imagen. Inténtalo nuevamente.');
+                    showError('No se pudo procesar la imagen. Inténtalo nuevamente.');
                     return;
                 }
 
@@ -134,7 +153,7 @@ export default function CustomizationFormScreen() {
             }
         } catch (error) {
             console.error('Error picking image from camera:', error);
-            Alert.alert('Error', 'No se pudo tomar la foto. Inténtalo nuevamente.');
+            showError('No se pudo tomar la foto. Inténtalo nuevamente.');
         }
     };
 
@@ -145,7 +164,7 @@ export default function CustomizationFormScreen() {
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsEditing: true,
                 aspect: [4, 3],
-                quality: 0.7, // Reducir calidad para evitar archivos muy grandes
+                quality: 0.7,
                 base64: true,
             });
 
@@ -161,7 +180,7 @@ export default function CustomizationFormScreen() {
                 });
 
                 if (!asset.base64) {
-                    Alert.alert('Error', 'No se pudo procesar la imagen. Inténtalo nuevamente.');
+                    showError('No se pudo procesar la imagen. Inténtalo nuevamente.');
                     return;
                 }
 
@@ -180,28 +199,26 @@ export default function CustomizationFormScreen() {
             }
         } catch (error) {
             console.error('Error picking image from library:', error);
-            Alert.alert('Error', 'No se pudo seleccionar la imagen. Inténtalo nuevamente.');
+            showError('No se pudo seleccionar la imagen. Inténtalo nuevamente.');
         }
     };
 
     // Función para remover imagen seleccionada
     const handleRemoveImage = () => {
-        Alert.alert(
-            'Remover imagen',
-            '¿Estás seguro de que quieres remover la imagen de referencia?',
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Remover',
-                    style: 'destructive',
-                    onPress: () => {
-                        setReferenceImage(null);
-                        setImagePreview(null);
-                        console.log('Imagen removida');
-                    }
-                }
-            ]
-        );
+        showConfirmation({
+            title: 'Remover imagen',
+            message: '¿Estás seguro de que quieres remover la imagen de referencia?',
+            confirmText: 'Remover',
+            cancelText: 'Cancelar',
+            isDangerous: true,
+            onConfirm: () => {
+                setReferenceImage(null);
+                setImagePreview(null);
+                console.log('Imagen removida');
+                hideConfirmation();
+            },
+            onCancel: hideConfirmation
+        });
     };
 
     const handleConfirm = async () => {
@@ -216,25 +233,25 @@ export default function CustomizationFormScreen() {
 
             if (!user || !user.id) {
                 console.error('Usuario no autenticado:', user);
-                Alert.alert('Error', 'Debes iniciar sesión para continuar');
+                showError('Debes iniciar sesión para continuar');
                 return;
             }
 
             if (!selectedProducts || selectedProducts.length === 0) {
                 console.error('No hay productos seleccionados:', selectedProducts);
-                Alert.alert('Error', 'Debes seleccionar al menos un producto para personalizar');
+                showError('Debes seleccionar al menos un producto para personalizar');
                 return;
             }
 
             if (!totalPrice || totalPrice <= 0) {
                 console.error('Precio inválido:', totalPrice);
-                Alert.alert('Error', 'El precio total debe ser mayor a 0');
+                showError('El precio total debe ser mayor a 0');
                 return;
             }
 
             if (!productType || productType.trim() === '') {
                 console.error('Tipo de producto inválido:', productType);
-                Alert.alert('Error', 'Tipo de producto requerido');
+                showError('Tipo de producto requerido');
                 return;
             }
 
@@ -244,153 +261,132 @@ export default function CustomizationFormScreen() {
             const invalidProducts = selectedProducts.filter(product => !product._id || product._id.trim() === '');
             if (invalidProducts.length > 0) {
                 console.error('Productos con IDs inválidos:', invalidProducts);
-                Alert.alert('Error', 'Algunos productos no tienen identificadores válidos. Intenta seleccionar los productos nuevamente.');
+                showError('Algunos productos no tienen identificadores válidos. Intenta seleccionar los productos nuevamente.');
                 return;
             }
 
             // Mostrar confirmación antes de procesar
-            Alert.alert(
-                'Confirmar personalización',
-                `¿Confirmas tu personalización de ${productType}?\n\nTotal: ${totalPrice.toFixed(2)} USD\nProductos: ${selectedProducts.length}${referenceImage ? '\nCon imagen de referencia' : ''}`,
-                [
-                    { text: 'Cancelar', style: 'cancel' },
-                    {
-                        text: 'Confirmar',
-                        onPress: async () => {
-                            try {
-                                console.log('=== PROCESANDO PERSONALIZACIÓN CON HOOK ===');
+            showConfirmation({
+                title: 'Confirmar personalización',
+                message: `¿Confirmas tu personalización de ${productType}?\n\nTotal: ${totalPrice.toFixed(2)} USD\nProductos: ${selectedProducts.length}${referenceImage ? '\nCon imagen de referencia' : ''}`,
+                confirmText: 'Confirmar',
+                cancelText: 'Cancelar',
+                onConfirm: async () => {
+                    hideConfirmation();
+                    try {
+                        console.log('=== PROCESANDO PERSONALIZACIÓN CON HOOK ===');
 
-                                const customizationParams = {
-                                    user,
-                                    selectedProducts: selectedProducts.map(product => ({
-                                        ...product,
-                                        _id: product._id.trim(), // Limpiar espacios en blanco
-                                    })),
-                                    productType,
-                                    referenceImage,
-                                    comments: comments.trim(),
-                                    totalPrice
-                                };
+                        const customizationParams = {
+                            user,
+                            selectedProducts: selectedProducts.map(product => ({
+                                ...product,
+                                _id: product._id.trim(),
+                            })),
+                            productType,
+                            referenceImage,
+                            comments: comments.trim(),
+                            totalPrice
+                        };
 
-                                console.log('Parámetros de personalización preparados:', {
-                                    userId: user.id,
-                                    productType,
-                                    selectedProductsCount: selectedProducts.length,
-                                    totalPrice,
-                                    hasReferenceImage: !!referenceImage,
-                                    commentsLength: comments.trim().length
+                        console.log('Parámetros de personalización preparados:', {
+                            userId: user.id,
+                            productType,
+                            selectedProductsCount: selectedProducts.length,
+                            totalPrice,
+                            hasReferenceImage: !!referenceImage,
+                            commentsLength: comments.trim().length
+                        });
+
+                        console.log('Selected products detail:', selectedProducts.map(p => ({
+                            id: p._id,
+                            name: p.name,
+                            price: p.price,
+                            quantity: p.quantity
+                        })));
+
+                        const customizationData = await processCustomization(customizationParams);
+
+                        console.log('PERSONALIZACIÓN PROCESADA EXITOSAMENTE:', customizationData);
+
+                        // Limpiar formulario inmediatamente después del éxito
+                        setReferenceImage(null);
+                        setImagePreview(null);
+                        setComments('');
+
+                        // Mostrar alerta de éxito con opciones
+                        showConfirmation({
+                            title: '¡Personalización agregada!',
+                            message: `Tu ${productType} personalizado se ha agregado al carrito exitosamente.`,
+                            confirmText: 'Ver carrito',
+                            cancelText: 'Ver productos',
+                            onConfirm: () => {
+                                console.log('Usuario eligió ir al carrito');
+                                hideConfirmation();
+                                navigation.navigate('ShoppingCart', {
+                                    refresh: true,
+                                    timestamp: Date.now()
                                 });
-
-                                console.log('Selected products detail:', selectedProducts.map(p => ({
-                                    id: p._id,
-                                    name: p.name,
-                                    price: p.price,
-                                    quantity: p.quantity
-                                })));
-
-                                const customizationData = await processCustomization(customizationParams);
-
-                                console.log('PERSONALIZACIÓN PROCESADA EXITOSAMENTE:', customizationData);
-
-                                // Limpiar formulario inmediatamente después del éxito
-                                setReferenceImage(null);
-                                setImagePreview(null);
-                                setComments('');
-
-                                // ✅ NUEVA FUNCIONALIDAD: Mostrar alerta de éxito con opciones
-                                Alert.alert(
-                                    '¡Personalización agregada!',
-                                    `Tu ${productType} personalizado se ha agregado al carrito exitosamente.`,
-                                    [
-                                        {
-                                            text: 'Seguir comprando',
-                                            onPress: () => {
-                                                console.log('Usuario eligió seguir comprando');
-                                                // Navegar al Home
-                                                navigation.reset({
-                                                    index: 0,
-                                                    routes: [{ name: 'Home' }],
-                                                });
-                                            }
-                                        },
-                                        {
-                                            text: 'Ver carrito',
-                                            onPress: () => {
-                                                console.log('Usuario eligió ir al carrito');
-                                                // Navegar al carrito con parámetro para forzar recarga
-                                                navigation.navigate('ShoppingCart', {
-                                                    refresh: true,
-                                                    timestamp: Date.now() // Forzar actualización
-                                                });
-                                            },
-                                            style: 'default'
-                                        }
-                                    ]
-                                );
-
-                            } catch (error) {
-                                console.error('❌ ERROR EN EL PROCESO DE CONFIRMACIÓN:', error);
-
-                                // Mejorar mensajes de error específicos
-                                let errorMessage = 'Ocurrió un error al procesar tu personalización';
-
-                                if (error.message.includes('conexión') || error.message.includes('Network')) {
-                                    errorMessage = 'Error de conexión. Verifica tu internet y vuelve a intentar.';
-                                } else if (error.message.includes('validación') || error.message.includes('inválid')) {
-                                    errorMessage = error.message;
-                                } else if (error.message.includes('usuario') || error.message.includes('sesión')) {
-                                    errorMessage = 'Error de autenticación. Inicia sesión nuevamente.';
-                                } else if (error.message.includes('IDs inválidos') || error.message.includes('identificador')) {
-                                    errorMessage = 'Error con los productos seleccionados. Intenta seleccionar los productos nuevamente.';
-                                } else if (error.message.includes('servidor')) {
-                                    errorMessage = 'Error del servidor. Inténtalo de nuevo en unos momentos.';
-                                }
-
-                                Alert.alert(
-                                    'Error al personalizar',
-                                    errorMessage,
-                                    [
-                                        { text: 'OK' }
-                                    ]
-                                );
+                            },
+                            onCancel: () => {
+                                console.log('Usuario eligió seguir comprando');
+                                hideConfirmation();
+                                navigation.reset({
+                                    index: 0,
+                                    routes: [{ name: 'Home' }],
+                                });
                             }
+                        });
+
+                    } catch (error) {
+                        console.error('❌ ERROR EN EL PROCESO DE CONFIRMACIÓN:', error);
+
+                        // Mejorar mensajes de error específicos
+                        let errorMessage = 'Ocurrió un error al procesar tu personalización';
+
+                        if (error.message.includes('conexión') || error.message.includes('Network')) {
+                            errorMessage = 'Error de conexión. Verifica tu internet y vuelve a intentar.';
+                        } else if (error.message.includes('validación') || error.message.includes('inválid')) {
+                            errorMessage = error.message;
+                        } else if (error.message.includes('usuario') || error.message.includes('sesión')) {
+                            errorMessage = 'Error de autenticación. Inicia sesión nuevamente.';
+                        } else if (error.message.includes('IDs inválidos') || error.message.includes('identificador')) {
+                            errorMessage = 'Error con los productos seleccionados. Intenta seleccionar los productos nuevamente.';
+                        } else if (error.message.includes('servidor')) {
+                            errorMessage = 'Error del servidor. Inténtalo de nuevo en unos momentos.';
                         }
+
+                        showError(errorMessage, 'Error al personalizar');
                     }
-                ]
-            );
+                },
+                onCancel: hideConfirmation
+            });
 
         } catch (error) {
             console.error('❌ ERROR EN HANDLECONFIRM:', error);
-            Alert.alert(
-                'Error inesperado',
-                'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.',
-                [{ text: 'OK' }]
-            );
+            showError('Ocurrió un error inesperado. Por favor, inténtalo de nuevo.', 'Error inesperado');
         }
     };
 
     // Función para cancelar y regresar
     const handleCancel = () => {
-        Alert.alert(
-            'Cancelar personalización',
-            '¿Estás seguro de que quieres cancelar? Se perderán todos los cambios.',
-            [
-                { text: 'No', style: 'cancel' },
-                {
-                    text: 'Sí, cancelar',
-                    style: 'destructive',
-                    onPress: () => {
-                        // Limpiar formulario
-                        setReferenceImage(null);
-                        setImagePreview(null);
-                        setComments('');
-                        console.log('Formulario cancelado y limpiado');
-                        // Regresar a la pantalla anterior
-                        navigation.goBack();
-                    }
-                }
-            ]
-        );
+        showConfirmation({
+            title: 'Cancelar personalización',
+            message: '¿Estás seguro de que quieres cancelar? Se perderán todos los cambios.',
+            confirmText: 'Sí, cancelar',
+            cancelText: 'No',
+            isDangerous: true,
+            onConfirm: () => {
+                // Limpiar formulario
+                setReferenceImage(null);
+                setImagePreview(null);
+                setComments('');
+                console.log('Formulario cancelado y limpiado');
+                hideConfirmation();
+                // Regresar a la pantalla anterior
+                navigation.goBack();
+            },
+            onCancel: hideConfirmation
+        });
     };
 
     return (
@@ -539,6 +535,59 @@ export default function CustomizationFormScreen() {
                         )}
                     </TouchableOpacity>
                 </View>
+
+                {/* Componentes de alertas personalizadas */}
+                <CustomAlert
+                    visible={alertState.basicAlert.visible}
+                    title={alertState.basicAlert.title}
+                    message={alertState.basicAlert.message}
+                    type={alertState.basicAlert.type}
+                    onConfirm={alertState.basicAlert.onConfirm}
+                    onCancel={alertState.basicAlert.onCancel}
+                    confirmText={alertState.basicAlert.confirmText}
+                    cancelText={alertState.basicAlert.cancelText}
+                    showCancel={alertState.basicAlert.showCancel}
+                />
+
+                <ConfirmationDialog
+                    visible={alertState.confirmation.visible}
+                    title={alertState.confirmation.title}
+                    message={alertState.confirmation.message}
+                    onConfirm={alertState.confirmation.onConfirm}
+                    onCancel={alertState.confirmation.onCancel}
+                    confirmText={alertState.confirmation.confirmText}
+                    cancelText={alertState.confirmation.cancelText}
+                    isDangerous={alertState.confirmation.isDangerous}
+                />
+
+                <LoadingDialog
+                    visible={alertState.loading.visible}
+                    title={alertState.loading.title}
+                    message={alertState.loading.message}
+                    color={alertState.loading.color}
+                />
+
+                <InputDialog
+                    visible={alertState.input.visible}
+                    title={alertState.input.title}
+                    message={alertState.input.message}
+                    placeholder={alertState.input.placeholder}
+                    value={alertState.input.value}
+                    onChangeText={alertState.input.onChangeText}
+                    onConfirm={alertState.input.onConfirm}
+                    onCancel={alertState.input.onCancel}
+                    confirmText={alertState.input.confirmText}
+                    cancelText={alertState.input.cancelText}
+                    keyboardType={alertState.input.keyboardType}
+                />
+
+                <ToastDialog
+                    visible={alertState.toast.visible}
+                    message={alertState.toast.message}
+                    type={alertState.toast.type}
+                    duration={alertState.toast.duration}
+                    onHide={hideAlert}
+                />
             </KeyboardAvoidingView>
         </SafeAreaView>
     );

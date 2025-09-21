@@ -240,7 +240,7 @@ const VideoPlayerScreen = () => {
       <SafeAreaView style={styles.container} edges={['top']}>
         <StatusBar 
           barStyle="light-content" 
-          backgroundColor="#000" 
+          backgroundColor="#000000" 
           hidden={isFullscreen}
         />
         
@@ -434,7 +434,7 @@ const VideoPlayerScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: '#ffffff',
   },
   
   // Header
@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#000000',
+    backgroundColor: '#fffff',
   },
   backButton: {
     padding: 8,
@@ -452,7 +452,7 @@ const styles = StyleSheet.create({
   backIcon: {
     width: 24,
     height: 24,
-    tintColor: '#FFFFFF',
+    tintColor: '#000000',
   },
   headerInfo: {
     flex: 1,
@@ -460,12 +460,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#000000',
     fontFamily: 'Poppins-SemiBold',
   },
   headerSubtitle: {
     fontSize: 12,
-    color: '#CCCCCC',
+    color: '#999999',
     marginTop: 2,
     fontFamily: 'Poppins-Regular',
   },

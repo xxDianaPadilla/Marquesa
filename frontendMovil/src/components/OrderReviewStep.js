@@ -6,10 +6,11 @@ import {
     ScrollView,
     TouchableOpacity,
     ActivityIndicator,
-    Alert,
     Dimensions
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { useAlert } from '../hooks/useAlert';
+import { CustomAlert, LoadingDialog, ConfirmationDialog, InputDialog, ToastDialog } from '../components/CustomAlerts';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -21,6 +22,17 @@ const OrderReviewStep = ({
 }) => {
     const [isConfirming, setIsConfirming] = useState(false);
 
+    // Usar el hook de alertas personalizadas
+    const {
+        alertState,
+        showError,
+        hideAlert,
+        hideLoading,
+        hideConfirmation,
+        hideInput,
+        hideToast
+    } = useAlert();
+
     // Función para manejar la confirmación
     const handleConfirm = async () => {
         setIsConfirming(true);
@@ -28,7 +40,11 @@ const OrderReviewStep = ({
             await onConfirm();
         } catch (error) {
             console.error('Error al confirmar pedido:', error);
-            Alert.alert('Error', 'Error al confirmar el pedido. Inténtalo nuevamente.');
+            // Reemplazar Alert.alert por alerta personalizada
+            showError(
+                'Error al confirmar el pedido. Inténtalo nuevamente.',
+                'Error'
+            );
         } finally {
             setIsConfirming(false);
         }
@@ -40,7 +56,7 @@ const OrderReviewStep = ({
 
         try {
             let date;
-            
+
             if (dateString.includes('-')) {
                 // Crear fecha de manera segura para evitar desfase de zona horaria
                 const [year, month, day] = dateString.split('-');
@@ -49,11 +65,11 @@ const OrderReviewStep = ({
                 // Si viene como Date object o string, intentar parsearlo
                 date = new Date(dateString);
             }
-            
+
             if (isNaN(date.getTime())) {
                 return 'Fecha inválida';
             }
-            
+
             return date.toLocaleDateString('es-ES', {
                 weekday: 'long',
                 year: 'numeric',
@@ -79,9 +95,9 @@ const OrderReviewStep = ({
     // Verificar si todos los datos están presentes
     const hasAllRequiredData = () => {
         return orderData.shippingInfo?.receiverName &&
-               orderData.shippingInfo?.receiverPhone &&
-               orderData.shippingInfo?.deliveryAddress &&
-               orderData.paymentInfo?.paymentType;
+            orderData.shippingInfo?.receiverPhone &&
+            orderData.shippingInfo?.deliveryAddress &&
+            orderData.paymentInfo?.paymentType;
     };
 
     if (!orderData) {
@@ -111,7 +127,7 @@ const OrderReviewStep = ({
                             <Icon name="local-shipping" size={20} color="#666" />
                             <Text style={styles.sectionTitle}>Información de envío</Text>
                         </View>
-                        
+
                         <View style={styles.infoCard}>
                             <View style={styles.infoGrid}>
                                 <View style={styles.infoItem}>
@@ -157,7 +173,7 @@ const OrderReviewStep = ({
                             <Icon name="payment" size={20} color="#666" />
                             <Text style={styles.sectionTitle}>Información de pago</Text>
                         </View>
-                        
+
                         <View style={styles.infoCard}>
                             <View style={styles.infoItem}>
                                 <Text style={styles.infoLabel}>Método de pago:</Text>
@@ -194,7 +210,7 @@ const OrderReviewStep = ({
                             <Icon name="account-balance-wallet" size={20} color="#666" />
                             <Text style={styles.sectionTitle}>Resumen de costos</Text>
                         </View>
-                        
+
                         <View style={styles.infoCard}>
                             <View style={styles.costRow}>
                                 <Text style={styles.costLabel}>Subtotal:</Text>
@@ -282,6 +298,59 @@ const OrderReviewStep = ({
                     </View>
                 )}
             </View>
+
+            {/* Alertas personalizadas */}
+            <CustomAlert
+                visible={alertState.basicAlert.visible}
+                title={alertState.basicAlert.title}
+                message={alertState.basicAlert.message}
+                type={alertState.basicAlert.type}
+                confirmText={alertState.basicAlert.confirmText}
+                cancelText={alertState.basicAlert.cancelText}
+                showCancel={alertState.basicAlert.showCancel}
+                onConfirm={alertState.basicAlert.onConfirm}
+                onCancel={alertState.basicAlert.onCancel}
+            />
+
+            <LoadingDialog
+                visible={alertState.loading.visible}
+                title={alertState.loading.title}
+                message={alertState.loading.message}
+                color={alertState.loading.color}
+            />
+
+            <ConfirmationDialog
+                visible={alertState.confirmation.visible}
+                title={alertState.confirmation.title}
+                message={alertState.confirmation.message}
+                confirmText={alertState.confirmation.confirmText}
+                cancelText={alertState.confirmation.cancelText}
+                isDangerous={alertState.confirmation.isDangerous}
+                onConfirm={alertState.confirmation.onConfirm}
+                onCancel={alertState.confirmation.onCancel}
+            />
+
+            <InputDialog
+                visible={alertState.input.visible}
+                title={alertState.input.title}
+                message={alertState.input.message}
+                placeholder={alertState.input.placeholder}
+                value={alertState.input.value}
+                confirmText={alertState.input.confirmText}
+                cancelText={alertState.input.cancelText}
+                keyboardType={alertState.input.keyboardType}
+                onChangeText={alertState.input.onChangeText}
+                onConfirm={alertState.input.onConfirm}
+                onCancel={alertState.input.onCancel}
+            />
+
+            <ToastDialog
+                visible={alertState.toast.visible}
+                message={alertState.toast.message}
+                type={alertState.toast.type}
+                duration={alertState.toast.duration}
+                onHide={hideToast}
+            />
         </View>
     );
 };

@@ -7,7 +7,6 @@ import {
     TextInput,
     TouchableOpacity,
     ActivityIndicator,
-    Alert,
     Platform,
     Keyboard,
     Dimensions,
@@ -15,6 +14,8 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useAuth } from '../context/AuthContext';
+import { useAlert } from '../hooks/useAlert'; 
+import { CustomAlert, LoadingDialog, ConfirmationDialog, InputDialog, ToastDialog } from '../components/CustomDialogs'; 
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -25,6 +26,17 @@ const ShippingInfoMobile = ({
 }) => {
     // Obtener información del usuario desde el contexto
     const { userInfo } = useAuth();
+    
+    // Hook personalizado para manejar alertas
+    const {
+        alertState,
+        showError,
+        showSuccess,
+        showLoading,
+        hideLoading,
+        showConfirmation,
+        hideConfirmation,
+    } = useAlert();
 
     // Estado del formulario
     const [formData, setFormData] = useState({
@@ -39,7 +51,7 @@ const ShippingInfoMobile = ({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
 
-    // NUEVO: Estados para manejar el teclado
+    // Estados para manejar el teclado
     const [keyboardHeight, setKeyboardHeight] = useState(0);
     const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
@@ -50,7 +62,7 @@ const ShippingInfoMobile = ({
         return `${year}-${month}-${day}`;
     };
 
-    // NUEVO: Effect para manejar eventos del teclado
+    // Effect para manejar eventos del teclado
     useEffect(() => {
         const keyboardWillShowListener = Keyboard.addListener(
             Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
@@ -77,7 +89,6 @@ const ShippingInfoMobile = ({
     // Autocompletar información del usuario al cargar o cuando cambie userInfo
     useEffect(() => {
         if (userInfo && !initialData.receiverName) {
-            // Usar el nombre completo (fullName) o el nombre (name) según esté disponible
             const userName = userInfo.fullName || userInfo.name || '';
             if (userName) {
                 setFormData(prev => ({
@@ -90,13 +101,9 @@ const ShippingInfoMobile = ({
 
     // Función para formatear el teléfono automáticamente
     const formatPhoneNumber = (value) => {
-        // Remover todo excepto números
         const numbers = value.replace(/\D/g, '');
-
-        // Limitar a 8 dígitos
         const truncated = numbers.slice(0, 8);
 
-        // Formatear como ####-####
         if (truncated.length >= 5) {
             return `${truncated.slice(0, 4)}-${truncated.slice(4)}`;
         }
@@ -108,27 +115,27 @@ const ShippingInfoMobile = ({
     const validateForm = () => {
         const newErrors = {};
 
-        // Validar nombre del receptor (mínimo 12 caracteres, solo letras y espacios)
+        // Validar nombre del receptor
         if (!formData.receiverName || formData.receiverName.trim().length < 12) {
             newErrors.receiverName = 'El nombre debe tener al menos 12 caracteres';
         } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(formData.receiverName.trim())) {
             newErrors.receiverName = 'El nombre solo puede contener letras y espacios';
         }
 
-        // Validar teléfono (exactamente formato ####-####)
+        // Validar teléfono
         const phoneRegex = /^\d{4}-\d{4}$/;
         if (!formData.receiverPhone || !phoneRegex.test(formData.receiverPhone)) {
             newErrors.receiverPhone = 'El teléfono debe tener el formato ####-####';
         }
 
-        // Validar dirección (mínimo 20 caracteres, máximo 200)
+        // Validar dirección
         if (!formData.deliveryAddress || formData.deliveryAddress.trim().length < 20) {
             newErrors.deliveryAddress = 'La dirección debe tener al menos 20 caracteres';
         } else if (formData.deliveryAddress.trim().length > 200) {
             newErrors.deliveryAddress = 'La dirección no puede exceder 200 caracteres';
         }
 
-        // Validar punto de referencia (mínimo 20 caracteres, máximo 200)
+        // Validar punto de referencia
         if (!formData.deliveryPoint || formData.deliveryPoint.trim().length < 20) {
             newErrors.deliveryPoint = 'El punto de referencia debe tener al menos 20 caracteres';
         } else if (formData.deliveryPoint.trim().length > 200) {
@@ -155,20 +162,14 @@ const ShippingInfoMobile = ({
     const handleInputChange = (name, value) => {
         let processedValue = value;
 
-        // Procesar según el tipo de campo
         if (name === 'receiverName') {
-            // Solo permitir letras, espacios y caracteres especiales del español
             processedValue = value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '');
-            // Limitar a 100 caracteres
             processedValue = processedValue.slice(0, 100);
         } else if (name === 'receiverPhone') {
-            // Formatear teléfono automáticamente
             processedValue = formatPhoneNumber(value);
         } else if (name === 'deliveryAddress') {
-            // Limitar a 200 caracteres
             processedValue = value.slice(0, 200);
         } else if (name === 'deliveryPoint') {
-            // Limitar a 200 caracteres
             processedValue = value.slice(0, 200);
         }
 
@@ -177,7 +178,6 @@ const ShippingInfoMobile = ({
             [name]: processedValue
         }));
 
-        // Limpiar error específico cuando el usuario empiece a escribir
         if (errors[name]) {
             setErrors(prev => ({
                 ...prev,
@@ -196,7 +196,6 @@ const ShippingInfoMobile = ({
                 deliveryDate: selectedDate
             }));
 
-            // Limpiar error de fecha
             if (errors.deliveryDate) {
                 setErrors(prev => ({
                     ...prev,
@@ -216,7 +215,6 @@ const ShippingInfoMobile = ({
                     receiverName: userName
                 }));
 
-                // Limpiar error si existe
                 if (errors.receiverName) {
                     setErrors(prev => ({
                         ...prev,
@@ -227,22 +225,26 @@ const ShippingInfoMobile = ({
         }
     };
 
-    // Manejar envío del formulario
+    // Manejar envío del formulario - MODIFICADO para usar alertas personalizadas
     const handleSubmit = async () => {
         const formErrors = validateForm();
 
         if (Object.keys(formErrors).length > 0) {
             setErrors(formErrors);
-            // Mostrar el primer error en un Alert
+            // Usar alerta personalizada en lugar de Alert.alert
             const firstError = Object.values(formErrors)[0];
-            Alert.alert('Error de validación', firstError);
+            showError(firstError, 'Error de validación');
             return;
         }
 
         setIsSubmitting(true);
+        // Mostrar loading personalizado
+        showLoading({
+            title: 'Procesando información...',
+            message: 'Validando datos de envío',
+        });
 
         try {
-            // Pasar datos al componente padre
             await onShippingInfoUpdate({
                 receiverName: formData.receiverName.trim(),
                 receiverPhone: formData.receiverPhone.trim(),
@@ -251,11 +253,23 @@ const ShippingInfoMobile = ({
                 deliveryDate: formatDateToLocalISO(formData.deliveryDate)
             });
 
-            // Avanzar al siguiente paso
-            onNext();
+            hideLoading();
+            // Mostrar éxito y continuar
+            showSuccess('Información de envío guardada correctamente', 'Datos guardados');
+            
+            // Pequeño delay para que se vea la alerta de éxito antes de continuar
+            setTimeout(() => {
+                onNext();
+            }, 1000);
+
         } catch (error) {
+            hideLoading();
             console.error('Error al procesar información de envío:', error);
-            Alert.alert('Error', 'Error al procesar la información. Inténtalo nuevamente.');
+            // Usar alerta personalizada para errores
+            showError(
+                'Error al procesar la información. Inténtalo nuevamente.',
+                'Error de procesamiento'
+            );
         } finally {
             setIsSubmitting(false);
         }
@@ -270,7 +284,6 @@ const ShippingInfoMobile = ({
     const formatDateDisplay = (date) => {
         if (!date) return 'Seleccionar fecha';
 
-        // Si es un string (fecha ISO), convertirlo a Date
         let dateObj;
         if (typeof date === 'string') {
             dateObj = new Date(date);
@@ -280,7 +293,6 @@ const ShippingInfoMobile = ({
             return 'Seleccionar fecha';
         }
 
-        // Verificar que la fecha sea válida
         if (isNaN(dateObj.getTime())) {
             return 'Seleccionar fecha';
         }
@@ -315,7 +327,7 @@ const ShippingInfoMobile = ({
         return userName !== 'Usuario' && currentName !== userName;
     };
 
-    // NUEVO: Calcular el contenido principal ajustado para el teclado
+    // Calcular el contenido principal ajustado para el teclado
     const getContentContainerStyle = () => {
         const baseStyle = styles.scrollContent;
 
@@ -329,12 +341,12 @@ const ShippingInfoMobile = ({
         return baseStyle;
     };
 
-    // NUEVO: Calcular la altura del ScrollView
+    // Calcular la altura del ScrollView
     const getScrollViewStyle = () => {
         if (isKeyboardVisible && Platform.OS === 'ios') {
             return {
                 ...styles.scrollContainer,
-                maxHeight: SCREEN_HEIGHT - keyboardHeight - 200 // Ajustar según necesidad
+                maxHeight: SCREEN_HEIGHT - keyboardHeight - 200
             };
         }
 
@@ -346,7 +358,6 @@ const ShippingInfoMobile = ({
             <View style={styles.formContainer}>
                 <Text style={styles.title}>Información de envío</Text>
 
-                {/* MODIFICADO: ScrollView con mejor manejo del teclado */}
                 <ScrollView
                     style={getScrollViewStyle()}
                     contentContainerStyle={getContentContainerStyle()}
@@ -354,7 +365,6 @@ const ShippingInfoMobile = ({
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="on-drag"
                     scrollEventThrottle={16}
-                    // NUEVO: Props adicionales para mejor comportamiento
                     nestedScrollEnabled={true}
                     automaticallyAdjustContentInsets={false}
                     contentInsetAdjustmentBehavior="automatic"
@@ -486,7 +496,7 @@ const ShippingInfoMobile = ({
                         <TouchableOpacity
                             style={[styles.dateButton, errors.deliveryDate && styles.inputError]}
                             onPress={() => {
-                                Keyboard.dismiss(); // NUEVO: Cerrar teclado antes de mostrar picker
+                                Keyboard.dismiss();
                                 setShowDatePicker(true);
                             }}
                             disabled={isSubmitting}
@@ -520,11 +530,10 @@ const ShippingInfoMobile = ({
                         </View>
                     </View>
 
-                    {/* NUEVO: Espaciado adicional cuando el teclado está visible */}
                     {isKeyboardVisible && <View style={{ height: 80 }} />}
                 </ScrollView>
 
-                {/* MODIFICADO: Botón de continuar con mejor posicionamiento */}
+                {/* Botón de continuar */}
                 <View style={[
                     styles.buttonContainer,
                     isKeyboardVisible && Platform.OS === 'android' && {
@@ -567,6 +576,59 @@ const ShippingInfoMobile = ({
                     />
                 )}
             </View>
+
+            {/* NUEVO: Renderizar componentes de alertas personalizadas */}
+            <CustomAlert
+                visible={alertState.basicAlert.visible}
+                title={alertState.basicAlert.title}
+                message={alertState.basicAlert.message}
+                type={alertState.basicAlert.type}
+                onConfirm={alertState.basicAlert.onConfirm}
+                onCancel={alertState.basicAlert.onCancel}
+                confirmText={alertState.basicAlert.confirmText}
+                cancelText={alertState.basicAlert.cancelText}
+                showCancel={alertState.basicAlert.showCancel}
+            />
+
+            <LoadingDialog
+                visible={alertState.loading.visible}
+                title={alertState.loading.title}
+                message={alertState.loading.message}
+                color={alertState.loading.color}
+            />
+
+            <ConfirmationDialog
+                visible={alertState.confirmation.visible}
+                title={alertState.confirmation.title}
+                message={alertState.confirmation.message}
+                onConfirm={alertState.confirmation.onConfirm}
+                onCancel={alertState.confirmation.onCancel}
+                confirmText={alertState.confirmation.confirmText}
+                cancelText={alertState.confirmation.cancelText}
+                isDangerous={alertState.confirmation.isDangerous}
+            />
+
+            <InputDialog
+                visible={alertState.input.visible}
+                title={alertState.input.title}
+                message={alertState.input.message}
+                placeholder={alertState.input.placeholder}
+                value={alertState.input.value}
+                onChangeText={alertState.input.onChangeText}
+                onConfirm={alertState.input.onConfirm}
+                onCancel={alertState.input.onCancel}
+                confirmText={alertState.input.confirmText}
+                cancelText={alertState.input.cancelText}
+                keyboardType={alertState.input.keyboardType}
+            />
+
+            <ToastDialog
+                visible={alertState.toast.visible}
+                message={alertState.toast.message}
+                type={alertState.toast.type}
+                duration={alertState.toast.duration}
+                onHide={hideConfirmation}
+            />
         </View>
     );
 };
@@ -587,7 +649,6 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 4,
         shadowOffset: { width: 0, height: 2 },
-        // NUEVO: Asegurar que el container no se deforme
         position: 'relative',
     },
     title: {
@@ -599,12 +660,10 @@ const styles = StyleSheet.create({
     },
     scrollContainer: {
         flex: 1,
-        // NUEVO: Mejorar el comportamiento del scroll
         minHeight: 0,
     },
     scrollContent: {
         paddingBottom: 16,
-        // NUEVO: Asegurar espacio mínimo
         minHeight: '100%',
         flexGrow: 1,
     },
@@ -730,7 +789,6 @@ const styles = StyleSheet.create({
         paddingTop: 16,
         borderTopWidth: 1,
         borderTopColor: '#f3f4f6',
-        // NUEVO: Mejorar posicionamiento
         zIndex: 1,
     },
     submitButton: {

@@ -6,7 +6,6 @@ import {
     ScrollView,
     TouchableOpacity,
     Image,
-    Alert,
     ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
@@ -26,6 +25,15 @@ import backIcon from '../images/backIcon.png';
 import ShippingInfoMobile from '../components/ShippingInfo';
 import PaymentMethodStep from '../components/PaymentMethodStep';
 import OrderReviewStep from '../components/OrderReviewStep';
+
+// NUEVAS IMPORTACIONES - Alertas personalizadas
+import { 
+    CustomAlert, 
+    LoadingDialog, 
+    ConfirmationDialog, 
+    ToastDialog 
+} from '../components/CustomDialogs';
+import { useAlert } from '../hooks/useAlert';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -251,7 +259,7 @@ const FloatingSummaryButton = ({ onPress, total, itemCount }) => {
     );
 };
 
-// Componente Modal de éxito (sin cambios)
+// Componente Modal de éxito
 const SuccessModal = ({ visible, orderData, onContinueShopping }) => {
     return (
         <Modal
@@ -324,6 +332,20 @@ const PaymentProcessScreen = ({ navigation, route }) => {
         getActiveCart
     } = useCart();
 
+    // NUEVO: Hook para manejar alertas personalizadas
+    const {
+        alertState,
+        showError,
+        showSuccess,
+        showConfirmation,
+        hideAlert,
+        hideConfirmation,
+        showLoading,
+        hideLoading,
+        showSuccessToast,
+        hideToast
+    } = useAlert();
+
     // Estados principales
     const [currentStep, setCurrentStep] = useState(1);
     const [error, setError] = useState(null);
@@ -378,10 +400,11 @@ const PaymentProcessScreen = ({ navigation, route }) => {
         const checkoutData = route.params;
 
         if (!checkoutData) {
-            Alert.alert(
-                'Error',
+            // REEMPLAZADO: Alert nativo por alerta personalizada
+            showError(
                 'No se encontraron datos del carrito',
-                [{ text: 'OK', onPress: () => navigation.navigate('ShoppingCart') }]
+                'Error',
+                () => navigation.navigate('ShoppingCart')
             );
             return;
         }
@@ -407,18 +430,19 @@ const PaymentProcessScreen = ({ navigation, route }) => {
             return true;
         }
 
-        Alert.alert(
-            'Confirmar',
-            '¿Estás seguro de que quieres salir del proceso de pago?',
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Salir',
-                    style: 'destructive',
-                    onPress: () => navigation.navigate('ShoppingCart')
-                }
-            ]
-        );
+        // REEMPLAZADO: Alert nativo por confirmación personalizada
+        showConfirmation({
+            title: 'Confirmar',
+            message: '¿Estás seguro de que quieres salir del proceso de pago?',
+            onConfirm: () => {
+                hideConfirmation();
+                navigation.navigate('ShoppingCart');
+            },
+            onCancel: () => hideConfirmation(),
+            confirmText: 'Salir',
+            cancelText: 'Cancelar',
+            isDangerous: true
+        });
         return true;
     };
 
@@ -537,7 +561,11 @@ const PaymentProcessScreen = ({ navigation, route }) => {
 
     const handleConfirmOrder = async () => {
         try {
-            setIsProcessing(true);
+            // REEMPLAZADO: setIsProcessing por loading personalizado
+            showLoading({
+                title: 'Procesando pedido...',
+                message: 'Por favor espera mientras procesamos tu pedido'
+            });
             setError(null);
 
             console.log('Confirmando orden...');
@@ -548,13 +576,15 @@ const PaymentProcessScreen = ({ navigation, route }) => {
                 !orderData.shippingInfo.deliveryAddress ||
                 !orderData.shippingInfo.deliveryPoint ||
                 !orderData.shippingInfo.deliveryDate) {
-                setError('Faltan datos de envío requeridos');
+                hideLoading();
+                showError('Faltan datos de envío requeridos');
                 return;
             }
 
             // Validar información de pago
             if (!orderData.paymentInfo.paymentType) {
-                setError('Falta seleccionar método de pago');
+                hideLoading();
+                showError('Falta seleccionar método de pago');
                 return;
             }
 
@@ -570,7 +600,8 @@ const PaymentProcessScreen = ({ navigation, route }) => {
             const cartData = await cartResponse.json();
 
             if (!cartResponse.ok || !cartData.success || !cartData.shoppingCart) {
-                setError('Error al obtener información del carrito');
+                hideLoading();
+                showError('Error al obtener información del carrito');
                 return;
             }
 
@@ -614,6 +645,8 @@ const PaymentProcessScreen = ({ navigation, route }) => {
                     console.warn('No se pudo limpiar el carrito, pero la compra fue exitosa');
                 }
 
+                hideLoading();
+
                 // Mostrar modal de éxito
                 setOrderSuccessData({
                     orderId: result.data.sale._id,
@@ -625,14 +658,14 @@ const PaymentProcessScreen = ({ navigation, route }) => {
                 setShowSuccessModal(true);
 
             } else {
-                setError(result.message || 'Error al procesar el pedido');
+                hideLoading();
+                showError(result.message || 'Error al procesar el pedido');
             }
 
         } catch (error) {
             console.error('Error al confirmar pedido:', error);
-            setError('Error inesperado al procesar el pedido');
-        } finally {
-            setIsProcessing(false);
+            hideLoading();
+            showError('Error inesperado al procesar el pedido');
         }
     };
 
@@ -643,6 +676,9 @@ const PaymentProcessScreen = ({ navigation, route }) => {
         if (getActiveCart) {
             getActiveCart(true);
         }
+
+        // Mostrar toast de éxito
+        showSuccessToast('¡Compra realizada exitosamente!');
 
         // Navegar de vuelta al TabNavigator y específicamente al tab Home
         navigation.reset({
@@ -778,6 +814,45 @@ const PaymentProcessScreen = ({ navigation, route }) => {
                     visible={showSuccessModal}
                     orderData={orderSuccessData}
                     onContinueShopping={handleContinueShopping}
+                />
+
+                {/* Alertas personalizadas */}
+                <CustomAlert
+                    visible={alertState.basicAlert.visible}
+                    title={alertState.basicAlert.title}
+                    message={alertState.basicAlert.message}
+                    type={alertState.basicAlert.type}
+                    onConfirm={alertState.basicAlert.onConfirm}
+                    onCancel={alertState.basicAlert.onCancel}
+                    confirmText={alertState.basicAlert.confirmText}
+                    cancelText={alertState.basicAlert.cancelText}
+                    showCancel={alertState.basicAlert.showCancel}
+                />
+
+                <LoadingDialog
+                    visible={alertState.loading.visible}
+                    title={alertState.loading.title}
+                    message={alertState.loading.message}
+                    color={alertState.loading.color}
+                />
+
+                <ConfirmationDialog
+                    visible={alertState.confirmation.visible}
+                    title={alertState.confirmation.title}
+                    message={alertState.confirmation.message}
+                    onConfirm={alertState.confirmation.onConfirm}
+                    onCancel={alertState.confirmation.onCancel}
+                    confirmText={alertState.confirmation.confirmText}
+                    cancelText={alertState.confirmation.cancelText}
+                    isDangerous={alertState.confirmation.isDangerous}
+                />
+
+                <ToastDialog
+                    visible={alertState.toast.visible}
+                    message={alertState.toast.message}
+                    type={alertState.toast.type}
+                    duration={alertState.toast.duration}
+                    onHide={hideToast}
                 />
             </View>
         </KeyboardAvoidingView>

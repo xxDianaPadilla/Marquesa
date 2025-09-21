@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
     View,
     Text,
@@ -8,15 +8,18 @@ import {
     TextInput,
     Modal,
     ActivityIndicator,
-    Alert,
     Platform,
     Dimensions,
     KeyboardAvoidingView,
-    Image  // ← AGREGADO: Import de Image que faltaba
+    Image
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+
+// Importar los componentes de alertas personalizadas y el hook
+import { CustomAlert, ConfirmationDialog, ToastDialog } from '../components/CustomAlerts';
+import { useAlert } from '../hooks/useAlert';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -224,6 +227,55 @@ const PaymentMethodStep = ({
     });
     const [cardErrors, setCardErrors] = useState({});
 
+    // Referencias para manejar los timeouts de los toasts
+    const toastTimeoutRef = useRef(null);
+
+    // Hook para manejar las alertas personalizadas
+    const {
+        alertState,
+        showError,
+        showSuccess,
+        showConfirmation,
+        hideConfirmation,
+        showSuccessToast,
+        showErrorToast,
+        hideToast
+    } = useAlert();
+
+    // Función helper para mostrar toast con auto-hide
+    const showToastWithAutoHide = useCallback((toastFunction, message, duration = 3000) => {
+        // Limpiar timeout anterior si existe
+        if (toastTimeoutRef.current) {
+            clearTimeout(toastTimeoutRef.current);
+        }
+
+        // Mostrar el toast
+        toastFunction(message);
+
+        // Configurar timeout para ocultar el toast
+        toastTimeoutRef.current = setTimeout(() => {
+            hideToast();
+        }, duration);
+    }, [hideToast]);
+
+    // Funciones específicas para cada tipo de toast con auto-hide
+    const showSuccessToastWithHide = useCallback((message, duration = 3000) => {
+        showToastWithAutoHide(showSuccessToast, message, duration);
+    }, [showToastWithAutoHide, showSuccessToast]);
+
+    const showErrorToastWithHide = useCallback((message, duration = 3000) => {
+        showToastWithAutoHide(showErrorToast, message, duration);
+    }, [showToastWithAutoHide, showErrorToast]);
+
+    // Limpiar timeout al desmontar el componente
+    useEffect(() => {
+        return () => {
+            if (toastTimeoutRef.current) {
+                clearTimeout(toastTimeoutRef.current);
+            }
+        };
+    }, []);
+
     // Opciones de pago disponibles
     const paymentOptions = [
         {
@@ -246,17 +298,17 @@ const PaymentMethodStep = ({
         }
     ];
 
-    // CORREGIDO: Función para procesar el archivo seleccionado
+    // Función para procesar el archivo seleccionado
     const processSelectedFile = (file) => {
         console.log('Archivo seleccionado:', file);
 
         // Validar tamaño si está disponible
         if (file.fileSize && file.fileSize > 5 * 1024 * 1024) {
-            Alert.alert('Error', 'El archivo no debe exceder 5MB');
+            showError('El archivo no debe exceder 5MB');
             return;
         }
 
-        // CORREGIDO: Crear objeto compatible con FormData de React Native
+        // Crear objeto compatible con FormData de React Native
         const processedFile = {
             uri: file.uri,
             type: file.mimeType || file.type || 'image/jpeg',
@@ -284,7 +336,8 @@ const PaymentMethodStep = ({
             }));
         }
 
-        Alert.alert('Éxito', 'Archivo cargado correctamente');
+        // Usar la función con auto-hide
+        showSuccessToastWithHide('Archivo cargado correctamente');
     };
 
     // Manejar cambio en tipo de pago
@@ -435,7 +488,7 @@ const PaymentMethodStep = ({
 
         if (Object.keys(validationErrors).length > 0) {
             setCardErrors(validationErrors);
-            Alert.alert('Error de validación', 'Por favor, completa correctamente todos los campos de la tarjeta');
+            showError('Por favor, completa correctamente todos los campos de la tarjeta', 'Error de validación');
             return;
         }
 
@@ -451,9 +504,9 @@ const PaymentMethodStep = ({
                 cardProcessed: true
             }));
 
-            Alert.alert('Éxito', 'Pago con tarjeta procesado correctamente');
+            showSuccess('Pago con tarjeta procesado correctamente');
         }, 2000);
-    }, [cardData]);
+    }, [cardData, showError, showSuccess]);
 
     // Confirmar transferencia bancaria
     const handleBankTransferConfirm = useCallback(() => {
@@ -463,22 +516,38 @@ const PaymentMethodStep = ({
 
     // Seleccionar archivo (imagen o documento)
     const handleSelectFile = async () => {
-        Alert.alert(
-            'Seleccionar comprobante',
-            'Elige el tipo de archivo',
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                { text: 'Cámara', onPress: openCamera },
-                { text: 'Galería', onPress: openImagePicker },
-                { text: 'Documento', onPress: openDocumentPicker }
-            ]
-        );
+        showConfirmation({
+            title: 'Seleccionar comprobante',
+            message: 'Elige el tipo de archivo que deseas subir',
+            confirmText: 'Galería',
+            cancelText: 'Cancelar',
+            onConfirm: () => {
+                hideConfirmation();
+                // Mostrar opciones secundarias
+                setTimeout(() => {
+                    showConfirmation({
+                        title: 'Tipo de archivo',
+                        message: '¿Qué tipo de archivo quieres seleccionar?',
+                        confirmText: 'Imagen',
+                        cancelText: 'Documento',
+                        onConfirm: () => {
+                            hideConfirmation();
+                            openImagePicker();
+                        },
+                        onCancel: () => {
+                            hideConfirmation();
+                            openDocumentPicker();
+                        }
+                    });
+                }, 100);
+            }
+        });
     };
 
     const openCamera = async () => {
         const permission = await ImagePicker.requestCameraPermissionsAsync();
         if (!permission.granted) {
-            Alert.alert('Permiso requerido', 'Se necesita permiso para acceder a la cámara');
+            showError('Se necesita permiso para acceder a la cámara', 'Permiso requerido');
             return;
         }
 
@@ -496,7 +565,7 @@ const PaymentMethodStep = ({
     const openImagePicker = async () => {
         const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!permission.granted) {
-            Alert.alert('Permiso requerido', 'Se necesita permiso para acceder a la galería');
+            showError('Se necesita permiso para acceder a la galería', 'Permiso requerido');
             return;
         }
 
@@ -539,24 +608,24 @@ const PaymentMethodStep = ({
         return newErrors;
     };
 
-    // CORREGIDO: Manejar envío del formulario
+    // Manejar envío del formulario
     const handleSubmit = async () => {
         const formErrors = validateForm();
 
         if (Object.keys(formErrors).length > 0) {
             setErrors(formErrors);
-            Alert.alert('Error', 'Por favor, completa todos los campos requeridos');
+            showError('Por favor, completa todos los campos requeridos');
             return;
         }
 
         setIsSubmitting(true);
 
         try {
-            // CORREGIDO: Preparar datos de pago con formato correcto para FormData
+            // Preparar datos de pago con formato correcto para FormData
             const paymentData = {
                 paymentType: formData.paymentType,
                 paymentProofImage: formData.paymentType === 'Transferencia' && formData.paymentProofImage
-                    ? formData.paymentProofImage // Ya está en formato correcto desde processSelectedFile
+                    ? formData.paymentProofImage
                     : null
             };
 
@@ -571,12 +640,12 @@ const PaymentMethodStep = ({
             });
 
             await onPaymentInfoUpdate(paymentData);
-            Alert.alert('Éxito', 'Información de pago guardada correctamente');
+            showSuccess('Información de pago guardada correctamente');
             onNext();
         } catch (error) {
             console.error('Error al procesar información de pago:', error);
             setErrors({ general: 'Error al procesar la información. Inténtalo nuevamente.' });
-            Alert.alert('Error', 'Error al procesar la información. Inténtalo nuevamente.');
+            showError('Error al procesar la información. Inténtalo nuevamente.');
         } finally {
             setIsSubmitting(false);
         }
@@ -724,6 +793,38 @@ const PaymentMethodStep = ({
                     formatCardNumber={formatCardNumber}
                     formatExpiryDate={formatExpiryDate}
                     errors={cardErrors}
+                />
+
+                {/* Componentes de alertas personalizadas */}
+                <CustomAlert
+                    visible={alertState.basicAlert.visible}
+                    title={alertState.basicAlert.title}
+                    message={alertState.basicAlert.message}
+                    type={alertState.basicAlert.type}
+                    onConfirm={alertState.basicAlert.onConfirm}
+                    onCancel={alertState.basicAlert.onCancel}
+                    confirmText={alertState.basicAlert.confirmText}
+                    cancelText={alertState.basicAlert.cancelText}
+                    showCancel={alertState.basicAlert.showCancel}
+                />
+
+                <ConfirmationDialog
+                    visible={alertState.confirmation.visible}
+                    title={alertState.confirmation.title}
+                    message={alertState.confirmation.message}
+                    onConfirm={alertState.confirmation.onConfirm}
+                    onCancel={alertState.confirmation.onCancel}
+                    confirmText={alertState.confirmation.confirmText}
+                    cancelText={alertState.confirmation.cancelText}
+                    isDangerous={alertState.confirmation.isDangerous}
+                />
+
+                <ToastDialog
+                    visible={alertState.toast.visible}
+                    message={alertState.toast.message}
+                    type={alertState.toast.type}
+                    duration={alertState.toast.duration}
+                    onHide={hideToast}
                 />
             </View>
         </View>

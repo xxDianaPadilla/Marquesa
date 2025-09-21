@@ -31,7 +31,7 @@ const MediaCards = ({ item, index, navigation }) => {
     // Estado para manejar el like (actualmente solo visual)
     const [isLiked, setIsLiked] = useState(false);
 
-    // Función para manejar el clic en la tarjeta - navega al detalle
+    // Función para manejar el clic en la tarjeta - navega al detalle según el tipo
     const handleCardPress = () => {
         try {
             // Validar que el item tenga un ID válido
@@ -40,16 +40,38 @@ const MediaCards = ({ item, index, navigation }) => {
                 return;
             }
 
-            // Limpiar y convertir el ID a string
-            const itemId = String(item.id).trim();
-            console.log("Navegando a MediaDetailScreen con ID:", itemId);
+            // Verificar si es un video y tiene videoUrl
+            if (item.isVideo && item.videoUrl) {
+                console.log("Navegando a VideoPlayerScreen para video:", item.title);
+                
+                // Navegar al reproductor de video con los datos del video
+                navigation.navigate('VideoPlayerScreen', {
+                    videoData: {
+                        id: item.id,
+                        title: item.title,
+                        videoUrl: item.videoUrl,
+                        thumbnail: item.thumbnail || item.image,
+                        author: item.author,
+                        date: item.date,
+                        content: item.content,
+                        category: item.category,
+                        duration: item.duration,
+                        views: item.views,
+                        likes: item.likes
+                    }
+                });
+            } else {
+                // Para artículos o contenido que no es video
+                const itemId = String(item.id).trim();
+                console.log("Navegando a MediaDetailScreen con ID:", itemId);
 
-            // Navegar a la pantalla de detalle con parámetros
-            navigation.navigate('MediaDetailScreen', {
-                itemId: itemId,
-                item: item,
-                fromMediaScreen: true // Flag para identificar origen
-            });
+                // Navegar a la pantalla de detalle de artículo
+                navigation.navigate('MediaDetailScreen', {
+                    itemId: itemId,
+                    item: item,
+                    fromMediaScreen: true // Flag para identificar origen
+                });
+            }
         } catch (error) {
             console.error("Error en navegación:", error);
         }

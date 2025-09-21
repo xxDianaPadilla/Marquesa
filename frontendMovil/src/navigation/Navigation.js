@@ -25,11 +25,13 @@ import ProductDetailScreen from "../screens/ProductDetailScreen";
 import ChangePasswordScreen from "../screens/ChangePasswordScreen";
 import EditProfileScreen from "../screens/EditProfileScreen";
 import OrdersScreen from "../screens/OrdersScreen";
-import OrderDetailsScreen from "../screens/OrderDetailsScreen"; 
+import OrderDetailsScreen from "../screens/OrderDetailsScreen";
 import MediaScreen from "../screens/MediaScreen";
 import CustomProductsScreen from "../screens/CustomProductsScreen";
 import CustomizationFormScreen from "../screens/CustomizationFormScreen";
 import PaymentProcessScreen from "../screens/PaymentProcessScreen";
+import VideoPlayerScreen from "../screens/VideoPlayerScreen";
+
 
 // Componente principal de navegación de toda la aplicación
 export default function Navigation() {
@@ -183,6 +185,10 @@ export default function Navigation() {
                                 headerShown: false,    // Sin header porque ya tiene el suyo propio
                                 animation: 'slide_from_right', // Animación de entrada desde la derecha
                             }}
+                        />
+                        <Stack.Screen
+                            name="VideoPlayerScreen"
+                            component={VideoPlayerScreen}
                         />
 
                     </Stack.Navigator>

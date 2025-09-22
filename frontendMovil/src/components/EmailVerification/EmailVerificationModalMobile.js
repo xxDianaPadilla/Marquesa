@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, Dimensions, Platform } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import CodeInputMobile from './CodeInputMobile';
 import { useEmailVerificationMobile } from '../../hooks/useEmailVerificationMobile';
@@ -33,6 +33,21 @@ const EmailVerificationModalMobile = ({
 
     // Hook personalizado para verificación de email
     const { requestEmailVerification, verifyEmailAndRegister, isLoading } = useEmailVerificationMobile();
+
+    // Calcular dimensiones responsive del modal
+    const getModalDimensions = () => {
+        const isSmallScreen = screenWidth < 350;
+        const isMediumScreen = screenWidth >= 350 && screenWidth < 400;
+        
+        return {
+            maxWidth: isSmallScreen ? screenWidth - 30 : Math.min(400, screenWidth - 40),
+            horizontalPadding: isSmallScreen ? 15 : 20,
+            contentPadding: isSmallScreen ? 20 : 24,
+            maxHeight: Math.min(screenHeight * 0.85, 650), // Límite más flexible
+        };
+    };
+
+    const modalDimensions = getModalDimensions();
 
     // Efecto para enviar automáticamente el código cuando se abre el modal
     useEffect(() => {
@@ -172,15 +187,27 @@ const EmailVerificationModalMobile = ({
             onRequestClose={handleClose}
         >
             <View style={styles.overlay}>
-                <View style={[styles.modalContainer, { maxHeight: screenHeight * 0.8 }]}>
+                <View style={[
+                    styles.modalContainer, 
+                    { 
+                        maxWidth: modalDimensions.maxWidth,
+                        maxHeight: modalDimensions.maxHeight,
+                        paddingHorizontal: modalDimensions.horizontalPadding,
+                    }
+                ]}>
                     
                     {/* Header del modal */}
-                    <View style={styles.header}>
+                    <View style={[styles.header, { paddingHorizontal: modalDimensions.contentPadding }]}>
                         <View style={styles.headerContent}>
                             <View style={styles.iconContainer}>
-                                <Icon name="email" size={24} color="#FFFFFF" />
+                                <Icon name="email" size={screenWidth < 350 ? 20 : 24} color="#FFFFFF" />
                             </View>
-                            <Text style={styles.title}>Verificar email</Text>
+                            <Text style={[
+                                styles.title, 
+                                { fontSize: screenWidth < 350 ? 16 : 18 }
+                            ]}>
+                                Verificar email
+                            </Text>
                         </View>
                         
                         {!isLoading && (
@@ -188,44 +215,83 @@ const EmailVerificationModalMobile = ({
                                 onPress={handleClose}
                                 style={styles.closeButton}
                             >
-                                <Icon name="close" size={24} color="#666666" />
+                                <Icon name="close" size={screenWidth < 350 ? 20 : 24} color="#666666" />
                             </TouchableOpacity>
                         )}
                     </View>
 
                     {/* Contenido dinámico según el estado */}
-                    <View style={styles.content}>
+                    <View style={[styles.content, { paddingHorizontal: modalDimensions.contentPadding }]}>
                         
                         {/* Estado: Enviando código */}
                         {step === 'sending' && (
                             <View style={styles.centerContent}>
                                 <View style={styles.loadingContainer}>
                                     <View style={styles.spinnerContainer}>
-                                        <ActivityIndicator size="large" color="#FDB4B7" />
-                                        <View style={styles.pulseCircle} />
+                                        <ActivityIndicator 
+                                            size={screenWidth < 350 ? "default" : "large"} 
+                                            color="#FDB4B7" 
+                                        />
+                                        <View style={[
+                                            styles.pulseCircle,
+                                            screenWidth < 350 && styles.pulseCircleSmall
+                                        ]} />
                                     </View>
                                 </View>
                                 
-                                <Text style={styles.stepTitle}>Enviando correo...</Text>
-                                <Text style={styles.stepDescription}>
+                                <Text style={[
+                                    styles.stepTitle,
+                                    { fontSize: screenWidth < 350 ? 18 : 20 }
+                                ]}>
+                                    Enviando correo...
+                                </Text>
+                                <Text style={[
+                                    styles.stepDescription,
+                                    { fontSize: screenWidth < 350 ? 13 : 14 }
+                                ]}>
                                     Estamos enviando el código de verificación a
                                 </Text>
-                                <Text style={styles.emailText}>{email}</Text>
+                                <Text style={[
+                                    styles.emailText,
+                                    { fontSize: screenWidth < 350 ? 13 : 14 }
+                                ]}>
+                                    {email}
+                                </Text>
                             </View>
                         )}
 
                         {/* Estado: Ingreso de código */}
                         {step === 'code' && (
                             <View style={styles.centerContent}>
-                                <View style={styles.successIconContainer}>
-                                    <Icon name="email" size={32} color="#FFFFFF" />
+                                <View style={[
+                                    styles.successIconContainer,
+                                    screenWidth < 350 && styles.successIconContainerSmall
+                                ]}>
+                                    <Icon 
+                                        name="email" 
+                                        size={screenWidth < 350 ? 28 : 32} 
+                                        color="#FFFFFF" 
+                                    />
                                 </View>
                                 
-                                <Text style={styles.stepTitle}>Código enviado</Text>
-                                <Text style={styles.stepDescription}>
+                                <Text style={[
+                                    styles.stepTitle,
+                                    { fontSize: screenWidth < 350 ? 18 : 20 }
+                                ]}>
+                                    Código enviado
+                                </Text>
+                                <Text style={[
+                                    styles.stepDescription,
+                                    { fontSize: screenWidth < 350 ? 13 : 14 }
+                                ]}>
                                     Hemos enviado un código de verificación a
                                 </Text>
-                                <Text style={styles.emailText}>{email}</Text>
+                                <Text style={[
+                                    styles.emailText,
+                                    { fontSize: screenWidth < 350 ? 13 : 14 }
+                                ]}>
+                                    {email}
+                                </Text>
                                 
                                 <CodeInputMobile
                                     ref={codeInputRef}
@@ -238,7 +304,12 @@ const EmailVerificationModalMobile = ({
                                 {error && (
                                     <View style={styles.errorContainer}>
                                         <Icon name="error" size={16} color="#E53E3E" />
-                                        <Text style={styles.errorText}>{error}</Text>
+                                        <Text style={[
+                                            styles.errorText,
+                                            { fontSize: screenWidth < 350 ? 11 : 12 }
+                                        ]}>
+                                            {error}
+                                        </Text>
                                     </View>
                                 )}
                                 
@@ -249,6 +320,7 @@ const EmailVerificationModalMobile = ({
                                 >
                                     <Text style={[
                                         styles.resendText,
+                                        { fontSize: screenWidth < 350 ? 13 : 14 },
                                         (resendTimer > 0 || cooldownTimer > 0 || isLoading) && styles.resendTextDisabled
                                     ]}>
                                         {cooldownTimer > 0 
@@ -267,13 +339,27 @@ const EmailVerificationModalMobile = ({
                             <View style={styles.centerContent}>
                                 <View style={styles.verifyingContainer}>
                                     <View style={styles.spinnerContainer}>
-                                        <ActivityIndicator size="large" color="#4CAF50" />
-                                        <View style={styles.verifyingPulse} />
+                                        <ActivityIndicator 
+                                            size={screenWidth < 350 ? "default" : "large"} 
+                                            color="#4CAF50" 
+                                        />
+                                        <View style={[
+                                            styles.verifyingPulse,
+                                            screenWidth < 350 && styles.verifyingPulseSmall
+                                        ]} />
                                     </View>
                                 </View>
                                 
-                                <Text style={styles.stepTitle}>Verificando código...</Text>
-                                <Text style={styles.stepDescription}>
+                                <Text style={[
+                                    styles.stepTitle,
+                                    { fontSize: screenWidth < 350 ? 18 : 20 }
+                                ]}>
+                                    Verificando código...
+                                </Text>
+                                <Text style={[
+                                    styles.stepDescription,
+                                    { fontSize: screenWidth < 350 ? 13 : 14 }
+                                ]}>
                                     Estamos completando tu registro
                                 </Text>
                             </View>
@@ -281,8 +367,11 @@ const EmailVerificationModalMobile = ({
                     </View>
 
                     {/* Footer informativo */}
-                    <View style={styles.footer}>
-                        <Text style={styles.footerText}>
+                    <View style={[styles.footer, { paddingHorizontal: modalDimensions.contentPadding }]}>
+                        <Text style={[
+                            styles.footerText,
+                            { fontSize: screenWidth < 350 ? 11 : 12 }
+                        ]}>
                             El código expira en 10 minutos. Si no lo recibes, 
                             revisa tu carpeta de spam o correo no deseado.
                         </Text>
@@ -305,18 +394,18 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderRadius: 20,
         width: '100%',
-        maxWidth: Math.min(400, screenWidth - 40),
         shadowColor: '#000000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
         elevation: 8,
+        paddingHorizontal: 0, 
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: 20,
+        paddingVertical: 20,
         borderBottomWidth: 1,
         borderBottomColor: '#F0F0F0',
     },
@@ -335,7 +424,6 @@ const styles = StyleSheet.create({
         marginRight: 12,
     },
     title: {
-        fontSize: 18,
         fontFamily: 'Poppins-SemiBold',
         color: '#333333',
     },
@@ -345,22 +433,22 @@ const styles = StyleSheet.create({
         backgroundColor: '#F8F8F8',
     },
     content: {
-        paddingHorizontal: 24,
-        paddingVertical: 32,
+        paddingVertical: screenWidth < 350 ? 24 : 32,
+        minHeight: 200, 
     },
     centerContent: {
         alignItems: 'center',
     },
     loadingContainer: {
-        marginBottom: 24,
+        marginBottom: screenWidth < 350 ? 20 : 24,
         alignItems: 'center',
     },
     spinnerContainer: {
         position: 'relative',
         justifyContent: 'center',
         alignItems: 'center',
-        width: 60,
-        height: 60,
+        width: screenWidth < 350 ? 50 : 60,
+        height: screenWidth < 350 ? 50 : 60,
     },
     pulseCircle: {
         position: 'absolute',
@@ -369,6 +457,11 @@ const styles = StyleSheet.create({
         borderRadius: 30,
         backgroundColor: '#FDB4B7',
         opacity: 0.3,
+    },
+    pulseCircleSmall: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
     },
     successIconContainer: {
         width: 64,
@@ -379,8 +472,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 24,
     },
+    successIconContainerSmall: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        marginBottom: 20,
+    },
     verifyingContainer: {
-        marginBottom: 24,
+        marginBottom: screenWidth < 350 ? 20 : 24,
         alignItems: 'center',
     },
     verifyingPulse: {
@@ -391,39 +490,42 @@ const styles = StyleSheet.create({
         backgroundColor: '#4CAF50',
         opacity: 0.3,
     },
+    verifyingPulseSmall: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+    },
     stepTitle: {
-        fontSize: 20,
         fontFamily: 'Poppins-SemiBold',
         color: '#333333',
         marginBottom: 12,
         textAlign: 'center',
     },
     stepDescription: {
-        fontSize: 14,
         fontFamily: 'Poppins-Regular',
         color: '#666666',
         textAlign: 'center',
         marginBottom: 8,
+        lineHeight: 20,
     },
     emailText: {
-        fontSize: 14,
         fontFamily: 'Poppins-Medium',
         color: '#FDB4B7',
         textAlign: 'center',
         marginBottom: 24,
+        flexWrap: 'wrap', 
     },
     errorContainer: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         backgroundColor: '#FEF2F2',
         padding: 12,
         borderRadius: 8,
         marginTop: 16,
         marginBottom: 16,
-        maxWidth: '100%',
+        width: '100%',
     },
     errorText: {
-        fontSize: 12,
         fontFamily: 'Poppins-Regular',
         color: '#E53E3E',
         marginLeft: 8,
@@ -434,9 +536,9 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         paddingHorizontal: 16,
         marginTop: 16,
+        width: '100%',
     },
     resendText: {
-        fontSize: 14,
         fontFamily: 'Poppins-Medium',
         color: '#FDB4B7',
         textAlign: 'center',
@@ -447,13 +549,11 @@ const styles = StyleSheet.create({
     },
     footer: {
         backgroundColor: '#F8F9FA',
-        paddingHorizontal: 24,
         paddingVertical: 16,
         borderBottomLeftRadius: 20,
         borderBottomRightRadius: 20,
     },
     footerText: {
-        fontSize: 12,
         fontFamily: 'Poppins-Regular',
         color: '#666666',
         textAlign: 'center',

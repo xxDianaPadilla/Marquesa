@@ -10,13 +10,31 @@ const CodeInputMobile = forwardRef(({ onCodeChange, onComplete, disabled = false
     const [code, setCode] = useState(['', '', '', '', '', '']);
     const inputRefs = useRef([]);
 
-    // Calcular tamaño de input basado en el ancho de pantalla
+    // Calcular tamaño de input basado en el ancho de pantalla de forma más precisa
     const getInputSize = () => {
-        const padding = 40; // Padding horizontal del contenedor
-        const gaps = 5 * 12; // 5 gaps de 12px cada uno
-        const availableWidth = screenWidth - padding - gaps;
-        const inputSize = Math.min(45, availableWidth / 6);
-        return inputSize;
+        // Ancho máximo del modal (400px o screenWidth - 40px)
+        const modalMaxWidth = Math.min(400, screenWidth - 40);
+        
+        // Padding horizontal del modal (24px * 2)
+        const modalPadding = 48;
+        
+        // Padding horizontal del container de inputs (10px * 2)
+        const containerPadding = 20;
+        
+        // Gaps entre inputs (12px * 5)
+        const totalGaps = 12 * 5;
+        
+        // Ancho disponible para los inputs
+        const availableWidth = modalMaxWidth - modalPadding - containerPadding - totalGaps;
+        
+        // Dividir entre 6 inputs y limitar tamaño
+        const calculatedSize = Math.floor(availableWidth / 6);
+        
+        // Establecer límites mínimos y máximos
+        const minSize = 35;
+        const maxSize = 50;
+        
+        return Math.max(minSize, Math.min(maxSize, calculatedSize));
     };
 
     // Efecto para notificar cambios en el código
@@ -76,8 +94,8 @@ const CodeInputMobile = forwardRef(({ onCodeChange, onComplete, disabled = false
 
     return (
         <View style={styles.container}>
-            {/* Contenedor de inputs */}
-            <View style={styles.inputsContainer}>
+            {/* Contenedor de inputs con mejor responsive */}
+            <View style={[styles.inputsContainer, { paddingHorizontal: 10 }]}>
                 {code.map((digit, index) => (
                     <TextInput
                         key={index}
@@ -93,6 +111,7 @@ const CodeInputMobile = forwardRef(({ onCodeChange, onComplete, disabled = false
                             {
                                 width: inputSize,
                                 height: inputSize,
+                                fontSize: inputSize > 45 ? 18 : 16, 
                             },
                             error ? styles.inputError : null,
                             disabled ? styles.inputDisabled : null
@@ -110,22 +129,27 @@ const styles = StyleSheet.create({
     container: {
         width: '100%',
         alignItems: 'center',
+        paddingVertical: 8,
     },
     inputsContainer: {
         flexDirection: 'row',
         justifyContent: 'center',
+        alignItems: 'center',
+        flexWrap: 'nowrap',
         gap: 12,
         marginBottom: 16,
-        paddingHorizontal: 10,
+        width: '100%',
     },
     input: {
         borderWidth: 2,
         borderColor: '#FDB4B7',
         borderRadius: 8,
-        fontSize: 18,
         fontFamily: 'Poppins-SemiBold',
         color: '#333333',
         backgroundColor: '#FFFFFF',
+        textAlignVertical: 'center',
+        includeFontPadding: false, 
+        paddingVertical: 0,
     },
     inputError: {
         borderColor: '#E53E3E',

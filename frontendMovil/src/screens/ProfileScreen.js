@@ -1,8 +1,10 @@
+// frontendMovil/src/screens/ProfileScreen.js - VERSIÓN FINAL CON NAVEGACIÓN A RULETA
 import React from "react";
 import { View, TouchableOpacity, Image, StyleSheet, Text, ScrollView } from "react-native";
 import { useAuth } from "../context/AuthContext";
 import { useAlert } from "../hooks/useAlert";
 import { CustomAlert, LoadingDialog, ConfirmationDialog } from "../components/CustomAlerts";
+
 // Importación de iconos utilizados en la pantalla
 import backIcon from "../images/backIcon.png";
 import userIcon from "../images/userIcon.png";
@@ -80,7 +82,7 @@ export default function ProfileScreen({ navigation }) {
         navigation.goBack();
     };
 
-    // Configuración de elementos del menú principal
+    // ✅ CONFIGURACIÓN ACTUALIZADA DEL MENÚ CON NAVEGACIÓN A RULETA
     const menuItems = [
         {
             id: 1,
@@ -104,19 +106,25 @@ export default function ProfileScreen({ navigation }) {
             id: 4,
             title: "Mis códigos de descuento",
             icon: discountIcon,
-            onPress: () => console.log("Mis códigos de descuento") // Funcionalidad pendiente
+            onPress: () => {
+                console.log('🎯 Navegando a DiscountCodes...');
+                navigation.navigate('DiscountCodes');
+            }
         },
         {
             id: 5,
             title: "Términos y condiciones",
             icon: termConditionIcon,
-            onPress: () => console.log("Términos y condiciones") // Funcionalidad pendiente
+            onPress: () => console.log("Términos y condiciones - Funcionalidad pendiente")
         },
         {
             id: 6,
-            title: "Ruletas y promociones",
+            title: "Ruleta y promociones",
             icon: promocionesIcon,
-            onPress: () => console.log("Ruletas y promociones") // Funcionalidad pendiente
+            onPress: () => {
+                console.log('🎰 Navegando a Ruleta...');
+                navigation.navigate('Ruleta');
+            }
         }
     ];
 
@@ -168,6 +176,7 @@ export default function ProfileScreen({ navigation }) {
                             key={item.id}
                             style={styles.menuItem}
                             onPress={item.onPress}
+                            activeOpacity={0.7} // ✅ Añadido feedback visual
                         >
                             {/* Lado izquierdo del elemento (icono + texto) */}
                             <View style={styles.menuItemLeft}>
@@ -185,6 +194,7 @@ export default function ProfileScreen({ navigation }) {
                     style={styles.logoutButton}
                     onPress={handleLogout}
                     disabled={isLoggingOut} // Deshabilitar mientras se procesa el logout
+                    activeOpacity={0.7}
                 >
                     <Image source={logoutIcon} style={styles.logoutIcon} />
                     <Text style={styles.logoutText}>
@@ -293,20 +303,6 @@ const styles = StyleSheet.create({
         fontFamily: 'Poppins-SemiBold',
         color: '#6B73FF',
     },
-    // Botón de edición (no utilizado actualmente)
-    editButton: {
-        position: 'absolute',
-        bottom: 0,
-        right: 0,
-        width: 24,
-        height: 24,
-        backgroundColor: '#FF6B6B',
-        borderRadius: 12,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 2,
-        borderColor: '#FFFFFF',
-    },
     // Nombre del usuario mostrado en el perfil
     userName: {
         fontSize: 24,
@@ -316,7 +312,7 @@ const styles = StyleSheet.create({
     },
     // Contenedor de todos los elementos del menú
     menuContainer: {
-        marginBottom: 40,
+        marginBottom: 30, // ✅ Reducido para hacer espacio al acceso rápido
     },
     // Estilo individual de cada elemento del menú
     menuItem: {
@@ -375,7 +371,7 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         paddingHorizontal: 20,
         borderRadius: 12,
-        marginBottom: 30,
+        marginBottom: 70, // Espacio extra al final
         // Sombra similar a los elementos del menú
         shadowColor: '#000000',
         shadowOffset: {
@@ -385,7 +381,6 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.05,
         shadowRadius: 2,
         elevation: 1,
-        marginBottom: 70, // Espacio extra al final
     },
     // Icono del botón de logout
     logoutIcon: {

@@ -18,6 +18,13 @@ export const useAuth = () => {
     return context;
 };
 
+// Configuración del sistema de límite de intentos de login
+const RATE_LIMIT_CONFIG = {
+    maxAttempts: 5, // Máximo número de intentos fallidos permitidos
+    lockoutDuration: 15 * 60, // Duración del bloqueo en segundos (15 minutos)
+    warningThreshold: 3 // Número de intentos después del cual se muestra advertencia
+};
+
 // Objeto con funciones de validación para diferentes campos
 const validators = {
     // Función para validar formato de email
@@ -80,6 +87,107 @@ const validators = {
     }
 };
 
+// Almacenamiento en memoria para los intentos de login fallidos
+const loginAttempts = new Map();
+
+// Utilidades para el manejo del sistema de límite de intentos
+const RateLimitUtils = {
+    // Genera una clave única para almacenar los intentos por email
+    getStorageKey: (email) => `login_attempts_${email.toLowerCase()}`,
+
+    // Obtiene los datos de intentos almacenados para un email
+    getAttemptData: (email) => {
+        const key = RateLimitUtils.getStorageKey(email);
+        return loginAttempts.get(key) || { attempts: 0, lockedUntil: null };
+    },
+
+    // Guarda los datos de intentos para un email
+    saveAttemptData: (email, data) => {
+        const key = RateLimitUtils.getStorageKey(email);
+        loginAttempts.set(key, data);
+    },
+
+    // Verifica si una cuenta está bloqueada
+    isAccountLocked: (email) => {
+        const data = RateLimitUtils.getAttemptData(email);
+        if (!data.lockedUntil) return false;
+
+        const now = Date.now();
+        if (now >= data.lockedUntil) {
+            // El bloqueo ha expirado, limpiar los datos
+            RateLimitUtils.clearAttempts(email);
+            return false;
+        }
+        return true;
+    },
+
+    // Obtiene el tiempo restante de bloqueo en segundos
+    getRemainingLockTime: (email) => {
+        const data = RateLimitUtils.getAttemptData(email);
+        if (!data.lockedUntil) return 0;
+
+        const now = Date.now();
+        const remaining = Math.max(0, Math.ceil((data.lockedUntil - now) / 1000));
+        return remaining;
+    },
+
+    // Registra un intento fallido y determina si se debe bloquear la cuenta
+    recordFailedAttempt: (email) => {
+        const data = RateLimitUtils.getAttemptData(email);
+        const newAttempts = data.attempts + 1;
+
+        let newData = {
+            attempts: newAttempts,
+            lockedUntil: data.lockedUntil,
+            lastAttempt: Date.now()
+        };
+
+        // Si se alcanza el máximo de intentos, bloquear la cuenta
+        if (newAttempts >= RATE_LIMIT_CONFIG.maxAttempts) {
+            const lockDuration = RATE_LIMIT_CONFIG.lockoutDuration * 1000;
+            newData.lockedUntil = Date.now() + lockDuration;
+        }
+
+        RateLimitUtils.saveAttemptData(email, newData);
+        return newData;
+    },
+
+    // Limpia los intentos después de un login exitoso
+    clearAttempts: (email) => {
+        const key = RateLimitUtils.getStorageKey(email);
+        loginAttempts.delete(key);
+    },
+
+    // Formatea el tiempo restante en un formato legible
+    formatRemainingTime: (seconds) => {
+        if (seconds <= 0) return '';
+
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+
+        if (hours > 0) {
+            return `${hours}h ${minutes}m ${secs}s`;
+        } else if (minutes > 0) {
+            return `${minutes}m ${secs}s`;
+        } else {
+            return `${secs}s`;
+        }
+    },
+
+    // Obtiene un mensaje de advertencia sobre intentos restantes
+    getAttemptsWarning: (email) => {
+        const data = RateLimitUtils.getAttemptData(email);
+
+        if (data.attempts >= RATE_LIMIT_CONFIG.warningThreshold &&
+            data.attempts < RATE_LIMIT_CONFIG.maxAttempts) {
+            const remaining = RATE_LIMIT_CONFIG.maxAttempts - data.attempts;
+            return `Te quedan ${remaining} intento${remaining === 1 ? '' : 's'} antes de que tu cuenta sea bloqueada temporalmente.`;
+        }
+        return null;
+    }
+};
+
 // Componente proveedor del contexto de autenticación
 export const AuthProvider = ({ children }) => {
     // Estado para almacenar datos básicos del usuario
@@ -107,6 +215,42 @@ export const AuthProvider = ({ children }) => {
 
     // Estado para coordinar con CartContext
     const [authReady, setAuthReady] = useState(false);
+
+    // Estados para el sistema de límite de intentos
+    const [lockoutInfo, setLockoutInfo] = useState(null);
+
+    // Función para verificar el estado de bloqueo de una cuenta
+    const checkAccountLockStatus = useCallback((email) => {
+        if (!email) return { isLocked: false };
+
+        const cleanEmail = email.trim().toLowerCase();
+        const isLocked = RateLimitUtils.isAccountLocked(cleanEmail);
+
+        if (isLocked) {
+            const remainingTime = RateLimitUtils.getRemainingLockTime(cleanEmail);
+            const formattedTime = RateLimitUtils.formatRemainingTime(remainingTime);
+
+            const lockInfo = {
+                isLocked: true,
+                remainingTime: remainingTime,
+                formattedTime: formattedTime,
+                message: `Tu cuenta está temporalmente bloqueada. Tiempo restante: ${formattedTime}`
+            };
+
+            setLockoutInfo(lockInfo);
+            return lockInfo;
+        } else {
+            setLockoutInfo(null);
+            return { isLocked: false };
+        }
+    }, []);
+
+    // Función para obtener advertencias sobre intentos restantes
+    const getAttemptsWarning = useCallback((email) => {
+        if (!email) return null;
+        const cleanEmail = email.trim().toLowerCase();
+        return RateLimitUtils.getAttemptsWarning(cleanEmail);
+    }, []);
 
     // Función para guardar token en AsyncStorage
     const saveTokenToStorage = async (token) => {
@@ -654,6 +798,9 @@ export const AuthProvider = ({ children }) => {
             setFavorites([]);
             setFavoritesError(null);
 
+            // Limpiar estados de rate limiting
+            setLockoutInfo(null);
+
             // Cambiar loading si no viene del logout
             if (!fromLogout) {
                 setLoading(false);
@@ -671,6 +818,7 @@ export const AuthProvider = ({ children }) => {
             setUserInfo(null);
             setIsAuthenticated(false);
             setFavorites([]);
+            setLockoutInfo(null);
 
             // Cambiar loading si no viene del logout
             if (!fromLogout) {
@@ -1128,14 +1276,14 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Función de login mejorada
+    // Función de login mejorada con sistema de límite de intentos
     const login = async (email, password) => {
         try {
             // Activar estados de login
             setIsLoggingIn(true);
             setLoading(true);
             setAuthError(null);
-            setAuthReady(false); 
+            setAuthReady(false);
             // Log del inicio del proceso de login
             console.log('Iniciando proceso de login...');
 
@@ -1162,6 +1310,21 @@ export const AuthProvider = ({ children }) => {
             // Limpiar y normalizar email
             const cleanEmail = email.trim().toLowerCase();
 
+            // Verificar si la cuenta está bloqueada antes de realizar el login
+            const lockStatus = checkAccountLockStatus(cleanEmail);
+            if (lockStatus.isLocked) {
+                setAuthError(lockStatus.message);
+                setIsLoggingIn(false);
+                setLoading(false);
+                return { 
+                    success: false, 
+                    message: lockStatus.message,
+                    isAccountLocked: true,
+                    remainingTime: lockStatus.remainingTime,
+                    formattedTime: lockStatus.formattedTime
+                };
+            }
+
             // Realizar petición de login al servidor
             const response = await fetch('https://marquesa.onrender.com/api/login', {
                 method: 'POST',
@@ -1178,6 +1341,10 @@ export const AuthProvider = ({ children }) => {
 
             // Verificar si el login fue exitoso
             if (response.ok && (data.message === "login successful" || data.message === "Inicio de sesión exitoso")) {
+                // Login exitoso - limpiar intentos fallidos
+                RateLimitUtils.clearAttempts(cleanEmail);
+                setLockoutInfo(null);
+
                 // Log de login exitoso detectado
                 console.log('Login exitoso detectado');
 
@@ -1256,14 +1423,58 @@ export const AuthProvider = ({ children }) => {
                     throw new Error('No se recibió token del servidor');
                 }
             } else {
+                // Login fallido - registrar intento fallido
+                const attemptData = RateLimitUtils.recordFailedAttempt(cleanEmail);
+                
                 // Obtener mensaje de error del servidor
-                const errorMsg = data.message || 'Error en la autenticación';
+                let errorMsg = data.message || 'Error en la autenticación';
+                
+                // Verificar si la cuenta se bloqueó con este intento
+                if (attemptData.attempts >= RATE_LIMIT_CONFIG.maxAttempts) {
+                    const lockDuration = Math.ceil(RATE_LIMIT_CONFIG.lockoutDuration / 60);
+                    errorMsg = `Tu cuenta ha sido bloqueada temporalmente por ${lockDuration} minutos debido a múltiples intentos fallidos.`;
+                    
+                    // Actualizar información de bloqueo
+                    const lockInfo = {
+                        isLocked: true,
+                        remainingTime: RATE_LIMIT_CONFIG.lockoutDuration,
+                        formattedTime: RateLimitUtils.formatRemainingTime(RATE_LIMIT_CONFIG.lockoutDuration),
+                        message: errorMsg
+                    };
+                    setLockoutInfo(lockInfo);
+                    
+                    // Desactivar estados de login
+                    setIsLoggingIn(false);
+                    setLoading(false);
+                    
+                    return { 
+                        success: false, 
+                        message: errorMsg,
+                        isAccountLocked: true,
+                        remainingTime: RATE_LIMIT_CONFIG.lockoutDuration,
+                        formattedTime: lockInfo.formattedTime
+                    };
+                } else {
+                    // Agregar advertencia si está cerca del límite
+                    const warning = RateLimitUtils.getAttemptsWarning(cleanEmail);
+                    if (warning) {
+                        errorMsg += `\n\n${warning}`;
+                    }
+                }
+
                 // Establecer error en el estado
                 setAuthError(errorMsg);
                 // Desactivar estados de login
                 setIsLoggingIn(false);
                 setLoading(false);
-                return { success: false, message: errorMsg };
+                
+                return { 
+                    success: false, 
+                    message: errorMsg,
+                    attempts: attemptData.attempts,
+                    maxAttempts: RATE_LIMIT_CONFIG.maxAttempts,
+                    remainingAttempts: Math.max(0, RATE_LIMIT_CONFIG.maxAttempts - attemptData.attempts)
+                };
             }
         } catch (error) {
             // Log de error en el proceso de login
@@ -1376,9 +1587,13 @@ export const AuthProvider = ({ children }) => {
             isLoggingOut,
             isLoggingIn,
             authReady, 
-            loading
+            loading,
+            lockoutInfo: lockoutInfo ? {
+                isLocked: lockoutInfo.isLocked,
+                remainingTime: lockoutInfo.remainingTime
+            } : null
         });
-    }, [isAuthenticated, user, userInfo, favorites, isLoggingOut, isLoggingIn, authReady, loading]);
+    }, [isAuthenticated, user, userInfo, favorites, isLoggingOut, isLoggingIn, authReady, loading, lockoutInfo]);
 
     // Effect separado para cargar favoritos sin interferir con el carrito
     useEffect(() => {
@@ -1425,6 +1640,10 @@ export const AuthProvider = ({ children }) => {
         favoritesError,
         favoritesCount: safeFavorites.length,
 
+        // Estados para sistema de límite de intentos
+        lockoutInfo,
+        rateLimitConfig: RATE_LIMIT_CONFIG,
+
         // Funciones de login y autenticación
         login,
         logout,
@@ -1447,6 +1666,10 @@ export const AuthProvider = ({ children }) => {
         getBestAvailableToken,
         getProductId,
         normalizeProduct,
+
+        // Funciones para sistema de límite de intentos
+        checkAccountLockStatus,
+        getAttemptsWarning,
 
         // Función de limpieza de datos
         clearAuthData,

@@ -33,6 +33,10 @@ import PaymentProcessScreen from "../screens/PaymentProcessScreen";
 import VideoPlayerScreen from "../screens/VideoPlayerScreen";
 import TermsandconditionsScreen from "../screens/TermsandconditionsScreen";
 
+// ✅ NUEVAS PANTALLAS DE RULETA - IMPORTACIÓN
+import RuletaScreen from "../screens/RuletaScreen";
+import DiscountCodesScreen from "../screens/DiscountCodesScreen";
+
 // Componente principal de navegación de toda la aplicación
 export default function Navigation() {
     // Creamos una instancia del Stack Navigator
@@ -186,6 +190,7 @@ export default function Navigation() {
                                 animation: 'slide_from_right', // Animación de entrada desde la derecha
                             }}
                         />
+                        
                         <Stack.Screen
                             name="VideoPlayerScreen"
                             component={VideoPlayerScreen}
@@ -194,6 +199,28 @@ export default function Navigation() {
                         <Stack.Screen
                             name="TermsandconditionsScreen" // Nombre de la ruta
                             component={TermsandconditionsScreen} // Componente a renderizar
+                        />
+
+                        {/* ✅ NUEVAS PANTALLAS DE RULETA */}
+                        
+                        {/* Pantalla principal de la ruleta */}
+                        <Stack.Screen
+                            name="Ruleta"                  // Nombre de la ruta
+                            component={RuletaScreen}       // Componente a renderizar
+                            options={{
+                                headerShown: false,        // Sin header personalizado
+                                animation: 'slide_from_bottom', // Animación especial desde abajo
+                            }}
+                        />
+
+                        {/* Pantalla de códigos de descuento del usuario */}
+                        <Stack.Screen
+                            name="DiscountCodes"           // Nombre de la ruta  
+                            component={DiscountCodesScreen} // Componente a renderizar
+                            options={{
+                                headerShown: false,        // Sin header personalizado
+                                animation: 'slide_from_right', // Animación desde la derecha
+                            }}
                         />
 
                     </Stack.Navigator>

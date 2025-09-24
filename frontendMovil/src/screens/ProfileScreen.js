@@ -110,7 +110,7 @@ export default function ProfileScreen({ navigation }) {
             id: 5,
             title: "Términos y condiciones",
             icon: termConditionIcon,
-            onPress: () => console.log("Términos y condiciones") // Funcionalidad pendiente
+            onPress: () => navigation.navigate('TermsandconditionsScreen') // Funcionalidad pendiente
         },
         {
             id: 6,

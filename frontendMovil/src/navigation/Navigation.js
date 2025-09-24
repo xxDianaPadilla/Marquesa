@@ -31,7 +31,7 @@ import CustomProductsScreen from "../screens/CustomProductsScreen";
 import CustomizationFormScreen from "../screens/CustomizationFormScreen";
 import PaymentProcessScreen from "../screens/PaymentProcessScreen";
 import VideoPlayerScreen from "../screens/VideoPlayerScreen";
-
+import TermsandconditionsScreen from "../screens/TermsandconditionsScreen";
 
 // Componente principal de navegación de toda la aplicación
 export default function Navigation() {
@@ -189,6 +189,11 @@ export default function Navigation() {
                         <Stack.Screen
                             name="VideoPlayerScreen"
                             component={VideoPlayerScreen}
+                        />
+                        {/* Pantalla de Términos y condiciones */}
+                        <Stack.Screen
+                            name="TermsandconditionsScreen" // Nombre de la ruta
+                            component={TermsandconditionsScreen} // Componente a renderizar
                         />
 
                     </Stack.Navigator>

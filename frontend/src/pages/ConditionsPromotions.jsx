@@ -156,7 +156,7 @@ const ConditionsPromotions = () => {
                                         Nota importante
                                     </h4>
                                     <p className="text-white text-base sm:text-lg leading-relaxed" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                        <strong>La MarquesaSV se reserva el derecho de modificar o cancelar promociones sin previo aviso.</strong>
+                                        <strong>Marquesa se reserva el derecho de modificar o cancelar promociones sin previo aviso.</strong>
                                     </p>
                                 </div>
                             </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -26,6 +26,9 @@ const RecoveryCodeScreen = ({ navigation, route }) => {
 
   // Estado para almacenar los 6 dígitos del código de verificación
   const [code, setCode] = useState(["", "", "", "", "", ""]);
+
+  // Referencias para los TextInput
+  const inputRefs = useRef([]);
 
   // Estados para controlar las alertas personalizadas
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
@@ -76,6 +79,21 @@ const RecoveryCodeScreen = ({ navigation, route }) => {
     newCode[index] = value;
     // Actualizar el estado con el nuevo código
     setCode(newCode);
+
+    // Si se ingresó un número, pasar al siguiente campo
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  // Función para manejar la tecla de borrar
+  const handleKeyPress = (e, index) => {
+    if (e.nativeEvent.key === 'Backspace') {
+      // Si el campo actual está vacío y no es el primero, ir al anterior
+      if (code[index] === '' && index > 0) {
+        inputRefs.current[index - 1]?.focus();
+      }
+    }
   };
 
   // Función para procesar el código completo y continuar
@@ -193,9 +211,11 @@ const RecoveryCodeScreen = ({ navigation, route }) => {
           {code.map((digit, index) => (
             <TextInput
               key={index}
+              ref={(ref) => (inputRefs.current[index] = ref)}
               style={styles.codeInput}
               value={digit}
               onChangeText={(value) => handleCodeChange(value, index)}
+              onKeyPress={(e) => handleKeyPress(e, index)}
               maxLength={1} // Solo permitir un carácter por campo
               keyboardType="numeric" // Mostrar teclado numérico
               textAlign="center" // Centrar el texto

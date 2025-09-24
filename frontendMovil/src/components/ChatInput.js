@@ -8,7 +8,8 @@ import {
     Platform,
     KeyboardAvoidingView,
     ActivityIndicator,
-    Image
+    Image,
+    Alert
 } from 'react-native';
 import { useImagePicker } from '../hooks/useImagePicker';
 
@@ -24,10 +25,10 @@ import sendIcon from "../images/sendIcon.png";
  * Componente de input para el chat con alertas personalizadas
  * ✅ REEMPLAZA Alert NATIVO POR ALERTAS PERSONALIZADAS
  */
-const ChatInput = ({ 
-    onSendMessage, 
-    onTyping, 
-    onStopTyping, 
+const ChatInput = ({
+    onSendMessage,
+    onTyping,
+    onStopTyping,
     disabled = false,
     isLoading = false,
     placeholder = "Mensaje...",
@@ -35,7 +36,7 @@ const ChatInput = ({
 }) => {
     const [message, setMessage] = useState('');
     const [isTyping, setIsTyping] = useState(false);
-    
+
     const textInputRef = useRef(null);
     const typingTimeoutRef = useRef(null);
 
@@ -96,26 +97,47 @@ const ChatInput = ({
      * ✅ MANEJA LA SELECCIÓN DE IMAGEN CON ALERTA PERSONALIZADA
      */
     const handleImagePicker = () => {
-        if (disabled || isLoading || imageLoading) return;
+        console.log('📷 === BUTTON PRESSED ===');
+        console.log('📷 disabled:', disabled);
+        console.log('📷 isLoading:', isLoading);
+        console.log('📷 imageLoading:', imageLoading);
 
-        // ✅ USAR CONFIRMACIÓN PERSONALIZADA EN LUGAR DE Alert.alert
-        showConfirmation({
-            title: 'Agregar archivo',
-            message: '¿Cómo quieres seleccionar la imagen?',
-            confirmText: 'Cámara',
-            cancelText: 'Galería',
-            isDangerous: false,
-            onConfirm: () => {
-                hideConfirmation();
-                console.log('📷 Usuario seleccionó cámara');
-                showImagePicker({ fromCamera: true });
-            },
-            onCancel: () => {
-                hideConfirmation();
-                console.log('📷 Usuario seleccionó galería');
-                showImagePicker({ fromGallery: true });
-            }
-        });
+        if (disabled || isLoading || imageLoading) {
+            console.log('📷 RETURNING EARLY - DISABLED');
+            return;
+        }
+
+        console.log('📷 USING NATIVE ALERT (TEMPORAL)...');
+
+        // ✅ USAR ALERT NATIVO TEMPORALMENTE
+        Alert.alert(
+            'Agregar archivo',
+            '¿Cómo quieres seleccionar la imagen?',
+            [
+                {
+                    text: 'Cancelar',
+                    style: 'cancel',
+                    onPress: () => console.log('📷 Usuario canceló')
+                },
+                {
+                    text: 'Galería',
+                    onPress: () => {
+                        console.log('📷 Usuario seleccionó GALERÍA');
+                        console.log('📷 Llamando showImagePicker con fromGallery: true');
+                        showImagePicker({ fromGallery: true });
+                    }
+                },
+                {
+                    text: 'Cámara',
+                    onPress: () => {
+                        console.log('📷 Usuario seleccionó CÁMARA');
+                        console.log('📷 Llamando showImagePicker con fromCamera: true');
+                        showImagePicker({ fromCamera: true });
+                    }
+                }
+            ],
+            { cancelable: true }
+        );
     };
 
     /**
@@ -152,7 +174,7 @@ const ChatInput = ({
             // Guardar datos actuales antes de limpiar
             const currentMessage = messageText;
             const currentImage = selectedImage;
-            
+
             // Limpiar input antes de enviar (UX optimista)
             setMessage('');
             clearSelectedImage();
@@ -160,14 +182,14 @@ const ChatInput = ({
             // Enviar mensaje
             if (onSendMessage) {
                 const result = await onSendMessage(
-                    hasText ? currentMessage : '', 
+                    hasText ? currentMessage : '',
                     hasImage ? currentImage.uri : null
                 );
-                
+
                 if (!result.success) {
                     // Si falla, restaurar el mensaje
                     setMessage(currentMessage);
-                    
+
                     // ✅ MOSTRAR ERROR CON ALERTA PERSONALIZADA
                     showAlert({
                         title: 'Error al enviar',
@@ -179,7 +201,7 @@ const ChatInput = ({
             }
         } catch (error) {
             console.error('❌ Error enviando mensaje:', error);
-            
+
             // ✅ MOSTRAR ERROR DE CONEXIÓN CON ALERTA PERSONALIZADA
             showAlert({
                 title: 'Error de conexión',
@@ -216,7 +238,7 @@ const ChatInput = ({
     // Effect para debug completo de cambios de imagen
     useEffect(() => {
         console.log('📷 === CHATINPUT: CAMBIO EN selectedImage ===');
-        
+
         if (selectedImage) {
             console.log('📷 NUEVA IMAGEN SELECCIONADA:', {
                 uri: selectedImage.uri,
@@ -224,7 +246,7 @@ const ChatInput = ({
                 size: `${(selectedImage.size / 1024 / 1024).toFixed(2)}MB`,
                 type: selectedImage.type
             });
-            
+
             if (onImageSelected) {
                 console.log('📷 Llamando onImageSelected callback...');
                 onImageSelected(selectedImage.uri);
@@ -257,12 +279,12 @@ const ChatInput = ({
             {selectedImage && (
                 <View style={styles.imagePreviewContainer}>
                     <View style={styles.imagePreview}>
-                        <Image 
-                            source={{ uri: selectedImage.uri }} 
+                        <Image
+                            source={{ uri: selectedImage.uri }}
                             style={styles.previewImage}
                             resizeMode="cover"
                         />
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={styles.removeImageButton}
                             onPress={removeSelectedImage}
                         >
@@ -278,7 +300,7 @@ const ChatInput = ({
             {/* Input principal */}
             <View style={styles.inputContainer}>
                 {/* Botón de adjuntar */}
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={[
                         styles.attachButton,
                         (disabled || isLoading || imageLoading) && styles.buttonDisabled
@@ -315,7 +337,7 @@ const ChatInput = ({
                 </View>
 
                 {/* Botón de envío */}
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={[
                         styles.sendButton,
                         canSend() ? styles.sendButtonActive : styles.sendButtonInactive
@@ -324,17 +346,17 @@ const ChatInput = ({
                     disabled={!canSend()}
                 >
                     {(isLoading || imageLoading) ? (
-                        <ActivityIndicator 
-                            size="small" 
-                            color="#FFFFFF" 
+                        <ActivityIndicator
+                            size="small"
+                            color="#FFFFFF"
                         />
                     ) : (
-                        <Image 
-                            source={sendIcon} 
+                        <Image
+                            source={sendIcon}
                             style={[
                                 styles.sendIcon,
                                 canSend() && styles.sendIconActive
-                            ]} 
+                            ]}
                         />
                     )}
                 </TouchableOpacity>

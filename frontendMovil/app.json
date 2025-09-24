@@ -1,5 +1,14 @@
 {
   "expo": {
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "La app necesita acceso a tu galería para seleccionar imágenes.",
+          "cameraPermission": "La app necesita acceso a la cámara para tomar fotos."
+        }
+      ]
+    ],
     "name": "frontendMovil",
     "slug": "frontendMovil",
     "version": "1.0.0",

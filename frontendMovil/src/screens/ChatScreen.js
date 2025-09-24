@@ -25,19 +25,18 @@ import ChatInput from "../components/ChatInput";
 import { useChat } from "../hooks/useChat";
 import { useAuth } from "../context/AuthContext";
 
-// ✅ IMPORTAR ALERTAS PERSONALIZADAS
+// Importar alertas personalizadas
 import { ConfirmationDialog, LoadingDialog, ToastDialog } from "../components/CustomDialogs";
 import { useAlert } from "../hooks/useAlert";
 
 /**
- * Pantalla principal del chat con alertas personalizadas implementadas
- * ✅ REEMPLAZA Alert NATIVO POR ALERTAS PERSONALIZADAS
+ * Pantalla principal del chat con alertas personalizadas integradas
  */
 const ChatScreen = ({ navigation, route }) => {
     const insets = useSafeAreaInsets();
     const { user } = useAuth();
 
-    // ✅ Hook de alertas personalizadas
+    // Hook de alertas personalizadas
     const {
         alertState,
         showConfirmation,
@@ -84,22 +83,46 @@ const ChatScreen = ({ navigation, route }) => {
     const lastMessageIdRef = useRef(null);
 
     /**
-     * Configuración de listeners del teclado
+     * Detección mejorada del teclado
      */
     useEffect(() => {
         const keyboardDidShowListener = Keyboard.addListener(
             'keyboardDidShow',
             (e) => {
+                console.log('⌨️ Teclado mostrado:', {
+                    height: e.endCoordinates.height,
+                    screenX: e.endCoordinates.screenX,
+                    screenY: e.endCoordinates.screenY,
+                    width: e.endCoordinates.width
+                });
+
                 setKeyboardHeight(e.endCoordinates.height);
                 setIsKeyboardVisible(true);
-                setTimeout(() => scrollToBottom(), 100);
+                setTimeout(() => scrollToBottom(true), 50);
             }
         );
 
         const keyboardDidHideListener = Keyboard.addListener(
             'keyboardDidHide',
-            () => {
+            (e) => {
+                console.log('⌨️ Teclado ocultado');
                 setKeyboardHeight(0);
+                setIsKeyboardVisible(false);
+            }
+        );
+
+        const keyboardWillShowListener = Keyboard.addListener(
+            'keyboardWillShow',
+            (e) => {
+                console.log('⌨️ Teclado va a mostrarse:', e.endCoordinates.height);
+                setIsKeyboardVisible(true);
+            }
+        );
+
+        const keyboardWillHideListener = Keyboard.addListener(
+            'keyboardWillHide',
+            () => {
+                console.log('⌨️ Teclado va a ocultarse');
                 setIsKeyboardVisible(false);
             }
         );
@@ -107,6 +130,8 @@ const ChatScreen = ({ navigation, route }) => {
         return () => {
             keyboardDidShowListener?.remove();
             keyboardDidHideListener?.remove();
+            keyboardWillShowListener?.remove();
+            keyboardWillHideListener?.remove();
         };
     }, []);
 
@@ -146,6 +171,40 @@ const ChatScreen = ({ navigation, route }) => {
     };
 
     /**
+     * Función para calcular altura del input
+     */
+    const calculateInputContainerBottom = useCallback(() => {
+        const tabBarHeight = getTabBarHeight();
+
+        if (isKeyboardVisible && keyboardHeight > 0) {
+            const keyboardOffset = Platform.OS === 'ios'
+                ? keyboardHeight - insets.bottom
+                : keyboardHeight;
+
+            console.log('⌨️ Calculando con teclado:', {
+                keyboardHeight,
+                keyboardOffset,
+                insetsBottom: insets.bottom,
+                platform: Platform.OS
+            });
+
+            return Math.max(keyboardOffset, 0);
+        } else {
+            console.log('⌨️ Calculando sin teclado, usando tabBarHeight:', tabBarHeight);
+            return tabBarHeight;
+        }
+    }, [isKeyboardVisible, keyboardHeight, insets.bottom]);
+
+    /**
+     * Función para calcular altura de mensajes
+     */
+    const calculateMessagesContainerMargin = useCallback(() => {
+        const inputHeight = calculateInputContainerBottom();
+        const additionalPadding = isKeyboardVisible ? 20 : 30;
+        return inputHeight + additionalPadding;
+    }, [calculateInputContainerBottom, isKeyboardVisible]);
+
+    /**
      * Oculta el teclado
      */
     const dismissKeyboard = () => {
@@ -175,22 +234,27 @@ const ChatScreen = ({ navigation, route }) => {
     }, []);
 
     /**
-     * Maneja el pull-to-refresh
+     * Maneja el pull-to-refresh con alertas personalizadas
      */
     const handleRefresh = useCallback(async () => {
         setRefreshing(true);
         try {
             await refreshConversation();
             clearError();
-        } catch (error) {
-            console.error('❌ Error refrescando chat:', error);
+            // Opcional: mostrar toast de éxito solo si había error previo
+            if (error) {
+                showSuccessToast('Chat actualizado correctamente');
+            }
+        } catch (refreshError) {
+            console.error('❌ Error refrescando chat:', refreshError);
+            showErrorToast('Error al actualizar el chat. Inténtalo de nuevo.');
         } finally {
             setRefreshing(false);
         }
-    }, [refreshConversation, clearError]);
+    }, [refreshConversation, clearError, error, showSuccessToast, showErrorToast]);
 
     /**
-     * ✅ MANEJA EL ENVÍO DE MENSAJES CON ALERTAS PERSONALIZADAS
+     * Maneja el envío de mensajes con alertas personalizadas
      */
     const handleSendMessage = useCallback(async (messageText, imageUri) => {
         try {
@@ -200,13 +264,11 @@ const ChatScreen = ({ navigation, route }) => {
                 return { success: false, message: 'Mensaje vacío' };
             }
 
-            // Mostrar loading si es una imagen
-            if (imageUri) {
-                showLoading({
-                    title: 'Enviando imagen',
-                    message: 'Subiendo archivo al servidor...'
-                });
-            }
+            // Mostrar loading
+            showLoading({
+                title: 'Enviando mensaje',
+                message: 'Por favor espera...'
+            });
 
             const result = await sendMessage(messageText, imageUri);
 
@@ -215,12 +277,6 @@ const ChatScreen = ({ navigation, route }) => {
 
             if (result.success) {
                 setTimeout(() => scrollToBottom(), 100);
-
-                // Mostrar toast de éxito solo para imágenes
-                if (imageUri) {
-                    showSuccessToast('Imagen enviada correctamente');
-                }
-
                 return result;
             } else {
                 showErrorToast(result.message || 'Error al enviar mensaje');
@@ -232,7 +288,7 @@ const ChatScreen = ({ navigation, route }) => {
             showErrorToast('Error de conexión al enviar mensaje');
             return { success: false, message: 'Error de conexión' };
         }
-    }, [sendMessage, scrollToBottom, showLoading, hideLoading, showSuccessToast, showErrorToast, showWarningToast]);
+    }, [sendMessage, scrollToBottom, showLoading, hideLoading, showErrorToast, showWarningToast]);
 
     /**
      * Maneja el press en imagen
@@ -243,19 +299,19 @@ const ChatScreen = ({ navigation, route }) => {
     }, []);
 
     /**
-     * ✅ FUNCIÓN DE ELIMINAR MENSAJE CON ALERTA PERSONALIZADA
+     * Función de eliminar mensaje con alertas personalizadas
      */
     const handleMessageLongPress = useCallback(async (messageId, messageText, action) => {
         console.log('🗑️ LLAMANDO handleMessageLongPress:', { messageId, action });
 
         if (action === 'delete') {
-            // ✅ USAR CONFIRMACIÓN PERSONALIZADA EN LUGAR DE Alert.alert
+            // Usar confirmación personalizada
             showConfirmation({
                 title: "Eliminar mensaje",
                 message: "¿Estás seguro de que quieres eliminar este mensaje? Esta acción no se puede deshacer.",
                 confirmText: "Eliminar",
                 cancelText: "Cancelar",
-                isDangerous: true, // Hace que el botón sea rojo
+                isDangerous: true,
                 onConfirm: async () => {
                     try {
                         hideConfirmation();
@@ -273,11 +329,16 @@ const ChatScreen = ({ navigation, route }) => {
                         console.log('🗑️ INICIO DELETE - MessageID:', messageId);
                         console.log('🗑️ Llamando deleteMessage del hook useChat...');
 
-                        // Usar la función real del backend
                         const result = await deleteMessage(messageId);
 
                         hideLoading();
                         console.log('🗑️ RESULTADO deleteMessage:', result);
+
+                        if (result.success) {
+                            showSuccessToast('Mensaje eliminado correctamente');
+                        } else {
+                            showErrorToast(result.message || 'Error al eliminar el mensaje');
+                        }
 
                     } catch (error) {
                         hideLoading();
@@ -298,7 +359,7 @@ const ChatScreen = ({ navigation, route }) => {
                 }
             });
         } else {
-            // ✅ MOSTRAR OPCIONES DEL MENSAJE CON ALERTA PERSONALIZADA
+            // Mostrar opciones del mensaje
             const truncatedMessage = messageText.length > 50
                 ? messageText.substring(0, 50) + '...'
                 : messageText;
@@ -320,6 +381,27 @@ const ChatScreen = ({ navigation, route }) => {
             });
         }
     }, [deleteMessage, showConfirmation, hideConfirmation, showLoading, hideLoading, showSuccessToast, showErrorToast]);
+
+    /**
+     * Función para limpiar errores con confirmación
+     */
+    const handleClearError = useCallback(() => {
+        showConfirmation({
+            title: "Limpiar error",
+            message: "¿Quieres ocultar este mensaje de error?",
+            confirmText: "Sí, ocultar",
+            cancelText: "Cancelar",
+            isDangerous: false,
+            onConfirm: () => {
+                hideConfirmation();
+                clearError();
+                showSuccessToast('Error ocultado');
+            },
+            onCancel: () => {
+                hideConfirmation();
+            }
+        });
+    }, [clearError, showConfirmation, hideConfirmation, showSuccessToast]);
 
     /**
      * Formatea la fecha para mostrar separadores
@@ -479,11 +561,6 @@ const ChatScreen = ({ navigation, route }) => {
         );
     }
 
-    // Calcular altura del input dinámicamente
-    const inputContainerBottom = isKeyboardVisible
-        ? keyboardHeight + (Platform.OS === 'ios' ? 10 : 50)
-        : getTabBarHeight();
-
     const groupedMessages = groupMessagesByDate();
 
     return (
@@ -521,12 +598,20 @@ const ChatScreen = ({ navigation, route }) => {
                     {/* Mensajes */}
                     <View style={[
                         styles.messagesContainer,
-                        { marginBottom: inputContainerBottom + 10 }
+                        {
+                            marginBottom: calculateMessagesContainerMargin(),
+                        }
                     ]}>
                         <ScrollView
                             ref={scrollViewRef}
                             style={styles.messagesScrollView}
-                            contentContainerStyle={styles.messagesContent}
+                            contentContainerStyle={[
+                                styles.messagesContent,
+                                {
+                                    paddingTop: 16,
+                                    paddingBottom: isKeyboardVisible ? 50 : 50
+                                }
+                            ]}
                             showsVerticalScrollIndicator={false}
                             onScroll={handleScroll}
                             scrollEventThrottle={16}
@@ -538,19 +623,18 @@ const ChatScreen = ({ navigation, route }) => {
                                     colors={["#F8BBD9"]}
                                 />
                             }
+                            keyboardShouldPersistTaps="handled"
+                            contentInsetAdjustmentBehavior="automatic"
                         >
-                            {/* ✅ MENSAJE DE ERROR CON TOAST EN LUGAR DE COMPONENTE FIJO */}
+                            {/* Mensaje de error mejorado */}
                             {error && (
                                 <View style={styles.errorContainer}>
                                     <Text style={styles.errorText}>{error}</Text>
                                     <TouchableOpacity
                                         style={styles.retryButton}
-                                        onPress={() => {
-                                            clearError();
-                                            showSuccessToast('Error eliminado');
-                                        }}
+                                        onPress={handleClearError}
                                     >
-                                        <Text style={styles.retryButtonText}>Reintentar</Text>
+                                        <Text style={styles.retryButtonText}>Ocultar</Text>
                                     </TouchableOpacity>
                                 </View>
                             )}
@@ -564,15 +648,17 @@ const ChatScreen = ({ navigation, route }) => {
 
                             {/* Indicador de escritura */}
                             {renderTypingIndicator()}
-
-                            {/* Espacio inferior para scroll */}
-                            <View style={styles.bottomSpacer} />
                         </ScrollView>
 
                         {/* Botón scroll to bottom */}
                         {showScrollToBottom && (
                             <TouchableOpacity
-                                style={styles.scrollToBottomButton}
+                                style={[
+                                    styles.scrollToBottomButton,
+                                    {
+                                        bottom: isKeyboardVisible ? 80 : 140
+                                    }
+                                ]}
                                 onPress={() => scrollToBottom()}
                             >
                                 <Text style={styles.scrollToBottomText}>↓</Text>
@@ -589,10 +675,13 @@ const ChatScreen = ({ navigation, route }) => {
                 </View>
             </TouchableWithoutFeedback>
 
-            {/* Input del chat */}
+            {/* Input */}
             <View style={[
                 styles.inputContainer,
-                { bottom: inputContainerBottom }
+                {
+                    bottom: calculateInputContainerBottom(),
+                    backgroundColor: '#FFFFFF',
+                }
             ]}>
                 <ChatInput
                     onSendMessage={handleSendMessage}
@@ -627,9 +716,7 @@ const ChatScreen = ({ navigation, route }) => {
                 </View>
             )}
 
-            {/* ✅ ALERTAS PERSONALIZADAS */}
-
-            {/* Diálogo de confirmación personalizado */}
+            {/* Alertas personalizadas */}
             <ConfirmationDialog
                 visible={alertState.confirmation.visible}
                 title={alertState.confirmation.title}
@@ -641,7 +728,6 @@ const ChatScreen = ({ navigation, route }) => {
                 isDangerous={alertState.confirmation.isDangerous}
             />
 
-            {/* Diálogo de carga personalizado */}
             <LoadingDialog
                 visible={alertState.loading.visible}
                 title={alertState.loading.title}
@@ -649,7 +735,6 @@ const ChatScreen = ({ navigation, route }) => {
                 color={alertState.loading.color}
             />
 
-            {/* Toast personalizado */}
             <ToastDialog
                 visible={alertState.toast.visible}
                 message={alertState.toast.message}
@@ -665,8 +750,6 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#FFFFFF',
     },
-
-    // Loading
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
@@ -678,8 +761,6 @@ const styles = StyleSheet.create({
         color: '#666666',
         fontFamily: 'Poppins-Regular',
     },
-
-    // Header
     header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -725,8 +806,6 @@ const styles = StyleSheet.create({
     headerRight: {
         width: 28,
     },
-
-    // Estado de conexión
     connectionStatus: {
         backgroundColor: '#FFE4B5',
         paddingVertical: 8,
@@ -740,21 +819,17 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontFamily: 'Poppins-Regular',
     },
-
-    // Mensajes
     messagesContainer: {
         flex: 1,
         position: 'relative',
     },
     messagesScrollView: {
         flex: 1,
+        paddingHorizontal: 0,
     },
     messagesContent: {
-        paddingVertical: 16,
-        paddingBottom: 20,
+        flexGrow: 1,
     },
-
-    // Separador de fecha
     dateContainer: {
         alignItems: 'center',
         marginVertical: 8,
@@ -769,13 +844,9 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
         fontFamily: 'Poppins-Regular',
     },
-
-    // Indicador de escritura
     typingContainer: {
         marginTop: 4,
     },
-
-    // Estilos para mensaje en proceso de eliminación
     deletingMessageContainer: {
         position: 'relative',
         opacity: 0.6,
@@ -800,8 +871,6 @@ const styles = StyleSheet.create({
         color: '#FF3B30',
         fontFamily: 'Poppins-Medium',
     },
-
-    // Error
     errorContainer: {
         backgroundColor: '#FFE6E6',
         margin: 16,
@@ -827,11 +896,8 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontFamily: 'Poppins-Medium',
     },
-
-    // Scroll to bottom
     scrollToBottomButton: {
         position: 'absolute',
-        bottom: 140,
         right: 16,
         backgroundColor: '#F8BBD9',
         width: 48,
@@ -847,7 +913,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
         elevation: 5,
-        zIndex: 10,
+        zIndex: 10
     },
     scrollToBottomText: {
         fontSize: 20,
@@ -871,8 +937,6 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontWeight: 'bold',
     },
-
-    // Input
     inputContainer: {
         position: 'absolute',
         left: 0,
@@ -887,15 +951,11 @@ const styles = StyleSheet.create({
         },
         shadowOpacity: 0.1,
         shadowRadius: 4,
-        elevation: 5,
+        elevation: 5
     },
-
-    // Espaciado
     bottomSpacer: {
-        height: 40,
+        height: 400,
     },
-
-    // Visor de imágenes
     imageViewerOverlay: {
         position: 'absolute',
         top: 0,

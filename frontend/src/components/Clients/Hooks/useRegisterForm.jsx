@@ -6,6 +6,7 @@ import { useAuth } from '../../../context/AuthContext';
  * Hook personalizado para manejar el formulario de registro
  * ACTUALIZADO: Sistema de autenticación cross-domain híbrido
  * COMPLETAMENTE OPTIMIZADO: Uso de useCallback y useMemo para evitar re-renderizados innecesarios
+ * CORREGIDO: Formato de fecha compatible con backend (DD/MM/YYYY)
  * Maneja la lógica de validación en tiempo real y activación del modal de verificación
  * Incluye validaciones robustas para datos salvadoreños y mejores prácticas de UX
  */
@@ -54,7 +55,7 @@ const useRegisterForm = () => {
     
     const navigate = useNavigate();
     
-    // ✅ NUEVO: Hook de autenticación para sistema híbrido
+    // Hook de autenticación para sistema híbrido
     const { getBestAvailableToken, setAuthToken } = useAuth();
     
     /**
@@ -69,11 +70,36 @@ const useRegisterForm = () => {
      */
     const lastSubmitTimeRef = useRef(0);
 
+    // ============ FUNCIÓN HELPER PARA CONVERSIÓN DE FECHAS ============
+    
+    /**
+     * Convierte fecha de formato ISO (YYYY-MM-DD) a formato DD/MM/YYYY que espera el backend
+     * FUNCIÓN CRÍTICA: Resuelve el problema de incompatibilidad de formatos
+     */
+    const convertDateFormat = useCallback((isoDate) => {
+        if (!isoDate) return '';
+        
+        // Si ya está en formato DD/MM/YYYY, devolverla tal como está
+        if (isoDate.includes('/')) {
+            return isoDate;
+        }
+        
+        // Convertir de YYYY-MM-DD a DD/MM/YYYY
+        try {
+            const [year, month, day] = isoDate.split('-');
+            return `${day}/${month}/${year}`;
+        } catch (error) {
+            console.error('Error convirtiendo formato de fecha:', error);
+            return isoDate; // Retornar original si hay error
+        }
+    }, []);
+
     // ============ REGLAS DE VALIDACIÓN MEMOIZADAS ============
     
     /**
      * Reglas de validación memoizadas para optimizar rendimiento
      * Se recalculan solo cuando es necesario
+     * ACTUALIZADO: Validación de fecha corregida para manejar ambos formatos
      */
     const validationRules = useMemo(() => ({
         /**
@@ -142,43 +168,68 @@ const useRegisterForm = () => {
         },
 
         /**
-         * Validación para fecha de nacimiento
+         * CORREGIDO: Validación para fecha de nacimiento
          * Verifica edad mínima y máxima razonable
+         * Maneja tanto formato ISO (YYYY-MM-DD) como DD/MM/YYYY
          */
         birthDate: (value) => {
             if (!value) {
                 return { isValid: false, error: 'La fecha de nacimiento es requerida' };
             }
             
-            const today = new Date();
-            const birthDate = new Date(value);
+            let dateObj;
             
-            // Verificar que la fecha no sea futura
-            if (birthDate > today) {
-                return { isValid: false, error: 'La fecha de nacimiento no puede ser futura' };
+            try {
+                // Manejar ambos formatos: YYYY-MM-DD (ISO) y DD/MM/YYYY
+                if (value.includes('-')) {
+                    // Formato ISO: YYYY-MM-DD (del input type="date")
+                    dateObj = new Date(value);
+                } else if (value.includes('/')) {
+                    // Formato DD/MM/YYYY
+                    const [day, month, year] = value.split('/').map(num => parseInt(num, 10));
+                    dateObj = new Date(year, month - 1, day);
+                } else {
+                    return { isValid: false, error: 'Formato de fecha no válido' };
+                }
+                
+                // Verificar que sea una fecha válida
+                if (isNaN(dateObj.getTime())) {
+                    return { isValid: false, error: 'Fecha de nacimiento no válida' };
+                }
+                
+                const today = new Date();
+                
+                // Verificar que la fecha no sea futura
+                if (dateObj > today) {
+                    return { isValid: false, error: 'La fecha de nacimiento no puede ser futura' };
+                }
+                
+                // Calcular edad correctamente
+                let age = today.getFullYear() - dateObj.getFullYear();
+                const monthDiff = today.getMonth() - dateObj.getMonth();
+                const dayDiff = today.getDate() - dateObj.getDate();
+                
+                // Si no ha llegado el mes de cumpleaños, o si es el mes pero no ha llegado el día, restar 1 año
+                if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+                    age--;
+                }
+                
+                // CORREGIDO: Verificar edad mínima (12 años para coincidir con backend)
+                if (age < 12) {
+                    return { isValid: false, error: 'Debes tener al menos 12 años para registrarte' };
+                }
+                
+                // Verificar edad máxima razonable
+                if (age > 120) {
+                    return { isValid: false, error: 'Por favor ingresa una fecha de nacimiento válida' };
+                }
+                
+                return { isValid: true, error: null };
+                
+            } catch (error) {
+                console.error('Error validando fecha:', error);
+                return { isValid: false, error: 'Fecha de nacimiento no válida' };
             }
-            
-            // Calcular edad
-            const age = today.getFullYear() - birthDate.getFullYear();
-            const monthDiff = today.getMonth() - birthDate.getMonth();
-            const dayDiff = today.getDate() - birthDate.getDate();
-            
-            let actualAge = age;
-            if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
-                actualAge--;
-            }
-            
-            // Verificar edad mínima (13 años para redes sociales)
-            if (actualAge < 13) {
-                return { isValid: false, error: 'Debes tener al menos 13 años para registrarte' };
-            }
-            
-            // Verificar edad máxima razonable
-            if (actualAge > 120) {
-                return { isValid: false, error: 'Por favor ingresa una fecha de nacimiento válida' };
-            }
-            
-            return { isValid: true, error: null };
         },
 
         /**
@@ -260,10 +311,10 @@ const useRegisterForm = () => {
         }
     }), []);
 
-    // ============ NUEVAS FUNCIONES DE AUTENTICACIÓN HÍBRIDA ============
+    // ============ FUNCIONES DE AUTENTICACIÓN HÍBRIDA ============
     
     /**
-     * ✅ NUEVA FUNCIÓN: Crear headers de autenticación híbridos
+     * Crear headers de autenticación híbridos
      */
     const getAuthHeaders = useCallback(() => {
         const token = getBestAvailableToken();
@@ -437,10 +488,11 @@ const useRegisterForm = () => {
         setShowPassword(prev => !prev);
     }, []);
 
-    // ============ FUNCIÓN PRINCIPAL DE ENVÍO ACTUALIZADA ============
+    // ============ FUNCIÓN PRINCIPAL DE ENVÍO ============
     
     /**
-     * ✅ ACTUALIZADA: Maneja el envío del formulario de registro con sistema híbrido
+     * Maneja el envío del formulario de registro con sistema híbrido
+     * CORREGIDO: Ahora convierte la fecha al formato esperado por el backend
      * Incluye validación completa, prevención de spam y manejo de errores
      * Memoizada para evitar re-creaciones
      */
@@ -530,15 +582,15 @@ const useRegisterForm = () => {
 
             console.log('Enviando solicitud de verificación:', requestData);
 
-            // ✅ NUEVA LÓGICA: Verificar que el email no exista previamente y enviar código con sistema híbrido
+            // Verificar que el email no exista previamente y enviar código con sistema híbrido
             const operationPromise = fetch('https://marquesa.onrender.com/api/emailVerification/request', {
                 method: 'POST',
-                credentials: 'include', // ✅ NUEVO: Incluir cookies
-                headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
+                credentials: 'include',
+                headers: getAuthHeaders(),
                 body: JSON.stringify(requestData),
             });
 
-            // ✅ NUEVO: Timeout para conexiones lentas
+            // Timeout para conexiones lentas
             const timeoutPromise = new Promise((_, reject) => {
                 setTimeout(() => reject(new Error('TIMEOUT')), 30000);
             });
@@ -548,13 +600,13 @@ const useRegisterForm = () => {
             console.log('Respuesta del servidor:', checkEmailData);
 
             if (checkEmailData.success) {
-                // ✅ NUEVO: Manejo híbrido de tokens
+                // Manejo híbrido de tokens
                 let token = null;
 
                 // Primera prioridad: response body
                 if (checkEmailData.token) {
                     token = checkEmailData.token;
-                    setAuthToken(token); // Guardar en estado local
+                    setAuthToken(token);
                 }
 
                 // Segunda prioridad: cookie (con retraso)
@@ -584,7 +636,7 @@ const useRegisterForm = () => {
         } catch (error) {
             console.error('Error en verificación previa:', error);
             
-            // ✅ NUEVO: Manejo específico de errores de red vs servidor
+            // Manejo específico de errores de red vs servidor
             let errorMessage = 'Error de conexión. Verifica tu internet e intenta nuevamente.';
             
             if (error.message === 'TIMEOUT') {
@@ -672,8 +724,8 @@ const useRegisterForm = () => {
     }, []);
 
     /**
-     * Prepara los datos del usuario para el registro final
-     * Limpia y valida los datos antes de enviarlos al servidor
+     * CORREGIDO: Prepara los datos del usuario para el registro final
+     * Convierte la fecha al formato DD/MM/YYYY que espera el backend
      * @returns {Object} - Datos del usuario limpios y validados
      */
     const getUserDataForRegistration = useCallback(() => {
@@ -681,13 +733,13 @@ const useRegisterForm = () => {
             fullName: formData.fullName.trim(),
             phone: formData.phone.trim(),
             email: formData.email.trim().toLowerCase(),
-            birthDate: formData.birthDate,
+            birthDate: convertDateFormat(formData.birthDate), // 🔥 CORRECCIÓN CRÍTICA
             address: formData.address.trim(),
             password: formData.password,
             favorites: [],      // Array vacío por defecto
             discount: null      // Sin descuento inicial
         };
-    }, [formData]);
+    }, [formData, convertDateFormat]);
 
     /**
      * Valida un campo específico y retorna solo si es válido
@@ -742,7 +794,7 @@ const useRegisterForm = () => {
         // ---- Funciones de utilidad ----
         clearErrors,                       // Limpia errores del formulario
         resetForm,                         // Resetea formulario completo
-        getUserDataForRegistration,        // Prepara datos para registro final
+        getUserDataForRegistration,        // Prepara datos para registro final (CORREGIDO)
         validateField,                     // Valida un campo específico
         isFieldValid,                      // Verifica si un campo es válido
         getFormProgress,                   // Obtiene porcentaje de completitud

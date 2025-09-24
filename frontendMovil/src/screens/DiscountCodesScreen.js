@@ -309,7 +309,7 @@ export default function DiscountCodesScreen({ navigation }) {
                             onPress={goToRuleta}
                         >
                             <Text style={styles.ruletaButtonText}>
-                                Ir a la ruleta 🎲
+                                Ir a la ruleta
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
     },
     headerTitle: {
         fontSize: 18,
-        fontFamily: 'Poppins-Bold',
+        fontFamily: 'Poppins-SemiBold',
         color: '#333333',
         textAlign: 'center',
         flex: 1,

@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
     ruletaShadow: {
         position: 'absolute',
         borderRadius: 1000,
-        backgroundColor: 'rgba(0, 0, 0, 0.1)',
+        
         top: 5,
         left: -5,
     },
@@ -216,6 +216,7 @@ const styles = StyleSheet.create({
     },
     ruletaImage: {
         borderRadius: 1000,
+        left: -3,
     },
     indicatorContainer: {
         position: 'absolute',

@@ -315,6 +315,5 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontFamily: 'Poppins-Regular',
         color: '#9CA3AF',
-        fontStyle: 'italic',
     },
 });

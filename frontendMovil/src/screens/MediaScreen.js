@@ -284,7 +284,6 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 20,
         fontFamily: 'Poppins-SemiBold',
-        fontWeight: 'bold',
         color: '#1f2937',
         marginTop: 20,
     },
@@ -554,7 +553,6 @@ const styles = StyleSheet.create({
     },
     ctaTitle: {
         fontSize: 20,
-        fontWeight: 'bold',
         color: '#1f2937',
         marginBottom: 12,
         textAlign: 'center',

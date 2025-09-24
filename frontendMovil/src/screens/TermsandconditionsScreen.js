@@ -119,16 +119,18 @@ const styles = StyleSheet.create({
   paddingBottom: 10, // también puedes reducir esto
   backgroundColor: '#ffffff',
   marginBottom: 10,
+  marginTop: 40,
 },
 
   backButton: { padding: 8 },
-  backIcon: { width: 24, height: 24, resizeMode: 'contain' },
+  backIcon: { width: 24, height: 24, resizeMode: 'contain', left: -10, },
   placeholder: { width: 40 },
   titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     flexWrap: 'wrap',
+    
   },
   terminos: { fontSize: 20, fontFamily: 'Poppins-Bold', color: '#000', letterSpacing: 1 },
   yScript: { fontSize: 26, fontFamily: 'DancingScript_400Regular', color: '#000', marginHorizontal: 4 },
@@ -140,6 +142,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     bottom: 0,
     width: '100%',
+    left: 20,
   },
   headerLine: {
     height: 4,

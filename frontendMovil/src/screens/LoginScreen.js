@@ -38,11 +38,11 @@ export default function LoginScreen({ navigation }) {
     const progressAnimation = useRef(new Animated.Value(0)).current; // Animación para barra de progreso
 
     // Contexto de autenticación - obtiene funciones y estados del sistema de auth
-    const { 
-        login, 
-        isAuthenticated, 
-        authError, 
-        clearAuthError, 
+    const {
+        login,
+        isAuthenticated,
+        authError,
+        clearAuthError,
         loading,
         lockoutInfo,
         checkAccountLockStatus,
@@ -72,7 +72,7 @@ export default function LoginScreen({ navigation }) {
     useEffect(() => {
         if (lockoutInfo && lockoutInfo.isLocked && lockoutInfo.remainingTime > 0) {
             setLockoutTimer(lockoutInfo.remainingTime);
-            
+
             const interval = setInterval(() => {
                 setLockoutTimer(prev => {
                     if (prev <= 1) {
@@ -97,14 +97,14 @@ export default function LoginScreen({ navigation }) {
     useEffect(() => {
         if (email.trim()) {
             const cleanEmail = email.trim().toLowerCase();
-            
+
             // Verificar estado de bloqueo
             const lockStatus = checkAccountLockStatus(cleanEmail);
-            
+
             // Obtener advertencia de intentos
             const warning = getAttemptsWarning(cleanEmail);
             setAttemptWarning(warning);
-            
+
             // Animar barra de progreso si hay advertencia
             if (warning) {
                 const attemptMatch = warning.match(/Te quedan (\d+) intento/);
@@ -112,7 +112,7 @@ export default function LoginScreen({ navigation }) {
                     const remaining = parseInt(attemptMatch[1]);
                     const attempted = rateLimitConfig.maxAttempts - remaining;
                     const percentage = (attempted / rateLimitConfig.maxAttempts);
-                    
+
                     Animated.timing(progressAnimation, {
                         toValue: percentage,
                         duration: 300,
@@ -258,14 +258,14 @@ export default function LoginScreen({ navigation }) {
                 } else {
                     // Error de credenciales pero no bloqueado
                     let errorMessage = result.message;
-                    
+
                     // Separar mensaje principal de advertencia
                     const messageParts = result.message.split('\n\n');
                     if (messageParts.length > 1) {
                         errorMessage = messageParts[0];
                         // La advertencia se manejará a través del estado attemptWarning
                     }
-                    
+
                     if (errorMessage.includes('user not found') || errorMessage.includes('usuario no encontrado')) {
                         showError("No se encontró una cuenta con este correo electrónico", "Usuario no encontrado");
                     } else if (errorMessage.includes('Invalid password') || errorMessage.includes('contraseña')) {
@@ -312,7 +312,7 @@ export default function LoginScreen({ navigation }) {
         const timeRemaining = formatLockoutTime(lockoutTimer || lockoutInfo.remainingTime);
 
         return (
-            <Animated.View 
+            <Animated.View
                 style={[
                     styles.alertContainer,
                     styles.lockoutAlert,
@@ -357,7 +357,7 @@ export default function LoginScreen({ navigation }) {
         const attempted = rateLimitConfig.maxAttempts - remaining;
 
         return (
-            <Animated.View 
+            <Animated.View
                 style={[
                     styles.alertContainer,
                     styles.warningAlert,
@@ -378,7 +378,7 @@ export default function LoginScreen({ navigation }) {
                 <View style={styles.alertContent}>
                     <Text style={styles.warningTitle}>Advertencia de Seguridad</Text>
                     <Text style={styles.warningMessage}>{attemptWarning}</Text>
-                    
+
                     {/* Barra de progreso de intentos */}
                     <View style={styles.progressContainer}>
                         <View style={styles.progressInfo}>
@@ -390,7 +390,7 @@ export default function LoginScreen({ navigation }) {
                             </Text>
                         </View>
                         <View style={styles.progressBarContainer}>
-                            <Animated.View 
+                            <Animated.View
                                 style={[
                                     styles.progressBar,
                                     {
@@ -413,7 +413,7 @@ export default function LoginScreen({ navigation }) {
     };
 
     // Componente para mostrar información de seguridad
-    const renderSecurityInfo = () => {
+    /*const renderSecurityInfo = () => {
         if ((lockoutInfo && lockoutInfo.isLocked) || attemptWarning) return null;
 
         return (
@@ -426,7 +426,7 @@ export default function LoginScreen({ navigation }) {
                 </Text>
             </View>
         );
-    };
+    };*/
 
     return (
         <View style={styles.container}>
@@ -455,8 +455,8 @@ export default function LoginScreen({ navigation }) {
                                     {/* Alerta de bloqueo de cuenta */}
                                     {renderLockoutAlert()}
 
-                                    {/* Información de seguridad */}
-                                    {renderSecurityInfo()}
+                                    {/* Información de seguridad 
+                                    {renderSecurityInfo()}*/}
 
                                     {/* Advertencia sobre intentos restantes */}
                                     {renderAttemptWarning()}
@@ -523,8 +523,8 @@ export default function LoginScreen({ navigation }) {
                                             lockoutInfo?.isLocked
                                                 ? "Cuenta Bloqueada"
                                                 : isSubmitting
-                                                ? "Iniciando Sesión..."
-                                                : "Iniciar Sesión"
+                                                    ? "Iniciando Sesión..."
+                                                    : "Iniciar Sesión"
                                         }
                                         onPress={handleLogin}
                                         style={[
@@ -577,7 +577,7 @@ export default function LoginScreen({ navigation }) {
                                                 Sistema de Seguridad Activo
                                             </Text>
                                             <Text style={styles.securityFooterText}>
-                                                Tu cuenta se protege automáticamente contra intentos de acceso no autorizados
+                                                Por tu seguridad, tu cuenta se bloqueará temporalmente después de 5 intentos fallidos.
                                             </Text>
                                         </View>
                                     )}
@@ -626,20 +626,20 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    
+
     // Imagen de fondo que ocupa toda la pantalla
     backgroundImage: {
         flex: 1,
         width: '100%',
         height: '100%',
     },
-    
+
     // Overlay semitransparente sobre la imagen de fondo
     overlay: {
         flex: 1,
         backgroundColor: 'rgba(255, 255, 255, 0.1)',
     },
-    
+
     // Contenido del ScrollView con responsive design
     scrollContent: {
         flexGrow: 1,
@@ -647,7 +647,7 @@ const styles = StyleSheet.create({
         minHeight: height, // Asegurar que ocupe toda la pantalla
         paddingVertical: verticalScale(20),
     },
-    
+
     // Contenedor principal del contenido con responsive design
     content: {
         flex: 1,
@@ -656,7 +656,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: scale(20),
         paddingVertical: verticalScale(10),
     },
-    
+
     // Tarjeta principal del formulario de login con responsive design
     loginCard: {
         backgroundColor: 'rgba(255, 255, 255, 0.95)', // Fondo semitransparente
@@ -676,7 +676,7 @@ const styles = StyleSheet.create({
         shadowRadius: moderateScale(20),
         elevation: 8, // Sombra en Android
     },
-    
+
     // Estilos para alertas de bloqueo y advertencias con responsive design
     alertContainer: {
         width: '100%',
@@ -694,21 +694,21 @@ const styles = StyleSheet.create({
         shadowRadius: moderateScale(8),
         elevation: 4,
     },
-    
+
     // Alerta de bloqueo de cuenta
     lockoutAlert: {
         backgroundColor: '#FEF2F2',
         borderWidth: 1,
         borderColor: '#FECACA',
     },
-    
+
     // Alerta de advertencia
     warningAlert: {
         backgroundColor: '#FFFBEB',
         borderWidth: 1,
         borderColor: '#FDE68A',
     },
-    
+
     // Contenedor del icono de alerta con responsive design
     alertIcon: {
         width: scale(24),
@@ -719,26 +719,26 @@ const styles = StyleSheet.create({
         marginRight: scale(10),
         marginTop: verticalScale(2),
     },
-    
+
     // Imagen del icono de alerta
     alertIconImage: {
         width: scale(20),
         height: scale(20),
         tintColor: '#DC2626',
     },
-    
+
     // Imagen del icono de advertencia
     warningIconImage: {
         width: scale(18),
         height: scale(18),
         tintColor: '#D97706',
     },
-    
+
     // Contenido de la alerta
     alertContent: {
         flex: 1,
     },
-    
+
     // Título de la alerta de bloqueo con responsive design
     alertTitle: {
         fontSize: moderateScale(14),
@@ -747,7 +747,7 @@ const styles = StyleSheet.create({
         marginBottom: verticalScale(6),
         lineHeight: moderateScale(18),
     },
-    
+
     // Mensaje de la alerta de bloqueo con responsive design
     alertMessage: {
         fontSize: moderateScale(12),
@@ -756,7 +756,7 @@ const styles = StyleSheet.create({
         marginBottom: verticalScale(10),
         lineHeight: moderateScale(16),
     },
-    
+
     // Contenedor del tiempo restante con responsive design
     timeContainer: {
         backgroundColor: '#FEE2E2',
@@ -767,14 +767,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
     },
-    
+
     // Etiqueta del tiempo con responsive design
     timeLabel: {
         fontSize: moderateScale(11),
         fontFamily: 'Poppins-Medium',
         color: '#991B1B',
     },
-    
+
     // Valor del tiempo restante con responsive design
     timeValue: {
         fontSize: moderateScale(14),
@@ -782,7 +782,7 @@ const styles = StyleSheet.create({
         color: '#DC2626',
         letterSpacing: 1,
     },
-    
+
     // Pie de la alerta con responsive design
     alertFooter: {
         fontSize: moderateScale(10),
@@ -790,7 +790,7 @@ const styles = StyleSheet.create({
         color: '#7F1D1D',
         lineHeight: moderateScale(14),
     },
-    
+
     // Título de la advertencia con responsive design
     warningTitle: {
         fontSize: moderateScale(13),
@@ -799,7 +799,7 @@ const styles = StyleSheet.create({
         marginBottom: verticalScale(5),
         lineHeight: moderateScale(17),
     },
-    
+
     // Mensaje de la advertencia con responsive design
     warningMessage: {
         fontSize: moderateScale(11),
@@ -808,12 +808,12 @@ const styles = StyleSheet.create({
         marginBottom: verticalScale(10),
         lineHeight: moderateScale(15),
     },
-    
+
     // Contenedor de la barra de progreso
     progressContainer: {
         width: '100%',
     },
-    
+
     // Información de progreso con responsive design
     progressInfo: {
         flexDirection: 'row',
@@ -821,21 +821,21 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: verticalScale(6),
     },
-    
+
     // Etiqueta del progreso con responsive design
     progressLabel: {
         fontSize: moderateScale(10),
         fontFamily: 'Poppins-Medium',
         color: '#92400E',
     },
-    
+
     // Intentos restantes con responsive design
     progressRemaining: {
         fontSize: moderateScale(10),
         fontFamily: 'Poppins-SemiBold',
         color: '#D97706',
     },
-    
+
     // Contenedor de la barra de progreso con responsive design
     progressBarContainer: {
         width: '100%',
@@ -844,13 +844,13 @@ const styles = StyleSheet.create({
         borderRadius: moderateScale(3),
         overflow: 'hidden',
     },
-    
+
     // Barra de progreso animada con responsive design
     progressBar: {
         height: '100%',
         borderRadius: moderateScale(3),
     },
-    
+
     // Información de seguridad con responsive design
     securityInfo: {
         width: '100%',
@@ -863,7 +863,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'flex-start',
     },
-    
+
     // Icono de seguridad con responsive design
     securityIcon: {
         width: scale(18),
@@ -873,14 +873,14 @@ const styles = StyleSheet.create({
         marginRight: scale(8),
         marginTop: verticalScale(1),
     },
-    
+
     // Imagen del icono de seguridad
     securityIconImage: {
         width: scale(16),
         height: scale(16),
         tintColor: '#86198F',
     },
-    
+
     // Texto de información de seguridad con responsive design
     securityText: {
         flex: 1,
@@ -889,7 +889,7 @@ const styles = StyleSheet.create({
         color: '#86198F',
         lineHeight: moderateScale(14),
     },
-    
+
     // Título principal de la aplicación con responsive design
     title: {
         fontSize: moderateScale(18),
@@ -899,24 +899,24 @@ const styles = StyleSheet.create({
         marginBottom: verticalScale(25),
         lineHeight: moderateScale(24), // Espaciado entre líneas
     },
-    
+
     // Espaciado para los campos de entrada con responsive design
     inputSpacing: {
         marginBottom: verticalScale(15),
     },
-    
+
     // Estilos para campos deshabilitados
     disabledInput: {
         opacity: 0.6,
     },
-    
+
     // Contenedor del enlace "olvidé mi contraseña" con responsive design
     forgotPasswordContainer: {
         alignSelf: 'flex-end', // Alineado a la derecha
         marginBottom: verticalScale(25),
         marginTop: verticalScale(-3),
     },
-    
+
     // Texto del enlace "olvidé mi contraseña" con responsive design
     forgotPasswordText: {
         fontSize: moderateScale(12),
@@ -925,35 +925,35 @@ const styles = StyleSheet.create({
         marginTop: verticalScale(3),
         bottom: verticalScale(-3)
     },
-    
+
     // Estilos para enlaces deshabilitados
     disabledLink: {
         opacity: 0.5,
     },
-    
+
     // Texto deshabilitado
     disabledText: {
         color: '#CCCCCC',
     },
-    
+
     // Espaciado para el botón de login con responsive design
     loginButtonSpacing: {
         marginBottom: verticalScale(20),
         width: '100%', // Ocupar todo el ancho disponible
     },
-    
+
     // Botón deshabilitado
     disabledButton: {
         opacity: 0.6,
     },
-    
+
     // Contenedor de estado con responsive design
     statusContainer: {
         width: '100%',
         alignItems: 'center',
         marginBottom: verticalScale(12),
     },
-    
+
     // Estado de bloqueo con responsive design
     lockoutStatus: {
         flexDirection: 'row',
@@ -964,7 +964,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#FECACA',
     },
-    
+
     // Icono de estado de bloqueo con responsive design
     lockoutStatusIcon: {
         width: scale(14),
@@ -972,14 +972,14 @@ const styles = StyleSheet.create({
         tintColor: '#991B1B',
         marginRight: scale(6),
     },
-    
+
     // Texto de estado de bloqueo con responsive design
     lockoutStatusText: {
         fontSize: moderateScale(10),
         fontFamily: 'Poppins-Medium',
         color: '#991B1B',
     },
-    
+
     // Estado de carga con responsive design
     loadingStatus: {
         flexDirection: 'row',
@@ -990,7 +990,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#D1D5DB',
     },
-    
+
     // Spinner de carga con responsive design
     loadingSpinner: {
         width: scale(14),
@@ -1002,19 +1002,19 @@ const styles = StyleSheet.create({
         marginRight: scale(6),
         // Animación de rotación se maneja por separado
     },
-    
+
     // Texto de estado de carga con responsive design
     loadingStatusText: {
         fontSize: moderateScale(10),
         fontFamily: 'Poppins-Medium',
         color: '#6B7280',
     },
-    
+
     // Espaciado para el texto de registro con responsive design
     registerTextSpacing: {
         marginTop: verticalScale(8),
     },
-    
+
     // Pie de información de seguridad con responsive design
     securityFooter: {
         width: '100%',
@@ -1024,7 +1024,7 @@ const styles = StyleSheet.create({
         borderTopWidth: 1,
         borderTopColor: '#F3F4F6',
     },
-    
+
     // Icono del pie de seguridad con responsive design
     securityFooterIcon: {
         width: scale(20),
@@ -1033,14 +1033,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: verticalScale(6),
     },
-    
+
     // Imagen del icono del pie de seguridad
     securityFooterIconImage: {
         width: scale(18),
         height: scale(18),
         tintColor: '#9CA3AF',
     },
-    
+
     // Título del pie de seguridad con responsive design
     securityFooterTitle: {
         fontSize: moderateScale(11),
@@ -1049,7 +1049,7 @@ const styles = StyleSheet.create({
         marginBottom: verticalScale(3),
         textAlign: 'center',
     },
-    
+
     // Texto del pie de seguridad con responsive design
     securityFooterText: {
         fontSize: moderateScale(10),

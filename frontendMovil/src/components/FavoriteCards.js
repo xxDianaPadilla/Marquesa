@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#ff6b8a', // Fondo rosa para el corazón
+    backgroundColor: '#f099acff', // Fondo rosa para el corazón
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',

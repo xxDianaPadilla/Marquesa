@@ -213,7 +213,7 @@ const ShippingInformation = () => {
                                         Importante
                                     </h4>
                                     <p className="text-white text-base sm:text-lg leading-relaxed" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                                        La MarquesaSV no se hace responsable por retrasos o entregas fallidas debido a información incorrecta o ausencia del destinatario.
+                                        Marquesa no se hace responsable por retrasos o entregas fallidas debido a información incorrecta o ausencia del destinatario.
                                     </p>
                                 </div>
                             </div>

@@ -311,7 +311,7 @@ export default function RuletaScreen({ navigation }) {
                             onPress={goToDiscountCodes}
                         >
                             <Text style={styles.codesButtonText}>
-                                Ver todos mis códigos 📋
+                                Ver todos mis códigos
                             </Text>
                         </TouchableOpacity>
                     )}
@@ -324,7 +324,7 @@ export default function RuletaScreen({ navigation }) {
                         onPress={goToHome}
                     >
                         <Text style={styles.primaryActionButtonText}>
-                            Comenzar a comprar 🛍️
+                            Comenzar a comprar
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
     },
     headerTitle: {
         fontSize: 20,
-        fontFamily: 'Poppins-Bold',
+        fontFamily: 'Poppins-SemiBold',
         color: '#333333',
         textAlign: 'center',
     },
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
     },
     codesSectionTitle: {
         fontSize: 20,
-        fontFamily: 'Poppins-Bold',
+        fontFamily: 'Poppins-SemiBold',
         color: '#1F2937',
     },
     refreshButton: {
@@ -550,6 +550,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 8,
         elevation: 4,
+        bottom: 20,
     },
     primaryActionButtonText: {
         color: '#FFFFFF',

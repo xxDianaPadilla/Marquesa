@@ -219,16 +219,6 @@ export default function ResultModalMobile({
                     {/* Botones de acción */}
                     <View style={styles.buttonContainer}>
                         <TouchableOpacity
-                            style={styles.primaryButton}
-                            onPress={handleClose}
-                            activeOpacity={0.8}
-                        >
-                            <Text style={styles.primaryButtonText}>
-                                ¡Comenzar a comprar! 🛍️
-                            </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
                             style={styles.secondaryButton}
                             onPress={handleClose}
                             activeOpacity={0.7}
@@ -283,7 +273,7 @@ const styles = StyleSheet.create({
     },
     modalTitle: {
         fontSize: 24,
-        fontFamily: 'Poppins-Bold',
+        fontFamily: 'Poppins-SemiBold',
         color: '#1F2937',
         textAlign: 'center',
         marginBottom: 8,

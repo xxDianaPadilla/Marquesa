@@ -204,8 +204,8 @@ const ProductCard = ({
     <TouchableOpacity
       style={styles.card}
       onPress={() => {
-        console.log('ProductCard clicked:', product._id); 
-        onPress && onPress(product); 
+        console.log('ProductCard clicked:', product._id);
+        onPress && onPress(product);
       }}
       activeOpacity={0.8}
     >
@@ -258,13 +258,6 @@ const ProductCard = ({
             <Text style={styles.loadingOverlayText}>
               {isAddingToCart ? "Agregando..." : "Removiendo..."}
             </Text>
-          </View>
-        )}
-
-        {/* Indicador visual cuando está en el carrito */}
-        {productIsInCart && !isAddingToCart && !isRemovingFromCart && (
-          <View style={styles.inCartIndicator}>
-            <Icon name="check-circle" size={20} color="#4CAF50" />
           </View>
         )}
       </View>
@@ -367,7 +360,7 @@ const styles = StyleSheet.create({
   },
 
   favoriteButtonActive: {
-    backgroundColor: '#ff6b8a',
+    backgroundColor: '#f099acff',
   },
 
   favoriteButtonLoading: {
@@ -551,7 +544,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#9b59b6',
+    backgroundColor: '#4A4170',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -587,7 +580,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#e74c3c',
+    backgroundColor: '#4A4170',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',

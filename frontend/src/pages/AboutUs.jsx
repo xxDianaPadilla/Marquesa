@@ -129,7 +129,7 @@ const AboutUs = () => {
                         {/* Título principal usando componente reutilizable */}
                         <PageTitle
                             title="Sobre Nosotros"
-                            subtitle="En La MarquesaSV, respetamos cada detalle y nos comprometemos a crear momentos especiales únicos. Conoce más sobre nuestra historia, valores y compromiso con la excelencia."
+                            subtitle="En Marquesa, respetamos cada detalle y nos comprometemos a crear momentos especiales únicos. Conoce más sobre nuestra historia, valores y compromiso con la excelencia."
                         />
 
                         {/* Contenido principal en tarjetas elegantes usando InfoCard */}
@@ -149,7 +149,7 @@ const AboutUs = () => {
 
                             {/* Tarjeta final con mensaje especial usando GradientCard */}
                             <GradientCard
-                                title="La Marquesa"
+                                title="Marquesa"
                                 description="Dedicados a realizar detalles únicos"
                                 icon={
                                     <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">

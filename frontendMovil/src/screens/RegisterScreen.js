@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-import { 
-    View, 
-    Text, 
-    StyleSheet, 
-    TouchableOpacity, 
-    Image, 
-    SafeAreaView, 
+import {
+    View,
+    Text,
+    StyleSheet,
+    TouchableOpacity,
+    Image,
+    SafeAreaView,
     ScrollView,
     KeyboardAvoidingView,
     Platform
@@ -20,6 +20,8 @@ import emailIcon from "../images/emailIcon.png";
 import calendarIcon from "../images/calendarIcon.png";
 import locationIcon from "../images/locationIcon.png";
 import lockIcon from "../images/lockIcon.png";
+import eyeIcon from "../images/eyeIcon.png";
+import eyeOffIcon from "../images/eyeOffIcon.png";
 
 // Importación de componentes personalizados
 import PinkButton from "../components/PinkButton";
@@ -66,6 +68,7 @@ const RegisterScreen = ({ navigation }) => {
     const [showSuccessAlert, setShowSuccessAlert] = useState(false);
     const [showErrorAlert, setShowErrorAlert] = useState(false);
     const [alertMessage, setAlertMessage] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
 
     // Estados para el modal de verificación de email
     const [showEmailVerification, setShowEmailVerification] = useState(false);
@@ -76,17 +79,17 @@ const RegisterScreen = ({ navigation }) => {
     // Función para manejar los cambios en los campos del formulario
     const handleInputChange = (field, value) => {
         let processedValue = value;
-        
+
         // Formatear automáticamente el teléfono mientras se escribe
         if (field === 'telefono') {
             processedValue = formatPhoneInput(value);
         }
-        
+
         setFormData(prev => ({
             ...prev,
             [field]: processedValue
         }));
-        
+
         // Limpiar error del campo cuando el usuario comienza a escribir
         if (fieldErrors[field]) {
             clearFieldError(field);
@@ -124,7 +127,7 @@ const RegisterScreen = ({ navigation }) => {
                         // Los errores de validación ya se establecieron en fieldErrors
                         console.log('Errores de validación mostrados en campos');
                         break;
-                    
+
                     case 'email_exists':
                     case 'email_check':
                     case 'error':
@@ -147,7 +150,7 @@ const RegisterScreen = ({ navigation }) => {
     // Función que se ejecuta cuando la verificación de email es exitosa
     const handleEmailVerificationSuccess = () => {
         setShowEmailVerification(false);
-        
+
         // Mostrar alerta de éxito
         setAlertMessage('Tu correo ha sido verificado y tu cuenta ha sido creada exitosamente. Ahora serás dirigido al inicio.');
         setShowSuccessAlert(true);
@@ -168,11 +171,11 @@ const RegisterScreen = ({ navigation }) => {
     // Función para manejar la confirmación de registro exitoso
     const handleSuccessConfirm = async () => {
         setShowSuccessAlert(false);
-        
+
         try {
             // Intentar hacer login automático después del registro
             const loginResult = await login(formData.correo, formData.contrasena);
-            
+
             if (loginResult.success) {
                 // Navegar al TabNavigator (que incluye Home)
                 navigation.replace('TabNavigator');
@@ -206,7 +209,7 @@ const RegisterScreen = ({ navigation }) => {
             />
 
             {/* Contenedor que ajusta la vista cuando aparece el teclado */}
-            <KeyboardAvoidingView 
+            <KeyboardAvoidingView
                 style={styles.keyboardAvoidingView}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
@@ -231,7 +234,7 @@ const RegisterScreen = ({ navigation }) => {
 
                     {/* Mensaje de error general si existe */}
                     {generalError ? (
-                        <ValidationMessage 
+                        <ValidationMessage
                             message={generalError}
                             type="error"
                             style={styles.generalError}
@@ -250,7 +253,7 @@ const RegisterScreen = ({ navigation }) => {
                                 style={[styles.inputSpacing, fieldErrors.nombre && styles.inputError]}
                                 editable={!isRegistering && !isValidating}
                             />
-                            <ValidationMessage 
+                            <ValidationMessage
                                 message={fieldErrors.nombre}
                                 visible={!!fieldErrors.nombre}
                             />
@@ -268,7 +271,7 @@ const RegisterScreen = ({ navigation }) => {
                                 editable={!isRegistering && !isValidating}
                                 maxLength={9} // 8 números + 1 guión
                             />
-                            <ValidationMessage 
+                            <ValidationMessage
                                 message={fieldErrors.telefono}
                                 visible={!!fieldErrors.telefono}
                             />
@@ -286,7 +289,7 @@ const RegisterScreen = ({ navigation }) => {
                                 style={[styles.inputSpacing, fieldErrors.correo && styles.inputError]}
                                 editable={!isRegistering && !isValidating}
                             />
-                            <ValidationMessage 
+                            <ValidationMessage
                                 message={fieldErrors.correo}
                                 visible={!!fieldErrors.correo}
                             />
@@ -304,7 +307,7 @@ const RegisterScreen = ({ navigation }) => {
                                 dateFormat="DD/MM/YYYY"
                                 editable={!isRegistering && !isValidating}
                             />
-                            <ValidationMessage 
+                            <ValidationMessage
                                 message={fieldErrors.fechaNacimiento}
                                 visible={!!fieldErrors.fechaNacimiento}
                             />
@@ -320,7 +323,7 @@ const RegisterScreen = ({ navigation }) => {
                                 style={[styles.inputSpacing, fieldErrors.direccion && styles.inputError]}
                                 editable={!isRegistering && !isValidating}
                             />
-                            <ValidationMessage 
+                            <ValidationMessage
                                 message={fieldErrors.direccion}
                                 visible={!!fieldErrors.direccion}
                             />
@@ -333,11 +336,15 @@ const RegisterScreen = ({ navigation }) => {
                                 value={formData.contrasena}
                                 onChangeText={(value) => handleInputChange('contrasena', value)}
                                 icon={lockIcon}
-                                secureTextEntry={true}
                                 style={[styles.inputSpacing, fieldErrors.contrasena && styles.inputError]}
                                 editable={!isRegistering && !isValidating}
+                                secureTextEntry={!showPassword} // Ocultar/mostrar contraseña
+                                showPasswordToggle={true} // Mostrar botón de toggle
+                                onTogglePassword={() => setShowPassword(!showPassword)}
+                                eyeIcon={eyeIcon}
+                                eyeOffIcon={eyeOffIcon}
                             />
-                            <ValidationMessage 
+                            <ValidationMessage
                                 message={fieldErrors.contrasena}
                                 visible={!!fieldErrors.contrasena}
                             />

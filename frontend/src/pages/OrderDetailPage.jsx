@@ -119,9 +119,15 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, remaini
               <div className="flex items-center space-x-2">
                 <Clock className="w-4 h-4 text-yellow-600" />
                 <p className="text-sm text-yellow-800 font-medium">
-                  Tienes hasta {remainingHours} horas para cancelar este pedido
+                  {remainingHours > 24 
+                    ? `Tienes ${Math.ceil(remainingHours / 24)} días para cancelar este pedido`
+                    : `Tienes ${remainingHours} horas para cancelar este pedido`
+                  }
                 </p>
               </div>
+              <p className="text-xs text-yellow-700 mt-1">
+                Recuerda: Solo puedes cancelar pedidos entre el día 3 y 5 después de haberlos realizado.
+              </p>
             </div>
           )}
 
@@ -366,10 +372,10 @@ const OrderDetail = () => {
     navigate('/profile');
   };
 
-  // Función para mostrar modal de confirmación
+  // Función para mostrar modal de confirmación - ACTUALIZADA
   const handleCancelOrderClick = () => {
     // Verificar que existan datos del pedido y sea cancelable
-    if (!orderData || !cancellationInfo?.isCancellable) return;
+    if (!orderData || !cancelButtonInfo.enabled) return;
 
     // Mostrar modal de confirmación
     setShowConfirmModal(true);
@@ -413,7 +419,8 @@ const OrderDetail = () => {
         // Actualizar información de cancelación
         setCancellationInfo(prev => ({
           ...prev,
-          isCancellable: false
+          isCancellable: false,
+          status: 'no_cancellable_status'
         }));
         // Cerrar modal
         setShowConfirmModal(false);
@@ -446,15 +453,23 @@ const OrderDetail = () => {
     });
   };
 
-  // Función para obtener fecha límite de cancelación
+  // Función para obtener fecha límite de cancelación - ACTUALIZADA
   const getCancellableDate = (createdAt) => {
-    // Verificar que la fecha de creación exista
     if (!createdAt) return 'N/A';
-    // Crear objeto Date
     const date = new Date(createdAt);
-    // Agregar 3 días a la fecha de creación
-    date.setDate(date.getDate() + 3);
-    // Retornar fecha formateada
+    date.setDate(date.getDate() + 5); // Cambiar de 3 a 5 días
+    return date.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  // Función para obtener fecha de inicio de cancelación - NUEVA
+  const getCancellationStartDate = (createdAt) => {
+    if (!createdAt) return 'N/A';
+    const date = new Date(createdAt);
+    date.setDate(date.getDate() + 2); // 2 días de espera
     return date.toLocaleDateString('es-ES', {
       day: '2-digit',
       month: '2-digit',
@@ -550,6 +565,41 @@ const OrderDetail = () => {
     };
     // Retornar etiqueta mapeada o estado original
     return statusMap[trackingStatus] || trackingStatus;
+  };
+
+  // Función para determinar información del botón de cancelación - NUEVA
+  const getCancelButtonInfo = () => {
+    if (!cancellationInfo ||
+      orderData.trackingStatus === 'Entregado' ||
+      orderData.trackingStatus === 'Cancelado') {
+      return { show: false, enabled: false, text: '', reason: '' };
+    }
+
+    switch (cancellationInfo.status) {
+      case 'waiting_period':
+        return {
+          show: true,
+          enabled: false,
+          text: 'Cancelación disponible pronto',
+          reason: `Podrás cancelar este pedido a partir del ${getCancellationStartDate(orderData.createdAt)} (faltan ${cancellationInfo.remainingHours} horas)`
+        };
+      case 'cancellable':
+        return {
+          show: true,
+          enabled: true,
+          text: 'Cancelar pedido',
+          reason: `Tienes ${cancellationInfo.remainingHours} horas para cancelar`
+        };
+      case 'expired':
+        return {
+          show: true,
+          enabled: false,
+          text: 'Período de cancelación expirado',
+          reason: 'Ya no es posible cancelar este pedido'
+        };
+      default:
+        return { show: false, enabled: false, text: '', reason: '' };
+    }
   };
 
   // Componente para mostrar imágenes de productos con manejo de errores
@@ -827,10 +877,8 @@ const OrderDetail = () => {
     orderData.trackingStatus === 'En proceso' ? 66 :
       orderData.trackingStatus === 'Entregado' ? 100 : 33;
 
-  // Determinar si mostrar botón de cancelación
-  const showCancelButton = cancellationInfo?.isCancellable &&
-    orderData.trackingStatus !== 'Entregado' &&
-    orderData.trackingStatus !== 'Cancelado';
+  // Obtener información del botón de cancelación - ACTUALIZADO
+  const cancelButtonInfo = getCancelButtonInfo();
 
   return (
     <div className="min-h-screen bg-white-50">
@@ -870,21 +918,25 @@ const OrderDetail = () => {
               </div>
             </div>
 
-            {/* Mostrar botón de cancelación si es elegible */}
-            {showCancelButton && (
+            {/* Mostrar botón de cancelación si corresponde - ACTUALIZADO */}
+            {cancelButtonInfo.show && (
               <div className="flex flex-col items-end">
                 <button
-                  className="px-2 sm:px-4 py-2 text-white rounded-lg text-xs sm:text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ backgroundColor: '#E8ACD2', cursor: 'pointer' }}
-                  onClick={handleCancelOrderClick}
-                  disabled={cancelLoading}
+                  className={`px-2 sm:px-4 py-2 text-white rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 ${
+                    cancelButtonInfo.enabled 
+                      ? 'hover:opacity-90 cursor-pointer' 
+                      : 'opacity-50 cursor-not-allowed'
+                  }`}
+                  style={{ backgroundColor: cancelButtonInfo.enabled ? '#E8ACD2' : '#9CA3AF' }}
+                  onClick={cancelButtonInfo.enabled ? handleCancelOrderClick : undefined}
+                  disabled={!cancelButtonInfo.enabled || cancelLoading}
                 >
-                  Cancelar pedido
+                  {cancelButtonInfo.text}
                 </button>
-                {/* Mostrar tiempo restante para cancelación */}
-                {cancellationInfo?.remainingHours > 0 && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Quedan {cancellationInfo.remainingHours}h para cancelar
+                {/* Mostrar información adicional sobre la cancelación */}
+                {cancelButtonInfo.reason && (
+                  <p className="text-xs text-gray-500 mt-1 text-right max-w-48">
+                    {cancelButtonInfo.reason}
                   </p>
                 )}
               </div>
@@ -947,12 +999,22 @@ const OrderDetail = () => {
                 </div>
               </div>
 
-              {/* Información de cancelación */}
+              {/* Información de cancelación - ACTUALIZADA */}
               <div className="flex items-center justify-between text-sm text-gray-500">
-                <span>Cancelable hasta: {getCancellableDate(orderData.createdAt)}</span>
-                {/* Mostrar mensaje si ya no es cancelable */}
-                {cancellationInfo && !cancellationInfo.isCancellable && (
+                <span>
+                  {cancellationInfo?.status === 'waiting_period' 
+                    ? `Cancelable a partir del: ${getCancellationStartDate(orderData.createdAt)}`
+                    : cancellationInfo?.status === 'cancellable'
+                    ? `Cancelable hasta: ${getCancellableDate(orderData.createdAt)}`
+                    : `Período de cancelación: ${getCancellationStartDate(orderData.createdAt)} - ${getCancellableDate(orderData.createdAt)}`
+                  }
+                </span>
+                {/* Mostrar mensaje según el estado */}
+                {cancellationInfo && cancellationInfo.status === 'expired' && (
                   <span className="text-red-500">Período de cancelación expirado</span>
+                )}
+                {cancellationInfo && cancellationInfo.status === 'no_cancellable_status' && (
+                  <span className="text-gray-500">No cancelable por estado actual</span>
                 )}
               </div>
             </div>
@@ -1129,20 +1191,35 @@ const OrderDetail = () => {
                 </div>
               </div>
 
-              {/* Información de cancelación si existe */}
+              {/* Información de cancelación si existe - ACTUALIZADA */}
               {cancellationInfo && (
                 <div className="mt-4 pt-4 border-t" style={{ borderColor: '#E5E7EB' }}>
                   <div className="text-sm text-gray-600">
                     <p className="font-medium mb-2">Información de cancelación:</p>
                     <div className="space-y-1">
-                      <p>Estado: <span className={cancellationInfo.isCancellable ? 'text-green-600' : 'text-red-600'}>
-                        {cancellationInfo.isCancellable ? 'Cancelable' : 'No cancelable'}
+                      <p>Estado: <span className={
+                        cancellationInfo.status === 'cancellable' ? 'text-green-600' :
+                        cancellationInfo.status === 'waiting_period' ? 'text-yellow-600' :
+                        cancellationInfo.status === 'expired' ? 'text-red-600' :
+                        'text-gray-600'
+                      }>
+                        {cancellationInfo.status === 'cancellable' ? 'Cancelable ahora' :
+                         cancellationInfo.status === 'waiting_period' ? 'En período de espera' :
+                         cancellationInfo.status === 'expired' ? 'Período expirado' :
+                         'No cancelable'}
                       </span></p>
-                      {/* Mostrar tiempo restante si es cancelable */}
-                      {cancellationInfo.isCancellable && cancellationInfo.remainingHours > 0 && (
-                        <p>Tiempo restante: <span className="text-orange-600">{cancellationInfo.remainingHours} horas</span></p>
+                      
+                      {/* Mostrar información específica según el estado */}
+                      {cancellationInfo.status === 'waiting_period' && cancellationInfo.remainingHours > 0 && (
+                        <p>Disponible en: <span className="text-orange-600">{cancellationInfo.remainingHours} horas</span></p>
                       )}
-                      <p>Límite: {formatDate(cancellationInfo.cancellableUntil)}</p>
+                      
+                      {cancellationInfo.status === 'cancellable' && cancellationInfo.remainingHours > 0 && (
+                        <p>Tiempo restante: <span className="text-green-600">{cancellationInfo.remainingHours} horas</span></p>
+                      )}
+                      
+                      <p>Ventana de cancelación: {getCancellationStartDate(orderData.createdAt)} - {getCancellableDate(orderData.createdAt)}</p>
+                      <p>Días desde creación: {cancellationInfo.daysFromCreation || 0} días</p>
                     </div>
                   </div>
                 </div>
@@ -1227,8 +1304,6 @@ const OrderDetail = () => {
               </h2>
 
               <div className="space-y-3">
-                {/* ID del pedido */}
-                <div className="flex justify-between"></div>
                 {/* Fecha de creación */}
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Fecha de creación:</span>

@@ -924,20 +924,39 @@ salesController.cancelOrder = async (req, res) => {
             });
         }
 
-        // Verificar que no han pasado más de 3 días desde la creación
+        // Nueva validación de tiempo
         const now = new Date();
         const createdAt = new Date(order.createdAt);
-        const threeDaysInMs = 3 * 24 * 60 * 60 * 1000; // 3 días en milisegundos
+        const twoDaysInMs = 2 * 24 * 60 * 60 * 1000;
+        const fiveDaysInMs = 5 * 24 * 60 * 60 * 1000;
         const timeDifference = now - createdAt;
 
-        if (timeDifference > threeDaysInMs) {
-            const cancellableDate = new Date(createdAt.getTime() + threeDaysInMs);
+        // Verificar que han pasado al menos 2 días
+        if (timeDifference < twoDaysInMs) {
+            const cancellationStartDate = new Date(createdAt.getTime() + twoDaysInMs);
             return res.status(400).json({
                 success: false,
-                message: `No se puede cancelar el pedido después de 3 días. El límite de cancelación era el ${cancellableDate.toLocaleDateString('es-ES', {
+                message: `No se puede cancelar el pedido antes de 2 días. Podrás cancelarlo a partir del ${cancellationStartDate.toLocaleDateString('es-ES', {
                     day: '2-digit',
                     month: '2-digit',
-                    year: 'numeric'
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                })}`
+            });
+        }
+
+        // Verificar que no han pasado más de 5 días
+        if (timeDifference > fiveDaysInMs) {
+            const cancellationEndDate = new Date(createdAt.getTime() + fiveDaysInMs);
+            return res.status(400).json({
+                success: false,
+                message: `No se puede cancelar el pedido después de 5 días. El límite de cancelación era el ${cancellationEndDate.toLocaleDateString('es-ES', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
                 })}`
             });
         }
@@ -964,7 +983,7 @@ salesController.cancelOrder = async (req, res) => {
             success: true,
             data: updatedOrder,
             message: 'Pedido cancelado exitosamente',
-            token: token || 'session_maintained' // También en el body para mayor compatibilidad
+            token: token || 'session_maintained'
         });
 
     } catch (error) {
@@ -1003,14 +1022,46 @@ salesController.checkCancellationEligibility = async (req, res) => {
 
         const now = new Date();
         const createdAt = new Date(order.createdAt);
-        const threeDaysInMs = 3 * 24 * 60 * 60 * 1000;
-        const timeDifference = now - createdAt;
-        const cancellableDate = new Date(createdAt.getTime() + threeDaysInMs);
 
+        // Nuevas constantes de tiempo
+        const twoDaysInMs = 2 * 24 * 60 * 60 * 1000;
+        const fiveDaysInMs = 5 * 24 * 60 * 60 * 1000;
+        const timeDifference = now - createdAt;
+
+        // Fechas importantes
+        const cancellationStartDate = new Date(createdAt.getTime() + twoDaysInMs);
+        const cancellationEndDate = new Date(createdAt.getTime() + fiveDaysInMs);
+
+        // Lógica de elegibilidad:
+        // 1. No debe estar entregado o cancelado
+        // 2. Deben haber pasado al menos 2 días desde la creación
+        // 3. No deben haber pasado más de 5 días desde la creación
         const isCancellable =
             order.trackingStatus !== 'Entregado' &&
             order.trackingStatus !== 'Cancelado' &&
-            timeDifference <= threeDaysInMs;
+            timeDifference >= twoDaysInMs &&
+            timeDifference <= fiveDaysInMs;
+
+        // Calcular horas restantes para cancelar (solo si está en ventana de cancelación)
+        let remainingHours = 0;
+        let status = '';
+
+        if (order.trackingStatus === 'Entregado' || order.trackingStatus === 'Cancelado') {
+            status = 'no_cancellable_status';
+        } else if (timeDifference < twoDaysInMs) {
+            // Aún no se puede cancelar, faltan días
+            const hoursUntilCancellable = Math.ceil((twoDaysInMs - timeDifference) / (1000 * 60 * 60));
+            status = 'waiting_period';
+            remainingHours = hoursUntilCancellable;
+        } else if (timeDifference <= fiveDaysInMs) {
+            // Está en ventana de cancelación
+            const hoursUntilExpiry = Math.max(0, Math.ceil((fiveDaysInMs - timeDifference) / (1000 * 60 * 60)));
+            status = 'cancellable';
+            remainingHours = hoursUntilExpiry;
+        } else {
+            // Se pasó el tiempo de cancelación
+            status = 'expired';
+        }
 
         // Configurar cookies con configuración dinámica cross-domain
         const { token } = getTokenFromRequest(req);
@@ -1025,11 +1076,14 @@ salesController.checkCancellationEligibility = async (req, res) => {
                 isCancellable,
                 currentStatus: order.trackingStatus,
                 createdAt: order.createdAt,
-                cancellableUntil: cancellableDate,
-                remainingHours: isCancellable ? Math.max(0, Math.ceil((threeDaysInMs - timeDifference) / (1000 * 60 * 60))) : 0
+                cancellationStartDate,
+                cancellationEndDate,
+                remainingHours,
+                status,
+                daysFromCreation: Math.floor(timeDifference / (24 * 60 * 60 * 1000))
             },
             message: 'Información de cancelación obtenida exitosamente',
-            token: token || 'session_maintained' // También en el body para mayor compatibilidad
+            token: token || 'session_maintained'
         });
 
     } catch (error) {

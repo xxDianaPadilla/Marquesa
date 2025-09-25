@@ -6,7 +6,6 @@ import {
     TouchableOpacity,
     StyleSheet,
     Platform,
-    KeyboardAvoidingView,
     ActivityIndicator,
     Image,
     Alert
@@ -21,9 +20,19 @@ import { useAlert } from '../hooks/useAlert';
 import attachImage from "../images/attachImage.png";
 import sendIcon from "../images/sendIcon.png";
 
+// ✅ IMPORTAR SISTEMA RESPONSIVE
+import {
+    responsive,
+    getHorizontalPadding,
+    getChatInputConfig,
+    getImagePreviewDimensions,
+    getImagePreviewContainerHeight
+} from '../utils/ResponsiveHelper';
+
 /**
- * Componente de input para el chat con alertas personalizadas
- * ✅ REEMPLAZA Alert NATIVO POR ALERTAS PERSONALIZADAS
+ * Componente de input para el chat
+ * ✅ SIN KeyboardAvoidingView - Compatible con detección dinámica de teclado
+ * ✅ Optimizado para Android con sistema responsive
  */
 const ChatInput = ({
     onSendMessage,
@@ -32,7 +41,8 @@ const ChatInput = ({
     disabled = false,
     isLoading = false,
     placeholder = "Mensaje...",
-    onImageSelected
+    onImageSelected,
+    onImageSelectionChange
 }) => {
     const [message, setMessage] = useState('');
     const [isTyping, setIsTyping] = useState(false);
@@ -40,7 +50,7 @@ const ChatInput = ({
     const textInputRef = useRef(null);
     const typingTimeoutRef = useRef(null);
 
-    // ✅ Hook de alertas personalizadas
+    // Hook de alertas personalizadas
     const {
         alertState,
         showConfirmation,
@@ -59,6 +69,13 @@ const ChatInput = ({
         clearSelectedImage
     } = useImagePicker();
 
+    // Notificar cambios en la selección de imagen
+    useEffect(() => {
+        if (onImageSelectionChange) {
+            onImageSelectionChange(!!selectedImage);
+        }
+    }, [selectedImage, onImageSelectionChange]);
+
     /**
      * Maneja el cambio de texto en el input
      */
@@ -71,7 +88,6 @@ const ChatInput = ({
      * Maneja el indicador de escritura
      */
     const handleTypingIndicator = (typing) => {
-        // Limpiar timeout anterior
         if (typingTimeoutRef.current) {
             clearTimeout(typingTimeoutRef.current);
         }
@@ -82,7 +98,6 @@ const ChatInput = ({
         }
 
         if (typing) {
-            // Auto-stop después de 2 segundos sin actividad
             typingTimeoutRef.current = setTimeout(() => {
                 setIsTyping(false);
                 if (onStopTyping) onStopTyping();
@@ -94,22 +109,13 @@ const ChatInput = ({
     };
 
     /**
-     * ✅ MANEJA LA SELECCIÓN DE IMAGEN CON ALERTA PERSONALIZADA
+     * Maneja la selección de imagen
      */
     const handleImagePicker = () => {
-        console.log('📷 === BUTTON PRESSED ===');
-        console.log('📷 disabled:', disabled);
-        console.log('📷 isLoading:', isLoading);
-        console.log('📷 imageLoading:', imageLoading);
-
         if (disabled || isLoading || imageLoading) {
-            console.log('📷 RETURNING EARLY - DISABLED');
             return;
         }
 
-        console.log('📷 USING NATIVE ALERT (TEMPORAL)...');
-
-        // ✅ USAR ALERT NATIVO TEMPORALMENTE
         Alert.alert(
             'Agregar archivo',
             '¿Cómo quieres seleccionar la imagen?',
@@ -122,16 +128,12 @@ const ChatInput = ({
                 {
                     text: 'Galería',
                     onPress: () => {
-                        console.log('📷 Usuario seleccionó GALERÍA');
-                        console.log('📷 Llamando showImagePicker con fromGallery: true');
                         showImagePicker({ fromGallery: true });
                     }
                 },
                 {
                     text: 'Cámara',
                     onPress: () => {
-                        console.log('📷 Usuario seleccionó CÁMARA');
-                        console.log('📷 Llamando showImagePicker con fromCamera: true');
                         showImagePicker({ fromCamera: true });
                     }
                 }
@@ -141,7 +143,7 @@ const ChatInput = ({
     };
 
     /**
-     * ✅ ENVÍA EL MENSAJE CON VALIDACIÓN Y ALERTAS PERSONALIZADAS
+     * Envía el mensaje
      */
     const handleSend = async () => {
         if (disabled || isLoading || imageLoading) return;
@@ -150,7 +152,6 @@ const ChatInput = ({
         const hasText = messageText.length > 0;
         const hasImage = selectedImage !== null;
 
-        // ✅ VALIDACIÓN CON ALERTA PERSONALIZADA
         if (!hasText && !hasImage) {
             showAlert({
                 title: 'Mensaje vacío',
@@ -162,24 +163,15 @@ const ChatInput = ({
         }
 
         try {
-            // Detener indicador de escritura
             handleTypingIndicator(false);
 
-            console.log('📤 Enviando mensaje:', {
-                hasText,
-                hasImage,
-                imageSize: hasImage ? selectedImage.size : 0
-            });
-
-            // Guardar datos actuales antes de limpiar
             const currentMessage = messageText;
             const currentImage = selectedImage;
 
-            // Limpiar input antes de enviar (UX optimista)
+            // Limpiar input (UX optimista)
             setMessage('');
             clearSelectedImage();
 
-            // Enviar mensaje
             if (onSendMessage) {
                 const result = await onSendMessage(
                     hasText ? currentMessage : '',
@@ -187,10 +179,8 @@ const ChatInput = ({
                 );
 
                 if (!result.success) {
-                    // Si falla, restaurar el mensaje
+                    // Restaurar mensaje si falla
                     setMessage(currentMessage);
-
-                    // ✅ MOSTRAR ERROR CON ALERTA PERSONALIZADA
                     showAlert({
                         title: 'Error al enviar',
                         message: result.message || 'No se pudo enviar el mensaje. Inténtalo de nuevo.',
@@ -201,8 +191,6 @@ const ChatInput = ({
             }
         } catch (error) {
             console.error('❌ Error enviando mensaje:', error);
-
-            // ✅ MOSTRAR ERROR DE CONEXIÓN CON ALERTA PERSONALIZADA
             showAlert({
                 title: 'Error de conexión',
                 message: 'No se pudo enviar el mensaje. Verifica tu conexión e inténtalo de nuevo.',
@@ -226,7 +214,7 @@ const ChatInput = ({
         return !disabled && !isLoading && !imageLoading && (message.trim().length > 0 || selectedImage);
     };
 
-    // Effect para limpiar timeout al desmontar
+    // Limpiar timeout al desmontar
     useEffect(() => {
         return () => {
             if (typingTimeoutRef.current) {
@@ -235,74 +223,86 @@ const ChatInput = ({
         };
     }, []);
 
-    // Effect para debug completo de cambios de imagen
+    // Debug de imagen
     useEffect(() => {
-        console.log('📷 === CHATINPUT: CAMBIO EN selectedImage ===');
-
         if (selectedImage) {
-            console.log('📷 NUEVA IMAGEN SELECCIONADA:', {
+            console.log('📷 Nueva imagen seleccionada:', {
                 uri: selectedImage.uri,
                 name: selectedImage.name,
-                size: `${(selectedImage.size / 1024 / 1024).toFixed(2)}MB`,
-                type: selectedImage.type
+                size: `${(selectedImage.size / 1024 / 1024).toFixed(2)}MB`
             });
 
             if (onImageSelected) {
-                console.log('📷 Llamando onImageSelected callback...');
                 onImageSelected(selectedImage.uri);
-            } else {
-                console.log('📷 No hay callback onImageSelected');
             }
-        } else {
-            console.log('📷 selectedImage es null/undefined');
         }
     }, [selectedImage, onImageSelected]);
 
-    // Effect para debug de estados del hook
-    useEffect(() => {
-        console.log('📷 === CHATINPUT: ESTADOS ACTUALIZADOS ===');
-        console.log('📷 Hook states:', {
-            hasSelectedImage: !!selectedImage,
-            imageLoading,
-            disabled,
-            isLoading,
-            canSend: canSend()
-        });
-    }, [selectedImage, imageLoading, disabled, isLoading]);
+    // Obtener configuración responsive
+    const inputConfig = getChatInputConfig();
+    const previewDimensions = getImagePreviewDimensions();
+    const horizontalPadding = getHorizontalPadding();
 
     return (
-        <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.container}
-        >
-            {/* Vista previa de imagen seleccionada */}
+        <View style={styles.container}>
+            {/* Vista previa de imagen */}
             {selectedImage && (
-                <View style={styles.imagePreviewContainer}>
+                <View style={[styles.imagePreviewContainer, { 
+                    paddingHorizontal: horizontalPadding,
+                    paddingTop: responsive(12),
+                    paddingBottom: responsive(8)
+                }]}>
                     <View style={styles.imagePreview}>
                         <Image
                             source={{ uri: selectedImage.uri }}
-                            style={styles.previewImage}
+                            style={[styles.previewImage, {
+                                width: previewDimensions.width,
+                                height: previewDimensions.height,
+                                borderRadius: responsive(8)
+                            }]}
                             resizeMode="cover"
                         />
                         <TouchableOpacity
-                            style={styles.removeImageButton}
+                            style={[styles.removeImageButton, {
+                                width: responsive(24),
+                                height: responsive(24),
+                                borderRadius: responsive(12),
+                                top: responsive(-8),
+                                right: responsive(-8)
+                            }]}
                             onPress={removeSelectedImage}
                         >
-                            <Text style={styles.removeImageText}>✕</Text>
+                            <Text style={[styles.removeImageText, { 
+                                fontSize: responsive(14) 
+                            }]}>✕</Text>
                         </TouchableOpacity>
                     </View>
-                    <Text style={styles.imageInfo}>
+                    <Text style={[styles.imageInfo, { 
+                        fontSize: responsive(12),
+                        marginTop: responsive(4)
+                    }]}>
                         {selectedImage.name} • {(selectedImage.size / 1024 / 1024).toFixed(1)}MB
                     </Text>
                 </View>
             )}
 
             {/* Input principal */}
-            <View style={styles.inputContainer}>
-                {/* Botón de adjuntar */}
+            <View style={[styles.inputContainer, { 
+                paddingHorizontal: horizontalPadding,
+                paddingVertical: responsive(12),
+                minHeight: responsive(60)
+            }]}>
+                {/* Botón adjuntar */}
                 <TouchableOpacity
                     style={[
                         styles.attachButton,
+                        {
+                            width: inputConfig.buttonSize,
+                            height: inputConfig.buttonSize,
+                            borderRadius: responsive(20),
+                            padding: responsive(8),
+                            marginRight: responsive(8)
+                        },
                         (disabled || isLoading || imageLoading) && styles.buttonDisabled
                     ]}
                     onPress={handleImagePicker}
@@ -311,16 +311,27 @@ const ChatInput = ({
                     {imageLoading ? (
                         <ActivityIndicator size="small" color="#666" />
                     ) : (
-                        <Image source={attachImage} style={styles.attachIcon} />
+                        <Image source={attachImage} style={[styles.attachIcon, {
+                            width: responsive(24),
+                            height: responsive(24)
+                        }]} />
                     )}
                 </TouchableOpacity>
 
                 {/* Campo de texto */}
-                <View style={styles.inputWrapper}>
+                <View style={[styles.inputWrapper, {
+                    borderRadius: responsive(20),
+                    paddingHorizontal: responsive(16),
+                    paddingVertical: responsive(10),
+                    marginRight: responsive(8),
+                    minHeight: responsive(40),
+                    maxHeight: responsive(100)
+                }]}>
                     <TextInput
                         ref={textInputRef}
                         style={[
                             styles.textInput,
+                            { fontSize: responsive(16) },
                             disabled && styles.inputDisabled
                         ]}
                         placeholder={placeholder}
@@ -333,17 +344,27 @@ const ChatInput = ({
                         onSubmitEditing={handleSend}
                         blurOnSubmit={false}
                         returnKeyType="send"
+                        textAlignVertical="center"
+                        underlineColorAndroid="transparent"
+                        autoCorrect={true}
+                        autoCapitalize="sentences"
                     />
                 </View>
 
-                {/* Botón de envío */}
+                {/* Botón envío */}
                 <TouchableOpacity
                     style={[
                         styles.sendButton,
+                        {
+                            width: inputConfig.buttonSize,
+                            height: inputConfig.buttonSize,
+                            borderRadius: responsive(20)
+                        },
                         canSend() ? styles.sendButtonActive : styles.sendButtonInactive
                     ]}
                     onPress={handleSend}
                     disabled={!canSend()}
+                    activeOpacity={0.7}
                 >
                     {(isLoading || imageLoading) ? (
                         <ActivityIndicator
@@ -355,13 +376,17 @@ const ChatInput = ({
                             source={sendIcon}
                             style={[
                                 styles.sendIcon,
+                                {
+                                    width: responsive(20),
+                                    height: responsive(20)
+                                },
                                 canSend() && styles.sendIconActive
                             ]}
                         />
                     )}
                 </TouchableOpacity>
             </View>
-        </KeyboardAvoidingView>
+        </View>
     );
 };
 
@@ -382,9 +407,6 @@ const styles = StyleSheet.create({
 
     // Vista previa de imagen
     imagePreviewContainer: {
-        paddingHorizontal: 16,
-        paddingTop: 12,
-        paddingBottom: 8,
         backgroundColor: '#F8F8F8',
         borderTopWidth: 1,
         borderTopColor: '#E1E1E1',
@@ -394,30 +416,28 @@ const styles = StyleSheet.create({
         alignSelf: 'flex-start',
     },
     previewImage: {
-        width: 80,
-        height: 80,
-        borderRadius: 8,
+        // Dimensiones aplicadas dinámicamente
     },
     removeImageButton: {
         position: 'absolute',
-        top: -8,
-        right: -8,
         backgroundColor: '#FF3B30',
-        width: 24,
-        height: 24,
-        borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
     },
     removeImageText: {
         color: '#FFFFFF',
-        fontSize: 14,
         fontWeight: 'bold',
     },
     imageInfo: {
-        fontSize: 12,
         color: '#666666',
-        marginTop: 4,
         fontFamily: 'Poppins-Regular',
     },
 
@@ -425,25 +445,15 @@ const styles = StyleSheet.create({
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'flex-end',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
         backgroundColor: '#FFFFFF',
-        minHeight: 60,
     },
 
     // Botón adjuntar
     attachButton: {
-        padding: 8,
-        marginRight: 8,
-        borderRadius: 20,
         alignItems: 'center',
         justifyContent: 'center',
-        width: 40,
-        height: 40,
     },
     attachIcon: {
-        width: 24,
-        height: 24,
         tintColor: '#666',
     },
 
@@ -451,16 +461,9 @@ const styles = StyleSheet.create({
     inputWrapper: {
         flex: 1,
         backgroundColor: '#F5F5F5',
-        borderRadius: 20,
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        marginRight: 8,
-        minHeight: 40,
-        maxHeight: 100,
         justifyContent: 'center',
     },
     textInput: {
-        fontSize: 16,
         color: '#333',
         fontFamily: 'Poppins-Regular',
         textAlignVertical: 'center',
@@ -475,9 +478,6 @@ const styles = StyleSheet.create({
 
     // Botón envío
     sendButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#CCCCCC',
@@ -489,8 +489,6 @@ const styles = StyleSheet.create({
         backgroundColor: '#CCCCCC',
     },
     sendIcon: {
-        width: 20,
-        height: 20,
         tintColor: '#999999',
     },
     sendIconActive: {

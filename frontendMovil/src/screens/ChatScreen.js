@@ -11,7 +11,8 @@ import {
     Keyboard,
     TouchableWithoutFeedback,
     RefreshControl,
-    ActivityIndicator
+    ActivityIndicator,
+    Dimensions
 } from "react-native";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -29,12 +30,30 @@ import { useAuth } from "../context/AuthContext";
 import { ConfirmationDialog, LoadingDialog, ToastDialog } from "../components/CustomDialogs";
 import { useAlert } from "../hooks/useAlert";
 
+// ✅ MANTENER EL DETECTOR DINÁMICO DE TECLADO IMPORTADO
+import { 
+    useKeyboardDetector, 
+    KeyboardDebugInfo 
+} from "../hooks/useKeyboardDetector";
+
 /**
- * Pantalla principal del chat con alertas personalizadas integradas
+ * Pantalla principal del chat con comportamiento responsive SIMPLE como la versión antigua
+ * ✅ USA VALORES FIJOS EN LUGAR DEL SISTEMA RESPONSIVE COMPLEJO
+ * ✅ MANTIENE LA DETECCIÓN DINÁMICA DE TECLADO
  */
 const ChatScreen = ({ navigation, route }) => {
     const insets = useSafeAreaInsets();
     const { user } = useAuth();
+
+    // ✅ USAR DETECTOR DINÁMICO DE TECLADO IMPORTADO
+    const {
+        keyboardHeight,
+        isKeyboardVisible,
+        keyboardType,
+        keyboardBrand,
+        getAdjustedKeyboardHeight,
+        getKeyboardInfo
+    } = useKeyboardDetector();
 
     // Hook de alertas personalizadas
     const {
@@ -71,69 +90,30 @@ const ChatScreen = ({ navigation, route }) => {
 
     // Estados locales
     const [refreshing, setRefreshing] = useState(false);
-    const [keyboardHeight, setKeyboardHeight] = useState(0);
-    const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
     const [showScrollToBottom, setShowScrollToBottom] = useState(false);
     const [imageViewerVisible, setImageViewerVisible] = useState(false);
     const [selectedImageUri, setSelectedImageUri] = useState(null);
     const [deletingMessages, setDeletingMessages] = useState(new Set());
+    const [imagePreviewHeight, setImagePreviewHeight] = useState(0);
+    const [showKeyboardDebug, setShowKeyboardDebug] = useState(false); // ✅ DESACTIVADO POR DEFECTO
 
     // Referencias
     const scrollViewRef = useRef(null);
     const lastMessageIdRef = useRef(null);
 
     /**
-     * Detección mejorada del teclado
+     * 📊 Log información del teclado cuando cambia
      */
     useEffect(() => {
-        const keyboardDidShowListener = Keyboard.addListener(
-            'keyboardDidShow',
-            (e) => {
-                console.log('⌨️ Teclado mostrado:', {
-                    height: e.endCoordinates.height,
-                    screenX: e.endCoordinates.screenX,
-                    screenY: e.endCoordinates.screenY,
-                    width: e.endCoordinates.width
-                });
-
-                setKeyboardHeight(e.endCoordinates.height);
-                setIsKeyboardVisible(true);
-                setTimeout(() => scrollToBottom(true), 50);
-            }
-        );
-
-        const keyboardDidHideListener = Keyboard.addListener(
-            'keyboardDidHide',
-            (e) => {
-                console.log('⌨️ Teclado ocultado');
-                setKeyboardHeight(0);
-                setIsKeyboardVisible(false);
-            }
-        );
-
-        const keyboardWillShowListener = Keyboard.addListener(
-            'keyboardWillShow',
-            (e) => {
-                console.log('⌨️ Teclado va a mostrarse:', e.endCoordinates.height);
-                setIsKeyboardVisible(true);
-            }
-        );
-
-        const keyboardWillHideListener = Keyboard.addListener(
-            'keyboardWillHide',
-            () => {
-                console.log('⌨️ Teclado va a ocultarse');
-                setIsKeyboardVisible(false);
-            }
-        );
-
-        return () => {
-            keyboardDidShowListener?.remove();
-            keyboardDidHideListener?.remove();
-            keyboardWillShowListener?.remove();
-            keyboardWillHideListener?.remove();
-        };
-    }, []);
+        if (isKeyboardVisible) {
+            const info = getKeyboardInfo();
+            console.log('⌨️ === INFORMACIÓN DEL TECLADO ===');
+            console.log('⌨️ Altura detectada:', info.height);
+            console.log('⌨️ Tipo:', info.type);
+            console.log('⌨️ Marca estimada:', info.brand);
+            console.log('⌨️ Ratio de pantalla:', (info.metrics.keyboardRatio * 100).toFixed(1) + '%');
+        }
+    }, [isKeyboardVisible, keyboardHeight, getKeyboardInfo]);
 
     /**
      * Auto-scroll cuando llegan nuevos mensajes
@@ -153,7 +133,17 @@ const ChatScreen = ({ navigation, route }) => {
     }, [messages, user?.id, showScrollToBottom]);
 
     /**
-     * Marcar mensajes como leídos cuando se carga la conversación
+     * Auto-scroll cuando aparece/desaparece el teclado
+     */
+    useEffect(() => {
+        if (isKeyboardVisible) {
+            const delay = Platform.OS === 'android' ? 250 : 100;
+            setTimeout(() => scrollToBottom(true), delay);
+        }
+    }, [isKeyboardVisible, keyboardHeight]);
+
+    /**
+     * Marcar mensajes como leídos
      */
     useEffect(() => {
         if (conversation?.conversationId && messages.length > 0) {
@@ -162,47 +152,34 @@ const ChatScreen = ({ navigation, route }) => {
     }, [conversation?.conversationId, messages.length, markAsRead]);
 
     /**
-     * Calcula la altura de la barra de pestañas
+     * 📱 Calcula la altura de la barra de pestañas - COMO VERSIÓN ANTIGUA
      */
-    const getTabBarHeight = () => {
-        const baseHeight = 60;
-        const paddingBottom = Math.max(insets.bottom, Platform.OS === 'ios' ? 25 : 10);
+    const getTabBarHeight = useCallback(() => {
+        const baseHeight = 60; // VALOR FIJO como versión antigua
+        const paddingBottom = Math.max(insets.bottom, Platform.OS === 'ios' ? 25 : 10); // COMO VERSIÓN ANTIGUA
         return baseHeight + paddingBottom;
-    };
+    }, [insets.bottom]);
 
     /**
-     * Función para calcular altura del input
+     * 🔧 Función DINÁMICA para calcular posición del input - COMO VERSIÓN ANTIGUA + DETECCIÓN
+     * ✅ COMBINA LA SIMPLICIDAD DE LA VERSIÓN ANTIGUA CON LA DETECCIÓN DINÁMICA
      */
-    const calculateInputContainerBottom = useCallback(() => {
-        const tabBarHeight = getTabBarHeight();
-
+    const getInputContainerBottom = useCallback(() => {
         if (isKeyboardVisible && keyboardHeight > 0) {
-            const keyboardOffset = Platform.OS === 'ios'
-                ? keyboardHeight - insets.bottom
-                : keyboardHeight;
-
-            console.log('⌨️ Calculando con teclado:', {
-                keyboardHeight,
-                keyboardOffset,
-                insetsBottom: insets.bottom,
-                platform: Platform.OS
-            });
-
-            return Math.max(keyboardOffset, 0);
-        } else {
-            console.log('⌨️ Calculando sin teclado, usando tabBarHeight:', tabBarHeight);
-            return tabBarHeight;
+            // ✅ USAR LA DETECCIÓN DINÁMICA PERO CON LÓGICA SIMPLE COMO LA VERSIÓN ANTIGUA
+            const extraPadding = Platform.OS === 'ios' ? 10 : 50; // MISMO CÁLCULO QUE VERSIÓN ANTIGUA
+            return keyboardHeight + extraPadding;
         }
-    }, [isKeyboardVisible, keyboardHeight, insets.bottom]);
+        return getTabBarHeight(); // MISMO FALLBACK QUE VERSIÓN ANTIGUA
+    }, [isKeyboardVisible, keyboardHeight, getTabBarHeight]);
 
     /**
-     * Función para calcular altura de mensajes
+     * 📝 Función para calcular margin bottom del contenedor de mensajes - COMO VERSIÓN ANTIGUA
      */
     const calculateMessagesContainerMargin = useCallback(() => {
-        const inputHeight = calculateInputContainerBottom();
-        const additionalPadding = isKeyboardVisible ? 20 : 30;
-        return inputHeight + additionalPadding;
-    }, [calculateInputContainerBottom, isKeyboardVisible]);
+        // ✅ EXACTAMENTE COMO LA VERSIÓN ANTIGUA
+        return getInputContainerBottom() + 70 + imagePreviewHeight;
+    }, [getInputContainerBottom, imagePreviewHeight]);
 
     /**
      * Oculta el teclado
@@ -216,8 +193,14 @@ const ChatScreen = ({ navigation, route }) => {
      */
     const scrollToBottom = useCallback((animated = true) => {
         if (scrollViewRef.current) {
-            scrollViewRef.current.scrollToEnd({ animated });
-            setShowScrollToBottom(false);
+            requestAnimationFrame(() => {
+                try {
+                    scrollViewRef.current?.scrollToEnd({ animated });
+                    setShowScrollToBottom(false);
+                } catch (error) {
+                    console.log('Error al hacer scroll:', error);
+                }
+            });
         }
     }, []);
 
@@ -226,7 +209,7 @@ const ChatScreen = ({ navigation, route }) => {
      */
     const handleScroll = useCallback((event) => {
         const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
-        const paddingToBottom = 100;
+        const paddingToBottom = 100; // VALOR FIJO como versión antigua
         const isNearBottom = layoutMeasurement.height + contentOffset.y >=
             contentSize.height - paddingToBottom;
 
@@ -234,14 +217,13 @@ const ChatScreen = ({ navigation, route }) => {
     }, []);
 
     /**
-     * Maneja el pull-to-refresh con alertas personalizadas
+     * Maneja el pull-to-refresh
      */
     const handleRefresh = useCallback(async () => {
         setRefreshing(true);
         try {
             await refreshConversation();
             clearError();
-            // Opcional: mostrar toast de éxito solo si había error previo
             if (error) {
                 showSuccessToast('Chat actualizado correctamente');
             }
@@ -254,29 +236,26 @@ const ChatScreen = ({ navigation, route }) => {
     }, [refreshConversation, clearError, error, showSuccessToast, showErrorToast]);
 
     /**
-     * Maneja el envío de mensajes con alertas personalizadas
+     * 📤 Maneja el envío de mensajes
      */
     const handleSendMessage = useCallback(async (messageText, imageUri) => {
         try {
-            // Validar que hay contenido
             if (!messageText?.trim() && !imageUri) {
                 showWarningToast('Escribe un mensaje o selecciona una imagen');
                 return { success: false, message: 'Mensaje vacío' };
             }
 
-            // Mostrar loading
             showLoading({
                 title: 'Enviando mensaje',
                 message: 'Por favor espera...'
             });
 
             const result = await sendMessage(messageText, imageUri);
-
-            // Ocultar loading
             hideLoading();
 
             if (result.success) {
-                setTimeout(() => scrollToBottom(), 100);
+                const delay = Platform.OS === 'android' ? 300 : 150;
+                setTimeout(() => scrollToBottom(), delay);
                 return result;
             } else {
                 showErrorToast(result.message || 'Error al enviar mensaje');
@@ -299,13 +278,29 @@ const ChatScreen = ({ navigation, route }) => {
     }, []);
 
     /**
-     * Función de eliminar mensaje con alertas personalizadas
+     * 📸 Callback para cuando se selecciona/elimina una imagen - CON VALORES FIJOS
+     */
+    const handleImageSelectionChange = useCallback((hasImage) => {
+        if (hasImage) {
+            // ✅ USAR VALOR FIJO EN LUGAR DE FUNCIÓN RESPONSIVE
+            const previewHeight = 90; // ALTURA FIJA COMO VERSIÓN ANTIGUA
+            setImagePreviewHeight(previewHeight);
+        } else {
+            setImagePreviewHeight(0);
+        }
+        
+        setTimeout(() => {
+            if (messages.length > 0) {
+                scrollToBottom(false);
+            }
+        }, 200);
+    }, [messages.length, scrollToBottom]);
+
+    /**
+     * Función de eliminar mensaje
      */
     const handleMessageLongPress = useCallback(async (messageId, messageText, action) => {
-        console.log('🗑️ LLAMANDO handleMessageLongPress:', { messageId, action });
-
         if (action === 'delete') {
-            // Usar confirmación personalizada
             showConfirmation({
                 title: "Eliminar mensaje",
                 message: "¿Estás seguro de que quieres eliminar este mensaje? Esta acción no se puede deshacer.",
@@ -315,37 +310,21 @@ const ChatScreen = ({ navigation, route }) => {
                 onConfirm: async () => {
                     try {
                         hideConfirmation();
-
-                        // Agregar ID a conjunto de mensajes en proceso de eliminación
                         setDeletingMessages(prev => new Set([...prev, messageId]));
-
-                        // Mostrar loading de eliminación
+                        
                         showLoading({
                             title: 'Eliminando mensaje',
                             message: 'Por favor espera...',
                             color: '#F44336'
                         });
 
-                        console.log('🗑️ INICIO DELETE - MessageID:', messageId);
-                        console.log('🗑️ Llamando deleteMessage del hook useChat...');
-
                         const result = await deleteMessage(messageId);
-
                         hideLoading();
-                        console.log('🗑️ RESULTADO deleteMessage:', result);
-
-                        if (result.success) {
-                            showSuccessToast('Mensaje eliminado correctamente');
-                        } else {
-                            showErrorToast(result.message || 'Error al eliminar el mensaje');
-                        }
-
                     } catch (error) {
                         hideLoading();
                         console.error('❌ Error eliminando mensaje:', error);
                         showErrorToast('Error al eliminar el mensaje. Inténtalo de nuevo.');
                     } finally {
-                        // Remover ID del conjunto de mensajes en proceso
                         setDeletingMessages(prev => {
                             const newSet = new Set(prev);
                             newSet.delete(messageId);
@@ -355,11 +334,9 @@ const ChatScreen = ({ navigation, route }) => {
                 },
                 onCancel: () => {
                     hideConfirmation();
-                    console.log('🗑️ Usuario canceló eliminación');
                 }
             });
         } else {
-            // Mostrar opciones del mensaje
             const truncatedMessage = messageText.length > 50
                 ? messageText.substring(0, 50) + '...'
                 : messageText;
@@ -376,14 +353,13 @@ const ChatScreen = ({ navigation, route }) => {
                 },
                 onCancel: () => {
                     hideConfirmation();
-                    console.log('🗑️ Usuario canceló opciones');
                 }
             });
         }
     }, [deleteMessage, showConfirmation, hideConfirmation, showLoading, hideLoading, showSuccessToast, showErrorToast]);
 
     /**
-     * Función para limpiar errores con confirmación
+     * Función para limpiar errores
      */
     const handleClearError = useCallback(() => {
         showConfirmation({
@@ -403,12 +379,9 @@ const ChatScreen = ({ navigation, route }) => {
         });
     }, [clearError, showConfirmation, hideConfirmation, showSuccessToast]);
 
-    /**
-     * Formatea la fecha para mostrar separadores
-     */
+    // Funciones auxiliares
     const formatMessageDate = (timestamp) => {
         if (!timestamp) return '';
-
         const messageDate = new Date(timestamp);
         const today = new Date();
         const yesterday = new Date(today);
@@ -426,9 +399,6 @@ const ChatScreen = ({ navigation, route }) => {
         }
     };
 
-    /**
-     * Agrupa mensajes por fecha
-     */
     const groupMessagesByDate = useCallback(() => {
         if (!messages || messages.length === 0) return [];
 
@@ -457,9 +427,6 @@ const ChatScreen = ({ navigation, route }) => {
         return grouped;
     }, [messages]);
 
-    /**
-     * Renderiza el header de estado de conexión
-     */
     const renderConnectionStatus = () => {
         if (connectionError) {
             return (
@@ -484,9 +451,6 @@ const ChatScreen = ({ navigation, route }) => {
         return null;
     };
 
-    /**
-     * Renderiza el indicador de escritura
-     */
     const renderTypingIndicator = () => {
         if (typingUsers.length === 0) return null;
 
@@ -503,9 +467,6 @@ const ChatScreen = ({ navigation, route }) => {
         );
     };
 
-    /**
-     * Renderiza un elemento del chat (fecha o mensaje)
-     */
     const renderChatItem = ({ item }) => {
         if (item.type === 'date') {
             return (
@@ -549,7 +510,7 @@ const ChatScreen = ({ navigation, route }) => {
         return null;
     };
 
-    // Si está cargando la conversación inicial
+    // Si está cargando
     if (loading && !conversation) {
         return (
             <SafeAreaView style={styles.container}>
@@ -567,26 +528,15 @@ const ChatScreen = ({ navigation, route }) => {
         <SafeAreaView style={styles.container}>
             <TouchableWithoutFeedback onPress={dismissKeyboard}>
                 <View style={styles.container}>
-                    {/* Header del chat */}
+                    {/* Header - EXACTAMENTE COMO LA VERSIÓN ORIGINAL */}
                     <View style={styles.header}>
-                        <TouchableOpacity
-                            style={styles.backButton}
-                            onPress={() => {
-                                stopTyping();
-                                navigation.goBack();
-                            }}
-                        >
+                        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
                             <Image source={backIcon} style={styles.backIcon} />
                         </TouchableOpacity>
 
                         <View style={styles.headerCenter}>
                             <Image source={marquesaMiniLogo} style={styles.profileImage} />
-                            <View>
-                                <Text style={styles.headerTitle}>Marquesa</Text>
-                                <Text style={styles.headerSubtitle}>
-                                    {isConnected ? 'En línea' : 'Desconectado'}
-                                </Text>
-                            </View>
+                            <Text style={styles.headerTitle}>Marquesa</Text>
                         </View>
 
                         <View style={styles.headerRight} />
@@ -595,93 +545,88 @@ const ChatScreen = ({ navigation, route }) => {
                     {/* Estado de conexión */}
                     {renderConnectionStatus()}
 
-                    {/* Mensajes */}
-                    <View style={[
-                        styles.messagesContainer,
-                        {
-                            marginBottom: calculateMessagesContainerMargin(),
+                    {/* ✅ DEBUG INFO DEL TECLADO IMPORTADO */}
+                    <KeyboardDebugInfo visible={showKeyboardDebug} />
+
+                    {/* Mensajes - CON MARGIN BOTTOM SIMPLE COMO VERSIÓN ANTIGUA */}
+                    <ScrollView
+                        ref={scrollViewRef}
+                        style={[
+                            styles.messagesContainer,
+                            { marginBottom: calculateMessagesContainerMargin() } // ✅ COMO VERSIÓN ANTIGUA
+                        ]}
+                        contentContainerStyle={styles.messagesContent}
+                        showsVerticalScrollIndicator={false}
+                        onScroll={handleScroll}
+                        scrollEventThrottle={16}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={handleRefresh}
+                                tintColor="#F8BBD9"
+                                colors={["#F8BBD9"]}
+                            />
                         }
-                    ]}>
-                        <ScrollView
-                            ref={scrollViewRef}
-                            style={styles.messagesScrollView}
-                            contentContainerStyle={[
-                                styles.messagesContent,
+                        keyboardShouldPersistTaps="handled"
+                        contentInsetAdjustmentBehavior="automatic"
+                        nestedScrollEnabled={true}
+                        overScrollMode="always"
+                    >
+                        {/* Mensaje de error */}
+                        {error && (
+                            <View style={styles.errorContainer}>
+                                <Text style={styles.errorText}>{error}</Text>
+                                <TouchableOpacity
+                                    style={styles.retryButton}
+                                    onPress={handleClearError}
+                                >
+                                    <Text style={styles.retryButtonText}>Ocultar</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+
+                        {/* Mensajes agrupados */}
+                        {groupedMessages.map((item) => (
+                            <View key={item.key}>
+                                {renderChatItem({ item })}
+                            </View>
+                        ))}
+
+                        {/* Indicador de escritura */}
+                        {renderTypingIndicator()}
+                    </ScrollView>
+
+                    {/* Botón scroll to bottom - VALORES FIJOS */}
+                    {showScrollToBottom && (
+                        <TouchableOpacity
+                            style={[
+                                styles.scrollToBottomButton,
                                 {
-                                    paddingTop: 16,
-                                    paddingBottom: isKeyboardVisible ? 50 : 50
+                                    bottom: isKeyboardVisible ? 
+                                        keyboardHeight + 100 : // CÁLCULO SIMPLE
+                                        120
                                 }
                             ]}
-                            showsVerticalScrollIndicator={false}
-                            onScroll={handleScroll}
-                            scrollEventThrottle={16}
-                            refreshControl={
-                                <RefreshControl
-                                    refreshing={refreshing}
-                                    onRefresh={handleRefresh}
-                                    tintColor="#F8BBD9"
-                                    colors={["#F8BBD9"]}
-                                />
-                            }
-                            keyboardShouldPersistTaps="handled"
-                            contentInsetAdjustmentBehavior="automatic"
+                            onPress={() => scrollToBottom()}
+                            activeOpacity={0.7}
                         >
-                            {/* Mensaje de error mejorado */}
-                            {error && (
-                                <View style={styles.errorContainer}>
-                                    <Text style={styles.errorText}>{error}</Text>
-                                    <TouchableOpacity
-                                        style={styles.retryButton}
-                                        onPress={handleClearError}
-                                    >
-                                        <Text style={styles.retryButtonText}>Ocultar</Text>
-                                    </TouchableOpacity>
+                            <Text style={styles.scrollToBottomText}>↓</Text>
+                            {unreadCount > 0 && (
+                                <View style={styles.unreadBadge}>
+                                    <Text style={styles.unreadBadgeText}>
+                                        {unreadCount > 99 ? '99+' : unreadCount}
+                                    </Text>
                                 </View>
                             )}
-
-                            {/* Mensajes agrupados */}
-                            {groupedMessages.map((item) => (
-                                <View key={item.key}>
-                                    {renderChatItem({ item })}
-                                </View>
-                            ))}
-
-                            {/* Indicador de escritura */}
-                            {renderTypingIndicator()}
-                        </ScrollView>
-
-                        {/* Botón scroll to bottom */}
-                        {showScrollToBottom && (
-                            <TouchableOpacity
-                                style={[
-                                    styles.scrollToBottomButton,
-                                    {
-                                        bottom: isKeyboardVisible ? 80 : 140
-                                    }
-                                ]}
-                                onPress={() => scrollToBottom()}
-                            >
-                                <Text style={styles.scrollToBottomText}>↓</Text>
-                                {unreadCount > 0 && (
-                                    <View style={styles.unreadBadge}>
-                                        <Text style={styles.unreadBadgeText}>
-                                            {unreadCount > 99 ? '99+' : unreadCount}
-                                        </Text>
-                                    </View>
-                                )}
-                            </TouchableOpacity>
-                        )}
-                    </View>
+                        </TouchableOpacity>
+                    )}
                 </View>
             </TouchableWithoutFeedback>
 
-            {/* Input */}
+            {/* Input con detección dinámica pero posicionamiento simple */}
             <View style={[
                 styles.inputContainer,
-                {
-                    bottom: calculateInputContainerBottom(),
-                    backgroundColor: '#FFFFFF',
-                }
+                { bottom: getInputContainerBottom() } // ✅ MISMA LÓGICA QUE VERSIÓN ANTIGUA + DETECCIÓN DINÁMICA
             ]}>
                 <ChatInput
                     onSendMessage={handleSendMessage}
@@ -693,6 +638,7 @@ const ChatScreen = ({ navigation, route }) => {
                     onImageSelected={(imageUri) => {
                         console.log('📷 Imagen seleccionada:', imageUri);
                     }}
+                    onImageSelectionChange={handleImageSelectionChange}
                 />
             </View>
 
@@ -705,6 +651,7 @@ const ChatScreen = ({ navigation, route }) => {
                             setImageViewerVisible(false);
                             setSelectedImageUri(null);
                         }}
+                        activeOpacity={0.7}
                     >
                         <Text style={styles.imageViewerCloseText}>✕</Text>
                     </TouchableOpacity>
@@ -740,11 +687,13 @@ const ChatScreen = ({ navigation, route }) => {
                 message={alertState.toast.message}
                 type={alertState.toast.type}
                 duration={alertState.toast.duration}
+                onHide={alertState.toast.onHide}
             />
         </SafeAreaView>
     );
 };
 
+// ✅ ESTILOS FIJOS COMO LA VERSIÓN ANTIGUA (SIN RESPONSIVE)
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -764,19 +713,19 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingHorizontal: 16, // VALOR FIJO COMO VERSIÓN ANTIGUA
+        paddingVertical: 12, // VALOR FIJO COMO VERSIÓN ANTIGUA
         backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
         borderBottomColor: '#E1E1E1',
-        marginTop: 30,
+        marginTop: 30, // VALOR FIJO COMO VERSIÓN ANTIGUA
     },
     backButton: {
-        padding: 4,
+        padding: 4, // VALOR FIJO COMO VERSIÓN ANTIGUA
     },
     backIcon: {
-        width: 24,
-        height: 24,
+        width: 24, // VALOR FIJO COMO VERSIÓN ANTIGUA
+        height: 24, // VALOR FIJO COMO VERSIÓN ANTIGUA
         tintColor: '#333333',
     },
     headerCenter: {
@@ -784,32 +733,31 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        marginLeft: -28,
+        marginLeft: -110, // VALOR FIJO COMO VERSIÓN ANTIGUA
     },
     profileImage: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        marginRight: 8,
+        width: 32, // VALOR FIJO COMO VERSIÓN ANTIGUA
+        height: 32, // VALOR FIJO COMO VERSIÓN ANTIGUA
+        borderRadius: 16, // VALOR FIJO COMO VERSIÓN ANTIGUA
+        marginRight: 8, // VALOR FIJO COMO VERSIÓN ANTIGUA
     },
     headerTitle: {
-        fontSize: 18,
+        fontSize: 18, // VALOR FIJO COMO VERSIÓN ANTIGUA
         fontWeight: '600',
         color: '#333333',
         fontFamily: 'Poppins-SemiBold',
     },
     headerSubtitle: {
-        fontSize: 12,
+        fontSize: 12, // VALOR FIJO
         color: '#666666',
         fontFamily: 'Poppins-Regular',
     },
     headerRight: {
-        width: 28,
+        width: 28, // VALOR FIJO COMO VERSIÓN ANTIGUA
     },
     connectionStatus: {
-        backgroundColor: '#FFE4B5',
         paddingVertical: 8,
-        paddingHorizontal: 16,
+        backgroundColor: '#FFE4B5',
         borderBottomWidth: 1,
         borderBottomColor: '#E1E1E1',
     },
@@ -820,27 +768,23 @@ const styles = StyleSheet.create({
         fontFamily: 'Poppins-Regular',
     },
     messagesContainer: {
-        flex: 1,
-        position: 'relative',
-    },
-    messagesScrollView: {
-        flex: 1,
-        paddingHorizontal: 0,
+        flex: 1, // COMO VERSIÓN ANTIGUA
     },
     messagesContent: {
-        flexGrow: 1,
+        paddingVertical: 16, // VALOR FIJO COMO VERSIÓN ANTIGUA
+        paddingBottom: 20, // VALOR FIJO COMO VERSIÓN ANTIGUA
     },
     dateContainer: {
         alignItems: 'center',
         marginVertical: 8,
     },
     dateText: {
-        fontSize: 14,
+        fontSize: 14, // VALOR FIJO COMO VERSIÓN ANTIGUA
         color: '#999999',
         backgroundColor: '#E5E5EA',
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        borderRadius: 12,
+        paddingHorizontal: 12, // VALOR FIJO COMO VERSIÓN ANTIGUA
+        paddingVertical: 4, // VALOR FIJO COMO VERSIÓN ANTIGUA
+        borderRadius: 12, // VALOR FIJO COMO VERSIÓN ANTIGUA
         overflow: 'hidden',
         fontFamily: 'Poppins-Regular',
     },
@@ -872,24 +816,24 @@ const styles = StyleSheet.create({
         fontFamily: 'Poppins-Medium',
     },
     errorContainer: {
-        backgroundColor: '#FFE6E6',
         margin: 16,
         padding: 12,
         borderRadius: 8,
+        backgroundColor: '#FFE6E6',
         alignItems: 'center',
     },
     errorText: {
         fontSize: 14,
+        marginBottom: 8,
         color: '#D32F2F',
         textAlign: 'center',
         fontFamily: 'Poppins-Regular',
-        marginBottom: 8,
     },
     retryButton: {
-        backgroundColor: '#F8BBD9',
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 16,
+        backgroundColor: '#F8BBD9',
     },
     retryButtonText: {
         fontSize: 14,
@@ -898,11 +842,11 @@ const styles = StyleSheet.create({
     },
     scrollToBottomButton: {
         position: 'absolute',
-        right: 16,
+        right: 16, // VALOR FIJO COMO VERSIÓN ANTIGUA
+        width: 48, // VALOR FIJO
+        height: 48, // VALOR FIJO
+        borderRadius: 24, // VALOR FIJO
         backgroundColor: '#F8BBD9',
-        width: 48,
-        height: 48,
-        borderRadius: 24,
         alignItems: 'center',
         justifyContent: 'center',
         shadowColor: '#000',
@@ -913,7 +857,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
         elevation: 5,
-        zIndex: 10
+        zIndex: 10,
     },
     scrollToBottomText: {
         fontSize: 20,
@@ -924,13 +868,13 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: -4,
         right: -4,
-        backgroundColor: '#FF3B30',
         minWidth: 20,
         height: 20,
         borderRadius: 10,
+        paddingHorizontal: 4,
+        backgroundColor: '#FF3B30',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 4,
     },
     unreadBadgeText: {
         fontSize: 12,
@@ -938,9 +882,9 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
     inputContainer: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
+        position: 'absolute', // COMO VERSIÓN ANTIGUA
+        left: 0, // COMO VERSIÓN ANTIGUA
+        right: 0, // COMO VERSIÓN ANTIGUA
         backgroundColor: '#FFFFFF',
         borderTopWidth: 1,
         borderTopColor: '#E1E1E1',
@@ -951,10 +895,7 @@ const styles = StyleSheet.create({
         },
         shadowOpacity: 0.1,
         shadowRadius: 4,
-        elevation: 5
-    },
-    bottomSpacer: {
-        height: 400,
+        elevation: 5,
     },
     imageViewerOverlay: {
         position: 'absolute',
@@ -971,17 +912,17 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: 60,
         right: 20,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
         width: 40,
         height: 40,
         borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1001,
     },
     imageViewerCloseText: {
-        color: '#FFFFFF',
         fontSize: 20,
+        color: '#FFFFFF',
         fontWeight: 'bold',
     },
     imageViewerImage: {

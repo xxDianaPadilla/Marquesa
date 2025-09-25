@@ -1,13 +1,88 @@
 import React from "react";
-import { View, Text, Image, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions } from "react-native";
 
 // ✅ IMPORTAR ALERTAS PERSONALIZADAS
 import { ConfirmationDialog } from "../components/CustomDialogs";
 import { useAlert } from "../hooks/useAlert";
 
+// Obtener dimensiones de pantalla para responsive design
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// Breakpoints para responsive design
+const BREAKPOINTS = {
+    small: 320,    // iPhone SE, Galaxy S5
+    medium: 375,   // iPhone X, 11, 12, 13
+    large: 414,    // iPhone Plus, Max
+    tablet: 768    // Tablets
+};
+
+// Función para obtener el factor de escala según el ancho de pantalla
+const getScaleFactor = () => {
+    if (SCREEN_WIDTH <= BREAKPOINTS.small) return 0.85;
+    if (SCREEN_WIDTH <= BREAKPOINTS.medium) return 0.95;
+    if (SCREEN_WIDTH <= BREAKPOINTS.large) return 1;
+    if (SCREEN_WIDTH <= BREAKPOINTS.tablet) return 1.1;
+    return 1.2; // Para pantallas muy grandes
+};
+
+// Función para obtener dimensiones responsive
+const responsive = (size) => {
+    return Math.round(size * getScaleFactor());
+};
+
+// Función para obtener el ancho máximo de las burbujas según el tamaño de pantalla
+const getMaxBubbleWidth = () => {
+    const basePercentage = 0.75; // 75% por defecto
+    const screenWidth = SCREEN_WIDTH;
+    
+    if (screenWidth <= BREAKPOINTS.small) {
+        return screenWidth * 0.8; // 80% para pantallas pequeñas
+    } else if (screenWidth <= BREAKPOINTS.medium) {
+        return screenWidth * 0.78; // 78% para pantallas medianas
+    } else if (screenWidth <= BREAKPOINTS.large) {
+        return screenWidth * basePercentage; // 75% para pantallas grandes
+    } else if (screenWidth <= BREAKPOINTS.tablet) {
+        return screenWidth * 0.65; // 65% para tablets
+    }
+    return screenWidth * 0.6; // 60% para pantallas muy grandes
+};
+
+// Función para obtener el tamaño de imagen responsive
+const getImageDimensions = () => {
+    const baseWidth = 200;
+    const baseHeight = 150;
+    const maxWidth = getMaxBubbleWidth() - responsive(32); // Restar padding de burbuja
+    
+    if (SCREEN_WIDTH <= BREAKPOINTS.small) {
+        return {
+            width: Math.min(responsive(160), maxWidth),
+            height: responsive(120)
+        };
+    } else if (SCREEN_WIDTH <= BREAKPOINTS.medium) {
+        return {
+            width: Math.min(responsive(180), maxWidth),
+            height: responsive(135)
+        };
+    } else if (SCREEN_WIDTH <= BREAKPOINTS.large) {
+        return {
+            width: Math.min(baseWidth, maxWidth),
+            height: baseHeight
+        };
+    } else if (SCREEN_WIDTH <= BREAKPOINTS.tablet) {
+        return {
+            width: Math.min(responsive(220), maxWidth),
+            height: responsive(165)
+        };
+    }
+    return {
+        width: Math.min(responsive(240), maxWidth),
+        height: responsive(180)
+    };
+};
+
 /**
  * Componente para renderizar burbujas de chat individuales
- * ✅ CON ALERTAS PERSONALIZADAS IMPLEMENTADAS
+ * ✅ CON DISEÑO RESPONSIVE IMPLEMENTADO
  */
 const ChatBubbles = ({ 
     message, 
@@ -122,6 +197,8 @@ const ChatBubbles = ({
             );
         }
 
+        const imageDimensions = getImageDimensions();
+
         return (
             <>
                 {/* Información del remitente para mensajes de grupo */}
@@ -138,7 +215,7 @@ const ChatBubbles = ({
                                     ? { uri: imageSource } 
                                     : imageSource
                             } 
-                            style={styles.messageImage} 
+                            style={[styles.messageImage, imageDimensions]} 
                             resizeMode="cover"
                         />
                     </TouchableOpacity>
@@ -205,7 +282,8 @@ const ChatBubbles = ({
                 style={[
                     styles.bubble, 
                     isOwnMessage ? styles.ownBubble : styles.otherBubble,
-                    hasImage && styles.bubbleWithImage
+                    hasImage && styles.bubbleWithImage,
+                    { maxWidth: getMaxBubbleWidth() }
                 ]}
                 onLongPress={handleLongPress}
                 activeOpacity={0.8}
@@ -221,8 +299,8 @@ const styles = StyleSheet.create({
     // Contenedor principal
     container: {
         flexDirection: 'row',
-        marginVertical: 4,
-        paddingHorizontal: 16,
+        marginVertical: responsive(4),
+        paddingHorizontal: responsive(16),
     },
     ownMessage: {
         justifyContent: 'flex-end',
@@ -233,13 +311,13 @@ const styles = StyleSheet.create({
 
     // Avatar
     avatar: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        marginRight: 8,
+        width: responsive(32),
+        height: responsive(32),
+        borderRadius: responsive(16),
+        marginRight: responsive(8),
         overflow: 'hidden',
         alignSelf: 'flex-end',
-        marginBottom: 4,
+        marginBottom: responsive(4),
     },
     avatarImage: {
         width: '100%',
@@ -249,43 +327,44 @@ const styles = StyleSheet.create({
 
     // Burbuja del mensaje
     bubble: {
-        maxWidth: '75%',
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 18,
+        paddingHorizontal: responsive(12),
+        paddingVertical: responsive(8),
+        borderRadius: responsive(18),
         position: 'relative',
-        marginBottom: 2,
+        marginBottom: responsive(2),
+        minWidth: responsive(60), // Ancho mínimo para burbujas pequeñas
     },
     ownBubble: {
         backgroundColor: '#F8BBD9',
-        borderBottomRightRadius: 4,
+        borderBottomRightRadius: responsive(4),
     },
     otherBubble: {
         backgroundColor: '#E5E5EA',
-        borderBottomLeftRadius: 4,
+        borderBottomLeftRadius: responsive(4),
     },
     bubbleWithImage: {
-        paddingHorizontal: 8,
-        paddingVertical: 8,
+        paddingHorizontal: responsive(8),
+        paddingVertical: responsive(8),
     },
     typingBubble: {
-        paddingVertical: 12,
-        minWidth: 80,
+        paddingVertical: responsive(12),
+        minWidth: responsive(80),
     },
 
     // Información del remitente
     senderName: {
-        fontSize: 12,
+        fontSize: responsive(12),
         color: '#666666',
         fontFamily: 'Poppins-Medium',
-        marginBottom: 4,
+        marginBottom: responsive(4),
     },
 
     // Texto del mensaje
     messageText: {
-        fontSize: 16,
-        lineHeight: 20,
+        fontSize: responsive(16),
+        lineHeight: responsive(20),
         fontFamily: 'Poppins-Regular',
+        flexShrink: 1, // Permitir que el texto se ajuste
     },
     ownText: {
         color: '#000000',
@@ -294,15 +373,13 @@ const styles = StyleSheet.create({
         color: '#000000',
     },
     messageTextWithImage: {
-        marginTop: 4,
+        marginTop: responsive(4),
     },
 
-    // Imagen del mensaje
+    // Imagen del mensaje (dimensiones dinámicas aplicadas directamente)
     messageImage: {
-        width: 200,
-        height: 150,
-        borderRadius: 12,
-        marginBottom: 4,
+        borderRadius: responsive(12),
+        marginBottom: responsive(4),
     },
 
     // Contenedor de tiempo y estado
@@ -310,12 +387,13 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'flex-end',
-        marginTop: 4,
+        marginTop: responsive(4),
+        flexShrink: 0, // No permitir que se comprima
     },
 
     // Tiempo del mensaje
     timeText: {
-        fontSize: 12,
+        fontSize: responsive(12),
         fontFamily: 'Poppins-Regular',
     },
     ownTime: {
@@ -329,22 +407,22 @@ const styles = StyleSheet.create({
 
     // Estado del mensaje
     statusContainer: {
-        marginLeft: 4,
-        minWidth: 16,
+        marginLeft: responsive(4),
+        minWidth: responsive(16),
         alignItems: 'center',
     },
     statusRead: {
-        fontSize: 12,
+        fontSize: responsive(12),
         color: '#4A90E2',
         fontWeight: 'bold',
     },
     statusDelivered: {
-        fontSize: 12,
+        fontSize: responsive(12),
         color: '#999999',
         fontWeight: 'bold',
     },
     statusSending: {
-        fontSize: 12,
+        fontSize: responsive(12),
         color: '#CCCCCC',
     },
 
@@ -354,22 +432,22 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     typingText: {
-        fontSize: 14,
+        fontSize: responsive(14),
         color: '#666666',
         fontFamily: 'Poppins-Regular',
         fontStyle: 'italic',
-        marginRight: 8,
+        marginRight: responsive(8),
     },
     typingDots: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     dot: {
-        width: 4,
-        height: 4,
-        borderRadius: 2,
+        width: responsive(4),
+        height: responsive(4),
+        borderRadius: responsive(2),
         backgroundColor: '#666666',
-        marginHorizontal: 1,
+        marginHorizontal: responsive(1),
     },
     dot1: {
         opacity: 0.4,

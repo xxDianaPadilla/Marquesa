@@ -1,8 +1,8 @@
-import nodemailer from "nodemailer";
+// Reemplazamos nodemailer por Brevo API
+import { sendVerificationEmail } from "../middlewares/envioCorreo.js";
 import bcryptjs from "bcryptjs";
 import clientsModel from "../models/Clients.js";
 import emailVerificationModel from "../models/EmailVerification.js";
-import { config } from "../config.js";
 import { getEmailTemplate } from "../utils/emailVerificationDesign.js";
 
 const emailVerificationController = {};
@@ -10,8 +10,8 @@ const emailVerificationController = {};
 // Función helper para configuración dinámica de cookies basada en el entorno
 const getCookieConfig = () => {
     const isProduction = process.env.NODE_ENV === 'production';
-    
-    // ✅ CORRECCIÓN CRÍTICA: Configuración específica para Render + Vercel
+
+    // Configuración específica para Render + Vercel
     if (isProduction) {
         return {
             httpOnly: false, // Permitir acceso desde JavaScript (crítico para cross-domain)
@@ -105,7 +105,7 @@ const validateBirthDate = (dateString) => {
     if (!dateString) {
         return { isValid: false, error: 'Fecha de nacimiento es requerida' };
     }
-    
+
     try {
         // Parsear fecha en formato DD/MM/YYYY
         const [day, month, year] = dateString.split('/').map(num => parseInt(num, 10));
@@ -130,7 +130,7 @@ const validateBirthDate = (dateString) => {
         // Calcular edad correctamente
         let age = today.getFullYear() - date.getFullYear();
         const monthDiff = today.getMonth() - date.getMonth();
-        
+
         // Si no ha llegado el mes de cumpleaños, o si es el mes pero no ha llegado el día, restar 1 año
         if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < date.getDate())) {
             age--;
@@ -213,38 +213,7 @@ const validateVerificationCode = (code) => {
     return { isValid: true, value: trimmedCode };
 };
 
-// Configuración del transportador de email usando nodemailer
-// Configuración del transportador de email usando nodemailer
-// Configuración del transportador de email usando nodemailer
-const createTransporter = () => {
-    try {
-        console.log('Configurando transportador de email...');
-        console.log('Email user:', config.emailUser.user_email ? 'configurado' : 'NO configurado');
-        console.log('Email pass:', config.emailUser.user_pass ? 'configurado' : 'NO configurado');
-
-        if (!config.emailUser.user_email || !config.emailUser.user_pass) {
-            throw new Error('Configuración de email incompleta - verificar variables de entorno');
-        }
-
-        // CORRECCIÓN: usar createTransport (sin 'er' al final)
-        const transporter = nodemailer.createTransport({
-            service: 'gmail',
-            auth: {
-                user: config.emailUser.user_email,
-                pass: config.emailUser.user_pass
-            },
-            tls: {
-                rejectUnauthorized: false
-            }
-        });
-
-        console.log('Transportador de email configurado correctamente');
-        return transporter;
-    } catch (error) {
-        console.error('Error creando transportador de email:', error);
-        throw error;
-    }
-};
+// createTransporter de nodemailer - ahora usamos Brevo
 
 // Generar código de verificación de 6 dígitos
 const generateVerificationCode = () => {
@@ -266,7 +235,7 @@ emailVerificationController.requestEmailVerification = async (req, res) => {
     try {
         const { email, fullName } = req.body;
 
-        console.log('=== INICIO requestEmailVerification ===');
+        console.log('=== INICIO requestEmailVerification (BREVO) ===');
         console.log('Datos recibidos:', { email, fullName });
         console.log('Timestamp:', new Date().toISOString());
 
@@ -374,41 +343,41 @@ emailVerificationController.requestEmailVerification = async (req, res) => {
             });
         }
 
-        // Configurar y enviar email
-        // Configurar y enviar email
+        // Configurar y enviar email usando Brevo
         try {
-            console.log('Iniciando envío de email...');
-            const transporter = createTransporter();
+            console.log('Iniciando envío de email con BREVO...');
 
-            const mailOptions = {
-                from: {
-                    name: 'Marquesa - Tienda de Regalos',
-                    address: config.emailUser.user_email
-                },
-                to: emailKey,
-                subject: '🌸 Verifica tu correo electrónico - Marquesa',
-                html: getEmailTemplate(verificationCode, nameValidation.value)
-            };
+            // Generar template HTML
+            const htmlTemplate = getEmailTemplate(verificationCode, nameValidation.value);
 
             console.log('Enviando email a:', emailKey);
-            const emailResult = await transporter.sendMail(mailOptions);
-            console.log('Email enviado exitosamente. MessageId:', emailResult.messageId);
+
+            // Llamar a la función de Brevo en lugar de nodemailer
+            const emailResult = await sendVerificationEmail(
+                emailKey,
+                verificationCode,
+                nameValidation.value,
+                htmlTemplate
+            );
+
+            console.log('Email enviado exitosamente con BREVO. MessageId:', emailResult.messageId);
 
         } catch (emailError) {
-            console.error('Error detallado al enviar email:', {
+            console.error('Error detallado al enviar email con BREVO:', {
                 message: emailError.message,
-                code: emailError.code,
-                command: emailError.command,
-                response: emailError.response
+                service: emailError.service,
+                originalError: emailError.originalError
             });
 
             // Determinar el tipo de error
             let errorMessage = "Error enviando correo de verificación. Inténtalo de nuevo.";
 
-            if (emailError.code === 'EAUTH') {
-                errorMessage = "Error de autenticación de email. Contacta al administrador.";
-            } else if (emailError.code === 'ECONNECTION') {
+            if (emailError.message?.includes('api-key')) {
+                errorMessage = "Error de configuración del servicio de email. Contacta al administrador.";
+            } else if (emailError.message?.includes('network') || emailError.message?.includes('fetch')) {
                 errorMessage = "Error de conexión. Verifica tu conexión a internet.";
+            } else if (emailError.message?.includes('Invalid email')) {
+                errorMessage = "Formato de correo electrónico no válido.";
             }
 
             return res.status(502).json({
@@ -418,7 +387,7 @@ emailVerificationController.requestEmailVerification = async (req, res) => {
             });
         }
 
-        console.log('=== FIN requestEmailVerification ===');
+        console.log('=== FIN requestEmailVerification (BREVO) ===');
 
         // Configurar cookies con configuración dinámica
         const cookieConfig = getCookieConfig();
@@ -545,7 +514,7 @@ emailVerificationController.verifyEmailAndRegister = async (req, res) => {
 
         // CORRECCIÓN: Usar la fecha procesada correctamente
         const birthDateValidation = validateBirthDate(userData.birthDate);
-        
+
         // Crear nuevo cliente
         try {
             const newClient = new clientsModel({

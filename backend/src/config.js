@@ -1,9 +1,9 @@
 // Importar la librería dotenv para cargar variables de entorno
 import dotenv from "dotenv";
- 
+
 // Configurar dotenv para cargar variables desde el archivo .env
 dotenv.config();
- 
+
 // Exportar objeto de configuración con todas las variables de entorno
 export const config = {
     // Configuración de la base de datos
@@ -24,7 +24,7 @@ export const config = {
         email: process.env.ADMIN_EMAIL,
         password: process.env.ADMIN_PASSWORD
     },
-    // Configuración del correo electrónico
+    // Aunque ahora usamos Brevo, mantenemos para el sender email
     emailUser: {
         user_email: process.env.USER_EMAIL,
         user_pass: process.env.USER_PASS
@@ -35,11 +35,7 @@ export const config = {
         cloudinary_api_key: process.env.CLOUDINARY_API_KEY,
         cloudinary_api_secret: process.env.CLOUDINARY_API_SECRET
     },
-    // ✅ CONFIGURACIÓN CORREGIDA: Google OAuth
-    google: {
-        clientId: process.env.GOOGLE_CLIENT_ID,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        // ✅ ASEGURAR URL EXACTA
-        callbackUrl: process.env.GOOGLE_CALLBACK_URL || "https://marquesa.onrender.com/api/auth/google/callback"
+    brevo: {
+        brevo_api: process.env.TU_API_KEY // Verificar que esta variable esté en .env
     }
 };

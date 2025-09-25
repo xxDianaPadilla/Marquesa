@@ -9,7 +9,7 @@ import { toast } from 'react-hot-toast';
 const CartItem = ({ item, onUpdateQuantity, onRemoveItem, updating = false }) => {
     const [localQuantity, setLocalQuantity] = useState(item.quantity);
     const [isUpdating, setIsUpdating] = useState(false);
-    
+
     // ✅ ESTADOS MEJORADOS para manejo de imágenes
     const [imageState, setImageState] = useState({
         loading: true,
@@ -18,7 +18,7 @@ const CartItem = ({ item, onUpdateQuantity, onRemoveItem, updating = false }) =>
         attempts: 0,
         currentSrc: null
     });
-    
+
     const imageRef = useRef(null);
     const retryTimeoutRef = useRef(null);
 
@@ -27,7 +27,7 @@ const CartItem = ({ item, onUpdateQuantity, onRemoveItem, updating = false }) =>
      */
     const getImageUrl = (item) => {
         let imageUrl = null;
-        
+
         // Para productos normales
         if (item.itemType === 'product' || !item.itemType) {
             if (item.image && typeof item.image === 'string' && item.image.trim() !== '') {
@@ -39,7 +39,7 @@ const CartItem = ({ item, onUpdateQuantity, onRemoveItem, updating = false }) =>
                     if (img && img.image && typeof img.image === 'string') return img.image.trim() !== '';
                     return false;
                 });
-                
+
                 if (validImage) {
                     imageUrl = typeof validImage === 'string' ? validImage : validImage.image;
                 }
@@ -72,12 +72,12 @@ const CartItem = ({ item, onUpdateQuantity, onRemoveItem, updating = false }) =>
      */
     const isValidImageUrl = (url) => {
         if (!url || typeof url !== 'string') return false;
-        
+
         // Verificar que no sea solo emoji o texto muy corto
         if (url.length <= 5) return false;
         if (url.match(/^[\u{1F300}-\u{1F9FF}]$/u)) return false;
         if (['🎨', '📦', 'Sin imagen', 'sin imagen'].includes(url)) return false;
-        
+
         // Verificar que tenga formato de URL
         try {
             const testUrl = url.startsWith('http') ? url : `https://${url}`;
@@ -106,24 +106,24 @@ const CartItem = ({ item, onUpdateQuantity, onRemoveItem, updating = false }) =>
      */
     const handleImageError = () => {
         console.log('❌ Error cargando imagen:', imageState.currentSrc, 'Intento:', imageState.attempts + 1);
-        
+
         setImageState(prev => {
             const newAttempts = prev.attempts + 1;
-            
+
             // Si hemos intentado menos de 3 veces, reintentar después de 2 segundos
             if (newAttempts < 3) {
                 console.log('🔄 Reintentando cargar imagen en 2 segundos...');
-                
+
                 if (retryTimeoutRef.current) {
                     clearTimeout(retryTimeoutRef.current);
                 }
-                
+
                 retryTimeoutRef.current = setTimeout(() => {
                     if (imageRef.current && prev.currentSrc) {
                         imageRef.current.src = prev.currentSrc + `?retry=${newAttempts}`;
                     }
                 }, 2000);
-                
+
                 return {
                     ...prev,
                     attempts: newAttempts,
@@ -149,7 +149,7 @@ const CartItem = ({ item, onUpdateQuantity, onRemoveItem, updating = false }) =>
      */
     const initializeImage = () => {
         const imageUrl = getImageUrl(item);
-        
+
         if (!imageUrl || !isValidImageUrl(imageUrl)) {
             console.log('🚫 No hay imagen válida para el producto:', item.name);
             setImageState({
@@ -180,9 +180,9 @@ const CartItem = ({ item, onUpdateQuantity, onRemoveItem, updating = false }) =>
         if (retryTimeoutRef.current) {
             clearTimeout(retryTimeoutRef.current);
         }
-        
+
         initializeImage();
-        
+
         return () => {
             if (retryTimeoutRef.current) {
                 clearTimeout(retryTimeoutRef.current);
@@ -202,14 +202,14 @@ const CartItem = ({ item, onUpdateQuantity, onRemoveItem, updating = false }) =>
      */
     const handleQuantityChange = async (newQuantity) => {
         if (newQuantity === localQuantity || isUpdating || updating) return;
-        
+
         setIsUpdating(true);
         setLocalQuantity(newQuantity);
-        
+
         try {
             const itemId = item.id || item._originalItem?.itemId;
             const success = await onUpdateQuantity(itemId, newQuantity);
-            
+
             if (success) {
                 toast.success(`Cantidad actualizada a ${newQuantity}`, {
                     duration: 2000,
@@ -225,7 +225,7 @@ const CartItem = ({ item, onUpdateQuantity, onRemoveItem, updating = false }) =>
         } catch (error) {
             setLocalQuantity(item.quantity);
             console.error('Error actualizando cantidad:', error);
-            
+
             toast.error('Error al actualizar cantidad', {
                 duration: 3000,
                 position: 'bottom-center'
@@ -240,13 +240,13 @@ const CartItem = ({ item, onUpdateQuantity, onRemoveItem, updating = false }) =>
      */
     const handleRemove = async () => {
         if (isUpdating || updating) return;
-        
+
         setIsUpdating(true);
-        
+
         try {
             const itemId = item.id || item._originalItem?.itemId;
             const success = await onRemoveItem(itemId);
-            
+
             if (success) {
                 toast.success(
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -277,7 +277,7 @@ const CartItem = ({ item, onUpdateQuantity, onRemoveItem, updating = false }) =>
             }
         } catch (error) {
             console.error('Error eliminando item:', error);
-            
+
             toast.error(
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ fontSize: '18px' }}>⚠️</span>
@@ -338,9 +338,9 @@ const CartItem = ({ item, onUpdateQuantity, onRemoveItem, updating = false }) =>
                                 }}></div>
                             </div>
                         )}
-                        
+
                         {/* ✅ IMAGEN principal */}
-                        <img 
+                        <img
                             ref={imageRef}
                             src={imageState.currentSrc}
                             alt={item.name}
@@ -381,7 +381,7 @@ const CartItem = ({ item, onUpdateQuantity, onRemoveItem, updating = false }) =>
                     </div>
                 )}
             </div>
-            
+
             <div className="item-details">
                 <h3>{item.name}</h3>
                 {item.description && (
@@ -393,32 +393,14 @@ const CartItem = ({ item, onUpdateQuantity, onRemoveItem, updating = false }) =>
                     </span>
                 )}
             </div>
-            
-            <div className="item-quantity">
-                <button 
-                    onClick={() => handleQuantityChange(Math.max(1, localQuantity - 1))}
-                    disabled={localQuantity <= 1 || isUpdating || updating}
-                    className="quantity-btn"
-                >
-                    -
-                </button>
-                <span className="quantity-display">{localQuantity}</span>
-                <button 
-                    onClick={() => handleQuantityChange(Math.min(99, localQuantity + 1))}
-                    disabled={localQuantity >= 99 || isUpdating || updating}
-                    className="quantity-btn"
-                >
-                    +
-                </button>
-            </div>
-            
+
             <div className="item-price">
                 <span className="unit-price">${item.price.toFixed(2)}</span>
                 <span className="subtotal">${(item.price * localQuantity).toFixed(2)}</span>
             </div>
-            
+
             <div className="item-actions">
-                <button 
+                <button
                     onClick={handleRemove}
                     disabled={isUpdating || updating}
                     className="remove-btn"
@@ -429,8 +411,8 @@ const CartItem = ({ item, onUpdateQuantity, onRemoveItem, updating = false }) =>
                     }}
                 >
                     {isUpdating || updating ? (
-                        <span style={{ 
-                            display: 'inline-block', 
+                        <span style={{
+                            display: 'inline-block',
                             animation: 'spin 1s linear infinite',
                             fontSize: '14px'
                         }}>
@@ -439,7 +421,7 @@ const CartItem = ({ item, onUpdateQuantity, onRemoveItem, updating = false }) =>
                     ) : '🗑️'}
                 </button>
             </div>
-            
+
             {(isUpdating || updating) && (
                 <div className="updating-overlay">
                     <div className="spinner"></div>

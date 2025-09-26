@@ -12,15 +12,16 @@ import {
 } from 'react-native';
 import { useImagePicker } from '../hooks/useImagePicker';
 
-// ✅ IMPORTAR ALERTAS PERSONALIZADAS
+// IMPORTAR ALERTAS PERSONALIZADAS
 import { ConfirmationDialog, CustomAlert } from '../components/CustomDialogs';
+import { ImagePickerDialog } from '../components/ImagePickerDialog';
 import { useAlert } from '../hooks/useAlert';
 
 // Importación de iconos
 import attachImage from "../images/attachImage.png";
 import sendIcon from "../images/sendIcon.png";
 
-// ✅ IMPORTAR SISTEMA RESPONSIVE
+// IMPORTAR SISTEMA RESPONSIVE
 import {
     responsive,
     getHorizontalPadding,
@@ -31,8 +32,8 @@ import {
 
 /**
  * Componente de input para el chat
- * ✅ SIN KeyboardAvoidingView - Compatible con detección dinámica de teclado
- * ✅ Optimizado para Android con sistema responsive
+ * SIN KeyboardAvoidingView - Compatible con detección dinámica de teclado
+ * Optimizado para Android con sistema responsive
  */
 const ChatInput = ({
     onSendMessage,
@@ -46,6 +47,7 @@ const ChatInput = ({
 }) => {
     const [message, setMessage] = useState('');
     const [isTyping, setIsTyping] = useState(false);
+    const [showImagePicker, setShowImagePicker] = useState(false);
 
     const textInputRef = useRef(null);
     const typingTimeoutRef = useRef(null);
@@ -65,7 +67,7 @@ const ChatInput = ({
     const {
         selectedImage,
         isLoading: imageLoading,
-        showImagePicker,
+        showImagePicker: showImagePickerHook,
         clearSelectedImage
     } = useImagePicker();
 
@@ -116,30 +118,21 @@ const ChatInput = ({
             return;
         }
 
-        Alert.alert(
-            'Agregar archivo',
-            '¿Cómo quieres seleccionar la imagen?',
-            [
-                {
-                    text: 'Cancelar',
-                    style: 'cancel',
-                    onPress: () => console.log('📷 Usuario canceló')
-                },
-                {
-                    text: 'Galería',
-                    onPress: () => {
-                        showImagePicker({ fromGallery: true });
-                    }
-                },
-                {
-                    text: 'Cámara',
-                    onPress: () => {
-                        showImagePicker({ fromCamera: true });
-                    }
-                }
-            ],
-            { cancelable: true }
-        );
+        setShowImagePicker(true);
+    };
+
+    const hideImagePickerOptions = () => {
+        setShowImagePicker(false);
+    };
+
+    const openCamera = () => {
+        hideImagePickerOptions();
+        showImagePickerHook({ fromCamera: true });
+    };
+
+    const openGallery = () => {
+        hideImagePickerOptions();
+        showImagePickerHook({ fromGallery: true });
     };
 
     /**
@@ -190,7 +183,7 @@ const ChatInput = ({
                 }
             }
         } catch (error) {
-            console.error('❌ Error enviando mensaje:', error);
+            console.error('Error enviando mensaje:', error);
             showAlert({
                 title: 'Error de conexión',
                 message: 'No se pudo enviar el mensaje. Verifica tu conexión e inténtalo de nuevo.',
@@ -226,7 +219,7 @@ const ChatInput = ({
     // Debug de imagen
     useEffect(() => {
         if (selectedImage) {
-            console.log('📷 Nueva imagen seleccionada:', {
+            console.log('Nueva imagen seleccionada:', {
                 uri: selectedImage.uri,
                 name: selectedImage.name,
                 size: `${(selectedImage.size / 1024 / 1024).toFixed(2)}MB`
@@ -386,6 +379,14 @@ const ChatInput = ({
                     )}
                 </TouchableOpacity>
             </View>
+
+            {/* Diálogo personalizado de selección de imagen */}
+            <ImagePickerDialog
+                visible={showImagePicker}
+                onCamera={openCamera}
+                onGallery={openGallery}
+                onCancel={hideImagePickerOptions}
+            />
         </View>
     );
 };

@@ -1,248 +1,227 @@
-import { useState, useEffect } from "react"; // Importamos React
-import { useAuth } from "../context/AuthContext"; // Importamos contexto global
+import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 
-// Hook para manejar la edición de perfil
-const useEditProfile = (alertFunctions = {}) => {
-    const { userInfo, getBestAvailableToken, getUserInfo } = useAuth();
-    const { 
-        showConfirmation = () => {}, 
-        hideConfirmation = () => {},
-        showError = () => {},
-        showSuccess = () => {},
-        showLoading = () => {},
-        hideLoading = () => {}
-    } = alertFunctions;
+const useEditProfile = ({ 
+    showConfirmation, 
+    hideConfirmation, 
+    showError, 
+    showSuccess, 
+    showLoading, 
+    hideLoading 
+}) => {
+    const { userInfo, getUserInfo } = useAuth();
     
-    // Estados para los campos del formulario
+    // Estados del formulario
     const [formData, setFormData] = useState({
         fullName: '',
         phone: '',
-        email: '',
-        birthDate: '',
         address: ''
     });
     
-    // Estados de control
+    // Estados de UI
     const [isEditing, setIsEditing] = useState(false);
     const [loading, setLoading] = useState(false);
     const [initialLoad, setInitialLoad] = useState(true);
+    const [originalData, setOriginalData] = useState({});
+    
+    // Nuevo estado para la imagen de perfil
+    const [profileImageUri, setProfileImageUri] = useState(null);
+    const [hasImageChanged, setHasImageChanged] = useState(false);
 
-    // Función para formatear fecha de ISO a DD/MM/YYYY
-    const formatDateFromISO = (isoDate) => {
-        if (!isoDate) return '';
-        
-        try {
-            const date = new Date(isoDate);
-            const day = date.getDate().toString().padStart(2, '0');
-            const month = (date.getMonth() + 1).toString().padStart(2, '0');
-            const year = date.getFullYear();
-            return `${day}/${month}/${year}`;
-        } catch (error) {
-            console.error('Error formatting date:', error);
-            return '';
-        }
-    };
-
-    // Función para convertir fecha DD/MM/YYYY a ISO para enviar al servidor
-    const formatDateToISO = (dateString) => {
-        if (!dateString) return '';
-        
-        try {
-            const [day, month, year] = dateString.split('/');
-            if (!day || !month || !year) return '';
-            
-            const date = new Date(year, month - 1, day);
-            return date.toISOString();
-        } catch (error) {
-            console.error('Error converting date to ISO:', error);
-            return '';
-        }
-    };
-
-    // Función para cargar datos del usuario
-    const loadUserData = async () => {
-        try {
-            setInitialLoad(true);
-            
-            let userData = userInfo;
-            
-            // Si no tenemos userInfo, intentamos obtenerlo del servidor
-            if (!userData) {
-                const token = await getBestAvailableToken();
-                if (token) {
-                    userData = await getUserInfo(token);
-                }
-            }
-
-            if (userData) {
-                setFormData({
-                    fullName: userData.fullName || userData.name || '',
-                    phone: userData.phone || '',
-                    email: userData.email || '',
-                    birthDate: formatDateFromISO(userData.birthDate || userData.dateOfBirth || ''),
-                    address: userData.address || ''
-                });
-            }
-        } catch (error) {
-            console.error('Error loading user data:', error);
-            showError('No se pudo cargar la información del usuario');
-        } finally {
-            setInitialLoad(false);
-        }
-    };
-
-    // Validación de email
-    const validateEmail = (email) => {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return emailRegex.test(email.trim());
+    // Función para manejar la selección de imagen
+    const handleImagePicker = (imageUri) => {
+        console.log('Imagen seleccionada:', imageUri);
+        setProfileImageUri(imageUri);
+        setHasImageChanged(true);
     };
 
     // Función para validar el formulario
     const validateForm = () => {
-        if (!formData.fullName.trim()) {
-            showError('El nombre completo es requerido');
-            return false;
+        const errors = [];
+
+        // Validar nombre
+        if (!formData.fullName || formData.fullName.trim().length < 3) {
+            errors.push('El nombre debe tener al menos 3 caracteres');
         }
 
-        if (!formData.email.trim()) {
-            showError('El correo electrónico es requerido');
-            return false;
+        // Validar teléfono
+        const phoneClean = formData.phone.replace(/\D/g, '');
+        if (!formData.phone || phoneClean.length !== 8) {
+            errors.push('El teléfono debe tener 8 dígitos');
         }
 
-        if (!validateEmail(formData.email)) {
-            showError('El formato del correo electrónico no es válido');
+        // Validar dirección
+        if (!formData.address || formData.address.trim().length < 10) {
+            errors.push('La dirección debe tener al menos 10 caracteres');
+        }
+
+        if (errors.length > 0) {
+            showError(errors.join('\n'));
             return false;
         }
 
         return true;
     };
 
-    // Función para actualizar los datos del usuario
-    const updateUserData = async () => {
-        try {
-            setLoading(true);
-            showLoading({ title: 'Guardando...', message: 'Actualizando tu perfil...' });
+    // Función para crear FormData para el envío
+    const createFormData = () => {
+        const data = new FormData();
+        
+        // Agregar datos del formulario
+        data.append('fullName', formData.fullName.trim());
+        data.append('phone', formData.phone.trim());
+        data.append('address', formData.address.trim());
+
+        // Agregar imagen si se seleccionó una nueva
+        if (hasImageChanged && profileImageUri) {
+            const uriParts = profileImageUri.split('.');
+            const fileType = uriParts[uriParts.length - 1];
             
-            const token = await getBestAvailableToken();
-            if (!token) {
-                hideLoading();
-                showError('No hay sesión activa');
-                return false;
-            }
+            data.append('profilePicture', {
+                uri: profileImageUri,
+                name: `profile.${fileType}`,
+                type: `image/${fileType}`
+            });
+        }
 
-            // Validar formulario
-            if (!validateForm()) {
-                hideLoading();
-                return false;
-            }
+        return data;
+    };
 
-            console.log('Actualizando datos del usuario...', formData);
+    // Función para actualizar el perfil
+    const updateProfile = async () => {
+        if (!validateForm()) {
+            return;
+        }
+
+        showLoading('Actualizando perfil...');
+        setLoading(true);
+
+        try {
+            const formDataToSend = createFormData();
+
+            console.log('Enviando datos del perfil...');
 
             const response = await fetch('https://marquesa.onrender.com/api/clients/profile', {
                 method: 'PUT',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data',
                 },
-                body: JSON.stringify({
-                    fullName: formData.fullName.trim(),
-                    phone: formData.phone.trim(),
-                    email: formData.email.trim().toLowerCase(),
-                    birthDate: formatDateToISO(formData.birthDate),
-                    address: formData.address.trim()
-                })
+                body: formDataToSend,
+                credentials: 'include'
             });
 
             const data = await response.json();
-            console.log('Respuesta actualización:', data);
+            console.log('Respuesta del servidor:', data);
 
-            hideLoading();
-
-            if (response.ok && data.success) {
-                // Actualizar la información del usuario en el contexto
-                await getUserInfo(token);
+            if (data.success) {
+                showSuccess('Perfil actualizado exitosamente');
                 
-                showSuccess('Perfil actualizado correctamente');
+                // Actualizar información del usuario
+                await getUserInfo();
+                
+                // Resetear estados de edición
                 setIsEditing(false);
-                return true;
+                setHasImageChanged(false);
+                
+                // Actualizar datos originales
+                setOriginalData({
+                    fullName: formData.fullName,
+                    phone: formData.phone,
+                    address: formData.address
+                });
             } else {
-                const errorMsg = data.message || 'Error al actualizar el perfil';
-                showError(errorMsg);
-                return false;
+                showError(data.message || 'Error al actualizar el perfil');
             }
         } catch (error) {
-            console.error('Error updating user data:', error);
-            hideLoading();
-            showError('Error de conexión. Inténtalo nuevamente.');
-            return false;
+            console.error('Error al actualizar perfil:', error);
+            showError('Error de conexión. Verifica tu internet e inténtalo nuevamente.');
         } finally {
+            hideLoading();
             setLoading(false);
         }
     };
 
-    // Función para manejar cambios en los campos
+    // Función para manejar cambios en los inputs
     const handleInputChange = (field, value) => {
+        let processedValue = value;
+
+        // Procesar formato de teléfono
+        if (field === 'phone') {
+            const cleaned = value.replace(/\D/g, '');
+            if (cleaned.length <= 8) {
+                processedValue = cleaned.length > 4
+                    ? cleaned.slice(0, 4) + "-" + cleaned.slice(4)
+                    : cleaned;
+            } else {
+                return; // No actualizar si excede 8 dígitos
+            }
+        }
+
         setFormData(prev => ({
             ...prev,
-            [field]: value
+            [field]: processedValue
         }));
     };
 
-    // Función para activar modo edición
-    const startEditing = () => {
-        setIsEditing(true);
+    // Función para alternar modo de edición
+    const handleEditToggle = () => {
+        if (isEditing) {
+            // Intentar guardar
+            updateProfile();
+        } else {
+            // Entrar en modo edición
+            setIsEditing(true);
+        }
     };
 
     // Función para cancelar edición
     const cancelEdit = () => {
-        setIsEditing(false);
-        // Restaurar datos originales
-        loadUserData();
+        showConfirmation(
+            'Cancelar edición',
+            '¿Estás seguro de que deseas cancelar? Se perderán los cambios no guardados.',
+            () => {
+                // Restaurar datos originales
+                setFormData(originalData);
+                setProfileImageUri(null);
+                setHasImageChanged(false);
+                setIsEditing(false);
+                hideConfirmation();
+            },
+            hideConfirmation
+        );
     };
 
-    // Función para manejar el botón de editar/guardar
-    const handleEditToggle = () => {
-        if (isEditing) {
-            updateUserData();
-        } else {
-            startEditing();
-        }
-    };
-
-    // Función para manejar navegación hacia atrás con confirmación
+    // Función para manejar el botón de atrás
     const handleBackPress = (navigation) => {
-        console.log('handleBackPress called, isEditing:', isEditing);
-        console.log('showConfirmation function type:', typeof showConfirmation);
-        
         if (isEditing) {
-            console.log('Calling showConfirmation...');
-            showConfirmation({
-                title: 'Descartar cambios',
-                message: '¿Estás seguro de que quieres descartar los cambios?',
-                confirmText: 'Descartar',
-                cancelText: 'Cancelar',
-                isDangerous: true,
-                onConfirm: () => {
-                    console.log('Confirmed discard changes');
-                    cancelEdit();
+            showConfirmation(
+                'Salir sin guardar',
+                'Tienes cambios sin guardar. ¿Estás seguro de que deseas salir?',
+                () => {
                     hideConfirmation();
                     navigation.goBack();
                 },
-                onCancel: () => {
-                    console.log('Cancelled discard changes');
-                    hideConfirmation();
-                }
-            });
+                hideConfirmation
+            );
         } else {
-            console.log('Going back without confirmation');
             navigation.goBack();
         }
     };
 
-    // Cargar datos al montar el componente
+    // Inicializar datos cuando se carga el componente
     useEffect(() => {
-        loadUserData();
-    }, []);
+        if (userInfo) {
+            const initialData = {
+                fullName: userInfo.fullName || userInfo.name || '',
+                phone: userInfo.phone || '',
+                address: userInfo.address || ''
+            };
+
+            setFormData(initialData);
+            setOriginalData(initialData);
+            setInitialLoad(false);
+        }
+    }, [userInfo]);
 
     return {
         // Estados
@@ -250,23 +229,15 @@ const useEditProfile = (alertFunctions = {}) => {
         isEditing,
         loading,
         initialLoad,
-        
-        // Funciones de manejo de datos
+        profileImageUri,
+        hasImageChanged,
+
+        // Funciones
         handleInputChange,
         handleEditToggle,
         cancelEdit,
-        startEditing,
-        loadUserData,
-        updateUserData,
-        
-        // Funciones de navegación
         handleBackPress,
-        
-        // Funciones de utilidad
-        formatDateFromISO,
-        formatDateToISO,
-        validateForm,
-        validateEmail
+        handleImagePicker
     };
 };
 

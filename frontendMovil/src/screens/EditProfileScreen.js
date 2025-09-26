@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, TouchableOpacity, Image, StyleSheet, Text, ScrollView, Platform } from "react-native";
+import * as ImagePicker from 'expo-image-picker';
 
 // Importación de contextos y hooks personalizados
 import { useAuth } from "../context/AuthContext";
@@ -9,7 +10,8 @@ import useEditProfile from "../hooks/useEditProfile";
 // Importación de componentes personalizados
 import PinkInputs from "../components/PinkInputs";
 import PinkButton from "../components/PinkButton";
-import { CustomAlert, LoadingDialog, ConfirmationDialog } from "../components/CustomAlerts"; 
+import { CustomAlert, LoadingDialog, ConfirmationDialog } from "../components/CustomAlerts";
+import { ImagePickerDialog } from "../components/ImagePickerDialog"; // Nuevo componente
 
 // Importación de iconos y elementos gráficos
 import backIcon from "../images/backIcon.png";
@@ -19,6 +21,9 @@ import editIcon from "../images/editIcon.png";
 
 export default function EditProfileScreen({ navigation }) {
     const { userInfo } = useAuth();
+    
+    // Estado para controlar el diálogo de selección de imagen
+    const [showImagePicker, setShowImagePicker] = useState(false);
     
     const { 
         alertState,
@@ -35,10 +40,12 @@ export default function EditProfileScreen({ navigation }) {
         isEditing,
         loading,
         initialLoad,
+        profileImageUri,
         handleInputChange,
         handleEditToggle,
         cancelEdit,
-        handleBackPress
+        handleBackPress,
+        handleImagePicker
     } = useEditProfile({
         showConfirmation,
         hideConfirmation,
@@ -47,6 +54,98 @@ export default function EditProfileScreen({ navigation }) {
         showLoading,
         hideLoading
     });
+
+    // Función para solicitar permisos de cámara
+    const requestCameraPermission = async () => {
+        try {
+            const { status } = await ImagePicker.requestCameraPermissionsAsync();
+            return status === 'granted';
+        } catch (error) {
+            console.error('Error solicitando permisos de cámara:', error);
+            return false;
+        }
+    };
+
+    // Función para solicitar permisos de galería
+    const requestMediaLibraryPermission = async () => {
+        try {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            return status === 'granted';
+        } catch (error) {
+            console.error('Error solicitando permisos de galería:', error);
+            return false;
+        }
+    };
+
+    // Función para mostrar el diálogo personalizado de selección de imagen
+    const showImagePickerOptions = () => {
+        setShowImagePicker(true);
+    };
+
+    // Función para ocultar el diálogo de selección de imagen
+    const hideImagePickerOptions = () => {
+        setShowImagePicker(false);
+    };
+
+    // Función para abrir la cámara
+    const openCamera = async () => {
+        hideImagePickerOptions();
+        
+        const hasPermission = await requestCameraPermission();
+        
+        if (!hasPermission) {
+            showError('Se necesitan permisos de cámara para tomar una foto');
+            return;
+        }
+
+        try {
+            const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.8,
+                base64: false
+            });
+
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                const imageUri = result.assets[0].uri;
+                handleImagePicker(imageUri);
+            }
+        } catch (error) {
+            console.error('Error abriendo cámara:', error);
+            showError('Error al abrir la cámara');
+        }
+    };
+
+    // Función para abrir la galería
+    const openImageLibrary = async () => {
+        hideImagePickerOptions();
+        
+        const hasPermission = await requestMediaLibraryPermission();
+        
+        if (!hasPermission) {
+            showError('Se necesitan permisos de galería para seleccionar una imagen');
+            return;
+        }
+
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.8,
+                base64: false
+            });
+
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                const imageUri = result.assets[0].uri;
+                handleImagePicker(imageUri);
+            }
+        } catch (error) {
+            console.error('Error abriendo galería:', error);
+            showError('Error al abrir la galería');
+        }
+    };
 
     if (initialLoad) {
         return (
@@ -81,7 +180,12 @@ export default function EditProfileScreen({ navigation }) {
                 {/* Sección de foto de perfil */}
                 <View style={styles.profileSection}>
                     <View style={styles.profileImageContainer}>
-                        {userInfo?.profilePicture ? (
+                        {profileImageUri ? (
+                            <Image
+                                source={{ uri: profileImageUri }}
+                                style={styles.profileImage}
+                            />
+                        ) : userInfo?.profilePicture ? (
                             <Image
                                 source={{ uri: userInfo.profilePicture }}
                                 style={styles.profileImage}
@@ -94,7 +198,11 @@ export default function EditProfileScreen({ navigation }) {
                             </View>
                         )}
                         
-                        <TouchableOpacity style={styles.editProfileButton}>
+                        <TouchableOpacity 
+                            style={styles.editProfileButton}
+                            onPress={showImagePickerOptions}
+                            disabled={loading}
+                        >
                             <Image source={editIcon} style={styles.editProfileIcon} />
                         </TouchableOpacity>
                     </View>
@@ -176,10 +284,19 @@ export default function EditProfileScreen({ navigation }) {
             <CustomAlert {...alertState.basicAlert} />
             <LoadingDialog {...alertState.loading} />
             <ConfirmationDialog {...alertState.confirmation} />
+            
+            {/* Diálogo personalizado de selección de imagen */}
+            <ImagePickerDialog
+                visible={showImagePicker}
+                onCamera={openCamera}
+                onGallery={openImageLibrary}
+                onCancel={hideImagePickerOptions}
+            />
         </View>
     );
 }
 
+// Los estilos permanecen igual que en la versión anterior
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -189,7 +306,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    // ✅ Header igual que Blog
+    // Header igual que Blog
     header: {
         flexDirection: 'row',
         alignItems: 'center',

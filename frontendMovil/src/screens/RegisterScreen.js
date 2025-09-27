@@ -33,6 +33,9 @@ import { CustomAlert, LoadingDialog } from "../components/CustomDialogs";
 // Importación del modal de verificación de email
 import EmailVerificationModalMobile from "../components/EmailVerification/EmailVerificationModalMobile";
 
+// NUEVA IMPORTACIÓN - Modal de términos y condiciones
+import TermsModal from "../components/TermsModal";
+
 // Importación de hooks personalizados
 import useRegister from "../hooks/useRegister";
 import { useAuth } from "../context/AuthContext";
@@ -75,6 +78,9 @@ const RegisterScreen = ({ navigation }) => {
 
     // Estado para controlar el proceso de validación
     const [isValidating, setIsValidating] = useState(false);
+
+    // NUEVO ESTADO - Para controlar el modal de términos y condiciones
+    const [showTermsModal, setShowTermsModal] = useState(false);
 
     // Función para manejar los cambios en los campos del formulario
     const handleInputChange = (field, value) => {
@@ -198,6 +204,15 @@ const RegisterScreen = ({ navigation }) => {
     // Función para redirigir a la pantalla de login
     const handleLoginRedirect = () => {
         navigation.navigate('Login');
+    };
+
+    // NUEVAS FUNCIONES - Para manejar el modal de términos y condiciones
+    const handleOpenTermsModal = () => {
+        setShowTermsModal(true);
+    };
+
+    const handleCloseTermsModal = () => {
+        setShowTermsModal(false);
     };
 
     return (
@@ -350,7 +365,7 @@ const RegisterScreen = ({ navigation }) => {
                             />
                         </View>
 
-                        {/* Sección de términos y condiciones */}
+                        {/* Sección de términos y condiciones - MODIFICADA */}
                         <View style={styles.termsContainer}>
                             {/* Checkbox personalizado para términos y condiciones */}
                             <TouchableOpacity
@@ -368,7 +383,12 @@ const RegisterScreen = ({ navigation }) => {
                             {/* Texto de términos y condiciones */}
                             <Text style={styles.termsText}>
                                 Acepto los{' '}
-                                <Text style={styles.termsLink}>Términos y Condiciones</Text>
+                                <Text 
+                                    style={styles.termsLink}
+                                    onPress={handleOpenTermsModal}
+                                >
+                                    Términos y Condiciones
+                                </Text>
                             </Text>
                         </View>
 
@@ -407,6 +427,12 @@ const RegisterScreen = ({ navigation }) => {
                 }}
                 onSuccess={handleEmailVerificationSuccess}
                 onError={handleEmailVerificationError}
+            />
+
+            {/* NUEVO MODAL - Modal de términos y condiciones */}
+            <TermsModal
+                visible={showTermsModal}
+                onClose={handleCloseTermsModal}
             />
 
             {/* Diálogo de carga durante la validación */}

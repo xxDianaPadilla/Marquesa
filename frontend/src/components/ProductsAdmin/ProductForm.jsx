@@ -175,7 +175,7 @@ const ProductForm = ({
       if (file.size > 5 * 1024 * 1024) {
         setError('images', {
           type: 'manual',
-          message: `La imagen "${file.name}" excede el tamaño máximo de 5MB`
+          message: `La imagen "${file.name}" excede el tamaño máximo de 10MB`
         });
         return;
       }
@@ -583,7 +583,7 @@ const ProductForm = ({
 
                   <div className="space-y-2">
                     <p className="text-xs text-gray-500" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                      • Máximo 5 imágenes • Hasta 5MB cada una • Formatos: JPG, PNG, WebP, GIF
+                      • Máximo 5 imágenes • Hasta 10MB cada una • Formatos: JPG, PNG, WebP, GIF
                     </p>
                     <p className="text-xs text-gray-600" style={{ fontFamily: 'Poppins, sans-serif' }}>
                       {selectedImages.length}/5 imágenes seleccionadas

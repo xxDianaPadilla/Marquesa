@@ -36,11 +36,10 @@ const storage = multer.diskStorage({
     }
 });
 
-// ✅ AQUÍ ESTÁ LA VARIABLE upload QUE FALTABA
 const upload = multer({
     storage: storage,
     limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB por archivo
+        fileSize: 10 * 1024 * 1024, // 10MB por archivo
         files: 5 // Máximo 5 archivos
     },
     fileFilter: (req, file, cb) => {
@@ -141,11 +140,11 @@ router.route("/:id")
 // ✅ MIDDLEWARE PARA RESPUESTAS (LOG DE SALIDA)
 router.use((req, res, next) => {
     const originalSend = res.send;
-    
-    res.send = function(data) {
+
+    res.send = function (data) {
         console.log(`📤 [PRODUCTS RESPONSE] Status: ${res.statusCode}`);
         console.log(`📤 [PRODUCTS RESPONSE] Headers:`, res.getHeaders());
-        
+
         try {
             const parsedData = JSON.parse(data);
             console.log(`📤 [PRODUCTS RESPONSE] Body:`, {
@@ -157,24 +156,23 @@ router.use((req, res, next) => {
         } catch (e) {
             console.log(`📤 [PRODUCTS RESPONSE] Body (no JSON):`, data.substring(0, 200));
         }
-        
+
         console.log('📤'.repeat(20) + '\n');
-        
+
         originalSend.call(this, data);
     };
-    
+
     next();
 });
 
-// ✅ MIDDLEWARE DE MANEJO DE ERRORES
 router.use((error, req, res, next) => {
     console.error('❌ Error en rutas de productos:', error);
-    
+
     if (error instanceof multer.MulterError) {
         if (error.code === 'LIMIT_FILE_SIZE') {
             return res.status(400).json({
                 success: false,
-                message: 'El archivo es demasiado grande. Máximo 5MB por imagen.'
+                message: 'El archivo es demasiado grande. Máximo 10MB por imagen.'
             });
         }
         if (error.code === 'LIMIT_FILE_COUNT') {
@@ -184,7 +182,7 @@ router.use((error, req, res, next) => {
             });
         }
     }
-    
+
     res.status(500).json({
         success: false,
         message: error.message || 'Error interno del servidor',

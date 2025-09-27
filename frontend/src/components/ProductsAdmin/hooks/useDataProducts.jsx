@@ -147,7 +147,7 @@ const useDataProducts = () => {
       errors.categoryId = "Debe seleccionar una categoría";
     }
 
-    // ========== VALIDACIÓN DE IMÁGENES CORREGIDA ==========
+    // ========== VALIDACIÓN DE IMÁGENES ACTUALIZADA PARA 10MB ==========
     if (productData.images && Array.isArray(productData.images)) {
       // Separar imágenes existentes (strings) de archivos nuevos (File objects)
       const existingImages = productData.images.filter(img => typeof img === 'string');
@@ -179,14 +179,14 @@ const useDataProducts = () => {
       // Validar solo los archivos nuevos (File objects)
       if (newImageFiles.length > 0) {
         const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
-        const maxSize = 5 * 1024 * 1024; // 5MB
+        const maxSize = 10 * 1024 * 1024;
 
         for (let i = 0; i < newImageFiles.length; i++) {
           const image = newImageFiles[i];
 
           // Validar tamaño de archivo
           if (image.size > maxSize) {
-            errors.images = `La imagen "${image.name}" excede el tamaño máximo de 5MB`;
+            errors.images = `La imagen "${image.name}" excede el tamaño máximo de 10MB`;
             break;
           }
 

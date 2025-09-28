@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-hot-toast';
+import trashIcon from '../assets/trashIcon.png';
 
 const CartItem = ({ item, onUpdateQuantity, onRemoveItem, updating = false }) => {
     const [localQuantity, setLocalQuantity] = useState(item.quantity);
@@ -418,7 +419,17 @@ const CartItem = ({ item, onUpdateQuantity, onRemoveItem, updating = false }) =>
                         }}>
                             ⏳
                         </span>
-                    ) : '🗑️'}
+                    ) : (
+                        <img 
+                            src={trashIcon} 
+                            alt="Eliminar" 
+                            style={{
+                                width: '16px',
+                                height: '16px',
+                                filter: 'none'
+                            }}
+                        />
+                    )}
                 </button>
             </div>
 

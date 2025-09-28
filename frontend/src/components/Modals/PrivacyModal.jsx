@@ -47,7 +47,7 @@ const PrivacyModal = ({ isOpen, onClose }) => {
                 {/* Header del modal */}
                 <div className="flex items-center justify-between p-6 border-b border-pink-100" style={{ backgroundColor: '#FDB4B7' }}>
                     <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-white bg-opacity-30 rounded-full flex items-center justify-center">
+                        <div className="w-8 h-8 bg-opacity-30 rounded-full flex items-center justify-center">
                             <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
                                       d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -72,7 +72,7 @@ const PrivacyModal = ({ isOpen, onClose }) => {
                     {/* Introducción */}
                     <div className="mb-6 p-4 bg-pink-50 rounded-lg border border-pink-200">
                         <p className="text-gray-700 text-sm leading-relaxed" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                            En <strong className="text-pink-600">La MarquesaSV</strong>, respetamos tu privacidad y nos comprometemos a 
+                            En <strong className="text-pink-600">Marquesa</strong>, respetamos tu privacidad y nos comprometemos a 
                             proteger la información personal que compartes con nosotros. Esta Política de Privacidad describe cómo 
                             recopilamos, utilizamos y protegemos tus datos.
                         </p>

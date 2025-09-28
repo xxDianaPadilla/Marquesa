@@ -66,10 +66,10 @@ export default function HomeScreen({ navigation }) {
     const { alertState, showSuccessToast, showErrorToast, hideToast } = useAlert();
 
     // Estados locales del componente
-    const [selectedCategory, setSelectedCategory] = useState('Todo'); 
-    const [refreshing, setRefreshing] = useState(false); 
-    const [addingToCart, setAddingToCart] = useState(null); 
-    const [removingFromCart, setRemovingFromCart] = useState(null); 
+    const [selectedCategory, setSelectedCategory] = useState('Todo');
+    const [refreshing, setRefreshing] = useState(false);
+    const [addingToCart, setAddingToCart] = useState(null);
+    const [removingFromCart, setRemovingFromCart] = useState(null);
 
     // Estados para el modal de filtros de precio
     const [showPriceFilter, setShowPriceFilter] = useState(false);
@@ -448,6 +448,9 @@ export default function HomeScreen({ navigation }) {
                     </View>
                 )}
 
+                {/* Sección de productos personalizables */}
+                <PersonalizableSection navigation={navigation} />
+
                 {/* Banner de error del carrito */}
                 {cartError && (
                     <View style={styles.errorContainer}>
@@ -521,9 +524,6 @@ export default function HomeScreen({ navigation }) {
                         </View>
                     )}
                 </View>
-
-                {/* Sección de productos personalizables */}
-                <PersonalizableSection navigation={navigation} />
 
                 {/* Espacio adicional para evitar que el contenido quede oculto detrás de la navegación */}
                 <View style={styles.bottomSpacer} />

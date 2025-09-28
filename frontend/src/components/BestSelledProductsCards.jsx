@@ -129,7 +129,11 @@ const BestSelledProductsCards = () => {
             </div>
 
             {/* Conditional rendering based on loading, error and data state */}
-            <div className="space-y-1 sm:space-y-2">
+            <div className={`space-y-1 sm:space-y-2 ${
+                !loading && !error && bestSelling.length > 4 
+                    ? 'max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400 pr-2' 
+                    : ''
+            }`}>
                 {loading ? (
                     // Show loading cards while fetching data
                     Array.from({ length: 3 }).map((_, index) => (

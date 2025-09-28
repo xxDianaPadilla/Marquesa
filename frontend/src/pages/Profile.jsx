@@ -459,7 +459,7 @@ const Perfil = () => {
                                 </span>
                                 <div className="flex items-center gap-1">
                                   <img src={calendario} alt="calendario" className="w-4 h-4" />
-                                  <span>Cancelable hasta: {getCancellableDate(pedido.createdAt)}</span>
+                                  Revisa la fecha de cancelación del pedido
                                 </div>
                               </div>
                               <Button

@@ -453,28 +453,6 @@ const ProductDetailScreen = ({ route, navigation }) => {
                         <View style={styles.actionSection}>
                             {/* Contenedor para selector de cantidad e información del carrito */}
                             <View style={styles.topActionContainer}>
-                                {/* Selector de cantidad - solo mostrar si el producto NO está en el carrito */}
-                                {!productInCart && (
-                                    <View style={styles.quantityContainer}>
-                                        <TouchableOpacity
-                                            style={styles.quantityButton}
-                                            onPress={() => handleQuantityChange(false)}
-                                            disabled={quantity <= 1}
-                                        >
-                                            <Icon name="remove" size={20} color="#666" />
-                                        </TouchableOpacity>
-
-                                        <Text style={styles.quantityText}>{quantity}</Text>
-
-                                        <TouchableOpacity
-                                            style={styles.quantityButton}
-                                            onPress={() => handleQuantityChange(true)}
-                                            disabled={quantity >= product.stock}
-                                        >
-                                            <Icon name="add" size={20} color="#666" />
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
 
                                 {/* Información de cantidad si está en el carrito */}
                                 {productInCart && (

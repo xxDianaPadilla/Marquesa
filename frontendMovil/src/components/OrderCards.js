@@ -91,7 +91,7 @@ const OrderCards = ({
                         <Image source={calendarIcon} style={styles.icon} />
                         {/* Fecha límite para cancelar el pedido */}
                         <Text style={styles.cancellableText}>
-                            Cancelable hasta: {getCancellableDate(pedido.createdAt)}
+                            Revisa la fecha de cancelación del producto
                         </Text>
                     </View>
                 </View>

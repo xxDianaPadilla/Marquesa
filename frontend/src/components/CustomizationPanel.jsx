@@ -221,10 +221,10 @@ const CustomizationPanel = ({
  
                             <div className="border-t pt-3 px-1">
                                 <div className="flex justify-between items-center mb-2 gap-2">
-                                    <span className="text-sm font-medium text-gray-700 flex-shrink-0">
+                                    <span className="text-sm font-medium text-gray-700 flex-shrink-0 whitespace-nowrap">
                                         Subtotal ({totalItems} items):
                                     </span>
-                                    <span className="text-base font-semibold text-gray-800 text-right">
+                                    <span className="text-base font-semibold text-gray-800 text-right truncate">
                                         ${totalPrice.toFixed(2)}
                                     </span>
                                 </div>
@@ -232,7 +232,7 @@ const CustomizationPanel = ({
                                     <span className="text-base font-bold text-gray-900 flex-shrink-0">
                                         Total:
                                     </span>
-                                    <span className="text-xl font-bold text-pink-600 text-right break-all">
+                                    <span className="text-xl font-bold text-pink-600 text-right truncate">
                                         ${totalPrice.toFixed(2)}
                                     </span>
                                 </div>

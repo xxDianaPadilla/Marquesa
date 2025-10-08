@@ -1,32 +1,42 @@
-import React, { useState } from 'react'; // Importando React
-import toast from 'react-hot-toast'; // Importando librería para alertas 
-import { useNavigate } from 'react-router-dom'; // Importando librería para navegación
-import CustomizationModal from './CustomizationModal'; // Importando componente de confirmación
+import React, { useState, useMemo } from 'react'; 
+import toast from 'react-hot-toast'; 
+import { useNavigate } from 'react-router-dom'; 
+import CustomizationModal from './CustomizationModal'; 
  
-// Componente y panel para la sección de productos personalizables
 const CustomizationPanel = ({
     selectedProducts = [],
     onRemoveProduct,
+    onQuantityChange,
     onFinishCustomization,
     productType = ''
 }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const navigate = useNavigate();
+
+    const totalPrice = useMemo(() => {
+        return selectedProducts.reduce((total, product) => {
+            const quantity = product.quantity || 1;
+            return total + (product.price * quantity);
+        }, 0);
+    }, [selectedProducts]);
+
+    const totalItems = useMemo(() => {
+        return selectedProducts.reduce((total, product) => {
+            return total + (product.quantity || 1);
+        }, 0);
+    }, [selectedProducts]);
  
-    // Calcular precio total
-    const totalPrice = selectedProducts.reduce((total, product) => total + product.price, 0);
+    const productsByCategory = useMemo(() => {
+        return selectedProducts.reduce((acc, product) => {
+            const category = product.category || 'Sin categoría';
+            if (!acc[category]) {
+                acc[category] = [];
+            }
+            acc[category].push(product);
+            return acc;
+        }, {});
+    }, [selectedProducts]);
  
-    // Agrupar productos por categoría
-    const productsByCategory = selectedProducts.reduce((acc, product) => {
-        const category = product.category || 'Sin categoría';
-        if (!acc[category]) {
-            acc[category] = [];
-        }
-        acc[category].push(product);
-        return acc;
-    }, {});
- 
-    // Verificar si la personalización está completa (al menos un producto)
     const isCustomizationComplete = selectedProducts.length > 0;
  
     const handleOpenModal = () => {
@@ -50,11 +60,9 @@ const CustomizationPanel = ({
     };
  
     const handleConfirmCustomization = (customizationData) => {
-        // Llamar a la función original con los datos adicionales
         onFinishCustomization(customizationData);
         setIsModalOpen(false);
  
-        // Mostrar toast de éxito con redirección automática
         toast.success('¡Personalización completada exitosamente! Redirigiendo...', {
             duration: 3000,
             position: 'top-center',
@@ -67,13 +75,12 @@ const CustomizationPanel = ({
             icon: '✅'
         });
  
-        // Redirección automática después de 3 segundos usando navigate
         setTimeout(() => {
             navigate('/categoryProducts');
         }, 3000);
     };
+
     const handleClearSelection = () => {
-        // Crear un toast personalizado de confirmación
         toast.custom((t) => (
             <div className={`${t.visible ? 'animate-enter' : 'animate-leave'
                 } max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}>
@@ -138,11 +145,17 @@ const CustomizationPanel = ({
             }
         });
     };
+
+    const handleProductQuantityChange = (productId, newQuantity) => {
+        const product = selectedProducts.find(p => p._id === productId);
+        if (product && onQuantityChange) {
+            onQuantityChange(product, newQuantity);
+        }
+    };
  
     return (
         <>
             <div className="bg-white rounded-lg border-2 border-gray-200 shadow-sm sticky top-4">
-                {/* Header del panel */}
                 <div className="bg-gradient-to-r from-pink-50 to-purple-50 p-4 rounded-t-lg border-b">
                     <h3 className="text-lg font-semibold text-gray-800 flex items-center">
                         <svg className="w-5 h-5 mr-2 text-pink-500" fill="currentColor" viewBox="0 0 20 20">
@@ -155,10 +168,8 @@ const CustomizationPanel = ({
                     </p>
                 </div>
  
-                {/* Contenido del panel */}
                 <div className="p-4">
                     {selectedProducts.length === 0 ? (
-                        // Estado vacío
                         <div className="text-center py-8">
                             <div className="text-gray-300 text-4xl mb-3">🎨</div>
                             <p className="text-gray-500 text-sm mb-2">
@@ -169,27 +180,28 @@ const CustomizationPanel = ({
                             </p>
                         </div>
                     ) : (
-                        // Lista de productos seleccionados
                         <div className="space-y-4">
-                            {/* Resumen por categorías */}
                             <div className="bg-gray-50 rounded-lg p-3">
                                 <h4 className="text-sm font-medium text-gray-700 mb-2">
                                     Resumen de selección
                                 </h4>
                                 <div className="grid grid-cols-2 gap-2 text-xs">
                                     <div className="flex justify-between">
-                                        <span className="text-gray-600">Total productos:</span>
+                                        <span className="text-gray-600">Productos únicos:</span>
                                         <span className="font-medium">{selectedProducts.length}</span>
                                     </div>
                                     <div className="flex justify-between">
+                                        <span className="text-gray-600">Total items:</span>
+                                        <span className="font-medium">{totalItems}</span>
+                                    </div>
+                                    <div className="flex justify-between col-span-2">
                                         <span className="text-gray-600">Categorías:</span>
                                         <span className="font-medium">{Object.keys(productsByCategory).length}</span>
                                     </div>
                                 </div>
                             </div>
  
-                            {/* Lista detallada de productos */}
-                            <div className="space-y-3 max-h-60 overflow-y-auto">
+                            <div className="space-y-3 max-h-96 overflow-y-auto">
                                 {Object.entries(productsByCategory).map(([category, products]) => (
                                     <div key={category} className="border-l-2 border-pink-200 pl-3">
                                         <h5 className="text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">
@@ -200,19 +212,27 @@ const CustomizationPanel = ({
                                                 key={product._id}
                                                 product={product}
                                                 onRemove={() => handleRemoveProduct(product._id)}
+                                                onQuantityChange={(newQuantity) => handleProductQuantityChange(product._id, newQuantity)}
                                             />
                                         ))}
                                     </div>
                                 ))}
                             </div>
  
-                            {/* Total de precio */}
                             <div className="border-t pt-3">
-                                <div className="flex justify-between items-center">
+                                <div className="flex justify-between items-center mb-2">
                                     <span className="text-sm font-medium text-gray-700">
-                                        Precio total:
+                                        Subtotal ({totalItems} items):
                                     </span>
-                                    <span className="text-lg font-bold text-pink-600">
+                                    <span className="text-base font-semibold text-gray-800">
+                                        ${totalPrice.toFixed(2)}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center pt-2 border-t">
+                                    <span className="text-base font-bold text-gray-900">
+                                        Total:
+                                    </span>
+                                    <span className="text-xl font-bold text-pink-600">
                                         ${totalPrice.toFixed(2)}
                                     </span>
                                 </div>
@@ -220,7 +240,6 @@ const CustomizationPanel = ({
                         </div>
                     )}
  
-                    {/* Botones de acción */}
                     <div className="mt-6 space-y-2">
                         {selectedProducts.length > 0 && (
                             <button
@@ -254,7 +273,6 @@ const CustomizationPanel = ({
                         </button>
                     </div>
  
-                    {/* Información adicional */}
                     {selectedProducts.length > 0 && (
                         <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                             <div className="flex items-start space-x-2">
@@ -266,7 +284,7 @@ const CustomizationPanel = ({
                                         ¡Personalización en progreso!
                                     </p>
                                     <p className="text-xs text-blue-600 mt-1">
-                                        Puedes seguir agregando o quitando productos antes de finalizar.
+                                        Puedes ajustar las cantidades antes de finalizar.
                                     </p>
                                 </div>
                             </div>
@@ -275,7 +293,6 @@ const CustomizationPanel = ({
                 </div>
             </div>
  
-            {/* Modal de finalización */}
             <CustomizationModal
                 isOpen={isModalOpen}
                 onClose={handleCloseModal}
@@ -287,42 +304,95 @@ const CustomizationPanel = ({
     );
 };
  
-// Componente para mostrar cada producto seleccionado
-const SelectedProductItem = ({ product, onRemove }) => {
+const SelectedProductItem = ({ product, onRemove, onQuantityChange }) => {
+    const quantity = product.quantity || 1;
+    const subtotal = product.price * quantity;
+    const maxQuantity = Math.min(50, product.stock || 50);
+
+    const handleDecrement = (e) => {
+        e.stopPropagation();
+        if (quantity > 1) {
+            onQuantityChange(quantity - 1);
+        }
+    };
+
+    const handleIncrement = (e) => {
+        e.stopPropagation();
+        if (quantity < maxQuantity) {
+            onQuantityChange(quantity + 1);
+        }
+    };
+
     return (
-        <div className="flex items-center space-x-3 bg-white rounded-lg p-2 border border-gray-100 hover:border-gray-200 transition-colors">
-            {/* Imagen del producto */}
-            <div className="w-10 h-10 rounded-md overflow-hidden flex-shrink-0">
-                <img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                        e.target.src = '/placeholder-image.jpg';
-                    }}
-                />
-            </div>
+        <div className="bg-white rounded-lg p-3 border border-gray-100 hover:border-gray-200 transition-colors mb-2">
+            <div className="flex items-start space-x-3">
+                <div className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0">
+                    <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                            e.target.src = '/placeholder-image.jpg';
+                        }}
+                    />
+                </div>
  
-            {/* Información del producto */}
-            <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                    {product.name}
-                </p>
-                <p className="text-xs text-gray-600">
-                    ${product.price.toFixed(2)}
-                </p>
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between mb-1">
+                        <p className="text-sm font-medium text-gray-900 truncate flex-1">
+                            {product.name}
+                        </p>
+                        
+                        <button
+                            onClick={onRemove}
+                            className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all duration-200 ml-2"
+                            title="Quitar producto"
+                        >
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <p className="text-xs text-gray-500 mb-2">
+                        ${product.price.toFixed(2)} c/u
+                    </p>
+
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2 bg-gray-50 rounded-lg p-1">
+                            <button
+                                onClick={handleDecrement}
+                                disabled={quantity <= 1}
+                                className="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                style={{ cursor: 'pointer' }}
+                            >
+                                <span className="text-gray-600 font-bold text-sm">−</span>
+                            </button>
+                            
+                            <span className="text-sm font-medium text-gray-700 min-w-[30px] text-center">
+                                {quantity}
+                            </span>
+                            
+                            <button
+                                onClick={handleIncrement}
+                                disabled={quantity >= maxQuantity}
+                                className="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                style={{ cursor: 'pointer' }}
+                            >
+                                <span className="text-gray-600 font-bold text-sm">+</span>
+                            </button>
+                            
+                            <span className="text-xs text-gray-400">
+                                /{maxQuantity}
+                            </span>
+                        </div>
+
+                        <span className="text-sm font-bold text-pink-600">
+                            ${subtotal.toFixed(2)}
+                        </span>
+                    </div>
+                </div>
             </div>
- 
-            {/* Botón de eliminar */}
-            <button
-                onClick={onRemove}
-                className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all duration-200"
-                title="Quitar producto"
-            >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-            </button>
         </div>
     );
 };

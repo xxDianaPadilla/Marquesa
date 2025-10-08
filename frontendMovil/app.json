@@ -1,23 +1,18 @@
 {
   "expo": {
     "plugins": [
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "La app necesita acceso a tu galería para seleccionar imágenes.",
-          "cameraPermission": "La app necesita acceso a la cámara para tomar fotos."
-        }
-      ]
+      "expo-font",
+      "expo-video"
     ],
-    "name": "frontendMovil",
+    "name": "Marquesa",
     "slug": "frontendMovil",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./src/images/marquesaMiniLogo.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./src/images/marquesaMiniLogo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -26,17 +21,19 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./src/images/marquesaMiniLogo.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.dianitapadilla.frontendMovil"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./src/images/marquesaMiniLogo.png"
     },
-    "plugins": [
-      "expo-font",
-      "expo-video"
-    ]
+    "extra": {
+      "eas": {
+        "projectId": "fd1dbf96-a8d9-4d85-af8d-ccdf9393515c"
+      }
+    }
   }
 }

@@ -7,7 +7,8 @@ import {
     TouchableOpacity, 
     Image, 
     ActivityIndicator, 
-    Platform 
+    Platform,
+    Alert 
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import backIcon from '../images/backIcon.png';
@@ -15,7 +16,6 @@ import OrderCards from "../components/OrderCards";
 import { useAuth } from "../context/AuthContext";
 import useOrders from "../hooks/useOrders";
 
-// Componente principal para mostrar la pantalla de pedidos del usuario
 const OrdersScreen = () => {
     const navigation = useNavigation();
     const { userInfo, user, isAuthenticated } = useAuth();
@@ -33,12 +33,113 @@ const OrdersScreen = () => {
 
     const userData = userInfo || user || {};
 
+    // Función mejorada para manejar los detalles del pedido
     const handleOrderDetails = useCallback(async (pedido) => {
+        console.log('=== Iniciando navegación a detalles ===');
+        console.log('Pedido ID:', pedido?._id);
+        console.log('Pedido completo:', JSON.stringify(pedido, null, 2));
+        
         try {
-            const orderDetailsData = await prepareOrderDetailsData(pedido);
-            navigation.navigate('OrderDetailsScreen', orderDetailsData);
+            // Validación básica del pedido
+            if (!pedido || !pedido._id) {
+                console.error('❌ Pedido inválido - falta ID');
+                Alert.alert(
+                    'Error', 
+                    'Datos del pedido incompletos. Por favor, intenta nuevamente.',
+                    [{ text: 'OK' }]
+                );
+                return;
+            }
+
+            // Crear datos mínimos para navegación
+            const basicOrderData = {
+                orderData: {
+                    _id: pedido._id,
+                    createdAt: pedido.createdAt,
+                    updatedAt: pedido.updatedAt,
+                    deliveryDate: pedido.deliveryDate,
+                    deliveryAddress: pedido.deliveryAddress,
+                    deliveryPoint: pedido.deliveryPoint,
+                    receiverName: pedido.receiverName,
+                    receiverPhone: pedido.receiverPhone,
+                    paymentType: pedido.paymentType,
+                    trackingStatus: pedido.trackingStatus,
+                    status: pedido.status,
+                    shoppingCart: pedido.shoppingCart || { total: 0, items: [] }
+                },
+                customerData: null,
+                productsData: []
+            };
+
+            // Intentar obtener datos adicionales solo si la función existe y es válida
+            let detailedOrderData = basicOrderData;
+            
+            if (prepareOrderDetailsData && typeof prepareOrderDetailsData === 'function') {
+                try {
+                    console.log('⏳ Preparando datos detallados...');
+                    
+                    // Agregar timeout para evitar que se cuelgue
+                    const timeoutPromise = new Promise((_, reject) => {
+                        setTimeout(() => reject(new Error('Timeout al preparar datos')), 10000);
+                    });
+
+                    detailedOrderData = await Promise.race([
+                        prepareOrderDetailsData(pedido),
+                        timeoutPromise
+                    ]);
+                    
+                    console.log('✅ Datos detallados obtenidos exitosamente');
+                } catch (prepareError) {
+                    console.warn('⚠️ Error preparando datos detallados, usando datos básicos:', prepareError.message);
+                    // Continúa con datos básicos - NO lanza error
+                    detailedOrderData = basicOrderData;
+                }
+            } else {
+                console.warn('⚠️ Función prepareOrderDetailsData no disponible, usando datos básicos');
+            }
+
+            // Validar datos antes de navegar
+            if (!detailedOrderData || !detailedOrderData.orderData) {
+                console.error('❌ Datos de navegación inválidos');
+                throw new Error('Datos de navegación inválidos');
+            }
+
+            console.log('🚀 Navegando con datos:', {
+                hasOrderData: !!detailedOrderData.orderData,
+                hasCustomerData: !!detailedOrderData.customerData,
+                productsCount: detailedOrderData.productsData?.length || 0
+            });
+
+            // Navegar con datos seguros
+            navigation.navigate('OrderDetailsScreen', {
+                ...detailedOrderData,
+                // Fallback para orderId si falla todo lo demás
+                orderId: pedido._id
+            });
+
         } catch (error) {
-            navigation.navigate('OrderDetailsScreen');
+            console.error('❌ Error crítico en handleOrderDetails:', error);
+            
+            // Navegación de emergencia con solo el ID
+            try {
+                console.log('🆘 Intentando navegación de emergencia...');
+                navigation.navigate('OrderDetailsScreen', {
+                    orderId: pedido._id,
+                    orderData: {
+                        _id: pedido._id,
+                        createdAt: pedido.createdAt,
+                        trackingStatus: pedido.trackingStatus || 'Agendado',
+                        shoppingCart: pedido.shoppingCart || { total: 0, items: [] }
+                    }
+                });
+            } catch (emergencyError) {
+                console.error('❌ Error en navegación de emergencia:', emergencyError);
+                Alert.alert(
+                    'Error de navegación', 
+                    'No se pudo acceder a los detalles del pedido. Por favor, reinicia la aplicación.',
+                    [{ text: 'OK' }]
+                );
+            }
         }
     }, [prepareOrderDetailsData, navigation]);
 
@@ -102,7 +203,7 @@ const OrdersScreen = () => {
                 ) : userOrders.length > 0 ? (
                     userOrders.map((pedido, idx) => (
                         <OrderCards
-                            key={idx}
+                            key={pedido._id || idx} // Usar ID del pedido como key
                             pedido={pedido}
                             onDetailsPress={handleOrderDetails}
                             formatOrderDate={formatOrderDate}
@@ -124,7 +225,7 @@ const OrdersScreen = () => {
     );
 };
 
-// Estilos
+// Estilos (sin cambios)
 const styles = StyleSheet.create({
     container: {
         flex: 1,

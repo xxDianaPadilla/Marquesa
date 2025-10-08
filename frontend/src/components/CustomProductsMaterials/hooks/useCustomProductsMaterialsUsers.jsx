@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react"; // Importanto React
+import { useState, useEffect } from "react"; 
 
-// Definimos la url base para usarla en distintos fetch
 const API_BASE_URL = 'https://marquesa.onrender.com/api/customProductsMaterials';
 
 export const useCustomProductsMaterialsUsers = () => {
@@ -8,13 +7,10 @@ export const useCustomProductsMaterialsUsers = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-
-    // useEffect para actulizar los materiales de personalización disponibles
     useEffect(() => {
         const fetchMaterials = async () => {
             try {
                 setLoading(true);
-                // CORREGIDO: Eliminar /customProductsMaterials duplicado
                 const response = await fetch(API_BASE_URL);
                 const data = await response.json();
 
@@ -37,7 +33,6 @@ export const useCustomProductsMaterialsUsers = () => {
     return {materials, loading, error, refetch: () => window.location.reload()};
 };
 
-// Pequeño hook para obtener los materiales de personalización por tipo de material
 export const useCustomProductsByType = (productType) => {
     const [productData, setProductData] = useState({
         productType: '',
@@ -60,7 +55,6 @@ export const useCustomProductsByType = (productType) => {
                 setError(null);
 
                 const encodedProductType = encodeURIComponent(productType);
-                // CORREGIDO: Eliminar /customProductsMaterials duplicado
                 const response = await fetch(`${API_BASE_URL}/product/${encodedProductType}`);
                 const data = await response.json();
 
@@ -83,7 +77,6 @@ export const useCustomProductsByType = (productType) => {
     return {productData, loading, error};
 };
 
-// Pequeño hook para obtener los materiales de personalización por categoría del material
 export const useCustomProductsByCategory = (productType, category) => {
     const [materials, setMaterials] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -102,7 +95,6 @@ export const useCustomProductsByCategory = (productType, category) => {
 
                 const encodedProductType = encodeURIComponent(productType);
                 const encodedCategory = encodeURIComponent(category);
-                // CORREGIDO: Eliminar /customProductsMaterials duplicado
                 const response = await fetch(`${API_BASE_URL}/product/${encodedProductType}/category/${encodedCategory}`);
                 const data = await response.json();
 
@@ -125,7 +117,6 @@ export const useCustomProductsByCategory = (productType, category) => {
     return {materials, loading, error};
 };
 
-// Pequeño hook para manejar las acciones de los productos personalizables
 export const useCustomProductMaterial = (materialId) => {
     const [material, setMaterial] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -142,7 +133,6 @@ export const useCustomProductMaterial = (materialId) => {
                 setLoading(true);
                 setError(null);
 
-                // CORREGIDO: Eliminar /customProductsMaterials duplicado
                 const response = await fetch(`${API_BASE_URL}/${materialId}`);
                 const data = await response.json();
 

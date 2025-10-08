@@ -11,29 +11,24 @@ cloudinary.config({
 
 const customProductsController = {};
 
-// Función de ayuda para validar ObjectId
 const isValidObjectId = (id) => {
     return mongoose.Types.ObjectId.isValid(id);
 };
 
-// Tipos de productos válidos
 const VALID_PRODUCT_TYPES = ["Ramo de flores naturales", "Ramo de flores secas", "Giftbox"];
 
-// Función de ayuda para validar datos del producto personalizado
 const validateCustomProductData = (data) => {
     const errors = [];
 
     console.log('=== VALIDANDO DATOS ===');
     console.log('Data to validate:', data);
 
-    // Validar clientId
     if (!data.clientId) {
         errors.push("El ID del cliente es requerido");
     } else if (typeof data.clientId !== 'string' || data.clientId.length !== 24) {
         errors.push("El ID del cliente no tiene un formato válido");
     }
 
-    // Validar productToPersonalize
     const validProductTypes = ["Ramo de flores naturales", "Ramo de flores secas", "Giftbox"];
     if (!data.productToPersonalize) {
         errors.push("El tipo de producto a personalizar es requerido");
@@ -41,7 +36,6 @@ const validateCustomProductData = (data) => {
         errors.push(`El tipo de producto debe ser uno de: ${validProductTypes.join(', ')}`);
     }
 
-    // Validar selectedMaterials
     if (!data.selectedMaterials) {
         errors.push("Debe seleccionar al menos un material");
     } else if (!Array.isArray(data.selectedMaterials)) {
@@ -49,7 +43,6 @@ const validateCustomProductData = (data) => {
     } else if (data.selectedMaterials.length === 0) {
         errors.push("Debe seleccionar al menos un material");
     } else {
-        // Validar cada material
         data.selectedMaterials.forEach((material, index) => {
             if (!material.materialId) {
                 errors.push(`Material ${index + 1}: ID del material es requerido`);
@@ -63,7 +56,6 @@ const validateCustomProductData = (data) => {
         });
     }
 
-    // Validar totalPrice
     if (data.totalPrice === undefined || data.totalPrice === null) {
         errors.push("El precio total es requerido");
     } else if (typeof data.totalPrice !== 'number') {
@@ -72,7 +64,6 @@ const validateCustomProductData = (data) => {
         errors.push("El precio total debe ser un número mayor o igual a 0");
     }
 
-    // Validar extraComments (opcional)
     if (data.extraComments !== undefined && data.extraComments !== null) {
         if (typeof data.extraComments !== 'string') {
             errors.push("Los comentarios adicionales deben ser texto");
@@ -85,7 +76,6 @@ const validateCustomProductData = (data) => {
     return errors;
 };
 
-// Método para obtener todos los custom products existentes
 customProductsController.getCustomProducts = async (req, res) => {
     try {
         const customProducts = await customProductsModel.find()
@@ -109,7 +99,6 @@ customProductsController.getCustomProducts = async (req, res) => {
     } catch (error) {
         console.error('Error en getCustomProducts:', error);
 
-        // Manejar errores específicos de MongoDB
         if (error.name === 'MongoNetworkError') {
             return res.status(503).json({
                 success: false,
@@ -125,12 +114,10 @@ customProductsController.getCustomProducts = async (req, res) => {
     }
 };
 
-// Método para obtener los custom products por su id
 customProductsController.getCustomProductsById = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Validamos que el ID sea un ObjectId válido
         if (!isValidObjectId(id)) {
             return res.status(400).json({
                 success: false,
@@ -164,7 +151,6 @@ customProductsController.getCustomProductsById = async (req, res) => {
     }
 };
 
-// Método para crear los custom products (ADAPTADO PARA WEB Y MÓVIL)
 customProductsController.createCustomProducts = async (req, res) => {
     try {
         console.log('=== DATOS RECIBIDOS EN EL BACKEND ===');
@@ -172,14 +158,11 @@ customProductsController.createCustomProducts = async (req, res) => {
         console.log('req.file:', req.file);
         console.log('Content-Type:', req.headers['content-type']);
 
-        // Procesar los datos según el Content-Type
         let processedData = { ...req.body };
 
-        // CASO 1: FormData (web con imagen)
         if (req.headers['content-type']?.includes('multipart/form-data')) {
             console.log('=== PROCESANDO FORMDATA (WEB CON IMAGEN) ===');
             
-            // Si selectedMaterials viene como string (FormData), parsearlo a JSON
             if (typeof processedData.selectedMaterials === 'string') {
                 try {
                     processedData.selectedMaterials = JSON.parse(processedData.selectedMaterials);
@@ -193,37 +176,31 @@ customProductsController.createCustomProducts = async (req, res) => {
                 }
             }
 
-            // Si totalPrice viene como string (FormData), convertirlo a número
             if (typeof processedData.totalPrice === 'string') {
                 processedData.totalPrice = Number(processedData.totalPrice);
                 console.log('totalPrice converted from FormData:', processedData.totalPrice);
             }
         }
-        // CASO 2: JSON (web sin imagen o móvil)
         else if (req.headers['content-type']?.includes('application/json')) {
             console.log('=== PROCESANDO JSON (WEB SIN IMAGEN O MÓVIL) ===');
             
-            // Los datos ya vienen en formato correcto desde JSON
             console.log('Datos JSON ya procesados:', processedData);
         }
-        // CASO 3: Móvil con imagen (si usas otra forma de envío)
         else {
             console.log('=== PROCESANDO DATOS DE MÓVIL ===');
             
-            // Verificar si hay datos de imagen en base64 o URL
             if (processedData.referenceImageBase64) {
                 console.log('Imagen en base64 detectada desde móvil');
             }
         }
 
-        // Ahora extraer los datos procesados
         const { 
             clientId, 
             productToPersonalize, 
             selectedMaterials, 
             extraComments, 
             totalPrice,
-            referenceImageBase64  // Para móvil
+            referenceImageBase64  
         } = processedData;
 
         console.log('=== DATOS PROCESADOS ===');
@@ -234,7 +211,6 @@ customProductsController.createCustomProducts = async (req, res) => {
         console.log('totalPrice:', totalPrice, typeof totalPrice);
         console.log('referenceImageBase64:', !!referenceImageBase64);
 
-        // Crear objeto con datos procesados para validación
         const dataToValidate = {
             clientId,
             productToPersonalize,
@@ -243,7 +219,6 @@ customProductsController.createCustomProducts = async (req, res) => {
             totalPrice
         };
 
-        // Validamos datos de entrada
         const validationErrors = validateCustomProductData(dataToValidate);
         if (validationErrors.length > 0) {
             console.log('Validation errors:', validationErrors);
@@ -256,9 +231,7 @@ customProductsController.createCustomProducts = async (req, res) => {
 
         let referenceImageURL = "";
 
-        // MANEJO DE IMÁGENES UNIVERSAL
         if (req.file) {
-            // Imagen desde FormData (web)
             try {
                 console.log('=== SUBIENDO IMAGEN DESDE FORMDATA (WEB) ===');
                 const result = await cloudinary.uploader.upload(req.file.path, {
@@ -279,16 +252,13 @@ customProductsController.createCustomProducts = async (req, res) => {
                 });
             }
         } else if (referenceImageBase64) {
-            // Imagen desde base64 (móvil)
             try {
                 console.log('=== SUBIENDO IMAGEN DESDE BASE64 (MÓVIL) ===');
                 console.log('Base64 data type:', typeof referenceImageBase64);
                 console.log('Base64 data length:', referenceImageBase64.length);
                 
-                // Verificar y formatear el base64 correctamente
                 let base64Data = referenceImageBase64;
                 
-                // Si no tiene el prefijo data:image, agregarlo
                 if (!base64Data.startsWith('data:image')) {
                     base64Data = `data:image/jpeg;base64,${base64Data}`;
                     console.log('Base64 prefix added');
@@ -338,7 +308,6 @@ customProductsController.createCustomProducts = async (req, res) => {
         await newCustomProduct.save();
         console.log('Producto creado exitosamente:', newCustomProduct._id);
 
-        // Poblamos la respuesta con los datos relacionados
         const populatedProduct = await customProductsModel.findById(newCustomProduct._id)
             .populate('clientId')
             .populate('selectedMaterials.materialId');
@@ -379,12 +348,10 @@ customProductsController.createCustomProducts = async (req, res) => {
     }
 };
 
-// Método para eliminar custom products
 customProductsController.deleteCustomProducts = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Validamos que el ID sea un ObjectId válido
         if (!isValidObjectId(id)) {
             return res.status(400).json({
                 success: false,
@@ -416,12 +383,10 @@ customProductsController.deleteCustomProducts = async (req, res) => {
     }
 };
 
-// Método adicional para obtener productos personalizados por cliente
 customProductsController.getCustomProductsByClient = async (req, res) => {
     try {
         const { clientId } = req.params;
 
-        // Validamos que el clientId sea un ObjectId válido
         if (!isValidObjectId(clientId)) {
             return res.status(400).json({
                 success: false,
@@ -457,12 +422,10 @@ customProductsController.getCustomProductsByClient = async (req, res) => {
     }
 };
 
-// Método adicional para obtener productos personalizados por tipo de producto
 customProductsController.getCustomProductsByType = async (req, res) => {
     try {
         const { productType } = req.params;
 
-        // Validamos que el tipo de producto sea válido
         if (!VALID_PRODUCT_TYPES.includes(productType)) {
             return res.status(400).json({
                 success: false,
@@ -498,12 +461,10 @@ customProductsController.getCustomProductsByType = async (req, res) => {
     }
 };
 
-// Método para calcular el resumen de materiales en un producto
 customProductsController.getMaterialsSummary = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Validamos que el ID sea un ObjectId válido
         if (!isValidObjectId(id)) {
             return res.status(400).json({
                 success: false,
@@ -548,7 +509,6 @@ customProductsController.getMaterialsSummary = async (req, res) => {
     }
 };
 
-// Método para obtener estadísticas de productos personalizados
 customProductsController.getProductsStatistics = async (req, res) => {
     try {
         const totalProducts = await customProductsModel.countDocuments();

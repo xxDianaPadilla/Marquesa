@@ -1,23 +1,19 @@
-import { useState } from 'react'; // Importando React
+import { useState } from 'react';
  
-// Hook para el proceso de ppersonalización de productos
 const useCustomization = () => {
     const [isLoading, setIsLoading] = useState(false);
  
-    // Función para crear el producto personalizado (con imagen incluida)
     const createCustomProduct = async (customProductData, referenceImage = null) => {
         try {
             console.log('=== ENVIANDO DATOS AL SERVIDOR ===');
             console.log('customProductData:', customProductData);
             console.log('referenceImage:', referenceImage);
  
-            // Si hay imagen, usar FormData, sino usar JSON
             if (referenceImage) {
                 const formData = new FormData();
  
                 console.log('=== USANDO FORMDATA ===');
  
-                // Agregar los datos del producto personalizado
                 Object.keys(customProductData).forEach(key => {
                     if (key === 'selectedMaterials') {
                         const materialsJson = JSON.stringify(customProductData[key]);
@@ -29,11 +25,9 @@ const useCustomization = () => {
                     }
                 });
  
-                // Agregar la imagen de referencia
                 console.log('FormData - referenceImage:', referenceImage.name, referenceImage.size, referenceImage.type);
                 formData.append('referenceImage', referenceImage);
  
-                // Log del FormData completo
                 console.log('=== CONTENIDO DEL FORMDATA ===');
                 for (let [key, value] of formData.entries()) {
                     console.log(`${key}:`, value);
@@ -59,7 +53,6 @@ const useCustomization = () => {
                     console.error('Status:', response.status);
                     console.error('Response data:', data);
  
-                    // Mostrar errores de validación específicos si existen
                     if (data.errors) {
                         console.error('Validation errors:', data.errors);
                         const errorMessages = Array.isArray(data.errors)
@@ -74,7 +67,6 @@ const useCustomization = () => {
                 console.log('=== USANDO JSON (SIN IMAGEN) ===');
                 console.log('JSON data:', JSON.stringify(customProductData, null, 2));
  
-                // Sin imagen, enviar como JSON
                 const response = await fetch('https://marquesa.onrender.com/api/customProducts', {
                     method: 'POST',
                     headers: {
@@ -96,7 +88,6 @@ const useCustomization = () => {
                     console.error('Status:', response.status);
                     console.error('Response data:', data);
  
-                    // Mostrar errores de validación específicos si existen
                     if (data.errors) {
                         console.error('Validation errors:', data.errors);
                         const errorMessages = Array.isArray(data.errors)
@@ -115,14 +106,12 @@ const useCustomization = () => {
         }
     };
  
-    // Función para agregar item al carrito
     const addItemToCart = async (userId, itemData) => {
         try {
             console.log('=== AGREGANDO AL CARRITO ===');
             console.log('userId:', userId);
             console.log('itemData recibido:', itemData);
  
-            // ✅ VALIDACIÓN: Verificar que tenemos los datos necesarios
             if (!userId) {
                 throw new Error('userId es requerido');
             }
@@ -131,7 +120,6 @@ const useCustomization = () => {
                 throw new Error('itemData.itemId es requerido');
             }
  
-            // ✅ CORRECCIÓN CRÍTICA: Estructura correcta para el backend
             const requestPayload = {
                 clientId: userId,
                 itemId: itemData.itemId,
@@ -143,7 +131,6 @@ const useCustomization = () => {
             console.log('Payload:', requestPayload);
             console.log('URL:', 'https://marquesa.onrender.com/api/shoppingCart/addItem');
  
-            // ✅ USAR EL ENDPOINT CORRECTO (sin userId en la URL)
             const response = await fetch('https://marquesa.onrender.com/api/shoppingCart/addItem', {
                 method: 'POST',
                 headers: {
@@ -173,7 +160,6 @@ const useCustomization = () => {
         }
     };
  
-    // Nueva función específica para productos regulares
     const addRegularProductToCart = async (userId, product, quantity) => {
         try {
             console.log('=== AGREGANDO PRODUCTO REGULAR AL CARRITO ===');
@@ -181,7 +167,6 @@ const useCustomization = () => {
             console.log('product:', product.name, product._id);
             console.log('quantity:', quantity);
  
-            // Validaciones
             if (!userId) {
                 throw new Error('ID de usuario requerido');
             }
@@ -194,7 +179,6 @@ const useCustomization = () => {
                 throw new Error('Cantidad debe ser mayor a 0');
             }
  
-            // Extraer precio numérico del string
             const priceMatch = product.price?.toString().match(/[\d,.]+/);
             const numericPrice = priceMatch ? parseFloat(priceMatch[0].replace(',', '')) : 0;
  
@@ -204,7 +188,6 @@ const useCustomization = () => {
  
             const subtotal = numericPrice * quantity;
  
-            // Preparar datos del item
             const itemData = {
                 itemType: "product",
                 itemId: product._id,
@@ -215,7 +198,6 @@ const useCustomization = () => {
  
             console.log('Datos preparados para el carrito:', itemData);
  
-            // Agregar al carrito usando la función existente
             return await addItemToCart(userId, itemData);
  
         } catch (error) {
@@ -224,7 +206,6 @@ const useCustomization = () => {
         }
     };
  
-    // Función principal que maneja todo el proceso de personalización
     const processCustomization = async (customizationParams) => {
         const {
             user,
@@ -241,44 +222,69 @@ const useCustomization = () => {
         setIsLoading(true);
  
         try {
-            // Validar que el usuario esté autenticado
             if (!user || !user.id) {
                 throw new Error('Debes iniciar sesión para continuar');
             }
  
             console.log('User validated:', user.id);
  
-            // Validar productos seleccionados
             if (!selectedProducts || selectedProducts.length === 0) {
                 throw new Error('Debes seleccionar al menos un material');
             }
  
             console.log('Selected products validated:', selectedProducts.length);
+            console.log('Selected products details:', selectedProducts);
  
-            // Validar precio
             if (!totalPrice || totalPrice < 0) {
                 throw new Error('El precio total debe ser mayor a 0');
             }
  
             console.log('Price validated:', totalPrice);
  
-            // Paso 1: Preparar datos para el producto personalizado
-            const selectedMaterials = selectedProducts.map(product => ({
-                materialId: product._id,
-                quantity: product.quantity || 1
-            }));
+            const selectedMaterials = selectedProducts.map(product => {
+                const quantity = product.quantity || 1;
+                
+                if (quantity > 50) {
+                    throw new Error(`La cantidad máxima por producto es 50. Producto: ${product.name}`);
+                }
+                
+                if (quantity > product.stock) {
+                    throw new Error(`Stock insuficiente para ${product.name}. Disponible: ${product.stock}`);
+                }
+                
+                console.log(`Material: ${product.name}, Quantity: ${quantity}, Price: ${product.price}`);
+                
+                return {
+                    materialId: product._id,
+                    quantity: quantity
+                };
+            });
  
             console.log('selectedMaterials prepared:', selectedMaterials);
  
-            // Preparar datos del producto personalizado
+            const calculatedTotal = selectedProducts.reduce((sum, product) => {
+                const quantity = product.quantity || 1;
+                const subtotal = product.price * quantity;
+                console.log(`Product: ${product.name}, Price: ${product.price}, Qty: ${quantity}, Subtotal: ${subtotal}`);
+                return sum + subtotal;
+            }, 0);
+ 
+            console.log('Calculated total from products:', calculatedTotal);
+            console.log('Total price from params:', totalPrice);
+ 
+            if (Math.abs(calculatedTotal - totalPrice) > 0.01) {
+                console.warn('Price mismatch detected!');
+                console.warn('Calculated:', calculatedTotal);
+                console.warn('Provided:', totalPrice);
+            }
+ 
             const customProductData = {
                 clientId: user.id,
                 productToPersonalize: productType,
                 selectedMaterials: selectedMaterials,
-                totalPrice: totalPrice
+                totalPrice: calculatedTotal
             };
  
-            // Solo agregar extraComments si hay comentarios y tienen al menos 10 caracteres
             if (comments && comments.trim().length >= 10) {
                 customProductData.extraComments = comments.trim();
                 console.log('Comments added:', comments.trim());
@@ -289,43 +295,42 @@ const useCustomization = () => {
             console.log('=== DATOS FINALES PARA ENVIAR ===');
             console.log('customProductData:', customProductData);
  
-            // Validaciones adicionales antes de enviar
             console.log('=== VALIDACIONES FINALES ===');
             console.log('clientId type:', typeof customProductData.clientId);
             console.log('clientId value:', customProductData.clientId);
             console.log('productToPersonalize:', customProductData.productToPersonalize);
             console.log('selectedMaterials length:', customProductData.selectedMaterials.length);
+            console.log('selectedMaterials details:', JSON.stringify(customProductData.selectedMaterials, null, 2));
             console.log('totalPrice type:', typeof customProductData.totalPrice);
             console.log('totalPrice value:', customProductData.totalPrice);
  
-            // Paso 2: Crear el producto personalizado (incluyendo imagen si existe)
             const createdCustomProduct = await createCustomProduct(customProductData, referenceImage);
  
             console.log('Producto personalizado creado:', createdCustomProduct);
  
-            // Paso 3: Preparar datos para agregar al carrito
             const cartItemData = {
                 itemType: "custom",
                 itemId: createdCustomProduct._id,
                 quantity: 1
-                // ✅ REMOVIDO: itemTypeRef y subtotal (el backend los calcula)
             };
  
             console.log('=== PREPARANDO PARA CARRITO ===');
             console.log('cartItemData:', cartItemData);
             console.log('createdCustomProduct._id:', createdCustomProduct._id);
  
-            // Paso 4: Agregar al carrito
             const updatedCart = await addItemToCart(user.id, cartItemData);
             console.log('Carrito actualizado:', updatedCart);
  
-            // Retornar datos del resultado
             return {
                 customProduct: createdCustomProduct,
                 cart: updatedCart,
-                selectedProducts,
+                selectedProducts: selectedProducts.map(p => ({
+                    ...p,
+                    quantity: p.quantity || 1,
+                    subtotal: (p.quantity || 1) * p.price
+                })),
                 productType,
-                totalPrice,
+                totalPrice: calculatedTotal,
                 referenceImage: createdCustomProduct.referenceImage || null,
                 comments: comments?.trim() || '',
                 timestamp: new Date().toISOString()
@@ -343,7 +348,7 @@ const useCustomization = () => {
         isLoading,
         createCustomProduct,
         addItemToCart,
-        addRegularProductToCart, // Nueva función exportada
+        addRegularProductToCart,
         processCustomization
     };
 };

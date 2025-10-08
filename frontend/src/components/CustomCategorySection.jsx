@@ -1,23 +1,25 @@
-import React, { useState } from 'react'; // Importando React
+import React, { useState } from 'react'; 
 
-// Componente y sección para mostrar los productos personalizables
 const CustomCategorySection = ({
     title,
     products,
     onAddToCart,
     onCustomize,
+    onQuantityChange,
     selectedProducts = []
 }) => {
     const [hoveredProduct, setHoveredProduct] = useState(null);
 
-    // Verificar si un producto está seleccionado
+    const getProductQuantity = (product) => {
+        const selected = selectedProducts.find(p => p._id === product._id);
+        return selected ? selected.quantity : 1;
+    };
+
     const isProductSelected = (product) => {
         return selectedProducts.some(p => p._id === product._id);
     };
 
-    // Manejar clic en personalizar
     const handleCustomizeClick = (product, event) => {
-        // Prevenir propagación del evento para evitar doble clic
         if (event) {
             event.stopPropagation();
         }
@@ -26,13 +28,24 @@ const CustomCategorySection = ({
         console.log('CustomCategorySection - handleCustomizeClick:', {
             productName: product.name,
             currentlySelected: isSelected,
-            willBeSelected: !isSelected
+            willBeSelected: !isSelected,
+            currentQuantity: getProductQuantity(product)
         });
 
         onCustomize(product, !isSelected);
     };
 
-    // Mostrar mensaje si no hay productos
+    const handleQuantityChange = (product, newQuantity) => {
+        console.log('CustomCategorySection - handleQuantityChange:', {
+            productName: product.name,
+            newQuantity: newQuantity
+        });
+        
+        if (onQuantityChange) {
+            onQuantityChange(product, newQuantity);
+        }
+    };
+
     if (!products || products.length === 0) {
         return (
             <div className="mb-8">
@@ -47,7 +60,6 @@ const CustomCategorySection = ({
 
     return (
         <div className="mb-8">
-            {/* Título de la sección */}
             <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold text-gray-800">{title}</h2>
                 <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
@@ -55,18 +67,19 @@ const CustomCategorySection = ({
                 </span>
             </div>
 
-            {/* Grid de productos */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {products.map((product) => (
                     <ProductCard
                         key={product._id}
                         product={product}
                         isSelected={isProductSelected(product)}
+                        currentQuantity={getProductQuantity(product)}
                         isHovered={hoveredProduct === product._id}
                         onMouseEnter={() => setHoveredProduct(product._id)}
                         onMouseLeave={() => setHoveredProduct(null)}
                         onAddToCart={() => onAddToCart(product)}
                         onCustomize={(event) => handleCustomizeClick(product, event)}
+                        onQuantityChange={(newQuantity) => handleQuantityChange(product, newQuantity)}
                     />
                 ))}
             </div>
@@ -77,13 +90,14 @@ const CustomCategorySection = ({
 const ProductCard = ({
     product,
     isSelected,
+    currentQuantity,
     isHovered,
     onMouseEnter,
     onMouseLeave,
     onAddToCart,
-    onCustomize
+    onCustomize,
+    onQuantityChange
 }) => {
-    // Determinar clases CSS basadas en el estado
     const cardClasses = `
         relative bg-white rounded-lg border-2 transition-all duration-300
         ${isSelected
@@ -102,14 +116,72 @@ const ProductCard = ({
         ${!product.inStock ? 'opacity-50 cursor-not-allowed' : ''}
     `;
 
+    const QuantitySelector = ({ value, onChange, max }) => {
+        const handleDecrement = (e) => {
+            e.stopPropagation();
+            if (value > 1) {
+                onChange(value - 1);
+            }
+        };
+
+        const handleIncrement = (e) => {
+            e.stopPropagation();
+            const maxAllowed = Math.min(max, product.stock || max);
+            if (value < maxAllowed) {
+                onChange(value + 1);
+            }
+        };
+
+        const maxAllowed = Math.min(max, product.stock || max);
+
+        return (
+            <div className="flex items-center space-x-2 bg-gray-50 rounded-lg p-1">
+                <button
+                    onClick={handleDecrement}
+                    disabled={value <= 1}
+                    className="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    style={{ cursor: 'pointer' }}
+                >
+                    <span className="text-gray-600 font-bold">−</span>
+                </button>
+                
+                <span className="text-sm font-medium text-gray-700 min-w-[24px] text-center">
+                    {value}
+                </span>
+                
+                <button
+                    onClick={handleIncrement}
+                    disabled={value >= maxAllowed}
+                    className="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    style={{ cursor: 'pointer' }}
+                >
+                    <span className="text-gray-600 font-bold">+</span>
+                </button>
+                
+                <span className="text-xs text-gray-400">
+                    /{maxAllowed}
+                </span>
+            </div>
+        );
+    };
+
     return (
         <div
             className={cardClasses}
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
         >
+            {isSelected && (
+                <div className="absolute top-2 right-2 z-20">
+                    <span className="bg-pink-500 text-white text-xs font-semibold px-2 py-1 rounded-full flex items-center shadow-md">
+                        <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        x{currentQuantity}
+                    </span>
+                </div>
+            )}
 
-            {/* Badge de sin stock - Z-INDEX REDUCIDO */}
             {!product.inStock && (
                 <div className="absolute top-2 left-2 z-10">
                     <span className="bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
@@ -118,7 +190,6 @@ const ProductCard = ({
                 </div>
             )}
 
-            {/* Imagen del producto */}
             <div className="relative h-32 overflow-hidden rounded-t-lg">
                 <img
                     src={product.image}
@@ -130,7 +201,6 @@ const ProductCard = ({
                     }}
                 />
 
-                {/* Overlay con botones en hover */}
                 {isHovered && product.inStock && (
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
                         <button
@@ -138,7 +208,7 @@ const ProductCard = ({
                                 e.stopPropagation();
                                 onAddToCart();
                             }}
-                            className="bg-white text-gray-800 px-3 py-1 rounded-lg text-xs font-medium hover:bg-gray-100 transition-colors mr-2"
+                            className="bg-white text-gray-800 px-3 py-1 rounded-lg text-xs font-medium hover:bg-gray-100 transition-colors"
                         >
                             + Carrito
                         </button>
@@ -146,7 +216,6 @@ const ProductCard = ({
                 )}
             </div>
 
-            {/* Información del producto */}
             <div className="p-4">
                 <div className="flex items-start justify-between mb-2">
                     <h3 className="text-sm font-semibold text-gray-900 truncate flex-1">
@@ -161,7 +230,6 @@ const ProductCard = ({
                     {product.description}
                 </p>
 
-                {/* Información de stock */}
                 <div className="flex items-center justify-between mb-3">
                     <span className="text-xs text-gray-500">
                         Stock: {product.stock || 0}
@@ -176,7 +244,17 @@ const ProductCard = ({
                     </div>
                 </div>
 
-                {/* Botón de personalizar */}
+                {isSelected && (
+                    <div className="mb-3">
+                        <label className="text-xs text-gray-600 mb-1 block">Cantidad:</label>
+                        <QuantitySelector
+                            value={currentQuantity}
+                            onChange={onQuantityChange}
+                            max={50}
+                        />
+                    </div>
+                )}
+
                 <button
                     onClick={product.inStock ? onCustomize : undefined}
                     disabled={!product.inStock}

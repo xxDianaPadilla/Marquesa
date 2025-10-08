@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import Header from "../components/Header/Header";
 import Footer from "../components/Footer";
@@ -10,14 +10,11 @@ import { useCustomProductsByType } from "../components/CustomProductsMaterials/h
 
 const CustomProducts = () => {
     const navigate = useNavigate();
-    const location = useLocation();
     const [searchParams] = useSearchParams();
 
-    // Obtener parámetros de la URL
     const productType = searchParams.get('product');
     const availableCategories = searchParams.get('categories') ? JSON.parse(searchParams.get('categories')) : [];
 
-    // ✅ AGREGAR: Configuración de categorías para el menú de navegación (igual que en las otras páginas)
     const categories = useMemo(() => [
         { _id: 'todos', name: 'Todos' },
         { _id: '688175a69579a7cde1657aaa', name: 'Arreglos con flores naturales' },
@@ -27,30 +24,23 @@ const CustomProducts = () => {
         { _id: '688175e79579a7cde1657ac6', name: 'Tarjetas' }
     ], []);
 
-    // ✅ AGREGAR: Estado para la categoría activa del menú de navegación
     const [activeNavCategory, setActiveNavCategory] = useState('todos');
-
-    // Estados locales existentes
     const [activeCategory, setActiveCategory] = useState('todos');
     const [selectedProducts, setSelectedProducts] = useState([]);
     const [cart, setCart] = useState([]);
 
-    // Hook para obtener datos del producto
     const { productData, loading, error } = useCustomProductsByType(productType);
 
-    // Redirigir si no hay tipo de producto
     useEffect(() => {
         if (!productType) {
             navigate('/');
         }
     }, [productType, navigate]);
 
-    // ✅ AGREGAR: Función para volver atrás
     const handleGoBack = useCallback(() => {
         navigate('/categoryProducts');
     }, [navigate]);
 
-    // ✅ AGREGAR: Función para manejar el cambio de categoría en el menú de navegación
     const handleCategoryChange = useCallback((categoryId) => {
         console.log(`👆 CustomProducts - Cambio de categoría solicitado: ${activeNavCategory} → ${categoryId}`);
 
@@ -72,86 +62,52 @@ const CustomProducts = () => {
         }, 100);
     }, [activeNavCategory, navigate]);
 
-    // Configuración de categorías dinámicas basadas en el producto seleccionado
-    const getCategoriesForProduct = () => {
-        const baseCategories = [{ id: 'todos', name: 'Todos' }];
-
-        if (availableCategories.length > 0) {
-            return [
-                ...baseCategories,
-                ...availableCategories.map((cat, index) => ({
-                    id: cat.toLowerCase().replace(/\s+/g, '-'),
-                    name: cat
-                }))
-            ];
-        }
-
-        return baseCategories;
-    };
-
-    const productCategories = getCategoriesForProduct();
-
-    /**
-     * Maneja el cambio de categoría en la navegación de productos (mantener función original)
-     */
-    const handleProductCategoryChange = (categoryId) => {
-        setActiveCategory(categoryId);
-
-        if (categoryId !== 'todos') {
-            // Scroll suave hacia la sección correspondiente
-            const element = document.getElementById(`category-${categoryId}`);
-            if (element) {
-                element.scrollIntoView({ behavior: 'smooth' });
-            }
-        } else {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    };
-
-    /**
-     * Maneja la adición de productos al carrito
-     */
     const handleAddToCart = (product) => {
         setCart(prev => [...prev, product]);
         console.log('Producto añadido al carrito:', product);
-        // Aquí se puede mostrar una notificación
     };
 
-    /**
-     * Maneja la personalización de productos
-     */
     const handleCustomize = (product, isSelected) => {
         if (isSelected) {
-            // Verificar si el producto ya está seleccionado antes de agregarlo
             setSelectedProducts(prev => {
                 const existingProduct = prev.find(p => p._id === product._id);
                 if (existingProduct) {
                     console.log('Producto ya seleccionado:', product.name);
                     return prev;
                 }
-                return [...prev, product];
+                return [...prev, { ...product, quantity: 1 }];
             });
         } else {
             setSelectedProducts(prev => prev.filter(p => p._id !== product._id));
         }
     };
 
-    /**
-     * Maneja la eliminación de productos de la personalización
-     */
+    const handleQuantityChange = (product, newQuantity) => {
+        console.log('CustomProducts - handleQuantityChange:', {
+            productId: product._id,
+            productName: product.name,
+            newQuantity: newQuantity
+        });
+
+        setSelectedProducts(prev => {
+            return prev.map(p => {
+                if (p._id === product._id) {
+                    return { ...p, quantity: newQuantity };
+                }
+                return p;
+            });
+        });
+    };
+
     const handleRemoveProduct = (productId) => {
         setSelectedProducts(prev => prev.filter(p => p._id !== productId));
     };
 
-    /**
-     * Maneja la finalización de la personalización
-     */
     const handleFinishCustomization = (customizationData) => {
         console.log('Personalización finalizada con datos:', customizationData);
 
         const { selectedProducts, productType, totalPrice, referenceImage, comments } = customizationData;
 
-        // Crear objeto de personalización completo
         const customizationOrder = {
             productType,
             selectedProducts,
@@ -162,20 +118,16 @@ const CustomProducts = () => {
             id: `custom-${Date.now()}`
         };
 
-        // Agregar al carrito
         setCart(prev => [...prev, customizationOrder]);
-        
-        // Limpiar selección
+
         setSelectedProducts([]);
 
-        // Log para debugging
         console.log('Orden de personalización creada:', customizationOrder);
     };
 
-    // Función para transformar los datos de la API al formato esperado por los componentes
     const transformMaterialsToProducts = (materials) => {
         return materials.map(material => ({
-            _id: material._id,  // Solo usar _id como identificador único
+            _id: material._id,  
             name: material.name,
             description: `Stock disponible: ${material.stock}`,
             price: material.price,
@@ -187,7 +139,6 @@ const CustomProducts = () => {
         }));
     };
 
-    // Mostrar loading
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -199,7 +150,6 @@ const CustomProducts = () => {
         );
     }
 
-    // Mostrar error
     if (error) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -217,7 +167,6 @@ const CustomProducts = () => {
         );
     }
 
-    // Verificar si no hay datos
     if (!productData || Object.keys(productData.categories).length === 0) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -239,11 +188,9 @@ const CustomProducts = () => {
         <div className="min-h-screen bg-white-50">
             <Header />
 
-            {/* ✅ AGREGAR: Sección del menú de navegación de categorías con botón de volver atrás */}
             <section className="bg-white pt-2 sm:pt-4 pb-4 sm:pb-6 shadow-sm">
                 <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
                     <div className="flex items-center space-x-4">
-                        {/* Botón de volver atrás */}
                         <button
                             onClick={handleGoBack}
                             className="flex items-center justify-center p-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 transition-colors duration-200 group"
@@ -251,8 +198,7 @@ const CustomProducts = () => {
                         >
                             <ArrowLeft className="h-5 w-5 text-gray-600 group-hover:text-gray-800" />
                         </button>
-                        
-                        {/* Navegación de categorías */}
+
                         <div className="flex-1">
                             <CategoryNavigation
                                 categories={categories}
@@ -264,10 +210,8 @@ const CustomProducts = () => {
                 </div>
             </section>
 
-            {/* Contenido principal existente */}
             <main className="py-4 sm:py-8">
                 <div className="max-w-7xl mx-auto px-4">
-                    {/* Encabezado de la página */}
                     <div className="mb-8">
                         <h1 className="text-3xl font-bold text-gray-900 mb-2">
                             Personalizar {productType}
@@ -286,7 +230,6 @@ const CustomProducts = () => {
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                        {/* Área de productos */}
                         <div className="lg:col-span-3">
                             {Object.entries(productData.categories).map(([categoryName, materials]) => {
                                 const categoryId = categoryName.toLowerCase().replace(/\s+/g, '-');
@@ -299,6 +242,7 @@ const CustomProducts = () => {
                                             products={transformedProducts}
                                             onAddToCart={handleAddToCart}
                                             onCustomize={handleCustomize}
+                                            onQuantityChange={handleQuantityChange}
                                             selectedProducts={selectedProducts}
                                         />
                                     </div>
@@ -306,17 +250,16 @@ const CustomProducts = () => {
                             })}
                         </div>
 
-                        {/* Panel de personalización */}
                         <div className="lg:col-span-1">
                             <div className="sticky top-4">
                                 <CustomizationPanel
                                     selectedProducts={selectedProducts}
                                     onRemoveProduct={handleRemoveProduct}
+                                    onQuantityChange={handleQuantityChange}
                                     onFinishCustomization={handleFinishCustomization}
                                     productType={productType}
                                 />
 
-                                {/* Información del carrito */}
                                 {cart.length > 0 && (
                                     <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
                                         <div className="flex items-center space-x-2">
@@ -328,15 +271,15 @@ const CustomProducts = () => {
                                     </div>
                                 )}
 
-                                {/* Información adicional */}
                                 <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                                     <h3 className="text-sm font-semibold text-gray-700 mb-2">
                                         💡 Consejos de personalización
                                     </h3>
                                     <ul className="text-xs text-gray-600 space-y-1">
                                         <li>• Selecciona al menos un elemento de cada categoría</li>
+                                        <li>• Ajusta las cantidades según tus necesidades (máx. 50)</li>
+                                        <li>• El precio se calculará según la cantidad seleccionada</li>
                                         <li>• Puedes cambiar tu selección en cualquier momento</li>
-                                        <li>• El precio final se calculará automáticamente</li>
                                     </ul>
                                 </div>
                             </div>

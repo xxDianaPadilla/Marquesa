@@ -28,6 +28,16 @@ const useEditProfile = ({
     const [profileImageUri, setProfileImageUri] = useState(null);
     const [hasImageChanged, setHasImageChanged] = useState(false);
 
+    // Función para verificar si hay cambios
+    const hasChanges = () => {
+        return (
+            formData.fullName !== originalData.fullName ||
+            formData.phone !== originalData.phone ||
+            formData.address !== originalData.address ||
+            hasImageChanged
+        );
+    };
+
     // Función para manejar la selección de imagen
     const handleImagePicker = (imageUri) => {
         console.log('Imagen seleccionada:', imageUri);
@@ -93,7 +103,10 @@ const useEditProfile = ({
             return;
         }
 
-        showLoading('Actualizando perfil...');
+        showLoading({ 
+            title: 'Actualizando perfil...', 
+            message: 'Por favor espera...' 
+        });
         setLoading(true);
 
         try {
@@ -124,11 +137,12 @@ const useEditProfile = ({
                 setHasImageChanged(false);
                 
                 // Actualizar datos originales
-                setOriginalData({
+                const newOriginalData = {
                     fullName: formData.fullName,
                     phone: formData.phone,
                     address: formData.address
-                });
+                };
+                setOriginalData(newOriginalData);
             } else {
                 showError(data.message || 'Error al actualizar el perfil');
             }
@@ -174,35 +188,55 @@ const useEditProfile = ({
         }
     };
 
-    // Función para cancelar edición
+    // Función para cancelar edición - CORREGIDA
     const cancelEdit = () => {
-        showConfirmation(
-            'Cancelar edición',
-            '¿Estás seguro de que deseas cancelar? Se perderán los cambios no guardados.',
-            () => {
-                // Restaurar datos originales
-                setFormData(originalData);
-                setProfileImageUri(null);
-                setHasImageChanged(false);
-                setIsEditing(false);
-                hideConfirmation();
-            },
-            hideConfirmation
-        );
+        if (hasChanges()) {
+            showConfirmation({
+                title: 'Cancelar edición',
+                message: '¿Estás seguro de que deseas cancelar? Se perderán los cambios no guardados.',
+                confirmText: 'Cancelar edición',
+                cancelText: 'Continuar editando',
+                isDangerous: true,
+                onConfirm: () => {
+                    // Restaurar datos originales
+                    setFormData(originalData);
+                    setProfileImageUri(null);
+                    setHasImageChanged(false);
+                    setIsEditing(false);
+                    hideConfirmation();
+                },
+                onCancel: hideConfirmation
+            });
+        } else {
+            // Si no hay cambios, salir directamente
+            setIsEditing(false);
+            setProfileImageUri(null);
+            setHasImageChanged(false);
+        }
     };
 
-    // Función para manejar el botón de atrás
+    // Función para manejar el botón de atrás - CORREGIDA
     const handleBackPress = (navigation) => {
-        if (isEditing) {
-            showConfirmation(
-                'Salir sin guardar',
-                'Tienes cambios sin guardar. ¿Estás seguro de que deseas salir?',
-                () => {
+        console.log('handleBackPress called, isEditing:', isEditing, 'hasChanges:', hasChanges());
+        
+        if (isEditing && hasChanges()) {
+            showConfirmation({
+                title: 'Salir sin guardar',
+                message: 'Tienes cambios sin guardar. ¿Estás seguro de que deseas salir?',
+                confirmText: 'Salir',
+                cancelText: 'Cancelar',
+                isDangerous: true,
+                onConfirm: () => {
+                    // Restaurar datos originales
+                    setFormData(originalData);
+                    setProfileImageUri(null);
+                    setHasImageChanged(false);
+                    setIsEditing(false);
                     hideConfirmation();
                     navigation.goBack();
                 },
-                hideConfirmation
-            );
+                onCancel: hideConfirmation
+            });
         } else {
             navigation.goBack();
         }
@@ -237,7 +271,8 @@ const useEditProfile = ({
         handleEditToggle,
         cancelEdit,
         handleBackPress,
-        handleImagePicker
+        handleImagePicker,
+        hasChanges
     };
 };
 

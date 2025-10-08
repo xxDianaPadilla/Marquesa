@@ -1105,6 +1105,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontFamily: 'Poppins-Regular',
         backgroundColor: '#fff',
+        color: '#000000'
     },
     inputError: {
         borderColor: '#ef4444',

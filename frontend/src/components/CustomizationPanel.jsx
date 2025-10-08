@@ -325,23 +325,64 @@ const SelectedProductItem = ({ product, onRemove, onQuantityChange }) => {
 
     return (
         <div className="bg-white rounded-lg p-3 border border-gray-100 hover:border-gray-200 transition-colors mb-2">
-            <div className="flex items-start space-x-3">
-                <div className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0">
-                    <img
-                        src={product.image}
-                        alt={product.name}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                            e.target.src = '/placeholder-image.jpg';
-                        }}
-                    />
+            <div className="flex space-x-3">
+                {/* Columna izquierda: Imagen + Controles */}
+                <div className="flex flex-col space-y-2 flex-shrink-0">
+                    <div className="w-16 h-16 rounded-md overflow-hidden">
+                        <img
+                            src={product.image}
+                            alt={product.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                                e.target.src = '/placeholder-image.jpg';
+                            }}
+                        />
+                    </div>
+                    
+                    {/* Cantidad debajo de la imagen */}
+                    <div className="flex items-center justify-center space-x-1 bg-gray-50 rounded-lg p-1">
+                        <button
+                            onClick={handleDecrement}
+                            disabled={quantity <= 1}
+                            className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            style={{ cursor: 'pointer' }}
+                        >
+                            <span className="text-gray-600 font-bold text-xs">−</span>
+                        </button>
+                        
+                        <span className="text-xs font-medium text-gray-700 min-w-[20px] text-center">
+                            {quantity}
+                        </span>
+                        
+                        <button
+                            onClick={handleIncrement}
+                            disabled={quantity >= maxQuantity}
+                            className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            style={{ cursor: 'pointer' }}
+                        >
+                            <span className="text-gray-600 font-bold text-xs">+</span>
+                        </button>
+                    </div>
+                    
+                    {/* Precio total debajo de cantidad */}
+                    <div className="text-center">
+                        <span className="text-sm font-bold text-pink-600">
+                            ${subtotal.toFixed(2)}
+                        </span>
+                    </div>
                 </div>
  
+                {/* Columna derecha: Info del producto */}
                 <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between mb-1">
-                        <p className="text-sm font-medium text-gray-900 truncate flex-1">
-                            {product.name}
-                        </p>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                                {product.name}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                                ${product.price.toFixed(2)} c/u
+                            </p>
+                        </div>
                         
                         <button
                             onClick={onRemove}
@@ -354,41 +395,9 @@ const SelectedProductItem = ({ product, onRemove, onQuantityChange }) => {
                         </button>
                     </div>
                     
-                    <p className="text-xs text-gray-500 mb-2">
-                        ${product.price.toFixed(2)} c/u
-                    </p>
-
-                    <div className="flex items-center justify-between mt-1">
-                        <div className="flex items-center space-x-2 bg-gray-50 rounded-lg p-1">
-                            <button
-                                onClick={handleDecrement}
-                                disabled={quantity <= 1}
-                                className="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
-                                style={{ cursor: 'pointer' }}
-                            >
-                                <span className="text-gray-600 font-bold text-sm">−</span>
-                            </button>
-                            
-                            <span className="text-sm font-medium text-gray-700 min-w-[24px] text-center">
-                                {quantity}
-                            </span>
-                            
-                            <button
-                                onClick={handleIncrement}
-                                disabled={quantity >= maxQuantity}
-                                className="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
-                                style={{ cursor: 'pointer' }}
-                            >
-                                <span className="text-gray-600 font-bold text-sm">+</span>
-                            </button>
-                            
-                            <span className="text-xs text-gray-400 flex-shrink-0">
-                                /{maxQuantity}
-                            </span>
-                        </div>
-
-                        <span className="text-sm font-bold text-pink-600 ml-2 flex-shrink-0">
-                            ${subtotal.toFixed(2)}
+                    <div className="mt-2">
+                        <span className="text-xs text-gray-400">
+                            Máx: {maxQuantity}
                         </span>
                     </div>
                 </div>

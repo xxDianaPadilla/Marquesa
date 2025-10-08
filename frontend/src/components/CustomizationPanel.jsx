@@ -219,20 +219,20 @@ const CustomizationPanel = ({
                                 ))}
                             </div>
  
-                            <div className="border-t pt-3">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-sm font-medium text-gray-700">
+                            <div className="border-t pt-3 px-1">
+                                <div className="flex justify-between items-center mb-2 gap-2">
+                                    <span className="text-sm font-medium text-gray-700 flex-shrink-0">
                                         Subtotal ({totalItems} items):
                                     </span>
-                                    <span className="text-base font-semibold text-gray-800">
+                                    <span className="text-base font-semibold text-gray-800 text-right">
                                         ${totalPrice.toFixed(2)}
                                     </span>
                                 </div>
-                                <div className="flex justify-between items-center pt-2 border-t">
-                                    <span className="text-base font-bold text-gray-900">
+                                <div className="flex justify-between items-center pt-2 border-t gap-2">
+                                    <span className="text-base font-bold text-gray-900 flex-shrink-0">
                                         Total:
                                     </span>
-                                    <span className="text-xl font-bold text-pink-600">
+                                    <span className="text-xl font-bold text-pink-600 text-right break-all">
                                         ${totalPrice.toFixed(2)}
                                     </span>
                                 </div>
@@ -240,7 +240,7 @@ const CustomizationPanel = ({
                         </div>
                     )}
  
-                    <div className="mt-6 space-y-2">
+                    <div className="mt-4 space-y-2">
                         {selectedProducts.length > 0 && (
                             <button
                                 style={{ cursor: 'pointer' }}
@@ -261,12 +261,12 @@ const CustomizationPanel = ({
                                 }`}
                         >
                             {isCustomizationComplete ? (
-                                <>
-                                    <svg className="w-5 h-5 inline mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <span className="flex items-center justify-center">
+                                    <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                                     </svg>
                                     Finalizar personalización
-                                </>
+                                </span>
                             ) : (
                                 'Selecciona productos para continuar'
                             )}
@@ -358,36 +358,36 @@ const SelectedProductItem = ({ product, onRemove, onQuantityChange }) => {
                         ${product.price.toFixed(2)} c/u
                     </p>
 
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mt-1">
                         <div className="flex items-center space-x-2 bg-gray-50 rounded-lg p-1">
                             <button
                                 onClick={handleDecrement}
                                 disabled={quantity <= 1}
-                                className="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                className="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
                                 style={{ cursor: 'pointer' }}
                             >
                                 <span className="text-gray-600 font-bold text-sm">−</span>
                             </button>
                             
-                            <span className="text-sm font-medium text-gray-700 min-w-[30px] text-center">
+                            <span className="text-sm font-medium text-gray-700 min-w-[24px] text-center">
                                 {quantity}
                             </span>
                             
                             <button
                                 onClick={handleIncrement}
                                 disabled={quantity >= maxQuantity}
-                                className="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                className="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
                                 style={{ cursor: 'pointer' }}
                             >
                                 <span className="text-gray-600 font-bold text-sm">+</span>
                             </button>
                             
-                            <span className="text-xs text-gray-400">
+                            <span className="text-xs text-gray-400 flex-shrink-0">
                                 /{maxQuantity}
                             </span>
                         </div>
 
-                        <span className="text-sm font-bold text-pink-600">
+                        <span className="text-sm font-bold text-pink-600 ml-2 flex-shrink-0">
                             ${subtotal.toFixed(2)}
                         </span>
                     </div>

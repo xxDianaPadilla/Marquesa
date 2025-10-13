@@ -384,7 +384,7 @@ const RuletaPage = () => {
                                     ))
                                 ) : (
                                     <div className="text-center py-8">
-                                        <div className="text-6xl mb-4">🎰</div>
+                                        <div className="text-6xl mb-4"></div>
                                         <p 
                                             className="text-gray-500 text-lg mb-2" 
                                             style={{ fontFamily: 'Poppins, sans-serif' }}
@@ -427,7 +427,7 @@ const RuletaPage = () => {
                                     backgroundColor: '#E8ACD2'
                                 }}
                             >
-                                Comenzar a comprar 🛍️
+                                Comenzar a comprar 
                             </button>
                         </div>
                     </div>

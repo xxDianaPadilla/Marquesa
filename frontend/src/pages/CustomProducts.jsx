@@ -154,7 +154,7 @@ const CustomProducts = () => {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="text-center">
-                    <div className="text-red-500 text-xl mb-4">⚠️</div>
+                    <div className="text-red-500 text-xl mb-4"></div>
                     <p className="text-gray-600 mb-4">{error}</p>
                     <button
                         onClick={() => navigate('/')}
@@ -171,7 +171,7 @@ const CustomProducts = () => {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="text-center">
-                    <div className="text-gray-400 text-xl mb-4">📦</div>
+                    <div className="text-gray-400 text-xl mb-4"></div>
                     <p className="text-gray-600 mb-4">No hay materiales disponibles para este producto</p>
                     <button
                         onClick={() => navigate('/')}

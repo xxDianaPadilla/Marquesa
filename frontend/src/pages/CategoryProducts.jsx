@@ -356,7 +356,7 @@ const CategoryProducts = () => {
             toast.error('Debes iniciar sesión para agregar productos a favoritos', {
                 duration: 4000,
                 position: 'top-center',
-                icon: '🔒',
+                icon: '⚠',
                 style: {
                     background: '#F59E0B',
                     color: '#fff',
@@ -394,7 +394,7 @@ const CategoryProducts = () => {
                 toast.success(`${normalizedProduct.name} eliminado de favoritos`, {
                     duration: 3000,
                     position: 'top-center',
-                    icon: '💔',
+                    icon: '',
                     style: {
                         background: '#6B7280',
                         color: '#fff',
@@ -406,7 +406,7 @@ const CategoryProducts = () => {
                 toast.success(`¡${normalizedProduct.name} agregado a favoritos!`, {
                     duration: 3000,
                     position: 'top-center',
-                    icon: '❤️',
+                    icon: '',
                     style: {
                         background: '#EC4899',
                         color: '#fff',
@@ -627,7 +627,7 @@ const CategoryProducts = () => {
                 <Container>
                     <div className="flex items-center justify-center min-h-[400px]">
                         <div className="text-center">
-                            <div className="text-6xl mb-4">😔</div>
+                            <div className="text-6xl mb-4"></div>
                             <h3 className="text-xl font-semibold text-gray-800 mb-2">
                                 ¡Ups! Algo salió mal
                             </h3>
@@ -636,7 +636,7 @@ const CategoryProducts = () => {
                                 onClick={handleRetry}
                                 className="bg-pink-500 text-white px-6 py-3 rounded-lg hover:bg-pink-600 transition-colors"
                             >
-                                🔄 Reintentar
+                                 Reintentar
                             </button>
                         </div>
                     </div>
@@ -732,7 +732,7 @@ const CategoryProducts = () => {
                                         onClick={() => handleCategoryChange('todos')}
                                         className="bg-pink-500 text-white px-6 py-3 rounded-lg hover:bg-pink-600 transition-colors"
                                     >
-                                        🏠 Ver todos los productos
+                                         Ver todos los productos
                                     </button>
                                 )}
                             </div>

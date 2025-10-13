@@ -540,7 +540,7 @@ const CategoryProductsPage = () => {
         if (!productsToRender || productsToRender.length === 0) {
             return (
                 <div className="text-center py-12">
-                    <div className="text-6xl mb-4">📦</div>
+                    <div className="text-6xl mb-4"></div>
                     <p className="text-gray-500 text-lg">No hay productos disponibles</p>
                 </div>
             );
@@ -622,7 +622,7 @@ const CategoryProductsPage = () => {
                 <Container>
                     <div className="flex items-center justify-center min-h-[400px]">
                         <div className="text-center">
-                            <div className="text-6xl mb-4">😔</div>
+                            <div className="text-6xl mb-4"></div>
                             <h3 className="text-xl font-semibold text-gray-800 mb-2">
                                 Ups! Algo salió mal
                             </h3>

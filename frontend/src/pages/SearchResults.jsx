@@ -349,7 +349,7 @@ const SearchResults = () => {
                 <Container>
                     <div className="flex items-center justify-center min-h-[400px]">
                         <div className="text-center">
-                            <div className="text-6xl mb-4">😔</div>
+                            <div className="text-6xl mb-4"></div>
                             <h3 className="text-xl font-semibold text-gray-800 mb-2">
                                 ¡Ups! Algo salió mal
                             </h3>
@@ -434,7 +434,7 @@ const SearchResults = () => {
                         ) : (
                             // Estado cuando no hay resultados
                             <div className="text-center py-16">
-                                <div className="text-6xl mb-4">🔍</div>
+                                <div className="text-6xl mb-4"></div>
                                 <h3 className="text-xl font-semibold text-gray-800 mb-2">
                                     No se encontraron productos
                                 </h3>
@@ -448,7 +448,7 @@ const SearchResults = () => {
                                     onClick={handleBackToHome}
                                     className="bg-pink-500 text-white px-6 py-3 rounded-lg hover:bg-pink-600 transition-colors"
                                 >
-                                    🏠 Explorar productos
+                                     Explorar productos
                                 </button>
                             </div>
                         )}

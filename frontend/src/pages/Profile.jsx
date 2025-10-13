@@ -490,7 +490,7 @@ const Perfil = () => {
                         className="text-sm text-blue-600 hover:text-blue-800 disabled:opacity-50"
                         style={{ cursor: 'pointer' }}
                       >
-                        {loadingCodes ? '🔄' : '↻ Actualizar'}
+                        {loadingCodes ? '' : '↻ Actualizar'}
                       </button>
                     </div>
                     

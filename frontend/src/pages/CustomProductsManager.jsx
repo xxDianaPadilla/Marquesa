@@ -49,7 +49,7 @@ const CustomProductsManager = () => {
                     background: '#10B981',
                     color: 'white',
                 },
-                icon: '✅',
+                icon: '',
             });
         } catch (error) {
             console.error('Error completo:', error);
@@ -60,7 +60,7 @@ const CustomProductsManager = () => {
                     background: '#EF4444',
                     color: 'white',
                 },
-                icon: '❌',
+                icon: '',
             });
         } finally {
             setOperationLoading(prev => ({ ...prev, creating: false }));
@@ -81,7 +81,7 @@ const CustomProductsManager = () => {
                     background: '#10B981',
                     color: 'white',
                 },
-                icon: '📝',
+                icon: '',
             });
         } catch (error) {
             console.error('Error completo:', error);
@@ -92,7 +92,7 @@ const CustomProductsManager = () => {
                     background: '#EF4444',
                     color: 'white',
                 },
-                icon: '❌',
+                icon: '',
             });
         } finally {
             setOperationLoading(prev => ({ ...prev, updating: false }));
@@ -125,7 +125,7 @@ const CustomProductsManager = () => {
                     background: '#EF4444',
                     color: 'white',
                 },
-                icon: '🗑️',
+                icon: '',
             });
         } catch (error) {
             console.error('Error completo:', error);
@@ -136,7 +136,7 @@ const CustomProductsManager = () => {
                     background: '#EF4444',
                     color: 'white',
                 },
-                icon: '❌',
+                icon: '',
             });
         } finally {
             setOperationLoading(prev => ({ ...prev, deleting: null }));
@@ -147,7 +147,7 @@ const CustomProductsManager = () => {
 
     // Función para cancelar eliminación
     const cancelDeleteMaterial = () => {
-        console.log('❌ Cancelando eliminación de material');
+        console.log(' Cancelando eliminación de material');
         setShowDeleteModal(false);
         setMaterialToDelete(null);
     };
@@ -557,7 +557,7 @@ const CustomProductsManager = () => {
                     {/* Empty State */}
                     {!showSkeleton && filteredMaterials.length === 0 && (
                         <div className="text-center py-8 sm:py-12 px-4">
-                            <div className="text-4xl sm:text-6xl mb-4">📦</div>
+                            <div className="text-4xl sm:text-6xl mb-4"></div>
                             <div className="text-gray-500 mb-4 text-sm sm:text-base">
                                 {searchTerm ? 'No se encontraron materiales que coincidan con tu búsqueda' : 'No hay materiales registrados'}
                             </div>

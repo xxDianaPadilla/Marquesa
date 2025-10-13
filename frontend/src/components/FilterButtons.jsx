@@ -4,10 +4,10 @@ import React from "react";
 // Permite filtrar el contenido por categorías basado en los tipos reales de la base de datos
 const FilterButtons = ({ activeFilter, onFilterChange, disabled = false }) => {
     const filters = [
-        { id: 'all', label: 'Todos', icon: '📚', description: 'Todo el contenido' },
-        { id: 'Blog', label: 'Blog', icon: '📝', description: 'Artículos del blog' },
-        { id: 'Dato Curioso', label: 'Datos Curiosos', icon: '💡', description: 'Curiosidades interesantes' }, 
-        { id: 'Tip', label: 'Tips', icon: '✨', description: 'Consejos útiles' },
+        { id: 'all', label: 'Todos', icon: '', description: 'Todo el contenido' },
+        { id: 'Blog', label: 'Blog', icon: '', description: 'Artículos del blog' },
+        { id: 'Dato Curioso', label: 'Datos Curiosos', icon: '', description: 'Curiosidades interesantes' }, 
+        { id: 'Tip', label: 'Tips', icon: '', description: 'Consejos útiles' },
     ];
 
     return (

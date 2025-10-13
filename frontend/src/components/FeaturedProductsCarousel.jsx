@@ -1,18 +1,14 @@
-import React, { useState, useEffect, useCallback } from "react"; // Importando React
-import useFeaturedProductsService from './Products/Hooks/useFeaturedProductsService'; // Importando hook de acciones
-import Container from "./Container"; // Importando componente para el container
-import ActionButton from "./ActionButton"; // Importando componente de acciones disponibles
-import PriceDisplay from "./PriceDisplay"; // Importando componente para mostrar precios
-import iconFavorites from '../assets/favoritesIcon.png'; // Importando icono de favoritos
-import { useNavigate } from "react-router-dom"; // Importando librería para navegación
-import { useFavorites } from "../context/FavoritesContext"; // Importando contexto global de favoritos
-// Importar contexto de autenticación
-import { useAuth } from "../context/AuthContext"; // Importando contexto global
-import toast from "react-hot-toast"; // Importando toast para alertas
-// Importar el hook del carrito de compras
-import useShoppingCart from "./ShoppingCart/hooks/useShoppingCart"; // Hook del carrito
+import React, { useState, useEffect, useCallback } from "react";
+import useFeaturedProductsService from './Products/Hooks/useFeaturedProductsService';
+import Container from "./Container";
+import ActionButton from "./ActionButton";
+import PriceDisplay from "./PriceDisplay";
+import { useNavigate } from "react-router-dom";
+import { useFavorites } from "../context/FavoritesContext";
+import { useAuth } from "../context/AuthContext";
+import toast from "react-hot-toast";
+import useShoppingCart from "./ShoppingCart/hooks/useShoppingCart";
 
-// Componente y carrusel para productos mejor evaluados
 const FeaturedProductsCarousel = ({
     autoSlideInterval = 5000,
     showArrows = true,
@@ -21,9 +17,7 @@ const FeaturedProductsCarousel = ({
 }) => {
     const navigate = useNavigate();
     const { toggleFavorite, isFavorite } = useFavorites();
-    // Obtener estado de autenticación
     const { isAuthenticated } = useAuth();
-    // Obtener funciones del carrito
     const { addToCart, removeItem, cartItems, updating } = useShoppingCart();
 
     const [products, setProducts] = useState([]);
@@ -33,24 +27,19 @@ const FeaturedProductsCarousel = ({
     const [cart, setCart] = useState([]);
     const [isAutoSliding, setIsAutoSliding] = useState(true);
     const [favoriteToggling, setFavoriteToggling] = useState(new Set());
-    // Estado para controlar qué productos se están agregando al carrito
     const [addingToCart, setAddingToCart] = useState(new Set());
-    // Estado para controlar qué productos se están removiendo del carrito
     const [removingFromCart, setRemovingFromCart] = useState(new Set());
 
-    // Verificar si un producto está en el carrito
     const isProductInCart = useCallback((productId) => {
         if (!cartItems || cartItems.length === 0) return false;
         
         return cartItems.some(item => {
-            // Verificar tanto por ID directo como por el ID original del item
             return item.id === productId || 
                    item._originalItem?.itemId === productId ||
                    item._originalItem?.itemId?._id === productId;
         });
     }, [cartItems]);
 
-    // Obtener información del producto en el carrito
     const getCartItemInfo = useCallback((productId) => {
         if (!cartItems || cartItems.length === 0) return null;
         
@@ -61,7 +50,6 @@ const FeaturedProductsCarousel = ({
         });
     }, [cartItems]);
 
-    // Función para cargar los productos mejor evaluados
     const loadFeaturedProducts = useCallback(async () => {
         try {
             setLoading(true);
@@ -85,12 +73,10 @@ const FeaturedProductsCarousel = ({
         }
     }, []);
 
-    // useEffect para actulizar la carga del carrusel de productos
     useEffect(() => {
         loadFeaturedProducts();
     }, [loadFeaturedProducts]);
 
-    // useEffect para manejar un scroll horizontal constante en los elementos del carruseñ
     useEffect(() => {
         if (!isAutoSliding || products.length <= 1) return;
 
@@ -101,7 +87,6 @@ const FeaturedProductsCarousel = ({
         return () => clearInterval(interval);
     }, [isAutoSliding, products.length, autoSlideInterval]);
 
-    // Obtenemos los productos por scroll del carrusel
     const getProductsPerSlide = () => {
         if (typeof window === 'undefined') return 3;
         if (window.innerWidth >= 1024) return 3;
@@ -109,14 +94,12 @@ const FeaturedProductsCarousel = ({
         return 1;
     };
 
-    // Nos movemos en el carrusel al inicializarse
     const goToSlide = (slideIndex) => {
         setCurrentSlide(slideIndex);
         setIsAutoSliding(false);
         setTimeout(() => setIsAutoSliding(true), 3000);
     };
 
-    // Nos vamos a la otra parte del carrusel 
     const nextSlide = () => {
         const maxSlides = Math.ceil(products.length / getProductsPerSlide());
         setCurrentSlide((prev) => (prev + 1) % maxSlides);
@@ -124,7 +107,6 @@ const FeaturedProductsCarousel = ({
         setTimeout(() => setIsAutoSliding(true), 3000);
     };
 
-    // Regresamos a la parte del carrusel que ya había pasado
     const prevSlide = () => {
         const maxSlides = Math.ceil(products.length / getProductsPerSlide());
         setCurrentSlide((prev) => (prev - 1 + maxSlides) % maxSlides);
@@ -132,7 +114,6 @@ const FeaturedProductsCarousel = ({
         setTimeout(() => setIsAutoSliding(true), 3000);
     };
 
-    // Marcamos productos como favoritos desde el carrusel
     const normalizeProductForFavorites = useCallback((product) => {
         if (!product) return null;
 
@@ -182,7 +163,6 @@ const FeaturedProductsCarousel = ({
         };
     }, []);
 
-    // handleToggleFavorite con validación de autenticación
     const handleToggleFavorite = useCallback(async (product) => {
         const productId = product._id || product.id;
 
@@ -190,12 +170,11 @@ const FeaturedProductsCarousel = ({
             return;
         }
 
-        // Verificar autenticación
         if (!isAuthenticated) {
             toast.error('Debes iniciar sesión para agregar productos a favoritos', {
                 duration: 4000,
                 position: 'top-center',
-                icon: '🔒',
+                icon: '',
                 style: {
                     background: '#F59E0B',
                     color: '#fff',
@@ -214,36 +193,28 @@ const FeaturedProductsCarousel = ({
 
             const wasCurrentlyFavorite = isFavorite(productId);
 
-            console.log('FeaturedCarousel - Toggle favorite for product:', {
-                id: normalizedProduct._id,
-                name: normalizedProduct.name,
-                wasCurrentlyFavorite: wasCurrentlyFavorite
-            });
-
-            const wasAdded = await toggleFavorite(normalizedProduct);
+            await toggleFavorite(normalizedProduct);
 
             if (wasCurrentlyFavorite) {
                 toast.success(`${normalizedProduct.name} eliminado de favoritos`, {
                     duration: 3000,
                     position: 'top-center',
-                    icon: '💔',
+                    icon: '',
                     style: {
                         background: '#6B7280',
                         color: '#fff',
                     },
                 });
-                console.log('FeaturedCarousel - Producto removido de favoritos');
             } else {
                 toast.success(`¡${normalizedProduct.name} agregado a favoritos!`, {
                     duration: 3000,
                     position: 'top-center',
-                    icon: '❤️',
+                    icon: '',
                     style: {
                         background: '#EC4899',
                         color: '#fff',
                     },
                 });
-                console.log('FeaturedCarousel - Producto agregado a favoritos');
             }
 
         } catch (error) {
@@ -259,7 +230,7 @@ const FeaturedProductsCarousel = ({
             toast.error(errorMessage, {
                 duration: 3000,
                 position: 'top-center',
-                icon: '❌'
+                icon: ''
             });
         } finally {
             setFavoriteToggling(prev => {
@@ -270,7 +241,6 @@ const FeaturedProductsCarousel = ({
         }
     }, [normalizeProductForFavorites, toggleFavorite, favoriteToggling, isFavorite, isAuthenticated]);
 
-    // Remover producto del carrito
     const handleRemoveFromCart = useCallback(async (product) => {
         const productId = product._id || product.id;
 
@@ -282,7 +252,7 @@ const FeaturedProductsCarousel = ({
             toast.error('Debes iniciar sesión para gestionar el carrito', {
                 duration: 4000,
                 position: 'top-center',
-                icon: '🔒',
+                icon: '',
                 style: {
                     background: '#F59E0B',
                     color: '#fff',
@@ -294,12 +264,6 @@ const FeaturedProductsCarousel = ({
         try {
             setRemovingFromCart(prev => new Set([...prev, productId]));
 
-            console.log('🗑️ FeaturedCarousel - Removiendo producto del carrito:', {
-                id: productId,
-                name: product.name
-            });
-
-            // Buscar el item en el carrito para obtener el ID correcto
             const cartItem = getCartItemInfo(productId);
             if (!cartItem) {
                 throw new Error('Producto no encontrado en el carrito');
@@ -311,13 +275,12 @@ const FeaturedProductsCarousel = ({
                 toast.success(`${product.name} eliminado del carrito`, {
                     duration: 2000,
                     position: 'top-center',
-                    icon: '🗑️',
+                    icon: '',
                     style: {
                         background: '#EF4444',
                         color: '#FFFFFF',
                     },
                 });
-                console.log('FeaturedCarousel - Producto eliminado del carrito exitosamente');
             } else {
                 throw new Error('No se pudo eliminar el producto del carrito');
             }
@@ -337,7 +300,7 @@ const FeaturedProductsCarousel = ({
             toast.error(errorMessage, {
                 duration: 3000,
                 position: 'top-center',
-                icon: '❌'
+                icon: ''
             });
         } finally {
             setRemovingFromCart(prev => {
@@ -348,7 +311,6 @@ const FeaturedProductsCarousel = ({
         }
     }, [removeItem, removingFromCart, isAuthenticated, getCartItemInfo]);
 
-    // handleAddToCart con validación de autenticación y uso del hook del carrito
     const handleAddToCart = useCallback(async (product) => {
         const productId = product._id || product.id;
 
@@ -356,12 +318,11 @@ const FeaturedProductsCarousel = ({
             return;
         }
 
-        // Verificar autenticación
         if (!isAuthenticated) {
             toast.error('Debes iniciar sesión para agregar productos al carrito', {
                 duration: 4000,
                 position: 'top-center',
-                icon: '🔒',
+                icon: '',
                 style: {
                     background: '#F59E0B',
                     color: '#fff',
@@ -371,29 +332,20 @@ const FeaturedProductsCarousel = ({
         }
 
         try {
-            // Agregar producto al estado de "agregando"
             setAddingToCart(prev => new Set([...prev, productId]));
 
-            console.log('🛒 FeaturedCarousel - Agregando producto al carrito:', {
-                id: productId,
-                name: product.name,
-                price: product.price
-            });
-
-            // Usar el hook del carrito en lugar del estado local
             const success = await addToCart(productId, 1, 'product');
 
             if (success) {
                 toast.success(`¡${product.name} agregado al carrito!`, {
                     duration: 2000,
                     position: 'top-center',
-                    icon: '🛒',
+                    icon: '',
                     style: {
                         background: '#10B981',
                         color: '#FFFFFF',
                     },
                 });
-                console.log('FeaturedCarousel - Producto agregado al carrito exitosamente');
             } else {
                 throw new Error('No se pudo agregar el producto al carrito');
             }
@@ -413,10 +365,9 @@ const FeaturedProductsCarousel = ({
             toast.error(errorMessage, {
                 duration: 3000,
                 position: 'top-center',
-                icon: '❌'
+                icon: ''
             });
         } finally {
-            // Remover producto del estado de "agregando"
             setAddingToCart(prev => {
                 const newSet = new Set(prev);
                 newSet.delete(productId);
@@ -425,7 +376,6 @@ const FeaturedProductsCarousel = ({
         }
     }, [addToCart, addingToCart, isAuthenticated]);
 
-    // Manejar clic del botón de carrito (agregar o quitar)
     const handleCartButtonClick = useCallback(async (product) => {
         const productId = product._id || product.id;
         const inCart = isProductInCart(productId);
@@ -437,26 +387,22 @@ const FeaturedProductsCarousel = ({
         }
     }, [isProductInCart, handleRemoveFromCart, handleAddToCart]);
 
-    // Manejamos el clic de las cards de productos del carrusel
     const handleProductClick = (product) => {
         if (product.categoryId) {
             navigate(`/categoria/${product.categoryId}`);
         }
     };
 
-    // Carga constante de productos en el carrusel
     const handleRefreshProducts = () => {
         loadFeaturedProducts();
     };
 
-    // Obtener los productos del carrusel
     const getCurrentSlideProducts = () => {
         const productsPerSlide = getProductsPerSlide();
         const startIndex = currentSlide * productsPerSlide;
         return products.slice(startIndex, startIndex + productsPerSlide);
     };
 
-    // Diseño en el caso de que el carrusel se quede cargando
     if (loading) {
         return (
             <section className={`bg-pink-50 py-8 sm:py-14 ${className}`}>
@@ -483,7 +429,6 @@ const FeaturedProductsCarousel = ({
         );
     }
 
-    // Diseño en el caso de que hubo un error obteniendo el carrusel
     if (error || products.length === 0) {
         return (
             <section className={`bg-pink-50 py-8 sm:py-14 ${className}`}>
@@ -502,30 +447,21 @@ const FeaturedProductsCarousel = ({
         );
     }
 
-    // Control de cantidad de productos a mostrar según el tamaño de la pantalla
     const maxSlides = Math.ceil(products.length / getProductsPerSlide());
     const currentProducts = getCurrentSlideProducts();
 
-    // Diseño del carrusel de proeuctos
     return (
         <section className={`bg-pink-50 py-8 sm:py-14 ${className}`}>
             <Container>
                 <div className="text-center mb-8 sm:mb-10 relative">
-                    <h2
-                        className="text-2xl sm:text-3xl lg:text-4xl font-medium text-gray-900 mb-2"
-                        style={{ fontFamily: "Poppins" }}
-                    >
+                    <h2 className="text-2xl sm:text-3xl lg:text-4xl font-medium text-gray-900 mb-2" style={{ fontFamily: "Poppins" }}>
                         Productos destacados
                     </h2>
                     <p className="text-center text-gray-600 mb-4 text-base sm:text-lg max-w-2xl mx-auto" style={{ fontFamily: "Poppins" }}>
                         Descubre nuestros productos más populares, actualizados aleatoriamente.
                     </p>
 
-                    <button
-                        onClick={handleRefreshProducts}
-                        className="absolute top-0 right-0 p-2 text-gray-400 hover:text-gray-600 transition-colors"
-                        title="Actualizar productos"
-                    >
+                    <button onClick={handleRefreshProducts} className="absolute top-0 right-0 p-2 text-gray-400 hover:text-gray-600 transition-colors" title="Actualizar productos">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
@@ -538,7 +474,6 @@ const FeaturedProductsCarousel = ({
                             const productId = product._id || product.id;
                             const isProductFavorite = isFavorite(productId);
                             const isToggling = favoriteToggling.has(productId);
-                            // Estados para el carrito
                             const isAddingToCart = addingToCart.has(productId);
                             const isRemovingFromCart = removingFromCart.has(productId);
                             const inCart = isProductInCart(productId);
@@ -557,16 +492,13 @@ const FeaturedProductsCarousel = ({
                                             src={product.image || '/placeholder-product.jpg'}
                                             alt={product.name}
                                             className="w-full h-48 sm:h-64 lg:h-80 object-cover rounded-t-lg"
-                                            onError={(e) => {
-                                                e.target.src = '/placeholder-product.jpg';
-                                            }}
+                                            onError={(e) => { e.target.src = '/placeholder-product.jpg'; }}
                                         />
 
                                         <div className="absolute top-3 right-3 bg-white bg-opacity-90 rounded-full px-3 py-1 shadow-md">
                                             <PriceDisplay price={product.price} size="sm" />
                                         </div>
 
-                                        {/* Botón de favorito con estado de bloqueo */}
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -575,28 +507,20 @@ const FeaturedProductsCarousel = ({
                                             disabled={isToggling}
                                             className={`absolute top-3 left-3 p-2 rounded-full transition-all duration-200 transform hover:scale-110 shadow-md
                                                 disabled:cursor-not-allowed disabled:transform-none disabled:opacity-75
-                                                ${isProductFavorite
-                                                    ? 'bg-pink-500 bg-opacity-90 hover:bg-opacity-100'
-                                                    : isAuthenticated
-                                                        ? 'bg-white bg-opacity-80 hover:bg-opacity-100'
-                                                        : 'bg-gray-300 bg-opacity-80 cursor-not-allowed'
-                                                }`}
+                                                ${isProductFavorite ? 'bg-pink-500 bg-opacity-90 hover:bg-opacity-100' : isAuthenticated ? 'bg-white bg-opacity-80 hover:bg-opacity-100' : 'bg-gray-300 bg-opacity-80 cursor-not-allowed'}`}
                                             title={!isAuthenticated ? 'Inicia sesión para agregar a favoritos' : (isProductFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos')}
                                         >
                                             {isProductFavorite ? (
-                                                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                                    <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                                <svg className="w-5 h-5 text-white" fill="currentColor" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                                                 </svg>
                                             ) : (
-                                                <img
-                                                    src={iconFavorites}
-                                                    alt="Agregar a favoritos"
-                                                    className={`w-5 h-6 transition-all duration-200 ${!isAuthenticated ? 'opacity-50' : ''}`}
-                                                />
+                                                <svg className={`w-5 h-5 transition-all duration-200 ${!isAuthenticated ? 'text-gray-400' : 'text-gray-600 hover:text-red-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                                </svg>
                                             )}
                                         </button>
 
-                                        {/* Indicador de producto en carrito */}
                                         {inCart && isAuthenticated && (
                                             <div className="absolute top-12 right-3 bg-green-500 bg-opacity-90 rounded-full p-1.5 shadow-md">
                                                 <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
@@ -607,16 +531,11 @@ const FeaturedProductsCarousel = ({
                                     </div>
 
                                     <div className="p-4">
-                                        <h3 className="text-lg font-semibold mb-1" style={{ fontFamily: "Poppins" }}>
-                                            {product.name}
-                                        </h3>
-                                        <p className="text-sm text-gray-600 mb-2" style={{ fontFamily: "Poppins" }}>
-                                            {product.description}
-                                        </p>
+                                        <h3 className="text-lg font-semibold mb-1" style={{ fontFamily: "Poppins" }}>{product.name}</h3>
+                                        <p className="text-sm text-gray-600 mb-2" style={{ fontFamily: "Poppins" }}>{product.description}</p>
 
                                         <div className="flex items-center justify-between mb-3">
                                             <PriceDisplay price={product.price} />
-                                            {/* Indicador de favorito con estado de autenticación */}
                                             <div className={`flex items-center gap-2 ${isProductFavorite ? 'text-pink-500' : !isAuthenticated ? 'text-gray-300' : 'text-gray-400'}`}>
                                                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                                                     <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -627,7 +546,6 @@ const FeaturedProductsCarousel = ({
                                             </div>
                                         </div>
 
-                                        {/* Indicador de cantidad si está en carrito */}
                                         {inCart && cartInfo && isAuthenticated && (
                                             <div className="mb-3 p-2 bg-green-50 rounded-lg border border-green-200">
                                                 <div className="flex items-center justify-between text-sm">
@@ -637,32 +555,17 @@ const FeaturedProductsCarousel = ({
                                             </div>
                                         )}
 
-                                        {/* Botón de añadir al carrito con detección de estado */}
                                         <ActionButton
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 handleCartButtonClick(product);
                                             }}
-                                            variant={!isAuthenticated 
-                                                ? "secondary" 
-                                                : inCart 
-                                                    ? "danger" 
-                                                    : "primary"
-                                            }
+                                            variant={!isAuthenticated ? "secondary" : inCart ? "danger" : "primary"}
                                             size="md"
-                                            className={`w-full ${
-                                                !isAuthenticated 
-                                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed hover:bg-gray-300 hover:text-gray-500 hover:scale-100' 
-                                                    : ''
-                                            }`}
+                                            className={`w-full ${!isAuthenticated ? 'bg-gray-300 text-gray-500 cursor-not-allowed hover:bg-gray-300 hover:text-gray-500 hover:scale-100' : ''}`}
                                             disabled={!isAuthenticated || isAddingToCart || isRemovingFromCart || updating}
                                             loading={isAddingToCart || isRemovingFromCart}
-                                            title={!isAuthenticated 
-                                                ? 'Inicia sesión para gestionar el carrito' 
-                                                : inCart 
-                                                    ? 'Quitar del carrito' 
-                                                    : 'Añadir al carrito'
-                                            }
+                                            title={!isAuthenticated ? 'Inicia sesión para gestionar el carrito' : inCart ? 'Quitar del carrito' : 'Añadir al carrito'}
                                             icon={inCart && isAuthenticated ? (
                                                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                                                     <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -673,16 +576,7 @@ const FeaturedProductsCarousel = ({
                                                 </svg>
                                             )}
                                         >
-                                            {!isAuthenticated 
-                                                ? 'Inicia sesión para comprar' 
-                                                : isAddingToCart 
-                                                    ? 'Agregando...' 
-                                                    : isRemovingFromCart 
-                                                        ? 'Eliminando...' 
-                                                        : inCart 
-                                                            ? 'Quitar del carrito' 
-                                                            : 'Añadir al carrito'
-                                            }
+                                            {!isAuthenticated ? 'Inicia sesión para comprar' : isAddingToCart ? 'Agregando...' : isRemovingFromCart ? 'Eliminando...' : inCart ? 'Quitar del carrito' : 'Añadir al carrito'}
                                         </ActionButton>
                                     </div>
                                 </div>
@@ -692,19 +586,13 @@ const FeaturedProductsCarousel = ({
 
                     {showArrows && maxSlides > 1 && (
                         <>
-                            <button
-                                onClick={prevSlide}
-                                className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-4 bg-white shadow-lg rounded-full p-2 hover:bg-gray-50 transition-colors z-10"
-                            >
+                            <button onClick={prevSlide} className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-4 bg-white shadow-lg rounded-full p-2 hover:bg-gray-50 transition-colors z-10">
                                 <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                                 </svg>
                             </button>
 
-                            <button
-                                onClick={nextSlide}
-                                className="absolute right-0 top-1/2 transform -translate-y-1/2 translate-x-4 bg-white shadow-lg rounded-full p-2 hover:bg-gray-50 transition-colors z-10"
-                            >
+                            <button onClick={nextSlide} className="absolute right-0 top-1/2 transform -translate-y-1/2 translate-x-4 bg-white shadow-lg rounded-full p-2 hover:bg-gray-50 transition-colors z-10">
                                 <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                 </svg>
@@ -719,20 +607,14 @@ const FeaturedProductsCarousel = ({
                             <button
                                 key={index}
                                 onClick={() => goToSlide(index)}
-                                className={`w-3 h-3 rounded-full transition-colors ${index === currentSlide ? 'bg-pink-500' : 'bg-gray-300 hover:bg-gray-400'
-                                    }`}
+                                className={`w-3 h-3 rounded-full transition-colors ${index === currentSlide ? 'bg-pink-500' : 'bg-gray-300 hover:bg-gray-400'}`}
                             />
                         ))}
                     </div>
                 )}
 
                 <div className="flex justify-center mt-8 sm:mt-10">
-                    <ActionButton
-                        onClick={() => navigate('/categoryProducts')}
-                        variant="outline"
-                        size="lg"
-                        className="w-full sm:w-auto"
-                    >
+                    <ActionButton onClick={() => navigate('/categoryProducts')} variant="outline" size="lg" className="w-full sm:w-auto">
                         Ver todos los productos 🡢
                     </ActionButton>
                 </div>

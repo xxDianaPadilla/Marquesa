@@ -2,22 +2,17 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from '../../../context/AuthContext';
 
 const useSalesAdmin = () => {
-  // Estados principales
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Referencias para prevenir loops y race conditions
   const salesRef = useRef([]);
   const isMountedRef = useRef(true);
   const fetchInProgressRef = useRef(false);
 
-  // Hook de autenticación
   const authContext = useAuth();
 
-  // Función core: fetchSales
   const fetchSales = useCallback(async () => {
-    // Prevenir múltiples ejecuciones
     if (fetchInProgressRef.current) {
       return;
     }
@@ -29,7 +24,6 @@ const useSalesAdmin = () => {
     fetchInProgressRef.current = true;
 
     try {
-      // Validar contexto de autenticación
       if (!authContext?.getBestAvailableToken || !authContext?.setAuthToken) {
         throw new Error('AuthContext no disponible');
       }
@@ -37,14 +31,12 @@ const useSalesAdmin = () => {
       setLoading(true);
       setError(null);
 
-      // Headers de autenticación
       const token = authContext.getBestAvailableToken();
       const headers = { 'Content-Type': 'application/json' };
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      // Petición con timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000);
 
@@ -78,7 +70,6 @@ const useSalesAdmin = () => {
           return;
         }
 
-        // Procesar token si existe
         if (result.token) {
           try {
             authContext.setAuthToken(result.token);
@@ -87,16 +78,13 @@ const useSalesAdmin = () => {
           }
         }
 
-        // Validar respuesta
         if (!result.success) {
           throw new Error(result.message || "El servidor indica un error");
         }
 
-        // Procesar datos de ventas
         let salesData = [];
 
         if (!result.data) {
-          // No hay datos
         } else if (Array.isArray(result.data)) {
           salesData = result.data;
         } else if (result.data && typeof result.data === 'object') {
@@ -111,12 +99,10 @@ const useSalesAdmin = () => {
           throw new Error("Datos de respuesta inválidos");
         }
 
-        // Validar ventas
         const validSales = salesData.filter((sale) => {
           return sale && typeof sale === 'object' && sale._id;
         });
 
-        // Ordenar por fecha
         const sortedSales = validSales.sort((a, b) => {
           try {
             const dateA = new Date(a.deliveryDate || 0);
@@ -131,7 +117,6 @@ const useSalesAdmin = () => {
           return;
         }
 
-        // Actualizar estado
         salesRef.current = sortedSales;
         setSales(sortedSales);
 
@@ -162,7 +147,6 @@ const useSalesAdmin = () => {
     }
   }, []);
 
-  // Force fetch para recarga manual
   const forceFetchSales = useCallback(async () => {
     fetchInProgressRef.current = false;
     setSales([]);
@@ -175,17 +159,14 @@ const useSalesAdmin = () => {
     }, 100);
   }, [fetchSales]);
 
-  // ✅ FUNCIÓN CORREGIDA: updateTrackingStatus
   const updateTrackingStatus = useCallback(async (saleId, newStatus) => {
     try {
-      // Validar parámetros de entrada
       if (!saleId || !newStatus) {
         console.error('updateTrackingStatus: Parámetros inválidos', { saleId, newStatus });
         setError('Parámetros inválidos para actualizar el estado');
         return false;
       }
 
-      // Validar que el contexto de autenticación esté disponible
       if (!authContext?.getBestAvailableToken || !authContext?.setAuthToken) {
         console.error('updateTrackingStatus: AuthContext no disponible');
         setError('Error de autenticación');
@@ -194,7 +175,6 @@ const useSalesAdmin = () => {
 
       console.log('🔄 Actualizando estado de tracking:', { saleId, newStatus });
 
-      // ✅ CORRECCIÓN CRÍTICA: Headers de autenticación completos
       const token = authContext.getBestAvailableToken();
       const headers = { 
         'Content-Type': 'application/json'
@@ -207,15 +187,14 @@ const useSalesAdmin = () => {
         console.warn('⚠️ No hay token disponible');
       }
 
-      // ✅ CORRECCIÓN CRÍTICA: Petición con credentials y timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos
+      const timeoutId = setTimeout(() => controller.abort(), 15000); 
 
       const response = await fetch(
         `https://marquesa.onrender.com/api/sales/${saleId}/trackingStatus`,
         {
           method: "PATCH",
-          credentials: 'include', // ✅ CRÍTICO: Incluir cookies para verificación híbrida
+          credentials: 'include', 
           headers,
           body: JSON.stringify({ trackingStatus: newStatus }),
           signal: controller.signal
@@ -230,7 +209,6 @@ const useSalesAdmin = () => {
         statusText: response.statusText
       });
 
-      // ✅ MANEJO MEJORADO DE ERRORES HTTP
       if (!response.ok) {
         let errorDetails;
         try {
@@ -240,11 +218,8 @@ const useSalesAdmin = () => {
           errorDetails = { message: response.statusText };
         }
 
-        // Manejar diferentes tipos de errores
         if (response.status === 401) {
           setError('Sesión expirada. Por favor, inicia sesión nuevamente.');
-          // Opcionalmente: forzar logout
-          // authContext.logout?.();
         } else if (response.status === 403) {
           setError('No tienes permisos para realizar esta acción.');
         } else if (response.status === 404) {
@@ -261,7 +236,6 @@ const useSalesAdmin = () => {
       const data = await response.json();
       console.log('✅ Respuesta exitosa:', data);
 
-      // ✅ PROCESAMIENTO MEJORADO DEL TOKEN
       if (data.token && authContext.setAuthToken) {
         try {
           authContext.setAuthToken(data.token);
@@ -272,7 +246,6 @@ const useSalesAdmin = () => {
         }
       }
 
-      // ✅ VERIFICAR ÉXITO DE LA OPERACIÓN
       if (!data.success) {
         const errorMsg = data.message || 'Error desconocido al actualizar';
         setError(errorMsg);
@@ -280,7 +253,6 @@ const useSalesAdmin = () => {
         return false;
       }
 
-      // ✅ ACTUALIZACIÓN OPTIMISTA DEL ESTADO LOCAL
       setSales((prevSales) => {
         if (!Array.isArray(prevSales)) {
           console.warn('⚠️ prevSales no es un array:', prevSales);
@@ -297,7 +269,7 @@ const useSalesAdmin = () => {
             const updatedSale = { 
               ...sale, 
               trackingStatus: newStatus,
-              updatedAt: new Date().toISOString() // Actualizar timestamp
+              updatedAt: new Date().toISOString() 
             };
             console.log('✅ Sale actualizada localmente:', {
               id: saleId,
@@ -310,12 +282,10 @@ const useSalesAdmin = () => {
           return sale;
         });
 
-        // Actualizar también la referencia
         salesRef.current = updatedSales;
         return updatedSales;
       });
 
-      // Limpiar errores previos
       setError(null);
 
       console.log('🎉 Estado actualizado exitosamente');
@@ -324,7 +294,6 @@ const useSalesAdmin = () => {
     } catch (error) {
       console.error('❌ Error en updateTrackingStatus:', error);
 
-      // Manejar diferentes tipos de errores
       let errorMessage = 'Error al actualizar el estado';
       
       if (error.name === 'AbortError') {
@@ -340,7 +309,6 @@ const useSalesAdmin = () => {
     }
   }, [authContext]);
 
-  // Funciones de filtrado
   const filterSalesByStatus = useCallback((status) => {
     const currentSales = salesRef.current;
     if (!Array.isArray(currentSales)) return [];
@@ -384,13 +352,10 @@ const useSalesAdmin = () => {
     });
   }, []);
 
-  // useEffect para el fetch inicial
   useEffect(() => {
     isMountedRef.current = true;
 
-    // Verificar que tenemos lo mínimo necesario
     if (authContext && typeof authContext.getBestAvailableToken === 'function') {
-      // Pequeño delay para asegurar que todo esté montado
       const timeoutId = setTimeout(() => {
         if (isMountedRef.current) {
           fetchSales();
@@ -405,14 +370,12 @@ const useSalesAdmin = () => {
       setLoading(false);
     }
 
-    // Cleanup principal
     return () => {
       isMountedRef.current = false;
       fetchInProgressRef.current = false;
     };
   }, []);
 
-  // useEffect para cleanup al desmontar
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
@@ -426,7 +389,7 @@ const useSalesAdmin = () => {
     error,
     fetchSales,
     forceFetchSales,
-    updateTrackingStatus, // ✅ Función corregida
+    updateTrackingStatus, 
     filterSalesByStatus,
     filterSalesByDate,
     searchSales,

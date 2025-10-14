@@ -1,5 +1,4 @@
-import React, { useState } from "react"; // Importando React
-// Imports de los íconos de Lucide
+import React, { useState } from "react"; 
 import {
   Eye,
   X,
@@ -10,18 +9,15 @@ import {
   Package,
   CreditCard,
   Clock,
-  CheckCircle,
-  AlertCircle,
 } from "lucide-react";
-import OverlayBackdrop from "./OverlayBackdrop"; // Importando componente para fondo
+import OverlayBackdrop from "./OverlayBackdrop"; 
 
 const SalesCard = ({ sale, onUpdateStatus }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [showPaymentProof, setShowPaymentProof] = useState(false);
-  const [updateError, setUpdateError] = useState(null); // ✅ NUEVO: Estado para errores específicos
-  const [showSuccess, setShowSuccess] = useState(false); // ✅ NUEVO: Estado para mostrar éxito
+  const [updateError, setUpdateError] = useState(null); 
+  const [showSuccess, setShowSuccess] = useState(false); 
 
-  // Obtenemos el color según el estado
   const getStatusColor = (status) => {
     switch (status) {
       case "Agendado":
@@ -35,7 +31,6 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
     }
   };
 
-  // Obtenemos el color de la etiqueta según el estado
   const getStatusBadgeColor = (status) => {
     switch (status) {
       case "Agendado":
@@ -49,7 +44,6 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
     }
   };
 
-  // Obtenemos el icono según el estado
   const getStatusIcon = (status) => {
     switch (status) {
       case "Agendado":
@@ -63,7 +57,6 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
     }
   };
 
-  // Obtenemos el icono del tipo de pago según el estado
   const getPaymentTypeIcon = (paymentType) => {
     switch (paymentType) {
       case "Transferencia":
@@ -79,15 +72,12 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
     }
   };
 
-  // ✅ FUNCIÓN MEJORADA: handleStatusChange
   const handleStatusChange = async (newStatus) => {
-    // Prevenir múltiples actualizaciones simultáneas
     if (isUpdating) {
       console.log('⚠️ Actualización ya en progreso, ignorando...');
       return;
     }
 
-    // Validar que el nuevo estado sea diferente
     if (newStatus === sale.trackingStatus) {
       console.log('⚠️ El estado es el mismo, no hay cambios que hacer');
       return;
@@ -104,19 +94,16 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
     setShowSuccess(false);
 
     try {
-      // Llamar a la función de actualización del hook
       const success = await onUpdateStatus(sale._id, newStatus);
 
       if (success) {
         console.log('✅ Estado actualizado exitosamente');
         
-        // Mostrar mensaje de éxito brevemente
         setShowSuccess(true);
         setTimeout(() => {
           setShowSuccess(false);
         }, 2000);
 
-        // Limpiar cualquier error previo
         setUpdateError(null);
       } else {
         console.error('❌ La actualización falló');
@@ -130,7 +117,6 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
     }
   };
 
-  // Formatemos la fecha
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("es-ES", {
@@ -140,15 +126,6 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
     });
   };
 
-  // Formatemos el tiempo
-  const formatTime = (dateString) => {
-    return new Date(dateString).toLocaleTimeString("es-ES", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  // Función para obtener las iniciales del nombre del cliente
   const getInitials = (name) => {
     if (!name) return "U";
     return name
@@ -159,7 +136,6 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
       .toUpperCase();
   };
 
-  // Componente para el avatar del cliente
   const ClientAvatar = () => {
     if (sale.clientPicture && sale.clientPicture.trim() !== '') {
       return (
@@ -169,7 +145,6 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
             alt={sale.clientName || 'Cliente'}
             className="w-full h-full object-cover"
             onError={(e) => {
-              // Si la imagen falla al cargar, mostrar las iniciales
               e.target.style.display = 'none';
               e.target.nextElementSibling.style.display = 'flex';
             }}
@@ -184,7 +159,6 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
         </div>
       );
     } else {
-      // Si no hay imagen, mostrar iniciales directamente
       return (
         <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md">
           {getInitials(sale.clientName)}

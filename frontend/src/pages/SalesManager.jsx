@@ -3,7 +3,6 @@ import AdminLayout from "../components/AdminLayout";
 import SalesCard from "../components/SalesCard";
 import useSalesAdmin from "../components/Sales/Hooks/useSalesAdmin";
 
-// Componentes nuevos reutilizables
 import SearchBar from "../components/SearchBar";
 import StatsCard from "../components/StatsCard";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -12,7 +11,6 @@ import Badge from "../components/Badge";
 import Container from "../components/Container";
 
 const SalesManager = () => {
-  // Estados locales para filtros y búsqueda
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredSales, setFilteredSales] = useState([]);
   const [selectedStatus, setSelectedStatus] = useState("all");
@@ -23,25 +21,17 @@ const SalesManager = () => {
     entregadas: 0,
   });
 
-  // Hook personalizado para gestión de ventas
   const {
     sales,
     loading,
-    error,
     updateTrackingStatus,
   } = useSalesAdmin();
 
-  /**
-   * Función local para filtrar ventas por estado
-   */
   const filterByStatus = (salesArray, status) => {
     if (status === "all") return salesArray;
     return salesArray.filter((sale) => sale.trackingStatus === status);
   };
 
-  /**
-   * Función local para filtrar ventas por término de búsqueda
-   */
   const filterBySearchTerm = (salesArray, term) => {
     if (!term.trim()) return salesArray;
     
@@ -55,25 +45,16 @@ const SalesManager = () => {
     );
   };
 
-  /**
-   * Efecto para filtrar ventas según búsqueda y estado seleccionado
-   * CORREGIDO: Aplica filtros de forma secuencial sobre el mismo array
-   */
   useEffect(() => {
     let filtered = sales;
 
-    // Aplicar filtro por estado primero
     filtered = filterByStatus(filtered, selectedStatus);
 
-    // Luego aplicar filtro por búsqueda
     filtered = filterBySearchTerm(filtered, searchTerm);
 
     setFilteredSales(filtered);
   }, [sales, selectedStatus, searchTerm]);
 
-  /**
-   * Efecto para calcular estadísticas de ventas
-   */
   useEffect(() => {
     if (sales.length > 0) {
       const agendadas = sales.filter(
@@ -95,23 +76,14 @@ const SalesManager = () => {
     }
   }, [sales]);
 
-  /**
-   * Maneja el cambio de estado de seguimiento de una venta
-   */
   const handleStatusChange = async (saleId, newStatus) => {
     return await updateTrackingStatus(saleId, newStatus);
   };
 
-  /**
-   * Limpia el término de búsqueda
-   */
   const handleClearSearch = () => {
     setSearchTerm("");
   };
 
-  /**
-   * Obtiene el color apropiado para cada estado
-   */
   const getStatusVariant = (status) => {
     switch (status) {
       case "Agendado":
@@ -125,7 +97,6 @@ const SalesManager = () => {
     }
   };
 
-  // Mostrar loading si está cargando
   if (loading) {
     return (
       <AdminLayout>

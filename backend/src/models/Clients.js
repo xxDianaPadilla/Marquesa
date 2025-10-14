@@ -6,35 +6,35 @@ const clientsSchema = new Schema({
     // Nombre completo del cliente
     fullName: {
         type: String,
-        required: true,
+        required: false, // Cambiado a false para permitir documento de configuración
         minLength: 10 // Mínimo 10 caracteres para asegurar nombre y apellido
     },
     // Número de teléfono del cliente
     phone: {
         type: String,
-        required: true,
+        required: false, // Cambiado a false para permitir documento de configuración
         minLength: 9 // Mínimo 9 dígitos para números telefónicos válidos
     },
     // Fecha de nacimiento del cliente
     birthDate: {
         type: Date,
-        required: true
+        required: false // Cambiado a false para permitir documento de configuración
     },
     // Correo electrónico del cliente
     email: {
         type: String,
-        required: true
+        required: false // Cambiado a false para permitir documento de configuración
     },
     // Contraseña del cliente (debe estar hasheada antes de guardar)
     password: {
         type: String,
-        required: true,
+        required: false, // Cambiado a false para permitir documento de configuración
         minLength: 8 // Mínimo 8 caracteres para seguridad
     },
     // Dirección física del cliente
     address: {
         type: String,
-        required: true,
+        required: false, // Cambiado a false para permitir documento de configuración
         minLength: 10 // Mínimo 10 caracteres para dirección completa
     },
     // Array de productos favoritos del cliente
@@ -121,7 +121,34 @@ const clientsSchema = new Schema({
                 required: false
             }
         }
-    ]
+    ],
+    // ✅ NUEVO: Campo para identificar documentos de configuración del sistema
+    isSystemConfig: {
+        type: Boolean,
+        default: false,
+        index: true
+    },
+    // ✅ NUEVO: Tipo de configuración (para futuras expansiones)
+    configType: {
+        type: String,
+        enum: ['ruleta', 'general'],
+        required: false
+    },
+    // ✅ NUEVO: Configuración de la ruleta de descuentos
+    ruletaConfig: {
+        isActive: {
+            type: Boolean,
+            default: true // Por defecto la ruleta está activa
+        },
+        lastModified: {
+            type: Date,
+            default: Date.now
+        },
+        modifiedBy: {
+            type: String,
+            required: false
+        }
+    }
 }, {
     timestamps: true, // Agrega automáticamente createdAt y updatedAt
     strict: false     // Permite campos no definidos en el schema
@@ -130,6 +157,9 @@ const clientsSchema = new Schema({
 // Índices compuestos para mejor performance en consultas
 clientsSchema.index({ "ruletaCodes.codeId": 1, "ruletaCodes.status": 1 });
 clientsSchema.index({ "ruletaCodes.code": 1, "ruletaCodes.status": 1 });
+
+// ✅ NUEVO ÍNDICE para documentos de configuración
+clientsSchema.index({ isSystemConfig: 1, configType: 1 });
 
 // ✅ NUEVO ÍNDICE para Google ID (autenticación con Google)
 clientsSchema.index({ googleId: 1 }, { sparse: true }); // sparse: true ignora documentos sin googleId

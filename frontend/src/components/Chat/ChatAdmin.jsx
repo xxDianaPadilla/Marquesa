@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useChat } from './Hooks/useChat';
 
 // Importar componentes modulares
@@ -10,14 +10,12 @@ import TypingIndicator from './TypingIndicator';
 import ChatStatus from './ChatStatus';
 
 /**
- * Componente ChatAdmin - CORREGIDO PARA ACTUALIZACIONES EN TIEMPO REAL
+ * Componente ChatAdmin - CORREGIDO PARA ESTADOS INDEPENDIENTES POR CONVERSACIÓN
  * 
  * FIXES APLICADOS:
- * - Conversaciones vacías NO aparecen hasta que tengan mensajes
- * - Actualización en tiempo real del último mensaje sin recargar página
- * - Contadores de mensajes no leídos se actualizan automáticamente
- * - Mejor manejo de eventos de Socket.IO para actualizaciones instantáneas
- * - Indicador de límite de 75 mensajes funcional
+ * - Cada conversación mantiene su propio estado de mensaje y archivo
+ * - Al cambiar de conversación, se limpia o restaura el estado específico
+ * - No se comparte el input entre conversaciones
  * 
  * Ubicación: frontend/src/components/Chat/ChatAdmin.jsx
  */
@@ -26,8 +24,6 @@ const ChatAdmin = () => {
         conversations,
         activeConversation,
         messages,
-        newMessage,
-        setNewMessage,
         loading,
         error,
         unreadCount,
@@ -44,27 +40,92 @@ const ChatAdmin = () => {
         openDeleteModal,
         closeDeleteModal,
         confirmDeleteMessage,
-        // ✅ NUEVA FUNCIÓN para actualizaciones en tiempo real
         updateConversationInList
     } = useChat();
 
+    // ✅ NUEVO: Estado para almacenar el contenido de cada conversación individualmente
+    const [conversationStates, setConversationStates] = useState({});
+    
+    // Estados locales para la conversación activa
+    const [newMessage, setNewMessage] = useState('');
     const [selectedFile, setSelectedFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
     const fileInputRef = useRef(null);
 
-    const handleSendMessage = async (messageText, file = null) => {
-        if (!activeConversation || (!messageText?.trim() && !file && !selectedFile)) return;
-
-        const fileToSend = file || selectedFile;
-        const success = await sendMessage(activeConversation.conversationId, messageText, fileToSend);
-
-        if (success) {
+    // ✅ EFECTO: Restaurar o limpiar estado al cambiar de conversación
+    useEffect(() => {
+        if (activeConversation) {
+            const conversationId = activeConversation.conversationId;
+            
+            // Restaurar el estado guardado de esta conversación (si existe)
+            const savedState = conversationStates[conversationId];
+            
+            if (savedState) {
+                setNewMessage(savedState.message || '');
+                setSelectedFile(savedState.file || null);
+                setPreviewUrl(savedState.preview || null);
+            } else {
+                // Si no hay estado guardado, limpiar todo
+                setNewMessage('');
+                setSelectedFile(null);
+                setPreviewUrl(null);
+                if (fileInputRef.current) {
+                    fileInputRef.current.value = '';
+                }
+            }
+        } else {
+            // Si no hay conversación activa, limpiar todo
             setNewMessage('');
             setSelectedFile(null);
             setPreviewUrl(null);
             if (fileInputRef.current) {
                 fileInputRef.current.value = '';
             }
+        }
+    }, [activeConversation?.conversationId]); // Solo ejecutar cuando cambie el ID de conversación
+
+    // ✅ FUNCIÓN: Guardar el estado actual de la conversación antes de cambiar
+    const saveCurrentConversationState = () => {
+        if (activeConversation && (newMessage.trim() || selectedFile)) {
+            const conversationId = activeConversation.conversationId;
+            setConversationStates(prev => ({
+                ...prev,
+                [conversationId]: {
+                    message: newMessage,
+                    file: selectedFile,
+                    preview: previewUrl
+                }
+            }));
+        }
+    };
+
+    // ✅ FUNCIÓN: Limpiar el estado guardado de una conversación (después de enviar)
+    const clearConversationState = (conversationId) => {
+        setConversationStates(prev => {
+            const newStates = { ...prev };
+            delete newStates[conversationId];
+            return newStates;
+        });
+    };
+
+    const handleSendMessage = async (messageText, file = null) => {
+        if (!activeConversation || (!messageText?.trim() && !file && !selectedFile)) return;
+
+        const fileToSend = file || selectedFile;
+        const conversationId = activeConversation.conversationId;
+        const success = await sendMessage(conversationId, messageText, fileToSend);
+
+        if (success) {
+            // Limpiar estado local
+            setNewMessage('');
+            setSelectedFile(null);
+            setPreviewUrl(null);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+            
+            // ✅ Limpiar estado guardado de esta conversación
+            clearConversationState(conversationId);
         }
     };
 
@@ -99,6 +160,15 @@ const ChatAdmin = () => {
         }
     };
 
+    // ✅ MODIFICADO: Guardar estado antes de cambiar de conversación
+    const handleSelectConversation = async (conversation) => {
+        // Guardar el estado actual antes de cambiar
+        saveCurrentConversationState();
+        
+        // Cambiar a la nueva conversación
+        await selectConversation(conversation);
+    };
+
     const handleMessageAction = (action, message) => {
         if (action === 'delete') {
             const canDelete = message.senderType === 'admin' ||
@@ -125,7 +195,6 @@ const ChatAdmin = () => {
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
 
-        // ✅ CORRECCIÓN CRÍTICA: Comparar solo fechas, no horas
         const messageDateOnly = messageDate.toDateString();
         const todayOnly = today.toDateString();
         const yesterdayOnly = yesterday.toDateString();
@@ -163,7 +232,6 @@ const ChatAdmin = () => {
                 <div className="p-3 md:p-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">
                     <h3 className="text-lg md:text-xl font-semibold text-gray-900" style={{ fontFamily: 'Poppins, sans-serif' }}>
                         Chat de Soporte
-                        {/* ✅ CONTADOR EN TIEMPO REAL: Se actualiza automáticamente */}
                         {unreadCount > 0 && (
                             <span className="ml-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
                                 {unreadCount}
@@ -171,7 +239,6 @@ const ChatAdmin = () => {
                         )}
                     </h3>
                     <p className="text-sm text-gray-600" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                        {/* ✅ SOLO CONVERSACIONES CON MENSAJES: El contador refleja conversaciones reales */}
                         {conversations.length} conversación(es) con mensajes
                     </p>
                 </div>
@@ -179,7 +246,6 @@ const ChatAdmin = () => {
                 {/* Estado de conexión */}
                 <ChatStatus isConnected={isConnected} />
 
-                {/* ✅ LISTA MEJORADA: Solo conversaciones con mensajes, actualizaciones en tiempo real */}
                 <div className="flex-1 overflow-y-auto">
                     {conversations.length === 0 ? (
                         <div className="p-4 text-center text-gray-500">
@@ -199,7 +265,7 @@ const ChatAdmin = () => {
                         conversations.map((conversation) => (
                             <div
                                 key={conversation.conversationId}
-                                onClick={() => selectConversation(conversation)}
+                                onClick={() => handleSelectConversation(conversation)}
                                 className={`p-3 md:p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${activeConversation?.conversationId === conversation.conversationId
                                     ? 'bg-[#E8ACD2] bg-opacity-20 border-l-4 border-l-[#E8ACD2]'
                                     : ''
@@ -207,7 +273,6 @@ const ChatAdmin = () => {
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center space-x-3 flex-1 min-w-0">
-                                        {/* ✅ CORRECCIÓN: Avatar siempre del cliente original */}
                                         <div className="w-8 md:w-10 h-8 md:h-10 bg-[#E8ACD2] rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0">
                                             {conversation.clientId?.profilePicture ? (
                                                 <img
@@ -220,33 +285,27 @@ const ChatAdmin = () => {
                                             )}
                                         </div>
 
-                                        {/* ✅ CORRECCIÓN: Info siempre del cliente original */}
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm font-medium text-gray-900 truncate" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                                 {conversation.clientId?.fullName || 'Cliente'}
                                             </p>
-                                            {/* Último mensaje (puede ser de admin o cliente) */}
                                             <p className="text-xs text-gray-500 truncate" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                                 {conversation.lastMessage || 'Nuevo mensaje...'}
                                             </p>
                                         </div>
                                     </div>
 
-                                    {/* Indicadores actualizados en tiempo real */}
                                     <div className="flex flex-col items-end space-y-1 flex-shrink-0 ml-2">
-                                        {/* ✅ Hora del último mensaje */}
                                         <span className="text-xs text-gray-500">
                                             {conversation.lastMessageAt && formatTime(conversation.lastMessageAt)}
                                         </span>
 
-                                        {/* ✅ Contador no leídos */}
                                         {conversation.unreadCountAdmin > 0 && (
                                             <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full min-w-[20px] text-center animate-pulse">
                                                 {conversation.unreadCountAdmin}
                                             </span>
                                         )}
 
-                                        {/* ✅ Indicador de actividad reciente */}
                                         {conversation.lastMessageAt &&
                                             new Date() - new Date(conversation.lastMessageAt) < 5 * 60 * 1000 && (
                                                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" title="Actividad reciente"></span>
@@ -267,7 +326,6 @@ const ChatAdmin = () => {
                         <div className="p-3 md:p-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-3 flex-1 min-w-0">
-                                    {/* ✅ CORRECCIÓN: Avatar siempre del cliente de la conversación */}
                                     <div className="w-6 md:w-8 h-6 md:h-8 bg-[#E8ACD2] rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
                                         {activeConversation.clientId?.profilePicture ? (
                                             <img
@@ -280,7 +338,6 @@ const ChatAdmin = () => {
                                         )}
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        {/* ✅ CORRECCIÓN: Nombre y email siempre del cliente de la conversación */}
                                         <h4 className="font-medium text-gray-900 truncate" style={{ fontFamily: 'Poppins, sans-serif' }}>
                                             {activeConversation.clientId?.fullName || 'Cliente'}
                                         </h4>
@@ -290,7 +347,6 @@ const ChatAdmin = () => {
                                     </div>
                                 </div>
 
-                                {/* ✅ INDICADOR DE LÍMITE MEJORADO */}
                                 <div className="flex flex-col items-end text-xs text-gray-500">
                                     <span className={`${isNearLimit ? 'text-orange-500' : isAtLimit ? 'text-red-500' : 'text-gray-500'} transition-colors duration-300`}>
                                         {messageCount}/75 mensajes
@@ -339,13 +395,10 @@ const ChatAdmin = () => {
                                     </div>
                                 </div>
                             ) : (
-                                // ✅ CORRECCIÓN CRÍTICA: Filtrar mensajes y calcular fechas correctamente
                                 (() => {
-                                    // Filtrar mensajes válidos una sola vez
                                     const validMessages = messages.filter(message => !message.isDeleted);
 
                                     return validMessages.map((message, index) => {
-                                        // ✅ FIX: Comparar con el mensaje anterior en la lista filtrada
                                         const showDate = index === 0 ||
                                             formatDate(message.createdAt) !== formatDate(validMessages[index - 1].createdAt);
 
@@ -400,7 +453,6 @@ const ChatAdmin = () => {
                         {/* Input de mensaje */}
                         <div className="p-3 md:p-4 border-t border-gray-200 bg-white flex-shrink-0">
                             <form onSubmit={handleFormSubmit} className="flex items-end space-x-2 md:space-x-3">
-                                {/* Botón de archivo */}
                                 <button
                                     type="button"
                                     onClick={() => fileInputRef.current?.click()}
@@ -476,7 +528,7 @@ const ChatAdmin = () => {
                 formatTime={formatTime}
             />
 
-            {/* ✅ MODAL DE ERROR MEJORADO: Mejor feedback para actualizaciones en tiempo real */}
+            {/* Modal de error */}
             {error && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg p-6 max-w-sm mx-4 border-l-4 border-red-500">

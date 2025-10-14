@@ -15,11 +15,10 @@
  * - StatisticsCharts (existente)
  * - BestSelledProductsCards (existente)
  * - BestRankedProductsCards (existente)
- * - ActionButton (nuevo)
+ * - RuletaToggleControl (nuevo)
  */
 
-import React, { useState } from "react";
-import ruletaIcon from "../assets/ruleta.png";
+import React from "react";
 
 // Componentes existentes
 import AdminLayout from "../components/AdminLayout";
@@ -29,32 +28,10 @@ import StatisticsCharts from "../components/StatisticsCharts";
 import BestSelledProductsCards from "../components/BestSelledProductsCards";
 import BestRankedProductsCards from "../components/BestRankedProductsCards";
 
-// Componentes nuevos reutilizables
-import ActionButton from "../components/ActionButton";
+// ✅ NUEVO: Componente para control de ruleta
+import RuletaToggleControl from "../components/RuletaToggleControl";
 
 const Dashboard = () => {
-  // Estado para controlar la ruleta de descuentos
-  const [ruletaEnabled, setRuletaEnabled] = useState(false);
-  const [ruletaLoading, setRuletaLoading] = useState(false);
-
-  /**
-   * Maneja la habilitación/deshabilitación de la ruleta
-   */
-  const handleRuletaToggle = async (enable) => {
-    setRuletaLoading(true);
-    
-    // Simular llamada a API
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setRuletaEnabled(enable);
-      console.log(`Ruleta ${enable ? 'habilitada' : 'deshabilitada'}`);
-    } catch (error) {
-      console.error('Error al actualizar estado de ruleta:', error);
-    } finally {
-      setRuletaLoading(false);
-    }
-  };
-
   return (
     <AdminLayout>
       <div className="p-3 sm:p-6">
@@ -87,6 +64,11 @@ const Dashboard = () => {
 
         {/* Tarjetas de estadísticas principales */}
         <DashboardCards />
+
+        {/* ✅ NUEVO: Control de Ruleta de Descuentos */}
+        <div className="mb-6">
+          <RuletaToggleControl />
+        </div>
 
         {/* Grid principal del dashboard */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

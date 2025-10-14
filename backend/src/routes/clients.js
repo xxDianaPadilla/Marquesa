@@ -5,7 +5,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from 'url';
-import verifyToken from "../middlewares/validateAuthToken.js";
+import verifyToken, { verifyAdmin } from "../middlewares/validateAuthToken.js";
 
 // Configuración de multer para imágenes de perfil
 const __filename = fileURLToPath(import.meta.url);
@@ -92,6 +92,19 @@ router.get("/total", clientsController.getTotalClients);
 
 // Ruta para estadísticas detalladas
 router.get("/detailedStats", clientsController.getDetailedClientsStats);
+
+// ==================== RUTAS PARA CONTROL DE RULETA (NUEVAS) ====================
+
+// ✅ NUEVA: Obtener estado de la ruleta (público, sin autenticación)
+router.get("/ruleta/status", 
+    clientsController.getRuletaStatus
+);
+
+// ✅ NUEVA: Activar/Desactivar ruleta (solo admin)
+router.put("/ruleta/toggle", 
+    verifyAdmin, // Solo administradores pueden cambiar el estado
+    clientsController.toggleRuletaStatus
+);
 
 // ==================== RUTAS PARA CÓDIGOS DE RULETA ====================
 

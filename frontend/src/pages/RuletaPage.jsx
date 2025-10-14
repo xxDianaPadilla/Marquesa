@@ -1,8 +1,9 @@
 /**
- * Página de la ruleta de descuentos para clientes - VERSIÓN ACTUALIZADA CON BACKEND
+ * Página de la ruleta de descuentos para clientes - VERSIÓN ACTUALIZADA CON CONTROL DE ESTADO
  * Permite a los usuarios girar una ruleta para obtener códigos de descuento reales
  * Los códigos se generan en el backend y se almacenan en el perfil del usuario
  * Muestra códigos obtenidos dinámicamente desde la base de datos
+ * ✅ NUEVO: Verifica si la ruleta está activa antes de permitir girar
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -22,19 +23,42 @@ const RuletaPage = () => {
     const [userCodes, setUserCodes] = useState([]);
     const [loadingCodes, setLoadingCodes] = useState(false);
     
+    // ✅ NUEVO: Estado para verificar si la ruleta está activa
+    const [isRuletaActive, setIsRuletaActive] = useState(true);
+    const [checkingRuletaStatus, setCheckingRuletaStatus] = useState(true);
+    
     // Hook personalizado para manejar la lógica de la ruleta
     const {
-        isSpinning, // Estado de si la ruleta está girando
-        selectedCode, // Código seleccionado después del giro
-        showResult, // Si mostrar el modal de resultado
-        hasSpun, // Si el usuario ya ha girado la ruleta
-        error, // Error si ocurre algún problema
-        spinRuleta, // Función para girar la ruleta
-        resetRuleta, // Función para resetear la ruleta
-        closeResult, // Función para cerrar el modal de resultado
-        copyToClipboard, // Función para copiar código al portapapeles
-        clearError // Función para limpiar errores
+        isSpinning,
+        selectedCode,
+        showResult,
+        hasSpun,
+        error,
+        spinRuleta,
+        resetRuleta,
+        closeResult,
+        copyToClipboard,
+        clearError,
+        checkRuletaStatus // ✅ NUEVA: Función para verificar estado de ruleta
     } = useRuleta();
+
+    /**
+     * ✅ NUEVA: Función para verificar el estado de la ruleta
+     */
+    const checkRuletaActiveStatus = async () => {
+        try {
+            setCheckingRuletaStatus(true);
+            const status = await checkRuletaStatus();
+            setIsRuletaActive(status.isActive);
+            console.log('Estado de ruleta verificado:', status.isActive);
+        } catch (error) {
+            console.error('Error verificando estado de ruleta:', error);
+            // En caso de error, asumir que está activa
+            setIsRuletaActive(true);
+        } finally {
+            setCheckingRuletaStatus(false);
+        }
+    };
 
     /**
      * Función para obtener los códigos del usuario desde el backend
@@ -123,7 +147,6 @@ const RuletaPage = () => {
      */
     const handleCloseResult = () => {
         closeResult();
-        // Recargar códigos después de generar uno nuevo
         fetchUserCodes();
     };
 
@@ -134,6 +157,11 @@ const RuletaPage = () => {
         resetRuleta();
         clearError();
     };
+
+    // ✅ NUEVO: Verificar estado de la ruleta al montar el componente
+    useEffect(() => {
+        checkRuletaActiveStatus();
+    }, []);
 
     // Cargar códigos del usuario al montar el componente
     useEffect(() => {
@@ -149,9 +177,8 @@ const RuletaPage = () => {
         }
     }, [error]);
 
-    // Redirigir a login si no está autenticado (opcional, depende de tu flujo)
+    // Redirigir a login si no está autenticado
     if (!loading && !isAuthenticated) {
-        // Puedes comentar esto si quieres permitir ver la página sin autenticación
         toast.error('Debes iniciar sesión para acceder a la ruleta');
         navigate('/login');
         return null;
@@ -159,10 +186,8 @@ const RuletaPage = () => {
 
     return (
         <div>
-            {/* Header de la página */}
             <Header />
 
-            {/* Contenido principal */}
             <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
                 {/* Título principal de la página */}
                 <div className="text-center mb-6 sm:mb-8">
@@ -172,84 +197,110 @@ const RuletaPage = () => {
                     >
                         Ruleta marquesa
                     </h1>
+                    
                     {/* Mostrar información de autenticación */}
                     {!isAuthenticated && (
                         <p className="text-orange-600 text-sm font-medium">
                             Inicia sesión para obtener códigos de descuento personalizados
                         </p>
                     )}
+                    
+                    
                 </div>
 
-                {/* Layout principal - Imagen a la izquierda, códigos a la derecha */}
+                {/* Layout principal */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 items-start">
                     
                     {/* Sección izquierda - Componente de la ruleta */}
                     <div className="flex flex-col items-center order-1 lg:order-1">
-                        <RuletaAnimation 
-                            isSpinning={isSpinning}
-                            onSpin={spinRuleta}
-                            hasSpun={hasSpun}
-                            showResult={showResult}
-                        />
-                        
-                        {/* Mensajes dinámicos debajo de la ruleta */}
-                        <div className="text-center mt-4 sm:mt-6 px-2">
-                            {/* Mostrar error si existe */}
-                            {error && (
-                                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                                    <p className="text-sm">{error}</p>
-                                    <button
-                                        onClick={clearError}
-                                        className="mt-2 text-xs underline hover:no-underline"
-                                        style={{ cursor: 'pointer' }}
-                                    >
-                                        Cerrar
-                                    </button>
-                                </div>
-                            )}
+                        {/* ✅ NUEVO: Solo mostrar ruleta si está activa */}
+                        {isRuletaActive ? (
+                            <>
+                                <RuletaAnimation 
+                                    isSpinning={isSpinning}
+                                    onSpin={spinRuleta}
+                                    hasSpun={hasSpun}
+                                    showResult={showResult}
+                                />
+                                
+                                {/* Mensajes dinámicos debajo de la ruleta */}
+                                <div className="text-center mt-4 sm:mt-6 px-2">
+                                    {/* Mostrar error si existe */}
+                                    {error && (
+                                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                                            <p className="text-sm">{error}</p>
+                                            <button
+                                                onClick={clearError}
+                                                className="mt-2 text-xs underline hover:no-underline"
+                                                style={{ cursor: 'pointer' }}
+                                            >
+                                                Cerrar
+                                            </button>
+                                        </div>
+                                    )}
 
-                            {!error && !hasSpun && !isSpinning && (
-                                <p 
-                                    className="text-gray-700 text-base sm:text-lg font-medium"
-                                    style={{ fontFamily: 'Poppins, sans-serif' }}
-                                >
-                                    {isAuthenticated 
-                                        ? '¡Haz clic en la ruleta para obtener tu descuento!'
-                                        : 'Inicia sesión para girar la ruleta y obtener descuentos'
-                                    }
-                                </p>
-                            )}
-                            
-                            {!error && isSpinning && (
-                                <p 
-                                    className="text-gray-700 text-base sm:text-lg font-medium animate-pulse"
-                                    style={{ fontFamily: 'Poppins, sans-serif' }}
-                                >
-                                    ¡La ruleta está girando! Espera tu resultado...
-                                </p>
-                            )}
-                            
-                            {!error && hasSpun && (
-                                <div className="space-y-3 sm:space-y-4">
-                                    <p 
-                                        className="text-green-600 text-base sm:text-lg font-medium"
-                                        style={{ fontFamily: 'Poppins, sans-serif' }}
-                                    >
-                                        ¡Código generado exitosamente!
-                                    </p>
-                                    <button
-                                        onClick={handleReset}
-                                        className="bg-pink-500 hover:bg-pink-600 text-white px-4 sm:px-6 py-2 rounded-lg font-medium transition-colors duration-200"
-                                        style={{ fontFamily: 'Poppins, sans-serif', cursor: 'pointer' }}
-                                    >
-                                        Intentar de nuevo
-                                    </button>
+                                    {!error && !hasSpun && !isSpinning && (
+                                        <p 
+                                            className="text-gray-700 text-base sm:text-lg font-medium"
+                                            style={{ fontFamily: 'Poppins, sans-serif' }}
+                                        >
+                                            {isAuthenticated 
+                                                ? '¡Haz clic en la ruleta para obtener tu descuento!'
+                                                : 'Inicia sesión para girar la ruleta y obtener descuentos'
+                                            }
+                                        </p>
+                                    )}
+                                    
+                                    {!error && isSpinning && (
+                                        <p 
+                                            className="text-gray-700 text-base sm:text-lg font-medium animate-pulse"
+                                            style={{ fontFamily: 'Poppins, sans-serif' }}
+                                        >
+                                            ¡La ruleta está girando! Espera tu resultado...
+                                        </p>
+                                    )}
+                                    
+                                    {!error && hasSpun && (
+                                        <div className="space-y-3 sm:space-y-4">
+                                            <p 
+                                                className="text-green-600 text-base sm:text-lg font-medium"
+                                                style={{ fontFamily: 'Poppins, sans-serif' }}
+                                            >
+                                                ¡Código generado exitosamente!
+                                            </p>
+                                            <button
+                                                onClick={handleReset}
+                                                className="bg-pink-500 hover:bg-pink-600 text-white px-4 sm:px-6 py-2 rounded-lg font-medium transition-colors duration-200"
+                                                style={{ fontFamily: 'Poppins, sans-serif', cursor: 'pointer' }}
+                                            >
+                                                Intentar de nuevo
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
-                            )}
-                        </div>
+                            </>
+                        ) : (
+                            /* ✅ NUEVO: Mostrar mensaje grande cuando está desactivada */
+                            <div className="w-full max-w-md bg-gray-50 border-2 border-gray-200 rounded-2xl p-8 text-center">
+                                <div className="w-24 h-24 mx-auto mb-6 bg-gray-200 rounded-full flex items-center justify-center">
+                                    <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-2xl font-bold text-gray-800 mb-3" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                    Ruleta Desactivada
+                                </h3>
+                                <p className="text-gray-600 text-base mb-4" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                    La ruleta de descuentos no está disponible en este momento.
+                                </p>
+                                <p className="text-gray-500 text-sm" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                    Puedes revisar tus códigos obtenidos anteriormente o volver más tarde.
+                                </p>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Sección derecha - Lista de códigos obtenidos DINÁMICOS */}
+                    {/* Sección derecha - Lista de códigos obtenidos */}
                     <div className="bg-white rounded-2xl sm:rounded-3xl shadow-sm p-4 sm:p-6 lg:p-8 border border-gray-200 order-2 lg:order-2">
                         <div className="flex items-center justify-between mb-4 sm:mb-6">
                             <h2 
@@ -259,7 +310,6 @@ const RuletaPage = () => {
                                 Mis códigos obtenidos
                             </h2>
                             
-                            {/* Botón para recargar códigos */}
                             <button
                                 onClick={fetchUserCodes}
                                 disabled={loadingCodes}
@@ -270,7 +320,6 @@ const RuletaPage = () => {
                             </button>
                         </div>
                         
-                        {/* Mostrar estado de carga */}
                         {loadingCodes && (
                             <div className="text-center py-8">
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500 mx-auto mb-4"></div>
@@ -280,7 +329,6 @@ const RuletaPage = () => {
                             </div>
                         )}
 
-                        {/* Mostrar códigos del usuario o mensaje si no hay */}
                         {!loadingCodes && (
                             <div className="space-y-3 sm:space-y-4">
                                 {userCodes.length > 0 ? (
@@ -366,7 +414,6 @@ const RuletaPage = () => {
                                                 </div>
                                             </div>
 
-                                            {/* Información adicional según el estado */}
                                             {code.status === 'used' && code.usedAt && (
                                                 <div className="mt-3 pt-3 border-t border-gray-300 border-opacity-50">
                                                     <span 
@@ -384,7 +431,7 @@ const RuletaPage = () => {
                                     ))
                                 ) : (
                                     <div className="text-center py-8">
-                                        <div className="text-6xl mb-4"></div>
+                                        <div className="text-6xl mb-4">🎰</div>
                                         <p 
                                             className="text-gray-500 text-lg mb-2" 
                                             style={{ fontFamily: 'Poppins, sans-serif' }}
@@ -402,7 +449,6 @@ const RuletaPage = () => {
                             </div>
                         )}
 
-                        {/* Información sobre límites de códigos */}
                         {!loadingCodes && userCodes.length > 0 && (
                             <div className="mt-4 pt-4 border-t border-gray-200">
                                 <div className="flex items-center justify-between text-xs text-gray-500">
@@ -416,7 +462,6 @@ const RuletaPage = () => {
                             </div>
                         )}
 
-                        {/* Botón de acción para ir a comprar */}
                         <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">
                             <button
                                 onClick={handleStartShopping}
@@ -427,14 +472,13 @@ const RuletaPage = () => {
                                     backgroundColor: '#E8ACD2'
                                 }}
                             >
-                                Comenzar a comprar 
+                                Comenzar a comprar 🛍️
                             </button>
                         </div>
                     </div>
                 </div>
             </main>
 
-            {/* Modal de resultado que aparece después de girar la ruleta */}
             <ResultModal 
                 isOpen={showResult}
                 selectedCode={selectedCode}
@@ -442,7 +486,6 @@ const RuletaPage = () => {
                 onCopyCode={copyToClipboard}
             />
 
-            {/* Footer de la página */}
             <Footer />
         </div>
     );

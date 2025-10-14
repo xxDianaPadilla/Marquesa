@@ -1308,8 +1308,140 @@ clientsController.toggleFavorite = async (req, res) => {
     }
 };
 
+// ==================== NUEVAS FUNCIONES PARA CONTROL DE RULETA ====================
+
 /**
- * Generar código de ruleta
+ * Obtener el estado actual de la ruleta (público)
+ * Endpoint: GET /api/clients/ruleta/status
+ */
+clientsController.getRuletaStatus = async (req, res) => {
+    try {
+        console.log('=== INICIO getRuletaStatus ===');
+
+        // Buscar el documento de configuración de la ruleta
+        let config = await clientsModel.findOne({
+            isSystemConfig: true,
+            configType: 'ruleta'
+        });
+
+        // Si no existe configuración, crearla con valores por defecto
+        if (!config) {
+            console.log('No existe configuración, creando con valores por defecto...');
+            config = await clientsModel.create({
+                isSystemConfig: true,
+                configType: 'ruleta',
+                ruletaConfig: {
+                    isActive: true,
+                    lastModified: new Date(),
+                    modifiedBy: 'system'
+                }
+            });
+        }
+
+        const isActive = config.ruletaConfig?.isActive ?? true;
+
+        console.log('Estado de ruleta obtenido:', isActive);
+
+        res.status(200).json({
+            success: true,
+            isActive: isActive,
+            lastModified: config.ruletaConfig?.lastModified || config.updatedAt,
+            message: isActive 
+                ? 'La ruleta está activa' 
+                : 'La ruleta está temporalmente desactivada'
+        });
+
+    } catch (error) {
+        console.error('Error en getRuletaStatus:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error al obtener el estado de la ruleta",
+            error: error.message,
+            // En caso de error, asumir que está activa para no bloquear a usuarios
+            isActive: true
+        });
+    }
+};
+
+/**
+ * Activar o desactivar la ruleta (solo admin)
+ * Endpoint: PUT /api/clients/ruleta/toggle
+ */
+clientsController.toggleRuletaStatus = async (req, res) => {
+    try {
+        console.log('=== INICIO toggleRuletaStatus ===');
+        console.log('User ID del token:', req.user?.id);
+        console.log('User Type:', req.user?.userType);
+        console.log('Datos recibidos:', req.body);
+
+        const adminId = req.user?.id;
+        const { isActive } = req.body;
+
+        // Validar que se proporcione el estado
+        if (typeof isActive !== 'boolean') {
+            return res.status(400).json({
+                success: false,
+                message: "El campo 'isActive' es requerido y debe ser boolean"
+            });
+        }
+
+        // Buscar o crear el documento de configuración
+        let config = await clientsModel.findOne({
+            isSystemConfig: true,
+            configType: 'ruleta'
+        });
+
+        if (!config) {
+            // Crear configuración si no existe
+            config = await clientsModel.create({
+                isSystemConfig: true,
+                configType: 'ruleta',
+                ruletaConfig: {
+                    isActive: isActive,
+                    lastModified: new Date(),
+                    modifiedBy: adminId
+                }
+            });
+            console.log('Configuración creada:', config.ruletaConfig);
+        } else {
+            // Actualizar configuración existente
+            config.ruletaConfig = {
+                isActive: isActive,
+                lastModified: new Date(),
+                modifiedBy: adminId
+            };
+            await config.save();
+            console.log('Configuración actualizada:', config.ruletaConfig);
+        }
+
+        // Configurar cookies con configuración dinámica
+        const cookieConfig = getCookieConfig();
+        const currentToken = req.cookies?.authToken || 'session_maintained';
+        res.cookie("authToken", currentToken, cookieConfig);
+
+        res.status(200).json({
+            success: true,
+            message: `Ruleta ${isActive ? 'activada' : 'desactivada'} exitosamente`,
+            isActive: config.ruletaConfig.isActive,
+            lastModified: config.ruletaConfig.lastModified,
+            token: currentToken
+        });
+
+    } catch (error) {
+        console.error('Error en toggleRuletaStatus:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error al cambiar el estado de la ruleta",
+            error: error.message
+        });
+    }
+};
+
+// ==================== MODIFICAR FUNCIÓN EXISTENTE ====================
+
+/**
+ * ✅ MODIFICACIÓN: Generar código de ruleta (VERIFICAR ESTADO PRIMERO)
+ * Esta es la versión actualizada de la función existente
  */
 clientsController.generateRuletaCode = async (req, res) => {
     try {
@@ -1323,6 +1455,23 @@ clientsController.generateRuletaCode = async (req, res) => {
             });
         }
 
+        // ✅ NUEVA VALIDACIÓN: Verificar si la ruleta está activa
+        const config = await clientsModel.findOne({
+            isSystemConfig: true,
+            configType: 'ruleta'
+        });
+
+        const isRuletaActive = config?.ruletaConfig?.isActive ?? true;
+
+        if (!isRuletaActive) {
+            console.log('❌ Intento de generar código con ruleta desactivada');
+            return res.status(403).json({
+                success: false,
+                message: "La ruleta de descuentos está temporalmente desactivada. Inténtalo más tarde.",
+                isRuletaActive: false
+            });
+        }
+
         const client = await clientsModel.findById(userId);
         if (!client) {
             return res.status(404).json({
@@ -1331,7 +1480,7 @@ clientsController.generateRuletaCode = async (req, res) => {
             });
         }
 
-        // ✅ NUEVA LISTA: Nombres específicos de promociones que coinciden con el frontend
+        // ✅ LISTA: Nombres específicos de promociones que coinciden con el frontend
         const promotionNames = [
             'Verano 2025',
             'Ruleta marquesa', 
@@ -1345,7 +1494,7 @@ clientsController.generateRuletaCode = async (req, res) => {
             'Oferta Exclusiva'
         ];
 
-        // ✅ NUEVA LISTA: Descuentos específicos para cada promoción
+        // ✅ LISTA: Descuentos específicos para cada promoción
         const promotionDiscounts = [
             '25% OFF',
             '20% OFF', 
@@ -1359,7 +1508,7 @@ clientsController.generateRuletaCode = async (req, res) => {
             '10% OFF'
         ];
 
-        // ✅ NUEVA LISTA: Colores específicos para cada promoción (coinciden con frontend)
+        // ✅ LISTA: Colores específicos para cada promoción (coinciden con frontend)
         const promotionColors = [
             '#FADDDD', // Rosa claro
             '#E8ACD2', // Rosa medio
@@ -1373,7 +1522,7 @@ clientsController.generateRuletaCode = async (req, res) => {
             '#FFF3CD'  // Amarillo claro
         ];
 
-        // ✅ NUEVA LISTA: Colores de texto para cada promoción
+        // ✅ LISTA: Colores de texto para cada promoción
         const textColors = [
             '#374151', // Gris oscuro
             '#FFFFFF', // Blanco
@@ -1387,7 +1536,7 @@ clientsController.generateRuletaCode = async (req, res) => {
             '#856404'  // Amarillo oscuro
         ];
 
-        // ✅ FUNCIÓN MEJORADA: Seleccionar promoción aleatoria o usar datos proporcionados
+        // ✅ FUNCIÓN: Seleccionar promoción aleatoria o usar datos proporcionados
         let selectedName, selectedDiscount, selectedColor, selectedTextColor;
 
         if (name && discount && color && textColor) {
@@ -1397,7 +1546,7 @@ clientsController.generateRuletaCode = async (req, res) => {
             selectedColor = color;
             selectedTextColor = textColor;
         } else {
-            // ✅ NUEVA LÓGICA: Seleccionar aleatoriamente de las listas predefinidas
+            // ✅ LÓGICA: Seleccionar aleatoriamente de las listas predefinidas
             const randomIndex = Math.floor(Math.random() * promotionNames.length);
             selectedName = promotionNames[randomIndex];
             selectedDiscount = promotionDiscounts[randomIndex];
@@ -1405,14 +1554,14 @@ clientsController.generateRuletaCode = async (req, res) => {
             selectedTextColor = textColors[randomIndex];
         }
 
-        // ✅ FUNCIÓN MEJORADA: Crear el nuevo código con nombres específicos
+        // ✅ FUNCIÓN: Crear el nuevo código con nombres específicos
         const newCode = {
             codeId: new mongoose.Types.ObjectId().toString(),
             code: Math.random().toString(36).substring(2, 10).toUpperCase(),
-            name: selectedName, // ✅ CORREGIDO: Usar nombre específico de promoción
-            discount: selectedDiscount, // ✅ CORREGIDO: Usar descuento específico
-            color: selectedColor, // ✅ CORREGIDO: Usar color específico
-            textColor: selectedTextColor, // ✅ CORREGIDO: Usar color de texto específico
+            name: selectedName,
+            discount: selectedDiscount,
+            color: selectedColor,
+            textColor: selectedTextColor,
             status: 'active',
             createdAt: new Date(),
             expiresAt: new Date(Date.now() + (expiresInDays * 24 * 60 * 60 * 1000))
@@ -1448,7 +1597,7 @@ clientsController.generateRuletaCode = async (req, res) => {
         console.log('✅ Código de ruleta generado exitosamente:', {
             codeId: newCode.codeId,
             code: newCode.code,
-            name: newCode.name, // ✅ VERIFICAR: El nombre debería ser específico ahora
+            name: newCode.name,
             discount: newCode.discount,
             color: newCode.color
         });
@@ -1458,7 +1607,6 @@ clientsController.generateRuletaCode = async (req, res) => {
             message: "Código de ruleta generado exitosamente",
             code: newCode,
             token: currentToken,
-            // ✅ NUEVA INFO: Información adicional para debugging
             debug: {
                 selectedPromotion: selectedName,
                 totalActiveCodes: activeCodes.length + 1,

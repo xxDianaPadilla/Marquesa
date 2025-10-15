@@ -447,7 +447,7 @@ const PaymentMethodSelection = ({
                     padding: '16px',
                     fontSize: '14px'
                 },
-                icon: '💳',
+                icon: '',
             });
         }, 2000);
     }, [cardData]);
@@ -605,7 +605,7 @@ const PaymentMethodSelection = ({
                     padding: '16px',
                     fontSize: '14px'
                 },
-                icon: '💳',
+                icon: '',
             });
 
             onNext();

@@ -61,7 +61,7 @@ const OrderReview = ({
             {/* Información de envío */}
             <div className="mb-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-3" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                    📦 Información de envío
+                    Información de envío
                 </h3>
                 <div className="bg-gray-50 p-4 rounded-lg space-y-2">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -105,7 +105,7 @@ const OrderReview = ({
             {/* Información de pago */}
             <div className="mb-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-3" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                    💳 Información de pago
+                    Información de pago
                 </h3>
                 <div className="bg-gray-50 p-4 rounded-lg">
                     <div className="text-sm">
@@ -149,7 +149,7 @@ const OrderReview = ({
             {/* Resumen financiero */}
             <div className="mb-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-3" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                    💰 Resumen de costos
+                    Resumen de costos
                 </h3>
                 <div className="bg-gray-50 p-4 rounded-lg space-y-2">
                     <div className="flex justify-between text-sm">

@@ -40,15 +40,15 @@ const ShippingInfo = ({
     const formatPhoneNumber = (value) => {
         // Remover todo excepto números
         const numbers = value.replace(/\D/g, '');
-        
+
         // Limitar a 8 dígitos
         const truncated = numbers.slice(0, 8);
-        
+
         // Formatear como ####-####
         if (truncated.length >= 5) {
             return `${truncated.slice(0, 4)}-${truncated.slice(4)}`;
         }
-        
+
         return truncated;
     };
 
@@ -88,11 +88,13 @@ const ShippingInfo = ({
             newErrors.deliveryDate = 'La fecha de entrega es requerida';
         } else {
             const selectedDate = new Date(formData.deliveryDate);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+            const minDate = new Date();
+            minDate.setDate(minDate.getDate() + 2); 
+            minDate.setHours(0, 0, 0, 0);
+            selectedDate.setHours(0, 0, 0, 0);
 
-            if (selectedDate < today) {
-                newErrors.deliveryDate = 'La fecha de entrega no puede ser anterior a hoy';
+            if (selectedDate < minDate) {
+                newErrors.deliveryDate = 'La fecha de entrega debe ser al menos 2 días después de hoy';
             }
         }
 
@@ -138,7 +140,7 @@ const ShippingInfo = ({
     // Manejar cambio de fecha (solo permitir selección del calendario)
     const handleDateChange = (e) => {
         const { name, value } = e.target;
-        
+
         setFormData(prev => ({
             ...prev,
             [name]: value
@@ -197,6 +199,7 @@ const ShippingInfo = ({
     // Obtener fecha mínima (hoy)
     const getMinDate = () => {
         const today = new Date();
+        today.setDate(today.getDate() + 2);
         return today.toISOString().split('T')[0];
     };
 
@@ -207,7 +210,7 @@ const ShippingInfo = ({
                 ...prev,
                 receiverName: userInfo.name
             }));
-            
+
             // Limpiar error si existe
             if (errors.receiverName) {
                 setErrors(prev => ({
@@ -401,7 +404,7 @@ const ShippingInfo = ({
                         </p>
                     )}
                     <p className="mt-1 text-xs text-gray-500" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                        Selecciona una fecha a partir de hoy usando el calendario
+                        Selecciona una fecha a partir de 2 días después de hoy
                     </p>
                 </div>
 
@@ -416,6 +419,7 @@ const ShippingInfo = ({
                                 Información importante
                             </p>
                             <ul className="text-blue-600 text-xs space-y-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                                <li>• Las entregas requieren al menos 2 días de anticipación</li>
                                 <li>• El tiempo de entrega puede variar según la ubicación</li>
                                 <li>• Asegúrate de que alguien esté disponible en la dirección indicada</li>
                                 <li>• El punto de referencia nos ayuda a encontrar la dirección más fácilmente</li>

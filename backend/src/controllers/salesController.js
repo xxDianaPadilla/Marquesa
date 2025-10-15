@@ -706,11 +706,6 @@ function isValidImageUrl(url) {
 }
 
 /**
- * Continúa desde salesController.js parte 1
- * Implementa configuración de cookies cross-domain en todos los métodos
- */
-
-/**
  * Obtener detalles completos del pedido
  * Implementa configuración de cookies cross-domain
  */
@@ -768,7 +763,6 @@ salesController.getOrderDetails = async (req, res) => {
                             console.log('Primer elemento del array:', product.images?.[0]);
                             console.log('Tipo del primer elemento:', typeof product.images?.[0]);
 
-                            // FUNCIÓN MEJORADA PARA EXTRAER IMAGEN
                             let imageUrl = extractImageUrl(product.images);
 
                             console.log('URL final extraída para el frontend:', imageUrl);
@@ -783,14 +777,42 @@ salesController.getOrderDetails = async (req, res) => {
                             };
                         }
                     } else if (item.itemType === 'custom') {
-                        // Buscar en productos personalizados
-                        const customProduct = await mongoose.model('CustomProducts').findById(item.itemId).lean();
+                        // ✅ MODIFICACIÓN CRÍTICA: Buscar en productos personalizados con populate de materiales
+                        const customProduct = await mongoose.model('CustomProducts')
+                            .findById(item.itemId)
+                            .populate({
+                                path: 'selectedMaterials.materialId',
+                                model: 'CustomProductsMaterial',
+                                select: 'name price image stock categoryToParticipate productToPersonalize'
+                            })
+                            .populate('clientId', 'fullName email')
+                            .lean();
+
                         if (customProduct) {
+                            console.log('=== PRODUCTO PERSONALIZADO ENCONTRADO ===');
+                            console.log('ID:', customProduct._id);
+                            console.log('Tipo:', customProduct.productToPersonalize);
+                            console.log('Materiales:', customProduct.selectedMaterials?.length || 0);
+                            console.log('=== FIN PRODUCTO PERSONALIZADO ===\n');
+
                             productData = {
                                 name: customProduct.productToPersonalize,
-                                description: customProduct.extraComments,
+                                description: customProduct.extraComments || 'Producto personalizado',
                                 image: validateImageUrl(customProduct.referenceImage),
-                                price: customProduct.totalPrice
+                                price: customProduct.totalPrice,
+                                // ✅ NUEVO: Información completa del producto personalizado
+                                isCustomProduct: true,
+                                customProductData: {
+                                    _id: customProduct._id,
+                                    productToPersonalize: customProduct.productToPersonalize,
+                                    selectedMaterials: customProduct.selectedMaterials || [],
+                                    referenceImage: customProduct.referenceImage || null,
+                                    extraComments: customProduct.extraComments || null,
+                                    totalPrice: customProduct.totalPrice,
+                                    createdAt: customProduct.createdAt,
+                                    updatedAt: customProduct.updatedAt,
+                                    clientId: customProduct.clientId
+                                }
                             };
                         }
                     }
@@ -801,7 +823,9 @@ salesController.getOrderDetails = async (req, res) => {
                         description: productData?.description || 'Sin descripción',
                         image: productData?.image || null,
                         price: productData?.price || 0,
-                        subtotal: item.subtotal || (productData?.price || 0) * (item.quantity || 1)
+                        subtotal: item.subtotal || (productData?.price || 0) * (item.quantity || 1),
+                        type: item.itemType, // ✅ NUEVO: Añadir tipo de item
+                        customProductData: productData?.customProductData || null // ✅ NUEVO: Datos del producto personalizado
                     };
                 } catch (error) {
                     console.error('Error al obtener producto:', item.itemId, error);
@@ -811,7 +835,9 @@ salesController.getOrderDetails = async (req, res) => {
                         description: 'No se pudo cargar la información',
                         image: null,
                         price: 0,
-                        subtotal: 0
+                        subtotal: 0,
+                        type: item.itemType,
+                        customProductData: null
                     };
                 }
             });
@@ -850,7 +876,9 @@ salesController.getOrderDetails = async (req, res) => {
         console.log('Respuesta final - productos con imágenes:', productsData.map(p => ({
             name: p.name,
             image: p.image,
-            hasValidImage: isValidImageUrl(p.image)
+            hasValidImage: isValidImageUrl(p.image),
+            isCustomProduct: p.type === 'custom',
+            hasCustomData: !!p.customProductData
         })));
 
         // Configurar cookies con configuración dinámica cross-domain
@@ -864,7 +892,7 @@ salesController.getOrderDetails = async (req, res) => {
             success: true,
             data: response,
             message: 'Detalles del pedido obtenidos exitosamente',
-            token: token || 'session_maintained' // También en el body para mayor compatibilidad
+            token: token || 'session_maintained'
         });
 
     } catch (error) {
@@ -1947,22 +1975,49 @@ salesController.getSalesDetailed = async (req, res) => {
                                         price: product.price,
                                         quantity: item.quantity || 1,
                                         subtotal: item.subtotal,
-                                        image: product.images && product.images.length > 0 ? product.images[0].image : null
+                                        image: product.images && product.images.length > 0 ? product.images[0].image : null,
+                                        customProductData: null
                                     });
                                 }
                             } else if (item.itemType === 'custom') {
+                                // ✅ MODIFICACIÓN CRÍTICA: Poblar productos personalizados con materiales
                                 const customProduct = await customProductModel.findById(item.itemId)
-                                    .populate('selectedItems.productId', 'name price images');
+                                    .populate({
+                                        path: 'selectedMaterials.materialId',
+                                        model: 'CustomProductsMaterial',
+                                        select: 'name price image stock categoryToParticipate productToPersonalize'
+                                    })
+                                    .select('productToPersonalize totalPrice referenceImage extraComments selectedMaterials createdAt updatedAt');
+
                                 if (customProduct) {
+                                    console.log('✅ Producto personalizado poblado:', {
+                                        id: customProduct._id,
+                                        type: customProduct.productToPersonalize,
+                                        materialsCount: customProduct.selectedMaterials?.length || 0,
+                                        materialsPopulated: customProduct.selectedMaterials?.every(m => m.materialId?.name) || false
+                                    });
+
                                     itemsDetails.push({
                                         type: 'custom',
-                                        name: 'Producto Personalizado',
+                                        name: customProduct.productToPersonalize || 'Producto Personalizado',
                                         price: customProduct.totalPrice,
                                         quantity: item.quantity || 1,
                                         subtotal: item.subtotal,
                                         image: customProduct.referenceImage || null,
-                                        selectedItems: customProduct.selectedItems
+                                        // ✅ NUEVO: Incluir toda la información del producto personalizado
+                                        customProductData: {
+                                            _id: customProduct._id,
+                                            productToPersonalize: customProduct.productToPersonalize,
+                                            selectedMaterials: customProduct.selectedMaterials || [],
+                                            referenceImage: customProduct.referenceImage || null,
+                                            extraComments: customProduct.extraComments || null,
+                                            totalPrice: customProduct.totalPrice,
+                                            createdAt: customProduct.createdAt,
+                                            updatedAt: customProduct.updatedAt
+                                        }
                                     });
+                                } else {
+                                    console.warn('⚠️ Producto personalizado no encontrado:', item.itemId);
                                 }
                             }
                         } catch (itemError) {
@@ -2008,6 +2063,13 @@ salesController.getSalesDetailed = async (req, res) => {
 
         // Filtrar ventas nulas
         const validSales = salesWithDetails.filter(sale => sale !== null);
+
+        console.log('📊 Resumen de ventas procesadas:', {
+            total: validSales.length,
+            conProductosPersonalizados: validSales.filter(s => 
+                s.items.some(i => i.type === 'custom')
+            ).length
+        });
 
         res.status(200).json({
             success: true,

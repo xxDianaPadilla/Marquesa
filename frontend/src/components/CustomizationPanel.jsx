@@ -146,10 +146,25 @@ const CustomizationPanel = ({
         });
     };
 
+    // ✅ FUNCIÓN MEJORADA: Manejo de cambio de cantidad
     const handleProductQuantityChange = (productId, newQuantity) => {
+        console.log('CustomizationPanel - handleQuantityChange:', {
+            productId,
+            newQuantity,
+            type: typeof newQuantity
+        });
+
+        // Validar y normalizar la cantidad
+        const validQuantity = Math.max(1, Math.min(50, Math.floor(Number(newQuantity))));
+        
         const product = selectedProducts.find(p => p._id === productId);
         if (product && onQuantityChange) {
-            onQuantityChange(product, newQuantity);
+            console.log('Actualizando cantidad:', {
+                productName: product.name,
+                oldQuantity: product.quantity,
+                newQuantity: validQuantity
+            });
+            onQuantityChange(product, validQuantity);
         }
     };
  
@@ -304,22 +319,46 @@ const CustomizationPanel = ({
     );
 };
  
+// ✅ COMPONENTE MEJORADO: SelectedProductItem con mejor manejo de cantidades
 const SelectedProductItem = ({ product, onRemove, onQuantityChange }) => {
     const quantity = product.quantity || 1;
     const subtotal = product.price * quantity;
     const maxQuantity = Math.min(50, product.stock || 50);
 
+    // ✅ Manejadores mejorados con validación
     const handleDecrement = (e) => {
         e.stopPropagation();
         if (quantity > 1) {
-            onQuantityChange(quantity - 1);
+            const newQuantity = quantity - 1;
+            console.log('Decrementando:', { productName: product.name, from: quantity, to: newQuantity });
+            onQuantityChange(newQuantity);
         }
     };
 
     const handleIncrement = (e) => {
         e.stopPropagation();
         if (quantity < maxQuantity) {
-            onQuantityChange(quantity + 1);
+            const newQuantity = quantity + 1;
+            console.log('Incrementando:', { productName: product.name, from: quantity, to: newQuantity });
+            onQuantityChange(newQuantity);
+        }
+    };
+
+    // ✅ NUEVO: Manejador para cambio manual
+    const handleManualChange = (e) => {
+        e.stopPropagation();
+        const value = e.target.value;
+        
+        // Permitir campo vacío mientras se escribe
+        if (value === '') {
+            return;
+        }
+
+        const numValue = parseInt(value, 10);
+        if (!isNaN(numValue)) {
+            const validQuantity = Math.max(1, Math.min(maxQuantity, numValue));
+            console.log('Cambio manual:', { productName: product.name, input: value, validated: validQuantity });
+            onQuantityChange(validQuantity);
         }
     };
 
@@ -339,26 +378,41 @@ const SelectedProductItem = ({ product, onRemove, onQuantityChange }) => {
                         />
                     </div>
                     
-                    {/* Cantidad debajo de la imagen */}
+                    {/* ✅ Selector de cantidad mejorado */}
                     <div className="flex items-center justify-center space-x-1 bg-gray-50 rounded-lg p-1">
                         <button
                             onClick={handleDecrement}
                             disabled={quantity <= 1}
                             className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            style={{ cursor: 'pointer' }}
+                            style={{ cursor: quantity <= 1 ? 'not-allowed' : 'pointer' }}
+                            title={quantity <= 1 ? 'Cantidad mínima alcanzada' : 'Disminuir cantidad'}
                         >
                             <span className="text-gray-600 font-bold text-xs">−</span>
                         </button>
                         
-                        <span className="text-xs font-medium text-gray-700 min-w-[20px] text-center">
-                            {quantity}
-                        </span>
+                        {/* ✅ Input editable para cantidad */}
+                        <input
+                            type="number"
+                            min="1"
+                            max={maxQuantity}
+                            value={quantity}
+                            onChange={handleManualChange}
+                            onBlur={(e) => {
+                                // Validar al perder el foco
+                                if (e.target.value === '' || parseInt(e.target.value) < 1) {
+                                    onQuantityChange(1);
+                                }
+                            }}
+                            className="w-8 text-xs font-medium text-gray-700 text-center bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-pink-300 rounded"
+                            style={{ cursor: 'text' }}
+                        />
                         
                         <button
                             onClick={handleIncrement}
                             disabled={quantity >= maxQuantity}
                             className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            style={{ cursor: 'pointer' }}
+                            style={{ cursor: quantity >= maxQuantity ? 'not-allowed' : 'pointer' }}
+                            title={quantity >= maxQuantity ? 'Cantidad máxima alcanzada' : 'Aumentar cantidad'}
                         >
                             <span className="text-gray-600 font-bold text-xs">+</span>
                         </button>
@@ -388,6 +442,7 @@ const SelectedProductItem = ({ product, onRemove, onQuantityChange }) => {
                             onClick={onRemove}
                             className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all duration-200 ml-2"
                             title="Quitar producto"
+                            style={{ cursor: 'pointer' }}
                         >
                             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -395,7 +450,10 @@ const SelectedProductItem = ({ product, onRemove, onQuantityChange }) => {
                         </button>
                     </div>
                     
-                    <div className="mt-2">
+                    <div className="mt-2 flex items-center justify-between">
+                        <span className="text-xs text-gray-400">
+                            Stock: {product.stock || 0}
+                        </span>
                         <span className="text-xs text-gray-400">
                             Máx: {maxQuantity}
                         </span>

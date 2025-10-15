@@ -75,8 +75,8 @@ const RuletaToggleControl = () => {
                 setIsActive(data.isActive);
                 toast.success(
                     newStatus 
-                        ? '✅ Ruleta activada exitosamente' 
-                        : '⚠️ Ruleta desactivada'
+                        ? 'Ruleta activada exitosamente' 
+                        : 'Ruleta desactivada'
                 );
                 console.log('Estado actualizado:', data.isActive);
             } else {

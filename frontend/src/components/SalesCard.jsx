@@ -12,14 +12,20 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
+  MoreVertical, // ✅ NUEVO: Icono de 3 puntos
 } from "lucide-react";
 import OverlayBackdrop from "./OverlayBackdrop"; // Importando componente para fondo
+import CustomProductDetailsModal from "./CustomProductDetailsModal"; // ✅ NUEVO: Modal de detalles
 
 const SalesCard = ({ sale, onUpdateStatus }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [showPaymentProof, setShowPaymentProof] = useState(false);
-  const [updateError, setUpdateError] = useState(null); // ✅ NUEVO: Estado para errores específicos
-  const [showSuccess, setShowSuccess] = useState(false); // ✅ NUEVO: Estado para mostrar éxito
+  const [updateError, setUpdateError] = useState(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+  
+  // ✅ NUEVO: Estados para el modal de producto personalizado
+  const [showCustomProductDetails, setShowCustomProductDetails] = useState(false);
+  const [selectedCustomProduct, setSelectedCustomProduct] = useState(null);
 
   // Obtenemos el color según el estado
   const getStatusColor = (status) => {
@@ -81,13 +87,11 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
 
   // ✅ FUNCIÓN MEJORADA: handleStatusChange
   const handleStatusChange = async (newStatus) => {
-    // Prevenir múltiples actualizaciones simultáneas
     if (isUpdating) {
       console.log('⚠️ Actualización ya en progreso, ignorando...');
       return;
     }
 
-    // Validar que el nuevo estado sea diferente
     if (newStatus === sale.trackingStatus) {
       console.log('⚠️ El estado es el mismo, no hay cambios que hacer');
       return;
@@ -104,19 +108,16 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
     setShowSuccess(false);
 
     try {
-      // Llamar a la función de actualización del hook
       const success = await onUpdateStatus(sale._id, newStatus);
 
       if (success) {
         console.log('✅ Estado actualizado exitosamente');
         
-        // Mostrar mensaje de éxito brevemente
         setShowSuccess(true);
         setTimeout(() => {
           setShowSuccess(false);
         }, 2000);
 
-        // Limpiar cualquier error previo
         setUpdateError(null);
       } else {
         console.error('❌ La actualización falló');
@@ -169,12 +170,10 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
             alt={sale.clientName || 'Cliente'}
             className="w-full h-full object-cover"
             onError={(e) => {
-              // Si la imagen falla al cargar, mostrar las iniciales
               e.target.style.display = 'none';
               e.target.nextElementSibling.style.display = 'flex';
             }}
           />
-          {/* Fallback con iniciales */}
           <div 
             className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm"
             style={{ display: 'none' }}
@@ -184,13 +183,19 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
         </div>
       );
     } else {
-      // Si no hay imagen, mostrar iniciales directamente
       return (
         <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md">
           {getInitials(sale.clientName)}
         </div>
       );
     }
+  };
+
+  // ✅ NUEVA FUNCIÓN: Manejar click en ver detalles del producto personalizado
+  const handleViewCustomProductDetails = (item) => {
+    console.log('🔍 Abriendo detalles del producto personalizado:', item);
+    setSelectedCustomProduct(item.customProductData);
+    setShowCustomProductDetails(true);
   };
 
   return (
@@ -266,7 +271,7 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
           </div>
         </div>
 
-        {/* Información de productos */}
+        {/* ✅ SECCIÓN MODIFICADA: Información de productos */}
         <div className="mb-5 bg-white rounded-lg p-4 shadow-sm border border-gray-100">
           <h4 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
             <Package className="w-4 h-4 text-blue-600" />
@@ -274,37 +279,72 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
           </h4>
           <div className="space-y-3">
             {Array.isArray(sale.items) &&
-              sale.items.map((item, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
-                >
-                  <div className="flex items-center gap-3">
-                    {item.image && (
-                      <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-200">
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          className="w-full h-full object-cover"
-                        />
+              sale.items.map((item, index) => {
+                // ✅ DETECTAR SI ES PRODUCTO PERSONALIZADO
+                const isCustomProduct = item.type === 'custom';
+                
+                return (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-2 bg-gray-50 rounded-lg relative"
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      {item.image && (
+                        <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-200">
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.target.src = '/placeholder-image.jpg';
+                            }}
+                          />
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-800 font-medium text-sm">
+                            {item.name}
+                          </span>
+                          {/* ✅ BADGE para productos personalizados */}
+                          {isCustomProduct && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 border border-purple-300">
+                              Personalizado
+                            </span>
+                          )}
+                        </div>
+                        {item.quantity && (
+                          <span className="text-gray-500 text-xs">
+                            x{item.quantity}
+                          </span>
+                        )}
                       </div>
-                    )}
-                    <div>
-                      <span className="text-gray-800 font-medium text-sm">
-                        {item.name}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-green-600 font-semibold">
+                        ${item.subtotal}
                       </span>
-                      {item.quantity && (
-                        <span className="text-gray-500 text-xs ml-2">
-                          x{item.quantity}
-                        </span>
+                      
+                      {/* ✅ BOTÓN DE 3 PUNTOS para productos personalizados */}
+                      {isCustomProduct && item.customProductData && (
+                        <button
+                          onClick={() => handleViewCustomProductDetails(item)}
+                          className="p-1.5 hover:bg-gray-200 rounded-full transition-colors group relative"
+                          title="Ver detalles del producto personalizado"
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <MoreVertical className="w-4 h-4 text-gray-600 group-hover:text-purple-600" />
+                          
+                          {/* Tooltip */}
+                          <span className="absolute right-0 top-full mt-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                            Ver detalles
+                          </span>
+                        </button>
                       )}
                     </div>
                   </div>
-                  <span className="text-green-600 font-semibold">
-                    ${item.subtotal}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
           </div>
         </div>
 
@@ -384,7 +424,7 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
               onChange={(e) => handleStatusChange(e.target.value)}
               disabled={isUpdating}
               className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 bg-white font-medium"
-              style={{ fontFamily: "Poppins, sans-serif" }}
+              style={{ fontFamily: "Poppins, sans-serif", cursor: isUpdating ? 'not-allowed' : 'pointer' }}
             >
               <option value="Agendado">Agendado</option>
               <option value="En proceso">En proceso</option>
@@ -483,6 +523,16 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
           </div>
         </OverlayBackdrop>
       )}
+
+      {/* ✅ NUEVO: Modal para ver detalles del producto personalizado */}
+      <CustomProductDetailsModal
+        isOpen={showCustomProductDetails}
+        onClose={() => {
+          setShowCustomProductDetails(false);
+          setSelectedCustomProduct(null);
+        }}
+        customProduct={selectedCustomProduct}
+      />
     </>
   );
 };

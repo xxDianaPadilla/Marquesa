@@ -75,31 +75,66 @@ const CustomProducts = () => {
                     console.log('Producto ya seleccionado:', product.name);
                     return prev;
                 }
+                console.log('✅ Agregando producto con cantidad inicial:', { name: product.name, quantity: 1 });
                 return [...prev, { ...product, quantity: 1 }];
             });
         } else {
+            console.log('❌ Removiendo producto:', product.name);
             setSelectedProducts(prev => prev.filter(p => p._id !== product._id));
         }
     };
 
+    // ✅ FUNCIÓN MEJORADA: Manejo de cambio de cantidad con validación
     const handleQuantityChange = (product, newQuantity) => {
-        console.log('CustomProducts - handleQuantityChange:', {
-            productId: product._id,
-            productName: product.name,
-            newQuantity: newQuantity
+        console.log('=== CustomProducts - handleQuantityChange ===');
+        console.log('Product:', {
+            id: product._id,
+            name: product.name,
+            currentQuantity: product.quantity,
+            stock: product.stock
+        });
+        console.log('Nueva cantidad solicitada:', newQuantity, 'Tipo:', typeof newQuantity);
+
+        // Validar y normalizar la cantidad
+        const validQuantity = Math.max(1, Math.min(50, Math.floor(Number(newQuantity))));
+        
+        // Verificar stock disponible
+        const maxAllowed = Math.min(validQuantity, product.stock || 50);
+        const finalQuantity = Math.min(validQuantity, maxAllowed);
+
+        console.log('Cantidad validada:', {
+            solicitada: newQuantity,
+            validada: validQuantity,
+            stockDisponible: product.stock,
+            finalQuantity: finalQuantity
         });
 
+        if (finalQuantity !== newQuantity) {
+            console.warn('⚠️ Cantidad ajustada por validación o stock');
+        }
+
         setSelectedProducts(prev => {
-            return prev.map(p => {
+            const updated = prev.map(p => {
                 if (p._id === product._id) {
-                    return { ...p, quantity: newQuantity };
+                    console.log('✅ Actualizando cantidad de:', p.name, 'de', p.quantity, 'a', finalQuantity);
+                    return { ...p, quantity: finalQuantity };
                 }
                 return p;
             });
+
+            // Verificar que se actualizó
+            const updatedProduct = updated.find(p => p._id === product._id);
+            console.log('Estado después de actualización:', {
+                productName: updatedProduct?.name,
+                newQuantity: updatedProduct?.quantity
+            });
+
+            return updated;
         });
     };
 
     const handleRemoveProduct = (productId) => {
+        console.log('🗑️ Removiendo producto ID:', productId);
         setSelectedProducts(prev => prev.filter(p => p._id !== productId));
     };
 
@@ -139,6 +174,16 @@ const CustomProducts = () => {
         }));
     };
 
+    // ✅ EFECTO DE DEBUG: Monitorear cambios en selectedProducts
+    useEffect(() => {
+        console.log('📊 Estado actual de selectedProducts:', selectedProducts.map(p => ({
+            name: p.name,
+            quantity: p.quantity,
+            price: p.price,
+            subtotal: (p.quantity || 1) * p.price
+        })));
+    }, [selectedProducts]);
+
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -154,7 +199,7 @@ const CustomProducts = () => {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="text-center">
-                    <div className="text-red-500 text-xl mb-4"></div>
+                    <div className="text-red-500 text-xl mb-4">⚠️</div>
                     <p className="text-gray-600 mb-4">{error}</p>
                     <button
                         onClick={() => navigate('/')}
@@ -171,7 +216,7 @@ const CustomProducts = () => {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="text-center">
-                    <div className="text-gray-400 text-xl mb-4"></div>
+                    <div className="text-gray-400 text-xl mb-4">📦</div>
                     <p className="text-gray-600 mb-4">No hay materiales disponibles para este producto</p>
                     <button
                         onClick={() => navigate('/')}
@@ -226,6 +271,11 @@ const CustomProducts = () => {
                             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
                                 {Object.keys(productData.categories).length} categorías
                             </span>
+                            {selectedProducts.length > 0 && (
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-pink-100 text-pink-800">
+                                    {selectedProducts.length} producto{selectedProducts.length !== 1 ? 's' : ''} seleccionado{selectedProducts.length !== 1 ? 's' : ''}
+                                </span>
+                            )}
                         </div>
                     </div>
 

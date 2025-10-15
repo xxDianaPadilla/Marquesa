@@ -17,6 +17,7 @@ const isValidObjectId = (id) => {
 
 const VALID_PRODUCT_TYPES = ["Ramo de flores naturales", "Ramo de flores secas", "Giftbox"];
 
+// ✅ FUNCIÓN MEJORADA: Validación con mejor manejo de cantidades
 const validateCustomProductData = (data) => {
     const errors = [];
 
@@ -43,15 +44,39 @@ const validateCustomProductData = (data) => {
     } else if (data.selectedMaterials.length === 0) {
         errors.push("Debe seleccionar al menos un material");
     } else {
+        // ✅ VALIDACIÓN MEJORADA DE MATERIALES CON CANTIDADES
         data.selectedMaterials.forEach((material, index) => {
+            console.log(`Validando material ${index + 1}:`, material);
+
             if (!material.materialId) {
                 errors.push(`Material ${index + 1}: ID del material es requerido`);
             } else if (typeof material.materialId !== 'string' || material.materialId.length !== 24) {
                 errors.push(`Material ${index + 1}: ID del material no tiene un formato válido`);
             }
 
-            if (material.quantity !== undefined && (typeof material.quantity !== 'number' || material.quantity < 1)) {
-                errors.push(`Material ${index + 1}: La cantidad debe ser un número mayor a 0`);
+            // ✅ VALIDACIÓN CRÍTICA DE CANTIDAD
+            if (material.quantity !== undefined && material.quantity !== null) {
+                const quantity = Number(material.quantity);
+                
+                console.log(`Material ${index + 1} - Validando cantidad:`, {
+                    original: material.quantity,
+                    converted: quantity,
+                    type: typeof material.quantity
+                });
+
+                if (isNaN(quantity)) {
+                    errors.push(`Material ${index + 1}: La cantidad debe ser un número válido`);
+                } else if (quantity < 1) {
+                    errors.push(`Material ${index + 1}: La cantidad debe ser mayor a 0`);
+                } else if (quantity > 50) {
+                    errors.push(`Material ${index + 1}: La cantidad máxima es 50`);
+                } else if (!Number.isInteger(quantity)) {
+                    errors.push(`Material ${index + 1}: La cantidad debe ser un número entero`);
+                }
+            } else {
+                // ✅ Si no se proporciona cantidad, establecer 1 por defecto
+                console.log(`Material ${index + 1}: Cantidad no proporcionada, usando default: 1`);
+                material.quantity = 1;
             }
         });
     }
@@ -151,6 +176,7 @@ customProductsController.getCustomProductsById = async (req, res) => {
     }
 };
 
+// ✅ FUNCIÓN MEJORADA: createCustomProducts con mejor manejo de cantidades
 customProductsController.createCustomProducts = async (req, res) => {
     try {
         console.log('=== DATOS RECIBIDOS EN EL BACKEND ===');
@@ -183,7 +209,6 @@ customProductsController.createCustomProducts = async (req, res) => {
         }
         else if (req.headers['content-type']?.includes('application/json')) {
             console.log('=== PROCESANDO JSON (WEB SIN IMAGEN O MÓVIL) ===');
-            
             console.log('Datos JSON ya procesados:', processedData);
         }
         else {
@@ -210,6 +235,26 @@ customProductsController.createCustomProducts = async (req, res) => {
         console.log('extraComments:', extraComments);
         console.log('totalPrice:', totalPrice, typeof totalPrice);
         console.log('referenceImageBase64:', !!referenceImageBase64);
+
+        // ✅ NORMALIZACIÓN CRÍTICA DE CANTIDADES
+        if (Array.isArray(selectedMaterials)) {
+            selectedMaterials.forEach((material, index) => {
+                if (material.quantity !== undefined && material.quantity !== null) {
+                    // Convertir a número y validar
+                    const quantity = Number(material.quantity);
+                    if (!isNaN(quantity) && Number.isInteger(quantity) && quantity >= 1 && quantity <= 50) {
+                        material.quantity = quantity;
+                        console.log(`Material ${index + 1} - Cantidad normalizada:`, material.quantity);
+                    } else {
+                        console.warn(`Material ${index + 1} - Cantidad inválida (${material.quantity}), usando default: 1`);
+                        material.quantity = 1;
+                    }
+                } else {
+                    console.log(`Material ${index + 1} - Sin cantidad, usando default: 1`);
+                    material.quantity = 1;
+                }
+            });
+        }
 
         const dataToValidate = {
             clientId,
@@ -293,24 +338,42 @@ customProductsController.createCustomProducts = async (req, res) => {
         }
 
         console.log('=== CREANDO PRODUCTO PERSONALIZADO ===');
+        
+        // ✅ ASEGURAR QUE LAS CANTIDADES SE GUARDEN CORRECTAMENTE
         const productData = {
             clientId,
             productToPersonalize,
-            selectedMaterials,
+            selectedMaterials: selectedMaterials.map(material => ({
+                materialId: material.materialId,
+                quantity: material.quantity || 1 // Asegurar default
+            })),
             referenceImage: referenceImageURL || undefined,
             extraComments,
             totalPrice
         };
-        console.log('Product data:', productData);
+        
+        console.log('Product data con cantidades:', JSON.stringify(productData, null, 2));
 
         const newCustomProduct = new customProductsModel(productData);
 
         await newCustomProduct.save();
         console.log('Producto creado exitosamente:', newCustomProduct._id);
+        
+        // ✅ VERIFICACIÓN POST-GUARDADO
+        console.log('Materiales guardados con cantidades:', newCustomProduct.selectedMaterials);
 
         const populatedProduct = await customProductsModel.findById(newCustomProduct._id)
             .populate('clientId')
             .populate('selectedMaterials.materialId');
+
+        // ✅ LOG FINAL DE VERIFICACIÓN
+        console.log('=== PRODUCTO GUARDADO Y POBLADO ===');
+        console.log('Materiales poblados:', populatedProduct.selectedMaterials.map(m => ({
+            materialName: m.materialId?.name,
+            quantity: m.quantity,
+            price: m.materialId?.price,
+            subtotal: (m.quantity || 1) * (m.materialId?.price || 0)
+        })));
 
         res.status(201).json({
             success: true,

@@ -224,7 +224,7 @@ const ProductInfo = ({
         `¡${quantity} ${product.name}${quantity > 1 ? 's' : ''} agregado${quantity > 1 ? 's' : ''} al carrito!`, {
         duration: 3000,
         position: 'top-center',
-        icon: '🛒',
+        icon: '',
         style: {
           background: '#10B981',
           color: '#fff',
@@ -310,7 +310,7 @@ const ProductInfo = ({
         toast.success(`${product.name} eliminado de favoritos`, {
           duration: 3000,
           position: 'top-center',
-          icon: '💔',
+          icon: '',
           style: {
             background: '#6B7280',
             color: '#fff',
@@ -322,7 +322,7 @@ const ProductInfo = ({
         toast.success(`¡${product.name} agregado a favoritos!`, {
           duration: 3000,
           position: 'top-center',
-          icon: '❤️',
+          icon: '',
           style: {
             background: '#EC4899',
             color: '#fff',
@@ -500,7 +500,7 @@ const ProductInfo = ({
             : addingToFavorites
               ? 'Procesando...'
               : isProductFavorite
-                ? '❤️ En favoritos'
+                ? 'En favoritos'
                 : 'Añadir a favoritos'
           }
         </button>

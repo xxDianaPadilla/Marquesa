@@ -251,7 +251,7 @@ const CartItem = ({ item, onUpdateQuantity, onRemoveItem, updating = false }) =>
             if (success) {
                 toast.success(
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '18px' }}>🗑️</span>
+                        <span style={{ fontSize: '18px' }}></span>
                         <div>
                             <div style={{ fontWeight: '600', fontSize: '14px' }}>
                                 Producto eliminado

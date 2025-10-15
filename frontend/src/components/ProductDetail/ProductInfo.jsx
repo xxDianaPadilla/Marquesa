@@ -462,7 +462,7 @@ const ProductInfo = ({
           {addingToCart
             ? 'Agregando...'
             : isProductInCart
-              ? `✅ En carrito (${productQuantityInCart})`
+              ? `En carrito (${productQuantityInCart})`
               : `Añadir al carrito${quantity > 1 ? ` (${quantity})` : ''}`
           }
         </button>
@@ -511,7 +511,6 @@ const ProductInfo = ({
         {/* NUEVO: Mensaje cuando el producto está en el carrito */}
         {isProductInCart && (
           <div className="text-sm text-green-600 bg-green-50 p-3 rounded border border-green-200 flex items-center gap-2">
-            <span>✅</span>
             <span>
               Este producto está en tu carrito
               {productQuantityInCart > 1 && ` (${productQuantityInCart} unidades)`}
@@ -522,7 +521,6 @@ const ProductInfo = ({
         {/* Mensaje para usuarios no autenticados */}
         {!isAuthenticated && (
           <div className="text-sm text-orange-600 bg-orange-50 p-3 rounded border border-orange-200 flex items-center gap-2">
-            <span>🔐</span>
             <span>Inicia sesión para agregar productos al carrito y gestionar favoritos</span>
           </div>
         )}
@@ -530,7 +528,6 @@ const ProductInfo = ({
         {/* Mensaje de stock bajo */}
         {product.stock && product.stock <= 5 && product.stock > 0 && (
           <div className="text-sm text-yellow-600 bg-yellow-50 p-3 rounded border border-yellow-200 flex items-center gap-2">
-            <span>⚠️</span>
             <span>¡Últimas {product.stock} unidades disponibles!</span>
           </div>
         )}
@@ -538,7 +535,6 @@ const ProductInfo = ({
         {/* Mensaje sin stock */}
         {product.stock === 0 && (
           <div className="text-sm text-red-600 bg-red-50 p-3 rounded border border-red-200 flex items-center gap-2">
-            <span>❌</span>
             <span>Producto sin stock disponible</span>
           </div>
         )}
@@ -546,7 +542,6 @@ const ProductInfo = ({
         {/* ✅ INDICADOR ACTUALIZADO: Solo mostrar si está autenticado */}
         {isAuthenticated && favoritesCount > 0 && isProductFavorite && (
           <div className="text-sm text-pink-600 bg-pink-50 p-2 rounded border border-pink-200 flex items-center gap-2">
-            <span>❤️</span>
             <span>Tienes {favoritesCount} producto{favoritesCount === 1 ? '' : 's'} en favoritos</span>
           </div>
         )}

@@ -72,7 +72,7 @@ const CustomizationPanel = ({
                 border: '1px solid #BBF7D0',
                 fontWeight: '500'
             },
-            icon: '✅'
+            icon: ''
         });
  
         setTimeout(() => {
@@ -146,7 +146,6 @@ const CustomizationPanel = ({
         });
     };
 
-    // ✅ FUNCIÓN MEJORADA: Manejo de cambio de cantidad
     const handleProductQuantityChange = (productId, newQuantity) => {
         console.log('CustomizationPanel - handleQuantityChange:', {
             productId,
@@ -319,13 +318,11 @@ const CustomizationPanel = ({
     );
 };
  
-// ✅ COMPONENTE MEJORADO: SelectedProductItem con mejor manejo de cantidades
 const SelectedProductItem = ({ product, onRemove, onQuantityChange }) => {
     const quantity = product.quantity || 1;
     const subtotal = product.price * quantity;
     const maxQuantity = Math.min(50, product.stock || 50);
 
-    // ✅ Manejadores mejorados con validación
     const handleDecrement = (e) => {
         e.stopPropagation();
         if (quantity > 1) {
@@ -344,7 +341,6 @@ const SelectedProductItem = ({ product, onRemove, onQuantityChange }) => {
         }
     };
 
-    // ✅ NUEVO: Manejador para cambio manual
     const handleManualChange = (e) => {
         e.stopPropagation();
         const value = e.target.value;
@@ -378,7 +374,7 @@ const SelectedProductItem = ({ product, onRemove, onQuantityChange }) => {
                         />
                     </div>
                     
-                    {/* ✅ Selector de cantidad mejorado */}
+                    {/* Selector de cantidad mejorado */}
                     <div className="flex items-center justify-center space-x-1 bg-gray-50 rounded-lg p-1">
                         <button
                             onClick={handleDecrement}
@@ -390,7 +386,7 @@ const SelectedProductItem = ({ product, onRemove, onQuantityChange }) => {
                             <span className="text-gray-600 font-bold text-xs">−</span>
                         </button>
                         
-                        {/* ✅ Input editable para cantidad */}
+                        {/* Input editable para cantidad */}
                         <input
                             type="number"
                             min="1"

@@ -10,12 +10,10 @@ import {
   Package,
   CreditCard,
   Clock,
-  CheckCircle,
-  AlertCircle,
-  MoreVertical, // ✅ NUEVO: Icono de 3 puntos
+  MoreVertical, 
 } from "lucide-react";
 import OverlayBackdrop from "./OverlayBackdrop"; // Importando componente para fondo
-import CustomProductDetailsModal from "./CustomProductDetailsModal"; // ✅ NUEVO: Modal de detalles
+import CustomProductDetailsModal from "./CustomProductDetailsModal"; 
 
 const SalesCard = ({ sale, onUpdateStatus }) => {
   const [isUpdating, setIsUpdating] = useState(false);
@@ -23,7 +21,7 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
   const [updateError, setUpdateError] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
   
-  // ✅ NUEVO: Estados para el modal de producto personalizado
+  // Estados para el modal de producto personalizado
   const [showCustomProductDetails, setShowCustomProductDetails] = useState(false);
   const [selectedCustomProduct, setSelectedCustomProduct] = useState(null);
 
@@ -85,7 +83,7 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
     }
   };
 
-  // ✅ FUNCIÓN MEJORADA: handleStatusChange
+  // handleStatusChange
   const handleStatusChange = async (newStatus) => {
     if (isUpdating) {
       console.log('⚠️ Actualización ya en progreso, ignorando...');
@@ -191,7 +189,7 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
     }
   };
 
-  // ✅ NUEVA FUNCIÓN: Manejar click en ver detalles del producto personalizado
+  // Manejar click en ver detalles del producto personalizado
   const handleViewCustomProductDetails = (item) => {
     console.log('🔍 Abriendo detalles del producto personalizado:', item);
     setSelectedCustomProduct(item.customProductData);
@@ -271,7 +269,7 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
           </div>
         </div>
 
-        {/* ✅ SECCIÓN MODIFICADA: Información de productos */}
+        {/* Información de productos */}
         <div className="mb-5 bg-white rounded-lg p-4 shadow-sm border border-gray-100">
           <h4 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
             <Package className="w-4 h-4 text-blue-600" />
@@ -280,7 +278,6 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
           <div className="space-y-3">
             {Array.isArray(sale.items) &&
               sale.items.map((item, index) => {
-                // ✅ DETECTAR SI ES PRODUCTO PERSONALIZADO
                 const isCustomProduct = item.type === 'custom';
                 
                 return (
@@ -306,7 +303,7 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
                           <span className="text-gray-800 font-medium text-sm">
                             {item.name}
                           </span>
-                          {/* ✅ BADGE para productos personalizados */}
+                          {/* BADGE para productos personalizados */}
                           {isCustomProduct && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 border border-purple-300">
                               Personalizado
@@ -325,7 +322,7 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
                         ${item.subtotal}
                       </span>
                       
-                      {/* ✅ BOTÓN DE 3 PUNTOS para productos personalizados */}
+                      {/* BOTÓN DE 3 PUNTOS para productos personalizados */}
                       {isCustomProduct && item.customProductData && (
                         <button
                           onClick={() => handleViewCustomProductDetails(item)}
@@ -524,7 +521,7 @@ const SalesCard = ({ sale, onUpdateStatus }) => {
         </OverlayBackdrop>
       )}
 
-      {/* ✅ NUEVO: Modal para ver detalles del producto personalizado */}
+      {/* Modal para ver detalles del producto personalizado */}
       <CustomProductDetailsModal
         isOpen={showCustomProductDetails}
         onClose={() => {

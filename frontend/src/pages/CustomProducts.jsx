@@ -84,7 +84,7 @@ const CustomProducts = () => {
         }
     };
 
-    // ✅ FUNCIÓN MEJORADA: Manejo de cambio de cantidad con validación
+    // Manejo de cambio de cantidad con validación
     const handleQuantityChange = (product, newQuantity) => {
         console.log('=== CustomProducts - handleQuantityChange ===');
         console.log('Product:', {
@@ -174,7 +174,7 @@ const CustomProducts = () => {
         }));
     };
 
-    // ✅ EFECTO DE DEBUG: Monitorear cambios en selectedProducts
+    // Monitorear cambios en selectedProducts
     useEffect(() => {
         console.log('📊 Estado actual de selectedProducts:', selectedProducts.map(p => ({
             name: p.name,

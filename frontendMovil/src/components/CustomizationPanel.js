@@ -140,10 +140,19 @@ export default function CustomizationPanel({
         }).start();
     };
 
-    // Calcular precio total
+    // Calcular precio total considerando las cantidades
     const totalPrice = useMemo(() => {
         return selectedProducts.reduce((total, product) => {
-            return total + (product.price || 0);
+            const quantity = product.quantity || 1;
+            const price = product.price || 0;
+            return total + (price * quantity);
+        }, 0);
+    }, [selectedProducts]);
+
+    // Calcular cantidad total de items
+    const totalItems = useMemo(() => {
+        return selectedProducts.reduce((total, product) => {
+            return total + (product.quantity || 1);
         }, 0);
     }, [selectedProducts]);
 
@@ -166,7 +175,7 @@ export default function CustomizationPanel({
             message: "¿Estás seguro de que quieres remover este producto de tu personalización?",
             confirmText: "Remover",
             cancelText: "Cancelar",
-            isDangerous: true, // Marcamos como acción peligrosa para usar estilo rojo
+            isDangerous: true,
             onConfirm: () => {
                 onRemoveProduct(productId);
                 hideConfirmation();
@@ -193,6 +202,7 @@ export default function CustomizationPanel({
                 _id: product._id,
                 name: product.name,
                 price: product.price || 0,
+                quantity: product.quantity || 1,
                 category: product.category || 'Sin categoría',
                 image: product.image || null
             })),
@@ -227,7 +237,7 @@ export default function CustomizationPanel({
             message: "¿Estás seguro de que quieres remover todos los productos seleccionados?",
             confirmText: "Limpiar todo",
             cancelText: "Cancelar",
-            isDangerous: true, // Marcamos como peligroso
+            isDangerous: true,
             onConfirm: () => {
                 selectedProducts.forEach(product => {
                     onRemoveProduct(product._id);
@@ -263,7 +273,7 @@ export default function CustomizationPanel({
                             <Text style={styles.compactTitle}>Personalización</Text>
                             {selectedProducts.length > 0 && (
                                 <View style={styles.badge}>
-                                    <Text style={styles.badgeText}>{selectedProducts.length}</Text>
+                                    <Text style={styles.badgeText}>{totalItems}</Text>
                                 </View>
                             )}
                         </View>
@@ -332,6 +342,12 @@ export default function CustomizationPanel({
                                                     <Icon name="image" size={12} color="#ccc" />
                                                 </View>
                                             )}
+                                            {/* Mostrar cantidad en vista previa */}
+                                            {product.quantity > 1 && (
+                                                <View style={styles.previewQuantityBadge}>
+                                                    <Text style={styles.previewQuantityText}>x{product.quantity}</Text>
+                                                </View>
+                                            )}
                                             <Text style={styles.previewProductName} numberOfLines={1}>
                                                 {product.name}
                                             </Text>
@@ -372,7 +388,7 @@ export default function CustomizationPanel({
                         <View style={styles.productTypeContainer}>
                             <Text style={styles.productTypeText}>{productType}</Text>
                             <Text style={styles.productCount}>
-                                {selectedProducts.length} {selectedProducts.length === 1 ? 'producto' : 'productos'}
+                                {selectedProducts.length} {selectedProducts.length === 1 ? 'producto' : 'productos'} ({totalItems} {totalItems === 1 ? 'unidad' : 'unidades'})
                             </Text>
                         </View>
 
@@ -397,42 +413,60 @@ export default function CustomizationPanel({
                                     {Object.entries(groupedProducts).map(([category, products]) => (
                                         <View key={category} style={styles.categorySection}>
                                             <Text style={styles.categoryTitle}>{category}</Text>
-                                            {products.map((product) => (
-                                                <View key={product._id} style={styles.productItem}>
-                                                    {/* Imagen del producto */}
-                                                    <View style={styles.productImageContainer}>
-                                                        {product.image ? (
-                                                            <Image
-                                                                source={{ uri: product.image }}
-                                                                style={styles.productImage}
-                                                                resizeMode="cover"
-                                                            />
-                                                        ) : (
-                                                            <View style={styles.productImagePlaceholder}>
-                                                                <Icon name="image" size={16} color="#ccc" />
+                                            {products.map((product) => {
+                                                const quantity = product.quantity || 1;
+                                                const unitPrice = product.price || 0;
+                                                const totalProductPrice = unitPrice * quantity;
+
+                                                return (
+                                                    <View key={product._id} style={styles.productItem}>
+                                                        {/* Imagen del producto */}
+                                                        <View style={styles.productImageContainer}>
+                                                            {product.image ? (
+                                                                <Image
+                                                                    source={{ uri: product.image }}
+                                                                    style={styles.productImage}
+                                                                    resizeMode="cover"
+                                                                />
+                                                            ) : (
+                                                                <View style={styles.productImagePlaceholder}>
+                                                                    <Icon name="image" size={16} color="#ccc" />
+                                                                </View>
+                                                            )}
+                                                        </View>
+
+                                                        {/* Información del producto */}
+                                                        <View style={styles.productInfo}>
+                                                            <View style={styles.productNameRow}>
+                                                                <Text style={styles.productName} numberOfLines={2}>
+                                                                    {product.name}
+                                                                </Text>
+                                                                {/* Mostrar cantidad */}
+                                                                <Text style={styles.productQuantity}>
+                                                                    x{quantity}
+                                                                </Text>
                                                             </View>
-                                                        )}
-                                                    </View>
+                                                            {/* Mostrar precio unitario y total */}
+                                                            <View style={styles.priceRow}>
+                                                                <Text style={styles.productUnitPrice}>
+                                                                    ${unitPrice.toFixed(2)} c/u
+                                                                </Text>
+                                                                <Text style={styles.productTotalPrice}>
+                                                                    ${totalProductPrice.toFixed(2)}
+                                                                </Text>
+                                                            </View>
+                                                        </View>
 
-                                                    {/* Información del producto */}
-                                                    <View style={styles.productInfo}>
-                                                        <Text style={styles.productName} numberOfLines={2}>
-                                                            {product.name}
-                                                        </Text>
-                                                        <Text style={styles.productPrice}>
-                                                            ${product.price?.toFixed(2) || '0.00'}
-                                                        </Text>
+                                                        {/* Botón de eliminar */}
+                                                        <TouchableOpacity
+                                                            onPress={() => handleRemoveProduct(product._id)}
+                                                            style={styles.removeButton}
+                                                        >
+                                                            <Icon name="close" size={16} color="#e74c3c" />
+                                                        </TouchableOpacity>
                                                     </View>
-
-                                                    {/* Botón de eliminar */}
-                                                    <TouchableOpacity
-                                                        onPress={() => handleRemoveProduct(product._id)}
-                                                        style={styles.removeButton}
-                                                    >
-                                                        <Icon name="close" size={16} color="#e74c3c" />
-                                                    </TouchableOpacity>
-                                                </View>
-                                            ))}
+                                                );
+                                            })}
                                         </View>
                                     ))}
                                 </>
@@ -633,6 +667,7 @@ const styles = StyleSheet.create({
         width: 40,
         alignItems: 'center',
         marginRight: 12,
+        position: 'relative',
     },
     previewProductImage: {
         width: 32,
@@ -648,6 +683,22 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 4,
+    },
+    previewQuantityBadge: {
+        position: 'absolute',
+        top: -4,
+        right: -4,
+        backgroundColor: '#4A4170',
+        borderRadius: 8,
+        paddingHorizontal: 4,
+        paddingVertical: 2,
+        minWidth: 16,
+        alignItems: 'center',
+    },
+    previewQuantityText: {
+        fontSize: 8,
+        fontFamily: 'Poppins-Bold',
+        color: '#fff',
     },
     previewProductName: {
         fontSize: 8,
@@ -787,16 +838,42 @@ const styles = StyleSheet.create({
     productInfo: {
         flex: 1,
     },
+    productNameRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 4,
+    },
     productName: {
         fontSize: 11,
         fontFamily: 'Poppins-Medium',
         color: '#333',
-        marginBottom: 2,
+        flex: 1,
         lineHeight: 13,
+        marginRight: 4,
     },
-    productPrice: {
+    productQuantity: {
         fontSize: 10,
-        fontFamily: 'Poppins-SemiBold',
+        fontFamily: 'Poppins-Bold',
+        color: '#4A4170',
+        backgroundColor: '#e8e3f3',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 8,
+    },
+    priceRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    productUnitPrice: {
+        fontSize: 9,
+        fontFamily: 'Poppins-Regular',
+        color: '#666',
+    },
+    productTotalPrice: {
+        fontSize: 10,
+        fontFamily: 'Poppins-Bold',
         color: '#27ae60',
     },
     removeButton: {

@@ -1,5 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, Dimensions, Platform } from 'react-native';
+import { 
+    View, 
+    Text, 
+    Modal, 
+    TouchableOpacity, 
+    StyleSheet, 
+    ActivityIndicator, 
+    Dimensions, 
+    Platform,
+    ScrollView,
+    KeyboardAvoidingView,
+    Keyboard
+} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import CodeInputMobile from './CodeInputMobile';
 import { useEmailVerificationMobile } from '../../hooks/useEmailVerificationMobile';
@@ -28,6 +40,9 @@ const EmailVerificationModalMobile = ({
     const [resendTimer, setResendTimer] = useState(0);
     const [cooldownTimer, setCooldownTimer] = useState(0);
     
+    // Estado para detectar si el teclado está visible
+    const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+    
     // Referencias
     const codeInputRef = useRef();
 
@@ -37,13 +52,11 @@ const EmailVerificationModalMobile = ({
     // Calcular dimensiones responsive del modal
     const getModalDimensions = () => {
         const isSmallScreen = screenWidth < 350;
-        const isMediumScreen = screenWidth >= 350 && screenWidth < 400;
         
         return {
             maxWidth: isSmallScreen ? screenWidth - 30 : Math.min(400, screenWidth - 40),
             horizontalPadding: isSmallScreen ? 15 : 20,
             contentPadding: isSmallScreen ? 20 : 24,
-            maxHeight: Math.min(screenHeight * 0.85, 650), // Límite más flexible
         };
     };
 
@@ -72,6 +85,28 @@ const EmailVerificationModalMobile = ({
             return () => clearTimeout(timer);
         }
     }, [cooldownTimer]);
+
+    // Efecto para detectar cuando el teclado se muestra u oculta
+    useEffect(() => {
+        const keyboardDidShowListener = Keyboard.addListener(
+            'keyboardDidShow',
+            () => {
+                setIsKeyboardVisible(true);
+            }
+        );
+
+        const keyboardDidHideListener = Keyboard.addListener(
+            'keyboardDidHide',
+            () => {
+                setIsKeyboardVisible(false);
+            }
+        );
+
+        return () => {
+            keyboardDidShowListener.remove();
+            keyboardDidHideListener.remove();
+        };
+    }, []);
 
     // Función para formatear tiempo en MM:SS
     const formatTime = (seconds) => {
@@ -173,6 +208,7 @@ const EmailVerificationModalMobile = ({
             setError('');
             setResendTimer(0);
             setCooldownTimer(0);
+            setIsKeyboardVisible(false);
             onClose();
         }
     };
@@ -186,198 +222,211 @@ const EmailVerificationModalMobile = ({
             animationType="fade"
             onRequestClose={handleClose}
         >
-            <View style={styles.overlay}>
+            <KeyboardAvoidingView
+                style={styles.overlay}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+            >
                 <View style={[
-                    styles.modalContainer, 
-                    { 
-                        maxWidth: modalDimensions.maxWidth,
-                        maxHeight: modalDimensions.maxHeight,
-                        paddingHorizontal: modalDimensions.horizontalPadding,
-                    }
+                    styles.modalWrapper,
+                    isKeyboardVisible && styles.modalWrapperFocused
                 ]}>
-                    
-                    {/* Header del modal */}
-                    <View style={[styles.header, { paddingHorizontal: modalDimensions.contentPadding }]}>
-                        <View style={styles.headerContent}>
-                            <View style={styles.iconContainer}>
-                                <Icon name="email" size={screenWidth < 350 ? 20 : 24} color="#FFFFFF" />
+                    <View style={[
+                        styles.modalContainer, 
+                        { 
+                            maxWidth: modalDimensions.maxWidth,
+                        }
+                    ]}>
+                        
+                        {/* Header del modal */}
+                        <View style={[styles.header, { paddingHorizontal: modalDimensions.contentPadding }]}>
+                            <View style={styles.headerContent}>
+                                <View style={styles.iconContainer}>
+                                    <Icon name="email" size={screenWidth < 350 ? 20 : 24} color="#FFFFFF" />
+                                </View>
+                                <Text style={[
+                                    styles.title, 
+                                    { fontSize: screenWidth < 350 ? 16 : 18 }
+                                ]}>
+                                    Verificar email
+                                </Text>
                             </View>
+                            
+                            {!isLoading && (
+                                <TouchableOpacity
+                                    onPress={handleClose}
+                                    style={styles.closeButton}
+                                >
+                                    <Icon name="close" size={screenWidth < 350 ? 20 : 24} color="#666666" />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+
+                        {/* ScrollView para permitir scroll del contenido cuando aparece el teclado */}
+                        <ScrollView
+                            style={styles.scrollView}
+                            contentContainerStyle={[styles.scrollContent, { paddingHorizontal: modalDimensions.contentPadding }]}
+                            showsVerticalScrollIndicator={false}
+                            keyboardShouldPersistTaps="handled"
+                        >
+                            {/* Contenido dinámico según el estado */}
+                            
+                            {/* Estado: Enviando código */}
+                            {step === 'sending' && (
+                                <View style={styles.centerContent}>
+                                    <View style={styles.loadingContainer}>
+                                        <View style={styles.spinnerContainer}>
+                                            <ActivityIndicator 
+                                                size={screenWidth < 350 ? "default" : "large"} 
+                                                color="#FDB4B7" 
+                                            />
+                                            <View style={[
+                                                styles.pulseCircle,
+                                                screenWidth < 350 && styles.pulseCircleSmall
+                                            ]} />
+                                        </View>
+                                    </View>
+                                    
+                                    <Text style={[
+                                        styles.stepTitle,
+                                        { fontSize: screenWidth < 350 ? 18 : 20 }
+                                    ]}>
+                                        Enviando correo...
+                                    </Text>
+                                    <Text style={[
+                                        styles.stepDescription,
+                                        { fontSize: screenWidth < 350 ? 13 : 14 }
+                                    ]}>
+                                        Estamos enviando el código de verificación a
+                                    </Text>
+                                    <Text style={[
+                                        styles.emailText,
+                                        { fontSize: screenWidth < 350 ? 13 : 14 }
+                                    ]}>
+                                        {email}
+                                    </Text>
+                                </View>
+                            )}
+
+                            {/* Estado: Ingreso de código */}
+                            {step === 'code' && (
+                                <View style={styles.centerContent}>
+                                    <View style={[
+                                        styles.successIconContainer,
+                                        screenWidth < 350 && styles.successIconContainerSmall
+                                    ]}>
+                                        <Icon 
+                                            name="email" 
+                                            size={screenWidth < 350 ? 28 : 32} 
+                                            color="#FFFFFF" 
+                                        />
+                                    </View>
+                                    
+                                    <Text style={[
+                                        styles.stepTitle,
+                                        { fontSize: screenWidth < 350 ? 18 : 20 }
+                                    ]}>
+                                        Código enviado
+                                    </Text>
+                                    <Text style={[
+                                        styles.stepDescription,
+                                        { fontSize: screenWidth < 350 ? 13 : 14 }
+                                    ]}>
+                                        Hemos enviado un código de verificación a
+                                    </Text>
+                                    <Text style={[
+                                        styles.emailText,
+                                        { fontSize: screenWidth < 350 ? 13 : 14 }
+                                    ]}>
+                                        {email}
+                                    </Text>
+                                    
+                                    <CodeInputMobile
+                                        ref={codeInputRef}
+                                        onCodeChange={handleCodeChange}
+                                        onComplete={handleCodeComplete}
+                                        disabled={isLoading}
+                                        error={error}
+                                    />
+                                    
+                                    {error && (
+                                        <View style={styles.errorContainer}>
+                                            <Icon name="error" size={16} color="#E53E3E" />
+                                            <Text style={[
+                                                styles.errorText,
+                                                { fontSize: screenWidth < 350 ? 11 : 12 }
+                                            ]}>
+                                                {error}
+                                            </Text>
+                                        </View>
+                                    )}
+                                    
+                                    <TouchableOpacity
+                                        onPress={handleResendCode}
+                                        disabled={resendTimer > 0 || cooldownTimer > 0 || isLoading}
+                                        style={styles.resendButton}
+                                    >
+                                        <Text style={[
+                                            styles.resendText,
+                                            { fontSize: screenWidth < 350 ? 13 : 14 },
+                                            (resendTimer > 0 || cooldownTimer > 0 || isLoading) && styles.resendTextDisabled
+                                        ]}>
+                                            {cooldownTimer > 0 
+                                                ? `Podrás solicitar otro código en ${formatTime(cooldownTimer)}`
+                                                : resendTimer > 0 
+                                                    ? `Reenviar código en ${resendTimer}s`
+                                                    : '¿No recibiste el código? Reenviar'
+                                            }
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+
+                            {/* Estado: Verificando código */}
+                            {step === 'verifying' && (
+                                <View style={styles.centerContent}>
+                                    <View style={styles.verifyingContainer}>
+                                        <View style={styles.spinnerContainer}>
+                                            <ActivityIndicator 
+                                                size={screenWidth < 350 ? "default" : "large"} 
+                                                color="#4CAF50" 
+                                            />
+                                            <View style={[
+                                                styles.verifyingPulse,
+                                                screenWidth < 350 && styles.verifyingPulseSmall
+                                            ]} />
+                                        </View>
+                                    </View>
+                                    
+                                    <Text style={[
+                                        styles.stepTitle,
+                                        { fontSize: screenWidth < 350 ? 18 : 20 }
+                                    ]}>
+                                        Verificando código...
+                                    </Text>
+                                    <Text style={[
+                                        styles.stepDescription,
+                                        { fontSize: screenWidth < 350 ? 13 : 14 }
+                                    ]}>
+                                        Estamos completando tu registro
+                                    </Text>
+                                </View>
+                            )}
+                        </ScrollView>
+
+                        {/* Footer informativo */}
+                        <View style={[styles.footer, { paddingHorizontal: modalDimensions.contentPadding }]}>
                             <Text style={[
-                                styles.title, 
-                                { fontSize: screenWidth < 350 ? 16 : 18 }
+                                styles.footerText,
+                                { fontSize: screenWidth < 350 ? 11 : 12 }
                             ]}>
-                                Verificar email
+                                El código expira en 10 minutos. Si no lo recibes, 
+                                revisa tu carpeta de spam o correo no deseado.
                             </Text>
                         </View>
-                        
-                        {!isLoading && (
-                            <TouchableOpacity
-                                onPress={handleClose}
-                                style={styles.closeButton}
-                            >
-                                <Icon name="close" size={screenWidth < 350 ? 20 : 24} color="#666666" />
-                            </TouchableOpacity>
-                        )}
-                    </View>
-
-                    {/* Contenido dinámico según el estado */}
-                    <View style={[styles.content, { paddingHorizontal: modalDimensions.contentPadding }]}>
-                        
-                        {/* Estado: Enviando código */}
-                        {step === 'sending' && (
-                            <View style={styles.centerContent}>
-                                <View style={styles.loadingContainer}>
-                                    <View style={styles.spinnerContainer}>
-                                        <ActivityIndicator 
-                                            size={screenWidth < 350 ? "default" : "large"} 
-                                            color="#FDB4B7" 
-                                        />
-                                        <View style={[
-                                            styles.pulseCircle,
-                                            screenWidth < 350 && styles.pulseCircleSmall
-                                        ]} />
-                                    </View>
-                                </View>
-                                
-                                <Text style={[
-                                    styles.stepTitle,
-                                    { fontSize: screenWidth < 350 ? 18 : 20 }
-                                ]}>
-                                    Enviando correo...
-                                </Text>
-                                <Text style={[
-                                    styles.stepDescription,
-                                    { fontSize: screenWidth < 350 ? 13 : 14 }
-                                ]}>
-                                    Estamos enviando el código de verificación a
-                                </Text>
-                                <Text style={[
-                                    styles.emailText,
-                                    { fontSize: screenWidth < 350 ? 13 : 14 }
-                                ]}>
-                                    {email}
-                                </Text>
-                            </View>
-                        )}
-
-                        {/* Estado: Ingreso de código */}
-                        {step === 'code' && (
-                            <View style={styles.centerContent}>
-                                <View style={[
-                                    styles.successIconContainer,
-                                    screenWidth < 350 && styles.successIconContainerSmall
-                                ]}>
-                                    <Icon 
-                                        name="email" 
-                                        size={screenWidth < 350 ? 28 : 32} 
-                                        color="#FFFFFF" 
-                                    />
-                                </View>
-                                
-                                <Text style={[
-                                    styles.stepTitle,
-                                    { fontSize: screenWidth < 350 ? 18 : 20 }
-                                ]}>
-                                    Código enviado
-                                </Text>
-                                <Text style={[
-                                    styles.stepDescription,
-                                    { fontSize: screenWidth < 350 ? 13 : 14 }
-                                ]}>
-                                    Hemos enviado un código de verificación a
-                                </Text>
-                                <Text style={[
-                                    styles.emailText,
-                                    { fontSize: screenWidth < 350 ? 13 : 14 }
-                                ]}>
-                                    {email}
-                                </Text>
-                                
-                                <CodeInputMobile
-                                    ref={codeInputRef}
-                                    onCodeChange={handleCodeChange}
-                                    onComplete={handleCodeComplete}
-                                    disabled={isLoading}
-                                    error={error}
-                                />
-                                
-                                {error && (
-                                    <View style={styles.errorContainer}>
-                                        <Icon name="error" size={16} color="#E53E3E" />
-                                        <Text style={[
-                                            styles.errorText,
-                                            { fontSize: screenWidth < 350 ? 11 : 12 }
-                                        ]}>
-                                            {error}
-                                        </Text>
-                                    </View>
-                                )}
-                                
-                                <TouchableOpacity
-                                    onPress={handleResendCode}
-                                    disabled={resendTimer > 0 || cooldownTimer > 0 || isLoading}
-                                    style={styles.resendButton}
-                                >
-                                    <Text style={[
-                                        styles.resendText,
-                                        { fontSize: screenWidth < 350 ? 13 : 14 },
-                                        (resendTimer > 0 || cooldownTimer > 0 || isLoading) && styles.resendTextDisabled
-                                    ]}>
-                                        {cooldownTimer > 0 
-                                            ? `Podrás solicitar otro código en ${formatTime(cooldownTimer)}`
-                                            : resendTimer > 0 
-                                                ? `Reenviar código en ${resendTimer}s`
-                                                : '¿No recibiste el código? Reenviar'
-                                        }
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
-                        )}
-
-                        {/* Estado: Verificando código */}
-                        {step === 'verifying' && (
-                            <View style={styles.centerContent}>
-                                <View style={styles.verifyingContainer}>
-                                    <View style={styles.spinnerContainer}>
-                                        <ActivityIndicator 
-                                            size={screenWidth < 350 ? "default" : "large"} 
-                                            color="#4CAF50" 
-                                        />
-                                        <View style={[
-                                            styles.verifyingPulse,
-                                            screenWidth < 350 && styles.verifyingPulseSmall
-                                        ]} />
-                                    </View>
-                                </View>
-                                
-                                <Text style={[
-                                    styles.stepTitle,
-                                    { fontSize: screenWidth < 350 ? 18 : 20 }
-                                ]}>
-                                    Verificando código...
-                                </Text>
-                                <Text style={[
-                                    styles.stepDescription,
-                                    { fontSize: screenWidth < 350 ? 13 : 14 }
-                                ]}>
-                                    Estamos completando tu registro
-                                </Text>
-                            </View>
-                        )}
-                    </View>
-
-                    {/* Footer informativo */}
-                    <View style={[styles.footer, { paddingHorizontal: modalDimensions.contentPadding }]}>
-                        <Text style={[
-                            styles.footerText,
-                            { fontSize: screenWidth < 350 ? 11 : 12 }
-                        ]}>
-                            El código expira en 10 minutos. Si no lo recibes, 
-                            revisa tu carpeta de spam o correo no deseado.
-                        </Text>
                     </View>
                 </View>
-            </View>
+            </KeyboardAvoidingView>
         </Modal>
     );
 };
@@ -386,20 +435,30 @@ const styles = StyleSheet.create({
     overlay: {
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    // Wrapper para centrar el modal y mantener su tamaño
+    modalWrapper: {
+        flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: 20,
+        paddingVertical: 40,
+    },
+    // Estilo cuando el teclado está visible - mueve el modal hacia arriba
+    modalWrapperFocused: {
+        justifyContent: 'flex-start',
+        paddingTop: 60,
     },
     modalContainer: {
         backgroundColor: '#FFFFFF',
         borderRadius: 20,
         width: '100%',
+        maxHeight: screenHeight * 0.75,
         shadowColor: '#000000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
         elevation: 8,
-        paddingHorizontal: 0, 
     },
     header: {
         flexDirection: 'row',
@@ -432,9 +491,15 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         backgroundColor: '#F8F8F8',
     },
-    content: {
+    // ScrollView que se ajusta al contenido sin comprimir el modal
+    scrollView: {
+        flexGrow: 0,
+        flexShrink: 1,
+    },
+    // Contenido del ScrollView con padding vertical
+    scrollContent: {
         paddingVertical: screenWidth < 350 ? 24 : 32,
-        minHeight: 200, 
+        paddingBottom: screenWidth < 350 ? 32 : 40,
     },
     centerContent: {
         alignItems: 'center',

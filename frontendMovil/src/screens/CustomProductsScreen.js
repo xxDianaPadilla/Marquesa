@@ -63,7 +63,8 @@ export default function CustomProductsScreen({ route, navigation }) {
 
     // Estados locales
     const [activeCategory, setActiveCategory] = useState('todos');
-    const [selectedProducts, setSelectedProducts] = useState([]);
+    // Cambio: selectedProducts ahora es un objeto con materialId como key y quantity como value
+    const [selectedProductsMap, setSelectedProductsMap] = useState({});
     const [refreshing, setRefreshing] = useState(false);
 
     // Hook para obtener datos del producto
@@ -78,8 +79,10 @@ export default function CustomProductsScreen({ route, navigation }) {
 
     // Función para volver atrás
     const handleGoBack = useCallback(() => {
-        // Si hay productos seleccionados, mostrar confirmación
-        if (selectedProducts.length > 0) {
+        // Verificar si hay productos seleccionados con cantidad mayor a 0
+        const hasSelectedProducts = Object.values(selectedProductsMap).some(qty => qty > 0);
+        
+        if (hasSelectedProducts) {
             showConfirmation({
                 title: "Confirmar salida",
                 message: "¿Estás seguro de que quieres salir? Perderás tu personalización actual.",
@@ -95,7 +98,7 @@ export default function CustomProductsScreen({ route, navigation }) {
         } else {
             navigation.goBack();
         }
-    }, [navigation, selectedProducts, showConfirmation, hideConfirmation]);
+    }, [navigation, selectedProductsMap, showConfirmation, hideConfirmation]);
 
     // Función para refrescar datos
     const onRefresh = useCallback(async () => {
@@ -165,38 +168,53 @@ export default function CustomProductsScreen({ route, navigation }) {
         }
     };
 
-    // Maneja la personalización de productos 
-    const handleCustomize = useCallback((product, isSelected) => {
-        console.log(`Toggling product ${product.name}: ${isSelected}`);
+    // Manejar incremento de cantidad
+    const handleIncrement = useCallback((product) => {
+        setSelectedProductsMap(prev => {
+            const currentQty = prev[product._id] || 0;
+            
+            // Validar limite de 50
+            if (currentQty >= 50) {
+                return prev;
+            }
+            
+            return {
+                ...prev,
+                [product._id]: currentQty + 1
+            };
+        });
+    }, []);
 
-        if (isSelected) {
-            // Agregar producto a la selección
-            setSelectedProducts(prev => {
-                const existingProduct = prev.find(p => p._id === product._id);
-                if (existingProduct) {
-                    console.log('Product already selected');
-                    return prev;
-                }
-                const newSelection = [...prev, product];
-                console.log(`Added product. Total selected: ${newSelection.length}`);
-                return newSelection;
-            });
-        } else {
-            // Quitar producto de la selección
-            setSelectedProducts(prev => {
-                const newSelection = prev.filter(p => p._id !== product._id);
-                console.log(`Removed product. Total selected: ${newSelection.length}`);
-                return newSelection;
-            });
-        }
+    // Manejar decremento de cantidad
+    const handleDecrement = useCallback((product) => {
+        setSelectedProductsMap(prev => {
+            const currentQty = prev[product._id] || 0;
+            
+            // Si la cantidad es 0, no hacer nada
+            if (currentQty <= 0) {
+                return prev;
+            }
+            
+            // Si la cantidad es 1, eliminar del map
+            if (currentQty === 1) {
+                const newMap = { ...prev };
+                delete newMap[product._id];
+                return newMap;
+            }
+            
+            return {
+                ...prev,
+                [product._id]: currentQty - 1
+            };
+        });
     }, []);
 
     // Maneja la eliminación de productos desde el panel
     const handleRemoveProduct = useCallback((productId) => {
-        setSelectedProducts(prev => {
-            const newSelection = prev.filter(p => p._id !== productId);
-            console.log(`Removed product from panel. Total selected: ${newSelection.length}`);
-            return newSelection;
+        setSelectedProductsMap(prev => {
+            const newMap = { ...prev };
+            delete newMap[productId];
+            return newMap;
         });
     }, []);
 
@@ -229,7 +247,7 @@ export default function CustomProductsScreen({ route, navigation }) {
             await addToCart(customizationOrder);
 
             // Limpiar selección
-            setSelectedProducts([]);
+            setSelectedProductsMap({});
 
             showConfirmation({
                 title: "¡Personalización completada!",
@@ -277,14 +295,27 @@ export default function CustomProductsScreen({ route, navigation }) {
         }, []);
     }, [productData, activeCategory]);
 
+    // Convertir el map de productos seleccionados a un array para el panel
+    const selectedProductsArray = useMemo(() => {
+        return filteredProducts
+            .filter(product => selectedProductsMap[product._id] > 0)
+            .map(product => ({
+                ...product,
+                quantity: selectedProductsMap[product._id]
+            }));
+    }, [filteredProducts, selectedProductsMap]);
+
     // Renderizar producto
     const renderMaterial = ({ item }) => (
         <View style={styles.materialWrapper}>
             <MaterialCard
                 material={item}
-                onCustomize={handleCustomize}
+                onCustomize={null}
                 onAddToCart={handleAddToCart}
-                isSelected={selectedProducts.some(p => p._id === item._id)}
+                isSelected={selectedProductsMap[item._id] > 0}
+                quantity={selectedProductsMap[item._id] || 0}
+                onIncrement={handleIncrement}
+                onDecrement={handleDecrement}
             />
         </View>
     );
@@ -373,10 +404,10 @@ export default function CustomProductsScreen({ route, navigation }) {
                             {Object.keys(productData.categories).length} categorías
                         </Text>
                     </View>
-                    {selectedProducts.length > 0 && (
+                    {selectedProductsArray.length > 0 && (
                         <View style={[styles.infoTag, styles.selectedTag]}>
                             <Text style={[styles.infoTagText, styles.selectedTagText]}>
-                                {selectedProducts.length} seleccionados
+                                {selectedProductsArray.length} seleccionados
                             </Text>
                         </View>
                     )}
@@ -443,7 +474,7 @@ export default function CustomProductsScreen({ route, navigation }) {
 
             {/* Bottom Sheet - CustomizationPanel */}
             <CustomizationPanel
-                selectedProducts={selectedProducts}
+                selectedProducts={selectedProductsArray}
                 onRemoveProduct={handleRemoveProduct}
                 onFinishCustomization={handleFinishCustomization}
                 productType={productType}

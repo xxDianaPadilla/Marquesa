@@ -17,7 +17,8 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.dianitapadilla.frontendMovil"
     },
     "android": {
       "adaptiveIcon": {
@@ -25,14 +26,18 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.dianitapadilla.frontendMovil"
+      "package": "com.dianitapadilla.frontendMovil",
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ]
     },
     "web": {
       "favicon": "./src/images/marquesaMiniLogo.png"
     },
     "extra": {
       "eas": {
-        "projectId": "fd1dbf96-a8d9-4d85-af8d-ccdf9393515c"
+        "projectId": "bf95e9b0-acc9-4965-866b-e426f2aa0145"
       }
     }
   }

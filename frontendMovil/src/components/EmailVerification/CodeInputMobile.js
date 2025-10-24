@@ -6,7 +6,7 @@ const { width: screenWidth } = Dimensions.get('window');
 
 // Componente para insertar código de verificación de 6 dígitos en móvil
 // Maneja la entrada automática entre campos y validación
-const CodeInputMobile = forwardRef(({ onCodeChange, onComplete, disabled = false, error = '' }, ref) => {
+const CodeInputMobile = forwardRef(({ onCodeChange, onComplete, disabled = false, error = '', onFocus, onBlur }, ref) => {
     const [code, setCode] = useState(['', '', '', '', '', '']);
     const inputRefs = useRef([]);
 
@@ -90,6 +90,20 @@ const CodeInputMobile = forwardRef(({ onCodeChange, onComplete, disabled = false
         }
     };
 
+    // Maneja cuando un input recibe el foco
+    const handleFocus = () => {
+        if (onFocus) {
+            onFocus();
+        }
+    };
+
+    // Maneja cuando un input pierde el foco
+    const handleBlur = () => {
+        if (onBlur) {
+            onBlur();
+        }
+    };
+
     const inputSize = getInputSize();
 
     return (
@@ -105,6 +119,8 @@ const CodeInputMobile = forwardRef(({ onCodeChange, onComplete, disabled = false
                         value={digit}
                         onChangeText={(value) => handleChange(index, value)}
                         onKeyPress={({ nativeEvent }) => handleKeyPress(index, nativeEvent.key)}
+                        onFocus={handleFocus}
+                        onBlur={handleBlur}
                         editable={!disabled}
                         style={[
                             styles.input,

@@ -1,5 +1,15 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Image, SafeAreaView } from "react-native";
+import { 
+    View, 
+    Text, 
+    StyleSheet, 
+    TouchableOpacity, 
+    Image, 
+    SafeAreaView, 
+    ScrollView, 
+    KeyboardAvoidingView,  
+    Platform 
+} from "react-native";
 
 // Importación de iconos y elementos gráficos
 import backIcon from '../images/backIcon.png';
@@ -201,70 +211,85 @@ const ChangePasswordScreen = ({ navigation, route }) => {
             {/* Elemento decorativo de fondo - flor en la esquina superior derecha */}
             <Image source={sideBgFlower} style={styles.backgroundFlower} />
 
-            <View style={styles.content}>
-                {/* Header con botón de retroceso */}
-                <View style={styles.header}>
-                    <TouchableOpacity 
-                        onPress={handleBack} 
-                        style={styles.backButton}
-                        disabled={isProcessing} // Deshabilitar durante la carga
-                    >
-                        <Image source={backIcon} style={styles.backIcon} />
-                    </TouchableOpacity>
-                </View>
+            {/* KeyboardAvoidingView para evitar que el teclado tape los inputs */}
+            <KeyboardAvoidingView
+                style={styles.keyboardAvoidingView}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+            >
+                {/* ScrollView para permitir scroll cuando el teclado está visible */}
+                <ScrollView
+                    style={styles.scrollView}
+                    contentContainerStyle={styles.scrollContent}
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                >
+                    <View style={styles.content}>
+                        {/* Header con botón de retroceso */}
+                        <View style={styles.header}>
+                            <TouchableOpacity 
+                                onPress={handleBack} 
+                                style={styles.backButton}
+                                disabled={isProcessing} // Deshabilitar durante la carga
+                            >
+                                <Image source={backIcon} style={styles.backIcon} />
+                            </TouchableOpacity>
+                        </View>
 
-                {/* Sección de título y descripción */}
-                <View style={styles.titleSection}>
-                    <Text style={styles.title}>Crea una nueva contraseña</Text>
-                    <Text style={styles.description}>
-                        Crea una contraseña que contenga al menos 8 caracteres. Debes incluir caracteres especiales, mayúsculas y minúsculas.
-                    </Text>
-                </View>
+                        {/* Sección de título y descripción */}
+                        <View style={styles.titleSection}>
+                            <Text style={styles.title}>Crea una nueva contraseña</Text>
+                            <Text style={styles.description}>
+                                Crea una contraseña que contenga al menos 8 caracteres. Debes incluir caracteres especiales, mayúsculas y minúsculas.
+                            </Text>
+                        </View>
 
-                {/* Contenedor de campos de entrada de contraseña */}
-                <View style={styles.inputsContainer}>
-                    {/* Campo para la nueva contraseña */}
-                    <PinkInputs
-                        placeholder="Contraseña nueva"
-                        value={newPassword}
-                        onChangeText={setNewPassword}
-                        secureTextEntry={!showNewPassword} // Oculta el texto si showNewPassword es false
-                        showPasswordToggle={true} // Habilita el botón de mostrar/ocultar
-                        onTogglePassword={toggleNewPasswordVisibility}
-                        eyeIcon={eyeIcon} // Icono para mostrar contraseña
-                        eyeOffIcon={eyeOffIcon} // Icono para ocultar contraseña
-                        style={styles.inputSpacing}
-                        editable={!isProcessing} // Deshabilitar durante la carga
-                    />
+                        {/* Contenedor de campos de entrada de contraseña */}
+                        <View style={styles.inputsContainer}>
+                            {/* Campo para la nueva contraseña */}
+                            <PinkInputs
+                                placeholder="Contraseña nueva"
+                                value={newPassword}
+                                onChangeText={setNewPassword}
+                                secureTextEntry={!showNewPassword} // Oculta el texto si showNewPassword es false
+                                showPasswordToggle={true} // Habilita el botón de mostrar/ocultar
+                                onTogglePassword={toggleNewPasswordVisibility}
+                                eyeIcon={eyeIcon} // Icono para mostrar contraseña
+                                eyeOffIcon={eyeOffIcon} // Icono para ocultar contraseña
+                                style={styles.inputSpacing}
+                                editable={!isProcessing} // Deshabilitar durante la carga
+                            />
 
-                    {/* Componente de requisitos de contraseña */}
-                    <PasswordRequirements password={newPassword} />
+                            {/* Componente de requisitos de contraseña */}
+                            <PasswordRequirements password={newPassword} />
 
-                    {/* Campo para confirmar la contraseña */}
-                    <PinkInputs
-                        placeholder="Confirmar contraseña"
-                        value={confirmPassword}
-                        onChangeText={setConfirmPassword}
-                        secureTextEntry={!showConfirmPassword} // Oculta el texto si showConfirmPassword es false
-                        showPasswordToggle={true} // Habilita el botón de mostrar/ocultar
-                        onTogglePassword={toggleConfirmPasswordVisibility}
-                        eyeIcon={eyeIcon} // Icono para mostrar contraseña
-                        eyeOffIcon={eyeOffIcon} // Icono para ocultar contraseña
-                        style={styles.inputSpacing}
-                        editable={!isProcessing} // Deshabilitar durante la carga
-                    />
-                </View>
+                            {/* Campo para confirmar la contraseña */}
+                            <PinkInputs
+                                placeholder="Confirmar contraseña"
+                                value={confirmPassword}
+                                onChangeText={setConfirmPassword}
+                                secureTextEntry={!showConfirmPassword} // Oculta el texto si showConfirmPassword es false
+                                showPasswordToggle={true} // Habilita el botón de mostrar/ocultar
+                                onTogglePassword={toggleConfirmPasswordVisibility}
+                                eyeIcon={eyeIcon} // Icono para mostrar contraseña
+                                eyeOffIcon={eyeOffIcon} // Icono para ocultar contraseña
+                                style={styles.inputSpacing}
+                                editable={!isProcessing} // Deshabilitar durante la carga
+                            />
+                        </View>
 
-                {/* Contenedor del botón de continuar */}
-                <View style={styles.buttonContainer}>
-                    <PinkButton
-                        title={isProcessing ? "Actualizando..." : "Continuar"}
-                        onPress={handleContinue}
-                        style={styles.continueButton}
-                        disabled={isProcessing} // Deshabilitar durante la carga
-                    />
-                </View>
-            </View>
+                        {/* Contenedor del botón de continuar */}
+                        <View style={styles.buttonContainer}>
+                            <PinkButton
+                                title={isProcessing ? "Actualizando..." : "Continuar"}
+                                onPress={handleContinue}
+                                style={styles.continueButton}
+                                disabled={isProcessing} // Deshabilitar durante la carga
+                            />
+                        </View>
+                    </View>
+                </ScrollView>
+            </KeyboardAvoidingView>
 
             {/* Diálogo de carga */}
             <LoadingDialog
@@ -302,6 +327,22 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#FFFFFF',
+    },
+    
+    // KeyboardAvoidingView para ajustar la vista cuando aparece el teclado
+    keyboardAvoidingView: {
+        flex: 1,
+    },
+    
+    // ScrollView para permitir desplazamiento
+    scrollView: {
+        flex: 1,
+    },
+    
+    // Contenido del ScrollView con padding inferior para scroll completo
+    scrollContent: {
+        flexGrow: 1,
+        paddingBottom: 30,
     },
     
     // Elemento decorativo de fondo - flor posicionada en la esquina superior derecha

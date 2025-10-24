@@ -21,7 +21,10 @@ export default function MaterialCard({
     material,
     onCustomize,
     onAddToCart,
-    isSelected = false
+    isSelected = false,
+    quantity = 0, // Cantidad actual del material
+    onIncrement, // Funcion para incrementar cantidad
+    onDecrement // Funcion para decrementar cantidad
 }) {
     const [imageError, setImageError] = useState(false);
 
@@ -30,8 +33,8 @@ export default function MaterialCard({
         setImageError(true);
     };
 
-    // Manejar selección para personalización
-    const handleCustomizePress = () => {
+    // Manejar incremento de cantidad
+    const handleIncrement = () => {
         if (material.stock === 0) {
             Alert.alert(
                 "Sin stock",
@@ -39,7 +42,26 @@ export default function MaterialCard({
             );
             return;
         }
-        onCustomize(material, !isSelected);
+        
+        // Validar limite de 50 unidades
+        if (quantity >= 50) {
+            Alert.alert(
+                "Límite alcanzado",
+                "No puedes agregar más de 50 unidades de este material"
+            );
+            return;
+        }
+        
+        if (onIncrement) {
+            onIncrement(material);
+        }
+    };
+
+    // Manejar decremento de cantidad
+    const handleDecrement = () => {
+        if (onDecrement) {
+            onDecrement(material);
+        }
     };
 
     // Manejar agregar al carrito
@@ -64,7 +86,7 @@ export default function MaterialCard({
     return (
         <View style={[
             styles.card,
-            isSelected && styles.selectedCard,
+            quantity > 0 && styles.selectedCard,
             material.stock === 0 && styles.outOfStockCard
         ]}>
             {/* Imagen del material */}
@@ -82,10 +104,10 @@ export default function MaterialCard({
                     </View>
                 )}
 
-                {/* Badge de selección */}
-                {isSelected && (
-                    <View style={styles.selectionBadge}>
-                        <Icon name="check-circle" size={20} color="#fff" />
+                {/* Badge de cantidad seleccionada */}
+                {quantity > 0 && (
+                    <View style={styles.quantityBadge}>
+                        <Text style={styles.quantityBadgeText}>x{quantity}</Text>
                     </View>
                 )}
 
@@ -157,31 +179,45 @@ export default function MaterialCard({
                     <Text style={styles.currencyText}>USD</Text>
                 </View>
 
-                {/* Botones de acción */}
-                <View style={styles.buttonContainer}>
-                    {/* Botón de personalizar */}
+                {/* Botones de cantidad + y - */}
+                <View style={styles.quantityContainer}>
+                    {/* Boton decrementar */}
                     <TouchableOpacity
                         style={[
-                            styles.customizeButton,
-                            isSelected && styles.selectedButton,
-                            material.stock === 0 && styles.disabledButton
+                            styles.quantityButton,
+                            quantity === 0 && styles.disabledButton
                         ]}
-                        onPress={handleCustomizePress}
-                        disabled={material.stock === 0}
-                        activeOpacity={0.8}
+                        onPress={handleDecrement}
+                        disabled={quantity === 0 || material.stock === 0}
+                        activeOpacity={0.7}
                     >
                         <Icon
-                            name={isSelected ? "check" : "palette"}
-                            size={16}
-                            color={isSelected ? "#fff" : "#4A4170"}
+                            name="remove"
+                            size={18}
+                            color={quantity === 0 ? "#ccc" : "#4A4170"}
                         />
-                        <Text style={[
-                            styles.customizeButtonText,
-                            isSelected && styles.selectedButtonText,
-                            material.stock === 0 && styles.disabledButtonText
-                        ]}>
-                            {isSelected ? "Seleccionado" : "Personalizar"}
-                        </Text>
+                    </TouchableOpacity>
+
+                    {/* Mostrar cantidad actual */}
+                    <View style={styles.quantityDisplay}>
+                        <Text style={styles.quantityText}>{quantity}</Text>
+                    </View>
+
+                    {/* Boton incrementar */}
+                    <TouchableOpacity
+                        style={[
+                            styles.quantityButton,
+                            (material.stock === 0 || quantity >= 50) && styles.disabledButton
+                        ]}
+                        onPress={handleIncrement}
+                        disabled={material.stock === 0 || quantity >= 50}
+                        activeOpacity={0.7}
+                    >
+                        <Icon
+                            name="add"
+                            size={18}
+                            color={(material.stock === 0 || quantity >= 50) ? "#ccc" : "#4A4170"}
+                        />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -234,18 +270,21 @@ const styles = StyleSheet.create({
     },
 
     // Badges
-    selectionBadge: {
+    quantityBadge: {
         position: 'absolute',
         top: 8,
         right: 8,
         backgroundColor: '#4A4170',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
         borderRadius: 12,
-        width: 24,
-        height: 24,
-        justifyContent: 'center',
-        alignItems: 'center',
         borderWidth: 2,
         borderColor: '#fff',
+    },
+    quantityBadgeText: {
+        fontSize: 11,
+        fontFamily: 'Poppins-Bold',
+        color: '#fff',
     },
     outOfStockBadge: {
         position: 'absolute',
@@ -333,50 +372,37 @@ const styles = StyleSheet.create({
         color: '#999',
     },
 
-    // Botones
-    buttonContainer: {
-        flexDirection: 'row',
-        gap: 8,
-    },
-    customizeButton: {
-        flex: 1,
+    // Botones de cantidad
+    quantityContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 8,
+        justifyContent: 'space-between',
         backgroundColor: '#f8f9fa',
-        borderWidth: 1,
-        borderColor: '#4A4170',
+        borderRadius: 8,
+        padding: 4,
     },
-    selectedButton: {
-        backgroundColor: '#4A4170',
+    quantityButton: {
+        width: 32,
+        height: 32,
+        borderRadius: 6,
+        backgroundColor: '#fff',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
         borderColor: '#4A4170',
     },
     disabledButton: {
         backgroundColor: '#f0f0f0',
         borderColor: '#ddd',
     },
-    customizeButtonText: {
-        fontSize: 10,
-        fontFamily: 'Poppins-Medium',
-        color: '#4A4170',
-        marginLeft: 4,
-    },
-    selectedButtonText: {
-        color: '#fff',
-        fontFamily: 'Poppins-SemiBold',
-    },
-    disabledButtonText: {
-        color: '#ccc',
-    },
-    cartButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 8,
-        backgroundColor: '#4A4170',
-        justifyContent: 'center',
+    quantityDisplay: {
+        flex: 1,
         alignItems: 'center',
+        justifyContent: 'center',
+    },
+    quantityText: {
+        fontSize: 14,
+        fontFamily: 'Poppins-Bold',
+        color: '#4A4170',
     },
 });

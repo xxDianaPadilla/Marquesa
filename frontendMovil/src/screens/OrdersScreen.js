@@ -33,11 +33,10 @@ const OrdersScreen = () => {
 
     const userData = userInfo || user || {};
 
-    // Función mejorada para manejar los detalles del pedido
+    // Función mejorada y simplificada para manejar los detalles del pedido
     const handleOrderDetails = useCallback(async (pedido) => {
         console.log('=== Iniciando navegación a detalles ===');
         console.log('Pedido ID:', pedido?._id);
-        console.log('Pedido completo:', JSON.stringify(pedido, null, 2));
         
         try {
             // Validación básica del pedido
@@ -51,76 +50,69 @@ const OrdersScreen = () => {
                 return;
             }
 
-            // Crear datos mínimos para navegación
-            const basicOrderData = {
-                orderData: {
-                    _id: pedido._id,
-                    createdAt: pedido.createdAt,
-                    updatedAt: pedido.updatedAt,
-                    deliveryDate: pedido.deliveryDate,
-                    deliveryAddress: pedido.deliveryAddress,
-                    deliveryPoint: pedido.deliveryPoint,
-                    receiverName: pedido.receiverName,
-                    receiverPhone: pedido.receiverPhone,
-                    paymentType: pedido.paymentType,
-                    trackingStatus: pedido.trackingStatus,
-                    status: pedido.status,
-                    shoppingCart: pedido.shoppingCart || { total: 0, items: [] }
-                },
+            // Crear datos mínimos seguros para navegación
+            const safeOrderData = {
+                _id: pedido._id,
+                createdAt: pedido.createdAt,
+                updatedAt: pedido.updatedAt,
+                deliveryDate: pedido.deliveryDate,
+                deliveryAddress: pedido.deliveryAddress || 'Dirección no disponible',
+                deliveryPoint: pedido.deliveryPoint,
+                receiverName: pedido.receiverName,
+                receiverPhone: pedido.receiverPhone,
+                paymentType: pedido.paymentType || 'No especificado',
+                trackingStatus: pedido.trackingStatus || 'Agendado',
+                status: pedido.status || 'Activo',
+                shoppingCart: pedido.shoppingCart || { total: 0, items: [], clientId: null }
+            };
+
+            // Datos básicos para navegación
+            const basicNavigationData = {
+                orderData: safeOrderData,
                 customerData: null,
                 productsData: []
             };
 
-            // Intentar obtener datos adicionales solo si la función existe y es válida
-            let detailedOrderData = basicOrderData;
-            
-            if (prepareOrderDetailsData && typeof prepareOrderDetailsData === 'function') {
-                try {
-                    console.log('⏳ Preparando datos detallados...');
-                    
-                    // Agregar timeout para evitar que se cuelgue
-                    const timeoutPromise = new Promise((_, reject) => {
-                        setTimeout(() => reject(new Error('Timeout al preparar datos')), 10000);
-                    });
+            console.log('🚀 Navegando con datos básicos seguros');
 
-                    detailedOrderData = await Promise.race([
-                        prepareOrderDetailsData(pedido),
-                        timeoutPromise
-                    ]);
-                    
-                    console.log('✅ Datos detallados obtenidos exitosamente');
-                } catch (prepareError) {
-                    console.warn('⚠️ Error preparando datos detallados, usando datos básicos:', prepareError.message);
-                    // Continúa con datos básicos - NO lanza error
-                    detailedOrderData = basicOrderData;
-                }
-            } else {
-                console.warn('⚠️ Función prepareOrderDetailsData no disponible, usando datos básicos');
-            }
-
-            // Validar datos antes de navegar
-            if (!detailedOrderData || !detailedOrderData.orderData) {
-                console.error('❌ Datos de navegación inválidos');
-                throw new Error('Datos de navegación inválidos');
-            }
-
-            console.log('🚀 Navegando con datos:', {
-                hasOrderData: !!detailedOrderData.orderData,
-                hasCustomerData: !!detailedOrderData.customerData,
-                productsCount: detailedOrderData.productsData?.length || 0
-            });
-
-            // Navegar con datos seguros
+            // Navegar inmediatamente con datos básicos
             navigation.navigate('OrderDetailsScreen', {
-                ...detailedOrderData,
+                ...basicNavigationData,
                 // Fallback para orderId si falla todo lo demás
                 orderId: pedido._id
             });
 
+            // OPCIONAL: Intentar cargar datos adicionales en background (sin bloquear navegación)
+            if (prepareOrderDetailsData && typeof prepareOrderDetailsData === 'function') {
+                console.log('🔄 Cargando datos adicionales en background...');
+                
+                try {
+                    // Timeout muy corto para datos adicionales
+                    const timeoutPromise = new Promise((_, reject) => {
+                        setTimeout(() => reject(new Error('Timeout datos adicionales')), 3000);
+                    });
+
+                    // No esperar por esta promesa
+                    Promise.race([
+                        prepareOrderDetailsData(pedido),
+                        timeoutPromise
+                    ]).then(detailedData => {
+                        console.log('✅ Datos adicionales obtenidos (background)');
+                        // Los datos adicionales se cargarán en OrderDetailsScreen
+                    }).catch(bgError => {
+                        console.warn('⚠️ Error en carga background (no crítico):', bgError.message);
+                        // No hacer nada, la pantalla ya navegó con datos básicos
+                    });
+                } catch (bgError) {
+                    console.warn('⚠️ Error preparando datos background:', bgError);
+                    // No hacer nada, continuar con navegación básica
+                }
+            }
+
         } catch (error) {
             console.error('❌ Error crítico en handleOrderDetails:', error);
             
-            // Navegación de emergencia con solo el ID
+            // Navegación de emergencia con datos ultra-básicos
             try {
                 console.log('🆘 Intentando navegación de emergencia...');
                 navigation.navigate('OrderDetailsScreen', {
@@ -129,7 +121,9 @@ const OrdersScreen = () => {
                         _id: pedido._id,
                         createdAt: pedido.createdAt,
                         trackingStatus: pedido.trackingStatus || 'Agendado',
-                        shoppingCart: pedido.shoppingCart || { total: 0, items: [] }
+                        deliveryAddress: 'Dirección no disponible',
+                        paymentType: 'No especificado',
+                        shoppingCart: { total: 0, items: [] }
                     }
                 });
             } catch (emergencyError) {
@@ -141,14 +135,26 @@ const OrdersScreen = () => {
                 );
             }
         }
-    }, [prepareOrderDetailsData, navigation]);
+    }, [navigation, prepareOrderDetailsData]);
 
+    // Effect mejorado para cargar pedidos con manejo de errores
     useEffect(() => {
-        if (userData && (userData._id || userData.id)) {
-            const userId = userData._id || userData.id;
-            getUserOrders(userId);
-        }
-    }, []);
+        const loadUserOrders = async () => {
+            try {
+                if (userData && (userData._id || userData.id)) {
+                    const userId = userData._id || userData.id;
+                    console.log('Cargando pedidos para usuario:', userId);
+                    await getUserOrders(userId);
+                } else {
+                    console.warn('No se encontró ID de usuario válido');
+                }
+            } catch (error) {
+                console.error('Error cargando pedidos en useEffect:', error);
+            }
+        };
+
+        loadUserOrders();
+    }, [userData._id, userData.id, getUserOrders]);
 
     // Renderizar pantalla si no está autenticado
     if (!isAuthenticated) {
@@ -203,7 +209,7 @@ const OrdersScreen = () => {
                 ) : userOrders.length > 0 ? (
                     userOrders.map((pedido, idx) => (
                         <OrderCards
-                            key={pedido._id || idx} // Usar ID del pedido como key
+                            key={pedido._id || `order-${idx}`} // Usar ID del pedido como key con fallback
                             pedido={pedido}
                             onDetailsPress={handleOrderDetails}
                             formatOrderDate={formatOrderDate}

@@ -432,14 +432,35 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Función para obtener información completa del usuario
+    // Función para realizar peticiones con timeout y manejo robusto de errores
+    const fetchWithTimeout = useCallback(async (url, options = {}, timeoutMs = 15000) => {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+            const response = await fetch(url, {
+                ...options,
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+            return response;
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                throw new Error('TIMEOUT');
+            }
+            throw error;
+        }
+    }, []);
+
+    // Función para obtener información completa del usuario con manejo mejorado de errores
     const getUserInfo = async (token) => {
         try {
             // Log del inicio del proceso
             console.log('Obteniendo información del usuario...');
 
-            // Realizar petición al endpoint de información de usuario
-            const response = await fetch('https://marquesa.onrender.com/api/login/userInfo', {
+            // Realizar petición al endpoint de información de usuario con timeout
+            const response = await fetchWithTimeout('https://marquesa.onrender.com/api/login/userInfo', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -480,13 +501,17 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
             // Log de error en la petición
             console.error('Error al obtener información del usuario: ', error);
-            // Establecer error en el estado
-            setAuthError('Error al obtener información del usuario');
+            
+            if (error.message === 'TIMEOUT') {
+                setAuthError('Tiempo de conexión agotado. Verifica tu conexión.');
+            } else {
+                setAuthError('Error al obtener información del usuario');
+            }
             return null;
         }
     };
 
-    // Función de registro de usuario
+    // Función de registro de usuario con manejo mejorado de errores
     const register = async (userData) => {
         try {
             // Log del inicio del proceso de registro
@@ -497,8 +522,8 @@ export const AuthProvider = ({ children }) => {
                 return { success: false, message: 'Todos los campos son requeridos' };
             }
 
-            // Realizar petición de registro al servidor
-            const response = await fetch('https://marquesa.onrender.com/api/registerCustomers/', {
+            // Realizar petición de registro al servidor con timeout
+            const response = await fetchWithTimeout('https://marquesa.onrender.com/api/registerCustomers/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -525,13 +550,20 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
             // Log de error en el proceso de registro
             console.error('Error en el proceso de registro:', error);
+            
             // Obtener mensaje de error apropiado
-            const errorMsg = error.message || 'Error de conexión con el servidor';
+            let errorMsg = 'Error de conexión con el servidor';
+            if (error.message === 'TIMEOUT') {
+                errorMsg = 'Tiempo de conexión agotado. Verifica tu conexión.';
+            } else if (error.message) {
+                errorMsg = error.message;
+            }
+            
             return { success: false, message: errorMsg };
         }
     };
 
-    // Función para obtener favoritos con lógica mejorada
+    // Función para obtener favoritos con lógica mejorada y manejo robusto de errores
     const getFavorites = useCallback(async (token = null) => {
         try {
             // Activar loading de favoritos
@@ -557,22 +589,14 @@ export const AuthProvider = ({ children }) => {
             // Log del inicio de obtención de favoritos
             console.log('Obteniendo favoritos desde el servidor...');
 
-            // Crear promesa para la petición HTTP
-            const operationPromise = fetch('https://marquesa.onrender.com/api/clients/favorites', {
+            // Realizar petición con timeout
+            const response = await fetchWithTimeout('https://marquesa.onrender.com/api/clients/favorites', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${authToken}`,
                 },
             });
-
-            // Crear promesa de timeout para conexiones lentas
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
-            });
-
-            // Ejecutar petición con timeout
-            const response = await Promise.race([operationPromise, timeoutPromise]);
 
             // Verificar si la respuesta es exitosa
             if (response.ok) {
@@ -706,22 +730,14 @@ export const AuthProvider = ({ children }) => {
             // Obtener token de autenticación
             const authToken = token || await getBestAvailableToken();
 
-            // Crear promesa para obtener todos los productos
-            const operationPromise = fetch('https://marquesa.onrender.com/api/products', {
+            // Realizar petición con timeout
+            const response = await fetchWithTimeout('https://marquesa.onrender.com/api/products', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${authToken}`,
                 },
             });
-
-            // Crear promesa de timeout para conexiones lentas
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
-            });
-
-            // Ejecutar petición con timeout
-            const response = await Promise.race([operationPromise, timeoutPromise]);
 
             // Verificar si la respuesta es exitosa
             if (response.ok) {
@@ -827,7 +843,7 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Función para agregar producto a favoritos con lógica mejorada
+    // Función para agregar producto a favoritos con lógica mejorada y manejo robusto de errores
     const addToFavorites = useCallback(async (product) => {
         try {
             // Log del producto que se va a agregar
@@ -867,8 +883,8 @@ export const AuthProvider = ({ children }) => {
             // Log del ID del producto que se va a agregar
             console.log('Agregando a favoritos:', productId);
 
-            // Crear promesa para la petición HTTP
-            const operationPromise = fetch('https://marquesa.onrender.com/api/clients/favorites/add', {
+            // Realizar petición con timeout
+            const response = await fetchWithTimeout('https://marquesa.onrender.com/api/clients/favorites/add', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -879,13 +895,6 @@ export const AuthProvider = ({ children }) => {
                 })
             });
 
-            // Crear promesa de timeout para conexiones lentas
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
-            });
-
-            // Ejecutar petición con timeout
-            const response = await Promise.race([operationPromise, timeoutPromise]);
             // Parsear respuesta JSON
             const data = await response.json();
             // Log de la respuesta del servidor
@@ -913,8 +922,8 @@ export const AuthProvider = ({ children }) => {
                 return { success: false, message: errorMsg };
             }
         } catch (error) {
-            // Log de error al remover de favoritos
-            console.error('Error removing from favorites:', error);
+            // Log de error al agregar a favoritos
+            console.error('Error adding to favorites:', error);
 
             // Manejo específico de errores de red vs servidor
             let errorMessage = 'Error de conexión con el servidor';
@@ -934,9 +943,9 @@ export const AuthProvider = ({ children }) => {
             setFavoritesError(errorMessage);
             return { success: false, message: errorMessage };
         }
-    }, [isAuthenticated, getBestAvailableToken, getFavorites, saveTokenToStorage]);
+    }, [isAuthenticated, getBestAvailableToken, normalizeProduct, getProductId, getFavorites, saveTokenToStorage]);
 
-    // Función para toggle favorito con lógica mejorada
+    // Función para toggle favorito con lógica mejorada y manejo robusto de errores
     const toggleFavorite = useCallback(async (product) => {
         try {
             // Verificar que se proporcione un producto
@@ -974,8 +983,8 @@ export const AuthProvider = ({ children }) => {
                 currentlyFavorite: isFavorite(productId)
             });
 
-            // Crear promesa para la petición HTTP
-            const operationPromise = fetch('https://marquesa.onrender.com/api/clients/favorites/toggle', {
+            // Realizar petición con timeout
+            const response = await fetchWithTimeout('https://marquesa.onrender.com/api/clients/favorites/toggle', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -986,13 +995,6 @@ export const AuthProvider = ({ children }) => {
                 })
             });
 
-            // Crear promesa de timeout para conexiones lentas
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
-            });
-
-            // Ejecutar petición con timeout
-            const response = await Promise.race([operationPromise, timeoutPromise]);
             // Parsear respuesta JSON
             const data = await response.json();
             // Log de la respuesta del servidor
@@ -1047,7 +1049,7 @@ export const AuthProvider = ({ children }) => {
         }
     }, [isAuthenticated, getBestAvailableToken, getProductId, isFavorite, getFavorites, saveTokenToStorage]);
 
-    // Función para remover producto de favoritos con lógica mejorada
+    // Función para remover producto de favoritos con lógica mejorada y manejo robusto de errores
     const removeFromFavorites = useCallback(async (productId) => {
         try {
             // Verificar que se proporcione un ID de producto
@@ -1072,8 +1074,8 @@ export const AuthProvider = ({ children }) => {
             // Log del ID del producto que se va a remover
             console.log('Removiendo de favoritos:', productId);
 
-            // Crear promesa para la petición HTTP
-            const operationPromise = fetch('https://marquesa.onrender.com/api/clients/favorites/remove', {
+            // Realizar petición con timeout
+            const response = await fetchWithTimeout('https://marquesa.onrender.com/api/clients/favorites/remove', {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1084,13 +1086,6 @@ export const AuthProvider = ({ children }) => {
                 })
             });
 
-            // Crear promesa de timeout para conexiones lentas
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
-            });
-
-            // Ejecutar petición con timeout
-            const response = await Promise.race([operationPromise, timeoutPromise]);
             // Parsear respuesta JSON
             const data = await response.json();
             // Log de la respuesta del servidor
@@ -1118,8 +1113,8 @@ export const AuthProvider = ({ children }) => {
                 return { success: false, message: errorMsg };
             }
         } catch (error) {
-            // Log de error al agregar a favoritos
-            console.error('Error adding to favorites:', error);
+            // Log de error al remover de favoritos
+            console.error('Error removing from favorites:', error);
 
             // Manejo específico de errores de red vs servidor
             let errorMessage = 'Error de conexión con el servidor';
@@ -1139,7 +1134,7 @@ export const AuthProvider = ({ children }) => {
             setFavoritesError(errorMessage);
             return { success: false, message: errorMessage };
         }
-    }, [isAuthenticated, getBestAvailableToken, normalizeProduct, getProductId, getFavorites, saveTokenToStorage]);
+    }, [isAuthenticated, getBestAvailableToken, getFavorites, saveTokenToStorage]);
 
     // Función para limpiar todos los favoritos
     const clearAllFavorites = useCallback(async () => {
@@ -1185,7 +1180,7 @@ export const AuthProvider = ({ children }) => {
         return [];
     }, [getFavorites, isAuthenticated]);
 
-    // Función mejorada para verificar estado de autenticación
+    // Función mejorada para verificar estado de autenticación con manejo robusto de errores
     const checkAuthStatus = async () => {
         try {
             // Verificar si hay procesos de autenticación en curso
@@ -1240,7 +1235,7 @@ export const AuthProvider = ({ children }) => {
                         await getFavorites(token);
 
                         // Marcar autenticación como lista
-                        setAuthReady(token);
+                        setAuthReady(true);
                         // Log de autenticación completamente inicializada
                         console.log('Auth completamente inicializado y listo');
                     } else {
@@ -1264,8 +1259,14 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
             // Log de error al verificar autenticación
             console.error('Error al verificar la autenticación:', error);
-            // Establecer error en el estado
-            setAuthError('Error al verificar el estado de autenticación');
+            
+            // Establecer error apropiado según el tipo
+            let errorMsg = 'Error al verificar el estado de autenticación';
+            if (error.message === 'TIMEOUT') {
+                errorMsg = 'Tiempo de conexión agotado. Verifica tu conexión.';
+            }
+            
+            setAuthError(errorMsg);
             // Limpiar datos de autenticación en caso de error
             await clearAuthData(false);
         } finally {
@@ -1276,7 +1277,7 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Función de login mejorada con sistema de límite de intentos
+    // Función de login mejorada con sistema de límite de intentos y manejo robusto de errores
     const login = async (email, password) => {
         try {
             // Activar estados de login
@@ -1325,8 +1326,8 @@ export const AuthProvider = ({ children }) => {
                 };
             }
 
-            // Realizar petición de login al servidor
-            const response = await fetch('https://marquesa.onrender.com/api/login', {
+            // Realizar petición de login al servidor con timeout
+            const response = await fetchWithTimeout('https://marquesa.onrender.com/api/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1479,8 +1480,15 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
             // Log de error en el proceso de login
             console.error('Error en el proceso de login:', error);
+            
             // Obtener mensaje de error apropiado
-            const errorMsg = error.message || 'Error de conexión con el servidor';
+            let errorMsg = 'Error de conexión con el servidor';
+            if (error.message === 'TIMEOUT') {
+                errorMsg = 'Tiempo de conexión agotado. Verifica tu conexión.';
+            } else if (error.message) {
+                errorMsg = error.message;
+            }
+            
             // Establecer error en el estado
             setAuthError(errorMsg);
             // Desactivar estados de login
@@ -1490,7 +1498,7 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Función de logout mejorada
+    // Función de logout mejorada con manejo robusto de errores
     const logout = async () => {
         try {
             // Activar estado de logout y limpiar errores
@@ -1504,14 +1512,14 @@ export const AuthProvider = ({ children }) => {
             const token = await getTokenFromStorage();
 
             try {
-                // Realizar petición de logout al servidor
-                const response = await fetch('https://marquesa.onrender.com/api/logout', {
+                // Realizar petición de logout al servidor con timeout
+                const response = await fetchWithTimeout('https://marquesa.onrender.com/api/logout', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`,
                     },
-                });
+                }, 10000); // Timeout más corto para logout
 
                 // Verificar si la respuesta del servidor fue exitosa
                 if (response && response.ok) {
@@ -1521,7 +1529,11 @@ export const AuthProvider = ({ children }) => {
                 }
             } catch (serverError) {
                 // Log de advertencia por error de red en logout del servidor
-                console.warn('Error de red al cerrar sesión en el servidor, continuando localmente:', serverError);
+                if (serverError.message === 'TIMEOUT') {
+                    console.warn('Timeout al cerrar sesión en servidor, continuando localmente');
+                } else {
+                    console.warn('Error de red al cerrar sesión en el servidor, continuando localmente:', serverError);
+                }
             }
 
             // Limpiar datos de autenticación localmente

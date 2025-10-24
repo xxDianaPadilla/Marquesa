@@ -9,6 +9,7 @@ import {
     ScrollView,
     Alert,
     RefreshControl,
+    FlatList,
 } from "react-native";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
@@ -166,7 +167,7 @@ export default function HomeScreen({ navigation }) {
             // Mostrar estado de carga para este producto específico
             setRemovingFromCart(product._id);
 
-            console.log('🗑️ Removiendo producto del carrito:', {
+            console.log('Removiendo producto del carrito:', {
                 productId: product._id,
                 productName: product.name
             });
@@ -243,7 +244,7 @@ export default function HomeScreen({ navigation }) {
             // Mostrar estado de carga para este producto específico
             setAddingToCart(product._id);
 
-            console.log('🛒 Agregando producto al carrito:', {
+            console.log('Agregando producto al carrito:', {
                 productId: product._id,
                 productName: product.name,
                 price: product.price,
@@ -314,6 +315,20 @@ export default function HomeScreen({ navigation }) {
             />
         </View>
     );
+
+    // Función para extraer la clave única de cada producto (optimización de FlatList)
+    const keyExtractor = (item) => item._id;
+
+    // Función para calcular el layout de cada item (optimización de FlatList)
+    // Mejora el rendimiento al permitir que FlatList calcule posiciones sin renderizar
+    const getItemLayout = (data, index) => {
+        const itemHeight = isSmallDevice ? 192 : 212; // Altura aproximada de cardWrapper (minHeight + marginBottom)
+        return {
+            length: itemHeight,
+            offset: itemHeight * Math.floor(index / 2), // Dividir por 2 porque son 2 columnas
+            index,
+        };
+    };
 
     return (
         <View style={styles.container}>
@@ -489,7 +504,7 @@ export default function HomeScreen({ navigation }) {
                     </View>
                 )}
 
-                {/* Grid de productos */}
+                {/* Lista de productos con FlatList para optimización de rendimiento */}
                 <View style={styles.productsContainer}>
                     {loading ? (
                         <View style={styles.loadingContainer}>
@@ -501,27 +516,20 @@ export default function HomeScreen({ navigation }) {
                             <Text style={styles.emptyText}>No se encontraron productos</Text>
                         </View>
                     ) : (
-                        <View style={styles.productsGrid}>
-                            {filteredProducts.map((product, index) => (
-                                <View
-                                    key={product._id}
-                                    style={[
-                                        styles.cardWrapper,
-                                        { marginRight: index % 2 === 0 ? elementGap : 0 }
-                                    ]}
-                                >
-                                    <ProductCard
-                                        product={product}
-                                        onPress={handleProductPress}
-                                        onAddToCart={handleAddToCart}
-                                        navigation={navigation}
-                                        isAddingToCart={addingToCart === product._id || updating}
-                                        isRemovingFromCart={removingFromCart === product._id}
-                                        productInCart={isInCart(product._id)}
-                                    />
-                                </View>
-                            ))}
-                        </View>
+                        <FlatList
+                            data={filteredProducts}
+                            renderItem={renderProduct}
+                            keyExtractor={keyExtractor}
+                            numColumns={2}
+                            scrollEnabled={false}
+                            showsVerticalScrollIndicator={false}
+                            getItemLayout={getItemLayout}
+                            removeClippedSubviews={true}
+                            maxToRenderPerBatch={10}
+                            updateCellsBatchingPeriod={50}
+                            initialNumToRender={6}
+                            windowSize={5}
+                        />
                     )}
                 </View>
 
@@ -893,11 +901,6 @@ const styles = StyleSheet.create({
     productsContainer: {
         paddingHorizontal: horizontalPadding,
         paddingTop: 5,
-    },
-    productsGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
     },
     cardWrapper: {
         width: (screenWidth - (horizontalPadding * 2) - elementGap - 4) / 2,

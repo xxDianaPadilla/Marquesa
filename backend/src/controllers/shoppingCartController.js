@@ -866,7 +866,7 @@ shoppingCartController.removeSpecificItem = async (req, res) => {
 shoppingCartController.clearCartAfterPurchase = async (req, res) => {
     try {
         const { cartId } = req.params;
-        const { userId, orderId } = req.body; // Ahora también recibimos orderId
+        const { userId, orderId } = req.body;
 
         console.log('🛒 Limpiando carrito después de compra:', {
             cartId,
@@ -904,6 +904,7 @@ shoppingCartController.clearCartAfterPurchase = async (req, res) => {
             });
         }
 
+        // ✅ Confirmar descuento pendiente ANTES de cambiar status
         if (cart.pendingDiscount && orderId) {
             console.log('Confirmando descuento pendiente antes de limpiar...');
 
@@ -918,13 +919,22 @@ shoppingCartController.clearCartAfterPurchase = async (req, res) => {
             };
 
             cart.pendingDiscount = undefined;
+
+            // ✅ CRÍTICO: Recalcular con el descuento aplicado
+            cart.recalculateTotals();
         }
 
         // Marcar carrito como completado
         cart.status = 'Completado';
         await cart.save();
 
-        console.log('Carrito marcado como completado con descuento confirmado');
+        console.log('✅ Carrito completado:', {
+            cartId: cart._id,
+            subtotal: cart.subtotal,
+            total: cart.total,
+            appliedDiscount: cart.appliedDiscount,
+            descuentoAplicado: cart.appliedDiscount?.amount || 0
+        });
 
         // Crear nuevo carrito activo para el usuario
         const newCart = new shoppingCartModel({
@@ -956,6 +966,7 @@ shoppingCartController.clearCartAfterPurchase = async (req, res) => {
             },
             cleared: true,
             discountConfirmed: !!cart.appliedDiscount,
+            finalTotal: cart.total, 
             token: currentToken
         });
 
@@ -1328,7 +1339,6 @@ shoppingCartController.applyPendingDiscount = async (req, res) => {
             });
         }
 
-        // Validar que tengamos los datos mínimos necesarios
         if (!code || !codeId || !amount) {
             return res.status(400).json({
                 success: false,
@@ -1345,7 +1355,7 @@ shoppingCartController.applyPendingDiscount = async (req, res) => {
             });
         }
 
-        // Aplicar descuento pendiente directamente
+        // Aplicar descuento pendiente
         cart.pendingDiscount = {
             code,
             codeId,
@@ -1357,12 +1367,17 @@ shoppingCartController.applyPendingDiscount = async (req, res) => {
             textColor
         };
 
+        // ✅ CRÍTICO: Recalcular totales ANTES de guardar
+        cart.recalculateTotals();
+
         await cart.save();
 
-        console.log('Descuento pendiente aplicado:', {
+        console.log('✅ Descuento pendiente aplicado:', {
             cartId: cart._id,
             pendingDiscount: cart.pendingDiscount,
-            total: cart.total
+            subtotal: cart.subtotal,
+            total: cart.total,
+            descuentoRestado: cart.subtotal - cart.total
         });
 
         const { token } = getTokenFromRequest(req);

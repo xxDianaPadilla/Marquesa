@@ -10,8 +10,11 @@ const useShoppingCart = () => {
     const [error, setError] = useState(null);
     const [updating, setUpdating] = useState(false);
 
+    const [activeCartId, setActiveCartId] = useState(null);
+
     // NUEVO: Estados para manejo de descuentos
     const [appliedDiscount, setAppliedDiscount] = useState(null);
+    const [pendingDiscount, setPendingDiscount] = useState(null);
     const [discountAmount, setDiscountAmount] = useState(0);
 
     useEffect(() => {
@@ -25,9 +28,6 @@ const useShoppingCart = () => {
 
     const { user, isAuthenticated, userInfo, getBestAvailableToken, setAuthToken } = useAuth();
 
-    /**
-     * ✅ NUEVA FUNCIÓN: Crear headers de autenticación híbridos
-     */
     const getAuthHeaders = useCallback(() => {
         const token = getBestAvailableToken();
         const headers = {
@@ -39,7 +39,7 @@ const useShoppingCart = () => {
         return headers;
     }, [getBestAvailableToken]);
 
-    // ✅ FUNCIÓN CORREGIDA: Obtener carrito activo (nueva lógica) con sistema híbrido
+    // Obtener carrito activo (nueva lógica) con sistema híbrido
     const fetchShoppingCart = useCallback(async () => {
         if (!isAuthenticated || !user?.id) {
             setCartItems([]);
@@ -51,44 +51,47 @@ const useShoppingCart = () => {
         try {
             setError(null);
 
-            const operationPromise = fetch(`https://marquesa.onrender.com/api/shoppingCart/active/${user.id}`, {
-                method: 'GET',
-                credentials: 'include',
-                headers: getAuthHeaders(),
-            });
-
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
-            });
-
-            const response = await Promise.race([operationPromise, timeoutPromise]);
+            const response = await fetch(
+                `https://marquesa.onrender.com/api/shoppingCart/active/${user.id}`,
+                {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: getAuthHeaders(),
+                }
+            );
 
             if (response.ok) {
                 const data = await response.json();
-                console.log('Datos recibidos del backend (carrito activo):', data);
-
-                let token = null;
+                console.log('Carrito recibido:', data);
 
                 if (data.token) {
-                    token = data.token;
-                    setAuthToken(token);
-                }
-
-                if (!token) {
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                    token = getBestAvailableToken();
-                    if (token) {
-                        setAuthToken(token);
-                    }
+                    setAuthToken(data.token);
                 }
 
                 if (data.cart) {
                     const cart = data.cart;
+                    setActiveCartId(cart._id);
 
+                    // Procesar descuentos del carrito
+                    if (cart.pendingDiscount) {
+                        console.log('Descuento pendiente encontrado:', cart.pendingDiscount);
+                        setPendingDiscount(cart.pendingDiscount);
+                        setDiscountAmount(cart.pendingDiscount.amount || 0);
+                    } else {
+                        setPendingDiscount(null);
+                        setDiscountAmount(0);
+                    }
+
+                    if (cart.appliedDiscount) {
+                        console.log('Descuento aplicado encontrado:', cart.appliedDiscount);
+                        setAppliedDiscount(cart.appliedDiscount);
+                    } else {
+                        setAppliedDiscount(null);
+                    }
+
+                    // Transformar items
                     if (cart.items && Array.isArray(cart.items) && cart.items.length > 0) {
                         const transformedItems = cart.items.map(item => {
-                            console.log('🔍 Transformando item:', item);
-
                             let transformedItem = {
                                 id: item.itemId?._id || item.itemId,
                                 quantity: item.quantity || 1,
@@ -97,58 +100,13 @@ const useShoppingCart = () => {
                                 _originalItem: item
                             };
 
-                            // ✅ MEJORADO: Manejo de imágenes más robusto
                             if (item.itemType === 'product') {
                                 transformedItem = {
                                     ...transformedItem,
                                     name: item.itemId?.name || 'Producto sin nombre',
                                     description: item.itemId?.description || '',
                                     price: item.itemId?.price || 0,
-
-                                    // ✅ MEJORA CRÍTICA: Obtener imagen con fallbacks múltiples
-                                    image: (() => {
-                                        // Prioridad 1: imagen directa del itemId
-                                        if (item.itemId?.image && typeof item.itemId.image === 'string' && item.itemId.image.trim() !== '') {
-                                            console.log('📸 Imagen encontrada en itemId.image:', item.itemId.image);
-                                            return item.itemId.image.trim();
-                                        }
-
-                                        // Prioridad 2: primer elemento del array de imágenes
-                                        if (item.itemId?.images && Array.isArray(item.itemId.images) && item.itemId.images.length > 0) {
-                                            const firstImage = item.itemId.images[0];
-
-                                            // Si el primer elemento es un objeto con propiedad image
-                                            if (firstImage && typeof firstImage === 'object' && firstImage.image) {
-                                                console.log('📸 Imagen encontrada en images[0].image:', firstImage.image);
-                                                return firstImage.image.trim();
-                                            }
-
-                                            // Si el primer elemento es directamente una string
-                                            if (typeof firstImage === 'string' && firstImage.trim() !== '') {
-                                                console.log('📸 Imagen encontrada en images[0]:', firstImage);
-                                                return firstImage.trim();
-                                            }
-                                        }
-
-                                        // Prioridad 3: buscar en todo el array de imágenes
-                                        if (item.itemId?.images && Array.isArray(item.itemId.images)) {
-                                            for (const img of item.itemId.images) {
-                                                if (typeof img === 'string' && img.trim() !== '') {
-                                                    console.log('📸 Imagen encontrada en images array:', img);
-                                                    return img.trim();
-                                                }
-                                                if (img && typeof img === 'object' && img.image && typeof img.image === 'string' && img.image.trim() !== '') {
-                                                    console.log('📸 Imagen encontrada en images array object:', img.image);
-                                                    return img.image.trim();
-                                                }
-                                            }
-                                        }
-
-                                        console.log('❌ No se encontró imagen válida para producto:', item.itemId?.name);
-                                        return '';
-                                    })(),
-
-                                    // ✅ NUEVO: Mantener array completo de imágenes para debugging
+                                    image: item.itemId?.image || item.itemId?.images?.[0]?.image || item.itemId?.images?.[0] || '',
                                     images: item.itemId?.images || []
                                 };
                             } else if (item.itemType === 'custom') {
@@ -157,91 +115,46 @@ const useShoppingCart = () => {
                                     name: item.itemId?.productToPersonalize || 'Producto personalizado',
                                     description: item.itemId?.extraComments || 'Producto personalizado',
                                     price: item.itemId?.totalPrice || 0,
-
-                                    // ✅ MEJORA: Mejor manejo de imágenes para productos personalizados
-                                    image: (() => {
-                                        // Prioridad 1: referenceImage
-                                        if (item.itemId?.referenceImage && typeof item.itemId.referenceImage === 'string' && item.itemId.referenceImage.trim() !== '') {
-                                            console.log('📸 Imagen personalizada encontrada en referenceImage:', item.itemId.referenceImage);
-                                            return item.itemId.referenceImage.trim();
-                                        }
-
-                                        // Prioridad 2: image (si existe)
-                                        if (item.itemId?.image && typeof item.itemId.image === 'string' && item.itemId.image.trim() !== '') {
-                                            console.log('📸 Imagen personalizada encontrada en image:', item.itemId.image);
-                                            return item.itemId.image.trim();
-                                        }
-
-                                        console.log('❌ No se encontró imagen para producto personalizado:', item.itemId?.productToPersonalize);
-                                        return '';
-                                    })(),
-
-                                    // ✅ NUEVO: Mantener referenceImage original
+                                    image: item.itemId?.referenceImage || item.itemId?.image || '',
                                     referenceImage: item.itemId?.referenceImage || ''
                                 };
-                            } else {
-                                // Fallback para tipos desconocidos
-                                transformedItem = {
-                                    ...transformedItem,
-                                    name: item.itemId?.name || item.itemId?.productToPersonalize || 'Producto',
-                                    description: item.itemId?.description || item.itemId?.extraComments || '',
-                                    price: item.itemId?.price || item.itemId?.totalPrice || 0,
-                                    image: item.itemId?.image || item.itemId?.referenceImage || item.itemId?.images?.[0]?.image || ''
-                                };
                             }
-
-                            console.log('✅ Item transformado:', {
-                                id: transformedItem.id,
-                                name: transformedItem.name,
-                                type: transformedItem.itemType,
-                                hasImage: !!transformedItem.image,
-                                imageUrl: transformedItem.image,
-                                originalImages: transformedItem.images || 'N/A'
-                            });
 
                             return transformedItem;
                         });
 
                         setCartItems(transformedItems);
+                        setSubtotal(cart.subtotal || 0);
                         setCartTotal(cart.total || 0);
                     } else {
                         setCartItems([]);
+                        setSubtotal(0);
                         setCartTotal(0);
                     }
                 } else {
                     setCartItems([]);
+                    setSubtotal(0);
                     setCartTotal(0);
                 }
             } else if (response.status === 404) {
                 setCartItems([]);
+                setSubtotal(0);
                 setCartTotal(0);
             } else {
                 throw new Error(`Error del servidor: ${response.status}`);
             }
         } catch (error) {
-            console.error('Error al obtener el carrito activo: ', error);
-
-            let errorMessage = 'Error al cargar el carrito de compras';
-
-            if (error.message === 'TIMEOUT') {
-                errorMessage = 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
-            } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
-                errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
-            } else if (error.message?.includes('timeout')) {
-                errorMessage = 'La conexión tardó demasiado. Inténtalo nuevamente.';
-            } else if (error.message?.includes('network')) {
-                errorMessage = 'Error de red. Verifica tu conexión a internet.';
-            }
-
-            setError(errorMessage);
+            console.error('Error al obtener el carrito activo:', error);
+            setError('Error al cargar el carrito de compras');
             setCartItems([]);
+            setSubtotal(0);
             setCartTotal(0);
         } finally {
             setLoading(false);
         }
-    }, [isAuthenticated, user?.id, getAuthHeaders, getBestAvailableToken, setAuthToken]);
+    }, [isAuthenticated, user?.id, getAuthHeaders, setAuthToken]);
 
-    // ✅ ACTUALIZADA: Función updateQuantity con sistema híbrido
+    // Función updateQuantity con sistema híbrido
     const updateQuantity = useCallback(async (itemId, newQuantity) => {
         if (!isAuthenticated || !user?.id) {
             setError('Usuario no autenticado');
@@ -464,45 +377,98 @@ const useShoppingCart = () => {
     }, [isAuthenticated, user?.id, fetchShoppingCart, getAuthHeaders, setAuthToken]);
 
     // NUEVA FUNCIÓN: Aplicar descuento
-    const applyDiscount = useCallback((discountData, amount) => {
-        console.log('✅ APLICANDO DESCUENTO:', {
-            discountData,
-            amount,
-            timestamp: new Date().toISOString()
-        });
-
-        setAppliedDiscount(discountData);
-        setDiscountAmount(amount);
-
-        // ✅ NUEVO: Guardar en sessionStorage como backup
-        try {
-            sessionStorage.setItem('tempAppliedDiscount', JSON.stringify({
-                discountData,
-                amount,
-                timestamp: Date.now()
-            }));
-        } catch (error) {
-            console.warn('No se pudo guardar descuento en sessionStorage:', error);
+    const applyDiscount = useCallback(async (discountInfo, amount) => {
+        if (!activeCartId) {
+            console.error('No hay carrito activo');
+            return false;
         }
-    }, []);
 
-    // NUEVA FUNCIÓN: Remover descuento
-    const removeDiscount = useCallback(() => {
-        console.log('❌ REMOVIENDO DESCUENTO:', {
-            previousDiscount: appliedDiscount,
-            timestamp: new Date().toISOString()
-        });
-
-        setAppliedDiscount(null);
-        setDiscountAmount(0);
-
-        // Limpiar sessionStorage
         try {
-            sessionStorage.removeItem('tempAppliedDiscount');
+            console.log('Aplicando descuento pendiente al carrito:', {
+                cartId: activeCartId,
+                discountInfo,
+                amount
+            });
+
+            const response = await fetch(
+                `https://marquesa.onrender.com/api/shoppingCart/${activeCartId}/pendingDiscount`,
+                {
+                    method: 'PUT',
+                    credentials: 'include',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        code: discountInfo.code,
+                        codeId: discountInfo.codeId,
+                        name: discountInfo.name,
+                        discount: discountInfo.discount,
+                        amount: amount,
+                        color: discountInfo.color,
+                        textColor: discountInfo.textColor
+                    })
+                }
+            );
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                console.log('Descuento pendiente aplicado:', data.cart);
+
+                setPendingDiscount(data.cart.pendingDiscount);
+                setDiscountAmount(amount);
+
+                if (data.token) {
+                    setAuthToken(data.token);
+                }
+
+                return true;
+            } else {
+                console.error('Error aplicando descuento:', data.message);
+                return false;
+            }
         } catch (error) {
-            console.warn('No se pudo limpiar sessionStorage:', error);
+            console.error('Error aplicando descuento:', error);
+            return false;
         }
-    }, [appliedDiscount]);
+    }, [activeCartId, getAuthHeaders, setAuthToken]);
+
+    // Remover descuento
+    const removeDiscount = useCallback(async () => {
+        if (!activeCartId) {
+            console.error('No hay carrito activo');
+            return false;
+        }
+
+        try {
+            const response = await fetch(
+                `https://marquesa.onrender.com/api/shoppingCart/${activeCartId}/pendingDiscount`,
+                {
+                    method: 'DELETE',
+                    credentials: 'include',
+                    headers: getAuthHeaders()
+                }
+            );
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                console.log('Descuento pendiente removido');
+
+                setPendingDiscount(null);
+                setDiscountAmount(0);
+
+                if (data.token) {
+                    setAuthToken(data.token);
+                }
+
+                return true;
+            } else {
+                return false;
+            }
+        } catch (error) {
+            console.error('Error removiendo descuento:', error);
+            return false;
+        }
+    }, [activeCartId, getAuthHeaders, setAuthToken]);
 
     const recoverDiscountFromStorage = useCallback(() => {
         try {
@@ -525,87 +491,82 @@ const useShoppingCart = () => {
         return false;
     }, []);
 
-    // ✅ ACTUALIZADA: Función markDiscountAsUsedWithRealOrder con sistema híbrido
+    //Función markDiscountAsUsedWithRealOrder con sistema híbrido
     const markDiscountAsUsedWithRealOrder = useCallback(async (realOrderId) => {
-        console.log('🎫 === INICIO MARCAR DESCUENTO COMO USADO ===');
-        console.log('Datos iniciales:', {
-            appliedDiscount,
-            discountAmount,
-            hasDiscount: !!appliedDiscount,
-            hasUser: !!user?.id,
-            hasOrderId: !!realOrderId,
-            userId: user?.id,
-            orderId: realOrderId
-        });
+        console.log('=== INICIO MARCAR DESCUENTO COMO USADO ===');
 
-        // ✅ NUEVO: Intentar recuperar descuento si se perdió
-        if (!appliedDiscount) {
-            console.log('⚠️ Descuento no encontrado, intentando recuperar...');
-            const recovered = recoverDiscountFromStorage();
-            if (!recovered) {
-                console.error('❌ No se pudo recuperar el descuento aplicado');
-                return false;
-            }
-        }
-
-        if (!appliedDiscount || !user?.id || !realOrderId) {
-            console.error('❌ Datos faltantes para marcar descuento:', {
-                hasDiscount: !!appliedDiscount,
+        if (!pendingDiscount || !user?.id || !realOrderId || !activeCartId) {
+            console.error('Datos faltantes:', {
+                hasPendingDiscount: !!pendingDiscount,
                 hasUser: !!user?.id,
-                hasOrderId: !!realOrderId
+                hasOrderId: !!realOrderId,
+                hasCartId: !!activeCartId
             });
             return false;
         }
 
         try {
-            console.log('📤 Enviando request para marcar código como usado:', {
-                userId: user.id,
-                codeId: appliedDiscount.codeId,
-                orderId: realOrderId
-            });
+            // PASO 1: Confirmar descuento en el carrito
+            console.log('Confirmando descuento en el carrito...');
 
-            const operationPromise = fetch(`https://marquesa.onrender.com/api/clients/${user.id}/useCode`, {
-                method: 'PUT',
-                credentials: 'include', // ✅ NUEVO: Incluir cookies
-                headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
-                body: JSON.stringify({
-                    codeId: appliedDiscount.codeId,
-                    orderId: realOrderId
-                })
-            });
+            const confirmResponse = await fetch(
+                `https://marquesa.onrender.com/api/shoppingCart/${activeCartId}/confirmDiscount`,
+                {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ orderId: realOrderId })
+                }
+            );
 
-            // ✅ NUEVO: Timeout para conexiones lentas
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
-            });
+            const confirmData = await confirmResponse.json();
 
-            const response = await Promise.race([operationPromise, timeoutPromise]);
-            const data = await response.json();
+            if (!confirmResponse.ok || !confirmData.success) {
+                console.error('Error confirmando descuento en carrito:', confirmData.message);
+                return false;
+            }
 
-            if (response.ok && data.success) {
-                console.log('✅ SUCCESS: Código marcado como usado exitosamente:', data.usedCode);
+            console.log('Descuento confirmado en carrito:', confirmData.cart);
 
-                // ✅ NUEVO: Manejo híbrido de tokens
-                if (data.token) {
-                    setAuthToken(data.token);
+            // PASO 2: Marcar código como usado en el cliente
+            console.log('Marcando código como usado en cliente...');
+
+            const useCodeResponse = await fetch(
+                `https://marquesa.onrender.com/api/clients/${user.id}/useCode`,
+                {
+                    method: 'PUT',
+                    credentials: 'include',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        codeId: pendingDiscount.codeId,
+                        orderId: realOrderId
+                    })
+                }
+            );
+
+            const useCodeData = await useCodeResponse.json();
+
+            if (useCodeResponse.ok && useCodeData.success) {
+                console.log('Código marcado como usado exitosamente');
+
+                if (useCodeData.token) {
+                    setAuthToken(useCodeData.token);
                 }
 
-                // Limpiar descuento aplicado después de marcarlo como usado
-                removeDiscount();
+                // Limpiar descuento pendiente local
+                setPendingDiscount(null);
+                setDiscountAmount(0);
+
                 return true;
             } else {
-                console.error('❌ Error en respuesta del servidor:', {
-                    status: response.status,
-                    message: data.message,
-                    data: data
-                });
+                console.error('Error marcando código como usado:', useCodeData.message);
                 return false;
             }
         } catch (error) {
-            console.error('❌ EXCEPCIÓN al marcar código como usado:', error);
+            console.error('EXCEPCIÓN al marcar código como usado:', error);
             return false;
         }
-    }, [appliedDiscount, user?.id, removeDiscount, recoverDiscountFromStorage, getAuthHeaders, setAuthToken]);
+    }, [pendingDiscount, user?.id, activeCartId, getAuthHeaders, setAuthToken]);
 
     // ✅ ACTUALIZADA: Función getPromotionalCodes con sistema híbrido
     const getPromotionalCodes = useCallback(async (status = null) => {
@@ -664,96 +625,72 @@ const useShoppingCart = () => {
         }
     }, [isAuthenticated, user?.id, getAuthHeaders, setAuthToken]);
 
-    // ✅ FUNCIÓN CORREGIDA: Limpiar carrito después de compra (mejorada) con sistema híbrido
-    const clearCartAfterPurchase = useCallback(async (shoppingCartId) => {
+    // Limpiar carrito después de compra (mejorada) con sistema híbrido
+    const clearCartAfterPurchase = useCallback(async (shoppingCartId, orderId) => {
         if (!isAuthenticated || !user?.id) {
-            console.error('Usuario no autenticado para limpiar carrito');
+            console.error('Usuario no autenticado');
             return false;
         }
 
         if (!shoppingCartId) {
-            console.error('ID del carrito es requerido para limpiar');
-            setError('ID del carrito no válido');
+            console.error('ID del carrito es requerido');
             return false;
         }
 
         try {
-            setError(null);
-
             console.log('Limpiando carrito después de compra:', {
                 cartId: shoppingCartId,
+                orderId,
                 userId: user.id
             });
 
-            const operationPromise = fetch(`https://marquesa.onrender.com/api/shoppingCart/${shoppingCartId}/clearAfterPurchase`, {
-                method: 'POST',
-                credentials: 'include', // ✅ NUEVO: Incluir cookies
-                headers: getAuthHeaders(), // ✅ NUEVO: Headers híbridos
-                body: JSON.stringify({
-                    userId: user.id
-                })
-            });
+            const response = await fetch(
+                `https://marquesa.onrender.com/api/shoppingCart/${shoppingCartId}/clearAfterPurchase`,
+                {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        userId: user.id,
+                        orderId: orderId
+                    })
+                }
+            );
 
-            // ✅ NUEVO: Timeout para conexiones lentas
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('TIMEOUT')), 30000);
-            });
-
-            const response = await Promise.race([operationPromise, timeoutPromise]);
             const data = await response.json();
 
             if (response.ok && data) {
-                console.log('Respuesta del servidor al limpiar carrito:', data);
+                console.log('Carrito limpiado con descuento confirmado:', data);
 
-                // ✅ NUEVO: Manejo híbrido de tokens
                 if (data.token) {
                     setAuthToken(data.token);
                 }
 
-                // ✅ MEJORA: Limpiar el estado local del carrito inmediatamente
+                // Limpiar estado local
                 setCartItems([]);
                 setCartTotal(0);
                 setSubtotal(0);
-
-                // Limpiar descuentos aplicados
                 setAppliedDiscount(null);
+                setPendingDiscount(null);
                 setDiscountAmount(0);
 
-                console.log('Carrito limpiado exitosamente después de la compra:', {
-                    completedCart: data.completedCartId,
-                    newCart: data.activeCart,
-                    cleared: data.cleared
-                });
-
-                // ✅ MEJORA: Recargar carrito usando la nueva lógica
+                // Recargar carrito
                 await fetchShoppingCart();
 
                 return {
                     success: true,
                     message: data.message,
-                    completedCartId: data.completedCartId,
-                    activeCart: data.activeCart,
-                    cleared: data.cleared
+                    discountConfirmed: data.discountConfirmed
                 };
             } else {
                 throw new Error(data.message || 'Error al limpiar carrito');
             }
         } catch (error) {
-            console.error('Error al limpiar carrito después de compra:', error);
-
-            // ✅ NUEVO: Manejo específico de errores
-            let errorMessage = `Error al limpiar el carrito: ${error.message}`;
-
-            if (error.message === 'TIMEOUT') {
-                errorMessage = 'La conexión tardó demasiado tiempo. Inténtalo nuevamente.';
-            } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
-                errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
-            }
-
-            setError(errorMessage);
+            console.error('Error al limpiar carrito:', error);
+            setError('Error al limpiar el carrito');
             return {
                 success: false,
-                message: errorMessage
+                message: error.message
             };
         }
     }, [user?.id, isAuthenticated, fetchShoppingCart, getAuthHeaders, setAuthToken]);
@@ -836,11 +773,11 @@ const useShoppingCart = () => {
         } else {
             setCartItems([]);
             setCartTotal(0);
+            setSubtotal(0);
             setLoading(false);
             setError(null);
-            // ⚠️ AQUÍ PODRÍA ESTAR EL PROBLEMA: Se limpia el descuento al cambiar autenticación
-            console.log('🔄 Limpiando estado por cambio de autenticación');
             setAppliedDiscount(null);
+            setPendingDiscount(null);
             setDiscountAmount(0);
         }
     }, [isAuthenticated, user?.id, fetchShoppingCart]);
@@ -873,7 +810,7 @@ const useShoppingCart = () => {
     }, 0);
 
     // Calcular subtotal con descuentos aplicados
-    const subtotalWithDiscount = Math.max(0, subtotal - discountAmount);
+    const subtotalWithDiscount = Math.max(0, subTotal - discountAmount);
 
     // Calcular total final (incluyendo envío si es necesario)
     const finalTotal = subtotalWithDiscount;
@@ -882,16 +819,18 @@ const useShoppingCart = () => {
         // Estados existentes
         cartItems,
         cartTotal,
-        subtotal,
+        subtotal: subTotal,
         loading,
         error,
         updating,
         isAuthenticated,
         user,
         userInfo,
+        activeCartId,
 
         // Nuevos estados para descuentos
         appliedDiscount,
+        pendingDiscount,
         discountAmount,
         subtotalWithDiscount,
         finalTotal,
@@ -907,6 +846,7 @@ const useShoppingCart = () => {
         applyDiscount,
         removeDiscount,
         markDiscountAsUsedWithRealOrder,
+        clearCartAfterPurchase,
         getPromotionalCodes,
 
         debugDiscountState,
@@ -918,7 +858,7 @@ const useShoppingCart = () => {
         // Propiedades calculadas
         itemCount: cartItems.length,
         isEmpty: cartItems.length === 0,
-        hasDiscount: appliedDiscount !== null
+        hasDiscount: pendingDiscount !== null || appliedDiscount !== null
     };
 };
 

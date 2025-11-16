@@ -14,10 +14,10 @@ const PaymentProcessPage = () => {
     const navigate = useNavigate();
     const { user, isAuthenticated } = useAuth();
 
-    const { 
-        markDiscountAsUsedWithRealOrder, 
-        clearCartAfterPurchase, 
-        refreshCart, 
+    const {
+        markDiscountAsUsedWithRealOrder,
+        clearCartAfterPurchase,
+        refreshCart,
         debugDiscountState,
         // ✅ AÑADIR: Función para aplicar descuento
         applyDiscount,
@@ -86,7 +86,7 @@ const PaymentProcessPage = () => {
                 discountInfo: paymentState.discountInfo,
                 discountAmount: paymentState.discountAmount
             });
-            
+
             // Aplicar el descuento al hook useShoppingCart
             applyDiscount(paymentState.discountInfo, paymentState.discountAmount);
         }
@@ -202,20 +202,9 @@ const PaymentProcessPage = () => {
         try {
             setError(null);
 
-            console.log('🛒 === CONFIRMANDO ORDEN ===');
-            console.log('Estado del descuento antes de confirmar:', {
-                // ✅ CAMBIADO: Usar datos del hook en lugar de orderData
-                discountApplied: !!appliedDiscount,
-                discountInfo: appliedDiscount,
-                discountAmount: hookDiscountAmount,
-                orderDataDiscount: {
-                    discountApplied: orderData.discountApplied,
-                    discountInfo: orderData.discountInfo,
-                    discountAmount: orderData.discountAmount
-                }
-            });
+            console.log('=== CONFIRMANDO ORDEN ===');
 
-            // Validar que tenemos toda la información necesaria
+            // Validar información de envío
             if (!orderData.shippingInfo.receiverName ||
                 !orderData.shippingInfo.receiverPhone ||
                 !orderData.shippingInfo.deliveryAddress ||
@@ -225,20 +214,21 @@ const PaymentProcessPage = () => {
                 return;
             }
 
-            // Validar datos de pago según el tipo
+            // Validar método de pago
             if (!orderData.paymentInfo.paymentType) {
                 setError('Falta seleccionar método de pago');
                 return;
             }
-            
+
             // Obtener el ShoppingCartId del usuario actual
-            const cartResponse = await fetch(`https://marquesa.onrender.com/api/shoppingCart/client/${user.id}`, {
-                method: 'GET',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
+            const cartResponse = await fetch(
+                `https://marquesa.onrender.com/api/shoppingCart/client/${user.id}`,
+                {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                }
+            );
 
             const cartData = await cartResponse.json();
 
@@ -259,24 +249,22 @@ const PaymentProcessPage = () => {
                 paymentProofImage: orderData.paymentInfo.paymentProofImage
             };
 
-            console.log('Datos de venta a enviar:', saleData);
+            console.log('Creando venta con datos:', saleData);
 
-            // Crear la venta
+            // PASO 1: Crear la venta
             const result = await createSale(saleData);
 
             if (result.success) {
                 console.log('Venta creada exitosamente:', result.data);
 
-                // ✅ CAMBIADO: Usar datos del hook para verificar descuento
-                if (appliedDiscount && hookDiscountAmount > 0) {
-                    try {
-                        console.log('Marcando código de descuento como usado:', {
-                            discountInfo: appliedDiscount,
-                            discountAmount: hookDiscountAmount,
-                            orderId: result.data.sale._id
-                        });
+                const orderId = result.data.sale._id;
 
-                        const discountResult = await markDiscountAsUsedWithRealOrder(result.data.sale._id);
+                // PASO 2: Si hay descuento pendiente, marcarlo como usado
+                if (pendingDiscount && hookDiscountAmount > 0) {
+                    try {
+                        console.log('Marcando código de descuento como usado...');
+
+                        const discountResult = await markDiscountAsUsedWithRealOrder(orderId);
 
                         if (discountResult) {
                             console.log('Código de descuento marcado como usado exitosamente');
@@ -288,21 +276,27 @@ const PaymentProcessPage = () => {
                     }
                 }
 
-                // Limpiar carrito después de marcar el descuento
-                const clearResult = await clearCartAfterPurchase(cartData.shoppingCart._id);
+                // PASO 3: Limpiar carrito (esto también confirmará el descuento en el carrito)
+                const clearResult = await clearCartAfterPurchase(
+                    cartData.shoppingCart._id,
+                    orderId
+                );
 
                 if (clearResult.success) {
                     console.log('Carrito limpiado exitosamente');
+
+                    if (clearResult.discountConfirmed) {
+                        console.log('Descuento confirmado en el carrito completado');
+                    }
                 } else {
                     console.warn('No se pudo limpiar el carrito, pero la compra fue exitosa');
                 }
 
-                // *** Mostrar modal en lugar de redirigir ***
+                // PASO 4: Mostrar modal de éxito
                 setOrderSuccessData({
-                    orderId: result.data.sale._id,
+                    orderId: orderId,
                     orderData: orderData,
-                    // ✅ CAMBIADO: Usar datos del hook
-                    discountUsed: !!appliedDiscount,
+                    discountUsed: !!pendingDiscount,
                     discountAmount: hookDiscountAmount,
                     saleStatus: result.data.sale.status,
                     paymentType: result.data.sale.paymentType

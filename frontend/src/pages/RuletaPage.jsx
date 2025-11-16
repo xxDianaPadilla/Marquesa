@@ -472,7 +472,7 @@ const RuletaPage = () => {
                                     backgroundColor: '#E8ACD2'
                                 }}
                             >
-                                Comenzar a comprar 🛍️
+                                Comenzar a comprar
                             </button>
                         </div>
                     </div>

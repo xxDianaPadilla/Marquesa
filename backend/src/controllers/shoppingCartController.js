@@ -866,89 +866,69 @@ shoppingCartController.removeSpecificItem = async (req, res) => {
 shoppingCartController.clearCartAfterPurchase = async (req, res) => {
     try {
         const { cartId } = req.params;
-        const { userId } = req.body;
+        const { userId, orderId } = req.body;
 
-        // Validaciones
-        if (!cartId || !userId) {
-            return res.status(400).json({
-                success: false,
-                message: "cartId y userId son requeridos",
-                error: "Missing required parameters"
-            });
-        }
-
-        if (!mongoose.Types.ObjectId.isValid(cartId) || !mongoose.Types.ObjectId.isValid(userId)) {
-            return res.status(400).json({
-                success: false,
-                message: "IDs no tienen formato válido",
-                error: "Invalid ID format"
-            });
-        }
-
-        // Buscar el carrito y verificar que pertenece al usuario
-        const cart = await shoppingCartModel.findOne({
-            _id: cartId,
-            clientId: userId
+        console.log('Limpiando carrito después de compra:', {
+            cartId,
+            userId,
+            orderId
         });
+
+        if (!isValidObjectId(cartId)) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de carrito inválido"
+            });
+        }
+
+        if (!userId) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de usuario requerido"
+            });
+        }
+
+        const cart = await shoppingCartModel.findById(cartId);
 
         if (!cart) {
             return res.status(404).json({
                 success: false,
-                message: "Carrito no encontrado o no pertenece al usuario",
-                error: "Cart not found"
+                message: "Carrito no encontrado"
             });
         }
 
-        // Verificar que el carrito tiene items para limpiar
-        if (cart.items.length === 0) {
-            // Configurar cookies con configuración dinámica cross-domain
-            const { token } = getTokenFromRequest(req);
-            const currentToken = token || 'session_maintained';
-            const cookieConfig = getCookieConfig();
-            res.cookie("authToken", currentToken, cookieConfig);
-
-            return res.status(200).json({
-                success: true,
-                message: "El carrito ya está vacío",
-                cart,
-                cleared: false,
-                token: currentToken // También en el body para mayor compatibilidad
+        if (cart.clientId.toString() !== userId) {
+            return res.status(403).json({
+                success: false,
+                message: "No tienes permiso para modificar este carrito"
             });
         }
 
-        // SOLUCIÓN: Marcar TODOS los carritos activos del usuario como completados
-        await shoppingCartModel.updateMany(
-            {
-                clientId: userId,
-                status: 'Activo'
-            },
-            {
-                status: 'Completado',
-                completedAt: new Date()
-            }
-        );
+        // Confirmamos descuento si existe uno pendiente
+        if (cart.pendingDiscount && orderId) {
+            console.log('Confirmando descuento pendiente antes de limpiar...');
+            cart.confirmDiscount(orderId);
+        }
 
-        // Verificar si ya existe un carrito activo después de la actualización
-        let activeCart = await shoppingCartModel.findOne({
+        // Marcamos carrito como completado
+        cart.status = 'completed';
+        await cart.save();
+
+        console.log('Carrito marcado como completado con descuento confirmado');
+
+        // Creamos nuevo carrito activo para el usuario
+        const newCart = new shoppingCartModel({
             clientId: userId,
-            status: 'Activo'
-        }).populate({
-            path: 'items.itemId',
+            items: [],
+            subtotal: 0,
+            total: 0,
+            status: 'active'
         });
 
-        // Solo crear un nuevo carrito si no existe uno activo
-        if (!activeCart) {
-            activeCart = new shoppingCartModel({
-                clientId: userId,
-                items: [],
-                total: 0,
-                status: 'Activo',
-                createdAt: new Date()
-            });
-            await activeCart.save();
-        }
+        await newCart.save();
 
-        // Configurar cookies con configuración dinámica cross-domain
+        console.log('Nuevo carrito activo creado:', newCart._id);
+
         const { token } = getTokenFromRequest(req);
         const currentToken = token || 'session_maintained';
         const cookieConfig = getCookieConfig();
@@ -956,18 +936,24 @@ shoppingCartController.clearCartAfterPurchase = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            message: "Carrito limpiado después de compra exitosa",
-            completedCartId: cartId,
-            activeCart: activeCart,
+            message: "Carrito limpiado y descuento confirmado exitosamente",
+            completedCartId: cart._id,
+            activeCart: {
+                _id: newCart._id,
+                items: newCart.items,
+                subtotal: newCart.subtotal,
+                total: newCart.total
+            },
             cleared: true,
-            token: currentToken // También en el body para mayor compatibilidad
+            discountConfirmed: !!cart.appliedDiscount,
+            token: currentToken
         });
 
     } catch (error) {
-        console.error('Error al limpiar carrito después de compra:', error);
+        console.error('Error limpiando carrito:', error);
         res.status(500).json({
             success: false,
-            message: "Error interno del servidor",
+            message: "Error al limpiar el carrito",
             error: error.message
         });
     }
@@ -981,33 +967,38 @@ shoppingCartController.getActiveCart = async (req, res) => {
     try {
         const { userId } = req.params;
 
-        if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+        if (!isValidObjectId(userId)) {
             return res.status(400).json({
                 success: false,
-                message: "userId es requerido y debe tener formato válido",
-                error: "Invalid user ID"
+                message: "ID de usuario inválido"
             });
         }
 
         // Buscar carrito activo del usuario
-        let activeCart = await shoppingCartModel.findOne({
-            clientId: userId,
-            status: 'Activo'
-        }).populate('items.itemId');
+        let cart = await shoppingCartModel
+            .findOne({
+                clientId: userId,
+                status: 'active'
+            })
+            .populate({
+                path: 'items.itemId',
+                select: 'name description price image images referenceImage productToPersonalize totalPrice extraComments'
+            })
+            .sort({ createdAt: -1 });
 
-        // Si no existe, crear uno nuevo
-        if (!activeCart) {
-            activeCart = new shoppingCartModel({
+        // Si no hay carrito activo, crear uno nuevo
+        if (!cart) {
+            console.log('No hay carrito activo, creando uno nuevo...');
+            cart = new shoppingCartModel({
                 clientId: userId,
                 items: [],
+                subtotal: 0,
                 total: 0,
-                status: 'Activo',
-                createdAt: new Date()
+                status: 'active'
             });
-            await activeCart.save();
+            await cart.save();
         }
 
-        // Configurar cookies con configuración dinámica cross-domain
         const { token } = getTokenFromRequest(req);
         const currentToken = token || 'session_maintained';
         const cookieConfig = getCookieConfig();
@@ -1015,16 +1006,26 @@ shoppingCartController.getActiveCart = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            message: "Carrito activo obtenido exitosamente",
-            cart: activeCart,
-            token: currentToken // También en el body para mayor compatibilidad
+            cart: {
+                _id: cart._id,
+                clientId: cart.clientId,
+                items: cart.items,
+                subtotal: cart.subtotal,
+                total: cart.total,
+                pendingDiscount: cart.pendingDiscount || null,
+                appliedDiscount: cart.appliedDiscount || null,
+                status: cart.status,
+                createdAt: cart.createdAt,
+                updatedAt: cart.updatedAt
+            },
+            token: currentToken
         });
 
     } catch (error) {
-        console.error('Error al obtener carrito activo:', error);
+        console.error('Error obteniendo carrito activo:', error);
         res.status(500).json({
             success: false,
-            message: "Error interno del servidor",
+            message: "Error al obtener el carrito activo",
             error: error.message
         });
     }
@@ -1293,6 +1294,213 @@ shoppingCartController.applyPromotionalCode = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Error al aplicar código promocional",
+            error: error.message
+        });
+    }
+};
+
+shoppingCartController.applyPendingDiscount = async (req, res) => {
+    try {
+        const { cartId } = req.params;
+        const { code, codeId, name, discount, amount, color, textColor } = req.body;
+
+        console.log('📋 Aplicando descuento pendiente:', {
+            cartId,
+            code,
+            codeId,
+            amount
+        });
+
+        if (!isValidObjectId(cartId)) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de carrito inválido"
+            });
+        }
+
+        // Validar que tengamos los datos mínimos necesarios
+        if (!code || !codeId || !amount) {
+            return res.status(400).json({
+                success: false,
+                message: "Datos de descuento incompletos"
+            });
+        }
+
+        const cart = await shoppingCartModel.findById(cartId);
+
+        if (!cart) {
+            return res.status(404).json({
+                success: false,
+                message: "Carrito no encontrado"
+            });
+        }
+
+        // Aplicar descuento pendiente directamente
+        cart.pendingDiscount = {
+            code,
+            codeId,
+            name,
+            discount,
+            amount: parseFloat(amount),
+            appliedAt: new Date(),
+            color,
+            textColor
+        };
+
+        await cart.save();
+
+        console.log('Descuento pendiente aplicado:', {
+            cartId: cart._id,
+            pendingDiscount: cart.pendingDiscount,
+            total: cart.total
+        });
+
+        const { token } = getTokenFromRequest(req);
+        const currentToken = token || 'session_maintained';
+        const cookieConfig = getCookieConfig();
+        res.cookie("authToken", currentToken, cookieConfig);
+
+        res.status(200).json({
+            success: true,
+            message: "Descuento preparado para aplicar al completar la compra",
+            cart: {
+                _id: cart._id,
+                subtotal: cart.subtotal,
+                total: cart.total,
+                pendingDiscount: cart.pendingDiscount,
+                appliedDiscount: cart.appliedDiscount
+            },
+            token: currentToken
+        });
+
+    } catch (error) {
+        console.error('Error aplicando descuento pendiente:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error al aplicar descuento pendiente",
+            error: error.message
+        });
+    }
+};
+
+shoppingCartController.removePendingDiscount = async (req, res) => {
+    try {
+        const { cartId } = req.params;
+
+        if (!isValidObjectId(cartId)) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de carrito inválido"
+            });
+        }
+
+        const cart = await shoppingCartModel.findById(cartId);
+
+        if (!cart) {
+            return res.status(404).json({
+                success: false,
+                message: "Carrito no encontrado"
+            });
+        }
+
+        cart.removePendingDiscount();
+        await cart.save();
+
+        const { token } = getTokenFromRequest(req);
+        const currentToken = token || 'session_maintained';
+        const cookieConfig = getCookieConfig();
+        res.cookie("authToken", currentToken, cookieConfig);
+
+        res.status(200).json({
+            success: true,
+            message: "Descuento pendiente removido",
+            cart: {
+                _id: cart._id,
+                subtotal: cart.subtotal,
+                total: cart.total,
+                pendingDiscount: cart.pendingDiscount
+            },
+            token: currentToken
+        });
+
+    } catch (error) {
+        console.error('Error removiendo descuento pendiente:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error al remover descuento pendiente",
+            error: error.message
+        });
+    }
+};
+
+shoppingCartController.confirmDiscountOnPurchase = async (req, res) => {
+    try {
+        const { cartId } = req.params;
+        const { orderId } = req.body;
+
+        console.log('Confirmando descuento al completar compra:', {
+            cartId,
+            orderId
+        });
+
+        if (!isValidObjectId(cartId)) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de carrito inválido"
+            });
+        }
+
+        if (!orderId || !isValidObjectId(orderId)) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de orden inválido"
+            });
+        }
+
+        const cart = await shoppingCartModel.findById(cartId);
+
+        if (!cart) {
+            return res.status(404).json({
+                success: false,
+                message: "Carrito no encontrado"
+            });
+        }
+
+        // Confirmamos descuento usando el método del schema
+        cart.confirmDiscount(orderId);
+        cart.status = 'completed';
+        await cart.save();
+
+        console.log('Descuento confirmado y aplicado:', {
+            cartId: cart._id,
+            appliedDiscount: cart.appliedDiscount,
+            newTotal: cart.total,
+            orderId
+        });
+
+        const { token } = getTokenFromRequest(req);
+        const currentToken = token || 'session_maintained';
+        const cookieConfig = getCookieConfig();
+        res.cookie("authToken", currentToken, cookieConfig);
+
+        res.status(200).json({
+            success: true,
+            message: "Descuento confirmado y aplicado exitosamente",
+            cart: {
+                _id: cart._id,
+                subtotal: cart.subtotal,
+                total: cart.total,
+                appliedDiscount: cart.appliedDiscount,
+                status: cart.status
+            },
+            token: currentToken
+        });
+
+    } catch (error) {
+        console.error('Error confirmando descuento:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error al confirmar descuento",
             error: error.message
         });
     }

@@ -12,6 +12,34 @@ const useSalesAdmin = () => {
 
   const authContext = useAuth();
 
+  const filterDeliveredSales = useCallback((salesArray) => {
+    const now = new Date();
+    
+    return salesArray.filter((sale) => {
+      // Si no está entregado, mantener la venta
+      if (sale.trackingStatus !== "Entregado") {
+        return true;
+      }
+
+      // Si está entregado, verificamos la fecha de entrega
+      if (!sale.deliveryDate) {
+        return true; 
+      }
+
+      try {
+        const deliveryDate = new Date(sale.deliveryDate);
+        const threeDaysAfterDelivery = new Date(deliveryDate);
+        threeDaysAfterDelivery.setDate(threeDaysAfterDelivery.getDate() + 3);
+
+        // Mantenemos solo si no han pasado 3 días completos
+        return now < threeDaysAfterDelivery;
+      } catch (error) {
+        console.error('Error procesando fecha de entrega:', error);
+        return true; 
+      }
+    });
+  }, []);
+
   const fetchSales = useCallback(async () => {
     if (fetchInProgressRef.current) {
       return;
@@ -103,7 +131,15 @@ const useSalesAdmin = () => {
           return sale && typeof sale === 'object' && sale._id;
         });
 
-        const sortedSales = validSales.sort((a, b) => {
+        const activeSales = filterDeliveredSales(validSales);
+
+        console.log('📊 Ventas filtradas:', {
+          total: validSales.length,
+          activas: activeSales.length,
+          filtradas: validSales.length - activeSales.length
+        });
+
+        const sortedSales = activeSales.sort((a, b) => {
           try {
             const dateA = new Date(a.deliveryDate || 0);
             const dateB = new Date(b.deliveryDate || 0);
@@ -145,7 +181,7 @@ const useSalesAdmin = () => {
       }
       fetchInProgressRef.current = false;
     }
-  }, []);
+  }, [authContext, filterDeliveredSales]);
 
   const forceFetchSales = useCallback(async () => {
     fetchInProgressRef.current = false;
@@ -242,7 +278,6 @@ const useSalesAdmin = () => {
           console.log('🔄 Token actualizado exitosamente');
         } catch (tokenError) {
           console.warn('⚠️ Error estableciendo token:', tokenError);
-          // No fallar la operación por esto
         }
       }
 
@@ -282,8 +317,10 @@ const useSalesAdmin = () => {
           return sale;
         });
 
-        salesRef.current = updatedSales;
-        return updatedSales;
+        const filteredSales = filterDeliveredSales(updatedSales);
+
+        salesRef.current = filteredSales;
+        return filteredSales;
       });
 
       setError(null);
@@ -307,7 +344,7 @@ const useSalesAdmin = () => {
       setError(errorMessage);
       return false;
     }
-  }, [authContext]);
+  }, [authContext, filterDeliveredSales]);
 
   const filterSalesByStatus = useCallback((status) => {
     const currentSales = salesRef.current;

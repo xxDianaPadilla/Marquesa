@@ -858,7 +858,7 @@ const useShoppingCart = () => {
         // Propiedades calculadas
         itemCount: cartItems.length,
         isEmpty: cartItems.length === 0,
-        hasDiscount: pendingDiscount !== null || appliedDiscount !== null
+        hasDiscount: (pendingDiscount !== null && discountAmount > 0) || (appliedDiscount !== null && discountAmount > 0)
     };
 };
 

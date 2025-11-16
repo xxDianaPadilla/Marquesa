@@ -19,11 +19,11 @@ const PaymentProcessPage = () => {
         clearCartAfterPurchase,
         refreshCart,
         debugDiscountState,
-        // ✅ AÑADIR: Función para aplicar descuento
         applyDiscount,
-        // Estados de descuento del hook
         appliedDiscount,
-        discountAmount: hookDiscountAmount
+        discountAmount: hookDiscountAmount,
+        pendingDiscount,
+        hasDiscount
     } = useShoppingCart();
 
     // Estado que mantiene el paso actual del proceso de pago

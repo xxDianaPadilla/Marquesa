@@ -44,8 +44,7 @@ const ShoppingCartSchema = new Schema({
       }
     }
   ],
-
-  // Información del descuento pendiente (no aplicado aún)
+  
   pendingDiscount: {
     // Información del código promocional
     code: {
@@ -85,8 +84,7 @@ const ShoppingCartSchema = new Schema({
       required: false
     }
   },
-
-  // Descuento confirmado (solo después de completar la compra)
+  
   appliedDiscount: {
     code: {
       type: String,
@@ -119,7 +117,7 @@ const ShoppingCartSchema = new Schema({
       required: false
     }
   },
-
+  
   // Subtotal sin descuentos
   subtotal: {
     type: Number,
@@ -127,34 +125,32 @@ const ShoppingCartSchema = new Schema({
     default: 0,
     min: [0, "El subtotal no puede ser negativo"]
   },
-
+  
   // Total general del carrito (subtotal - descuento aplicado)
   total: {
     type: Number,
     required: true,
     min: [0, "El total no puede ser negativo"]
   },
-
-  // Estado del carrito
+  
   status: {
     type: String,
-    enum: ["active", "completed", "abandoned"],
-    default: "active"
+    enum: ["Activo", "Completado", "Abandonado"],
+    default: "Activo"
   }
 }, {
   timestamps: true,
   strict: false
 });
 
-// Middleware pre-save para calcular totales
-ShoppingCartSchema.pre('save', function (next) {
+ShoppingCartSchema.pre('save', function(next) {
   // Calcular subtotal de items
   this.subtotal = this.items.reduce((sum, item) => sum + item.subtotal, 0);
-
-  // Calculamos total considerando descuento aplicado (no pendiente)
+  
+  // Calcular total considerando descuento aplicado (no pendiente)
   const discountAmount = this.appliedDiscount?.amount || 0;
   this.total = Math.max(0, this.subtotal - discountAmount);
-
+  
   next();
 });
 

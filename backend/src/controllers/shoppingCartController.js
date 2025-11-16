@@ -866,9 +866,9 @@ shoppingCartController.removeSpecificItem = async (req, res) => {
 shoppingCartController.clearCartAfterPurchase = async (req, res) => {
     try {
         const { cartId } = req.params;
-        const { userId, orderId } = req.body;
+        const { userId, orderId } = req.body; // Ahora también recibimos orderId
 
-        console.log('Limpiando carrito después de compra:', {
+        console.log('🛒 Limpiando carrito después de compra:', {
             cartId,
             userId,
             orderId
@@ -904,30 +904,40 @@ shoppingCartController.clearCartAfterPurchase = async (req, res) => {
             });
         }
 
-        // Confirmamos descuento si existe uno pendiente
         if (cart.pendingDiscount && orderId) {
             console.log('Confirmando descuento pendiente antes de limpiar...');
-            cart.confirmDiscount(orderId);
+
+            cart.appliedDiscount = {
+                code: cart.pendingDiscount.code,
+                codeId: cart.pendingDiscount.codeId,
+                name: cart.pendingDiscount.name,
+                discount: cart.pendingDiscount.discount,
+                amount: cart.pendingDiscount.amount,
+                appliedAt: new Date(),
+                orderId: orderId
+            };
+
+            cart.pendingDiscount = undefined;
         }
 
-        // Marcamos carrito como completado
-        cart.status = 'completed';
+        // Marcar carrito como completado
+        cart.status = 'Completado';
         await cart.save();
 
         console.log('Carrito marcado como completado con descuento confirmado');
 
-        // Creamos nuevo carrito activo para el usuario
+        // Crear nuevo carrito activo para el usuario
         const newCart = new shoppingCartModel({
             clientId: userId,
             items: [],
             subtotal: 0,
             total: 0,
-            status: 'active'
+            status: 'Activo'
         });
 
         await newCart.save();
 
-        console.log('Nuevo carrito activo creado:', newCart._id);
+        console.log('✅ Nuevo carrito activo creado:', newCart._id);
 
         const { token } = getTokenFromRequest(req);
         const currentToken = token || 'session_maintained';
@@ -978,7 +988,7 @@ shoppingCartController.getActiveCart = async (req, res) => {
         let cart = await shoppingCartModel
             .findOne({
                 clientId: userId,
-                status: 'active'
+                status: 'Activo'
             })
             .populate({
                 path: 'items.itemId',
@@ -994,7 +1004,7 @@ shoppingCartController.getActiveCart = async (req, res) => {
                 items: [],
                 subtotal: 0,
                 total: 0,
-                status: 'active'
+                status: 'Activo'
             });
             await cart.save();
         }
@@ -1403,7 +1413,8 @@ shoppingCartController.removePendingDiscount = async (req, res) => {
             });
         }
 
-        cart.removePendingDiscount();
+        // Remover descuento pendiente directamente
+        cart.pendingDiscount = undefined;
         await cart.save();
 
         const { token } = getTokenFromRequest(req);
@@ -1466,9 +1477,23 @@ shoppingCartController.confirmDiscountOnPurchase = async (req, res) => {
             });
         }
 
-        // Confirmamos descuento usando el método del schema
-        cart.confirmDiscount(orderId);
-        cart.status = 'completed';
+        // Confirmar descuento directamente
+        if (cart.pendingDiscount && cart.pendingDiscount.amount > 0) {
+            cart.appliedDiscount = {
+                code: cart.pendingDiscount.code,
+                codeId: cart.pendingDiscount.codeId,
+                name: cart.pendingDiscount.name,
+                discount: cart.pendingDiscount.discount,
+                amount: cart.pendingDiscount.amount,
+                appliedAt: new Date(),
+                orderId: orderId
+            };
+
+            // Limpiar descuento pendiente
+            cart.pendingDiscount = undefined;
+        }
+
+        cart.status = 'Completado';
         await cart.save();
 
         console.log('Descuento confirmado y aplicado:', {
